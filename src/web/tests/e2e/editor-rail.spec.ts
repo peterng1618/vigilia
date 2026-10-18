@@ -272,9 +272,13 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
  *  back off the element after it is written: a pane whose body fits fails here
  *  with the slot named rather than passing on a `0` that survived a swap.
  *  Composition is opened to its full length first for the reason the case above
- *  gives — ten collapsed cards fit a 721px panel. Add, Tokens and Document
- *  overflow at rest (93, 1177 and 168px at 1280×720), which is where the two
- *  surfaces the archived bullet named — Document and Assets — are covered.
+ *  gives — a collapsed starter does not overflow the panel. Add, Tokens and
+ *  Document overflow at rest, and two of them are the surfaces the archived
+ *  bullet named: the declared-asset library renders inside the Add pane's body,
+ *  so Add is where the Assets pane that bullet named survives, and Document is
+ *  the other. Their overflow heights are deliberately not stated — measured
+ *  twice at this viewport they differed by tens of px, because they move with
+ *  font loading — and the guard above is the load-bearing claim, not the sizes.
  *
  *  The offset lives on the showing pane's **body** (§7.7, `vg-208`), and a
  *  browser discards a `display: none` box's scroll position — the swap hides

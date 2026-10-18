@@ -468,12 +468,14 @@ case the projection already agreed with it.
   *(Superseded 2026-10-18. The bridge carries no entering-twice contract to assert: `bridge.ts`'s
   `enterGroup` is one hop — resolve the row, hand the entry object to the manager, republish —
   and holds no context of its own, so it has no guard to defeat and a case written over it would
-  be asserting the manager through the bridge. The property is the manager's, and it is
-  structural rather than guarded: `grouping-manager/index.ts`'s `setContext([entry])` is
-  single-element by construction, so a two-copy context is unrepresentable. It is proved where it
-  lives, at `entered-group-state.dom.test.ts`'s "leaves one level when the same group is entered
-  again". The panel cannot reach a second entry either — its one control reads *leave* for the
-  entered group (`composition-pane.tsx`).)*
+  be asserting the manager through the bridge. The guard this bullet names is the manager's, at
+  `src/web/packages/editor/src/grouping-manager/index.ts`'s `context[0] !== entry` — and that
+  guard is not what prevents a two-copy context: `setContext([entry])` is single-element by
+  construction, so the duplication the bullet worried about is unrepresentable rather than
+  refused. The property is proved where it lives, at `entered-group-state.dom.test.ts`'s "leaves
+  one level when the same group is entered again". The panel cannot reach a second entry either —
+  its one control reads *leave* for the entered group
+  (`src/web/packages/editor/src/panes/composition/composition-pane.tsx`).)*
 
 **Commit:** `feat(editor): the panel can enter a group, not only select it`
 
@@ -729,10 +731,15 @@ is what would drop it.
 - Browser: open Document, put the panel at an offset, swap to Assets and back — the offset
   survives, the same way `editor-pane-bar.spec.ts:68` pins it for the layer list.
   *(Delivered 2026-10-18 by `editor-rail.spec.ts`'s "each pane comes back to the offset it was
-  left at", which walks all four slots — Document and Add among them — leaves each at an offset,
-  swaps away and back, and reads the offset again. The pane bar this bullet names was replaced by
-  the rail (`c6ee8d32`), and the layer-list case it pointed at is that same file's "a collapse
-  between two swaps does not lose the list's scroll".)*
+  left at", which walks all four slots, leaves each at an offset, swaps away and back, and reads
+  the offset again. **The Assets pane this bullet names no longer exists as a slot**: `c6ee8d32`
+  replaced the old `layers | insert | assets | document` set with
+  `composition | add | tokens | document`, and the declared-asset library now renders inside the
+  **Add** pane's body — Add is the former Insert pane, not a rename of Assets. So the case proves
+  the surviving host rather than the pane the bullet named: the library sits in that body, and it
+  is that body's offset the case leaves and reads back. The pane bar's other half was replaced by
+  the same rail, and the layer-list case the bullet pointed at is this file's "a collapse between
+  two swaps does not lose the list's scroll".)*
 
 **Commit:** `feat(editor): the document's own panel lives in the left column`
 
@@ -808,7 +815,12 @@ your file list, so correct it here.
   *(Discharged 2026-10-18 by pointer, and no unit case is owed: the panel takes no selection of
   its own by construction. The proof is `composition-panel.spec.ts`'s "keeps the document's own
   controls reachable while a card is selected", which selects `group-cpu-card` — the case the row
-  measured — and reads the Document pane with the selection standing.)*
+  measured — and reads the Document pane with the selection standing. That is the
+  with-a-selection half, and it is the half this bullet's row was about. **The other half is not
+  an unowned gap**: the tokens and presets listed by name and resolved went with `vg-474` — the
+  user's own decision, in the list they gave on 2026-10-14, to remove the read-only Spends and
+  This-document sections, which deleted the pane's whole `references` sub-panel. `vg-474` is
+  `verified` in `docs/product/backlog-archive.jsonl`, so there is no proof left to owe here.)*
 - Unit: a token edited after mount is reflected on the next render — the panel never held a
   copy of globals and must not start.
 - Unit: there is no `role="tab"` anywhere in the shell, and `uiCopy` has no `inspector` key —
