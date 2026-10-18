@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@vigilia/renderer-core": "*",
+    "@vigilia/scene-fabric": "*",
     "@vigilia/theme-package": "*",
     "node-forge": "1.4.0",
     "systeminformation": "^5.33.13"

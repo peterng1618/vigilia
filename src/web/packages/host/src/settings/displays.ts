@@ -1,0 +1,405 @@
+import { createHash, randomBytes } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { ChartRefreshRate } from "@vigilia/scene-fabric";
+import { DEVICE_ID_PATTERN } from "./devices.js";
+
+/**
+ * The displays this host knows about: the identity a screen is given, and the
+ * credential that proves it is that screen.
+ *
+ * A display's *id* is minted once and never moves, because everything else —
+ * which theme it holds, what it was told to show — is keyed by it. Its *label*
+ * is what a person edits, and renaming one is not a re-identification.
+ *
+ * The file is `display-clients.json`, not `displays.json`: `display.ts` already
+ * owns `display.json` in this same directory for how readings are displayed,
+ * and two files one character apart with different owners is a defect waiting
+ * for a tired reader.
+ */
+
+/** The display this machine is. Minted, never paired. */
+export const LOCAL_DISPLAY_ID = "this-pc";
+/** The display an unpaired client is served as. Never minted. */
+export const DEFAULT_DISPLAY = "default";
+
+export type DisplayKind = "paired" | "local";
+
+/**
+ * What identifies the physical screen behind a local display.
+ *
+ * A monitor has no name a person would recognise, so both halves are hints: the
+ * id is the identity, and this is only what to call it and how to recognise it
+ * again after a reboot.
+ */
+export interface MonitorHint {
+  readonly serial?: string;
+  readonly deviceName: string;
+}
+
+export interface DisplayRecord {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: DisplayKind;
+  readonly createdAt: string;
+  readonly lastSeenAt: string;
+  /** Absent for a local display: it is this machine, so it has nothing to prove. */
+  readonly tokenHash?: string;
+  readonly monitor?: MonitorHint;
+  readonly chartFps?: ChartRefreshRate;
+}
+
+/** The two things a person edits. Neither may touch the id. */
+export interface DisplayPatch {
+  readonly label?: string;
+  readonly chartFps?: ChartRefreshRate;
+}
+
+export interface DisplayStore {
+  list(): Promise<readonly DisplayRecord[]>;
+  create(label: string, token: string): Promise<DisplayRecord>;
+  createLocal(label: string, monitor: MonitorHint): Promise<DisplayRecord>;
+  find(id: string): Promise<DisplayRecord | undefined>;
+  authenticate(token: string): Promise<DisplayRecord | undefined>;
+  rotate(id: string, token: string): Promise<DisplayRecord | undefined>;
+  update(id: string, patch: DisplayPatch): Promise<DisplayRecord | undefined>;
+  touch(id: string, at: string): Promise<void>;
+  remove(id: string): Promise<boolean>;
+}
+
+const FILE = "display-clients.json";
+const MAX_LABEL_LENGTH = 64;
+const MAX_ID_LENGTH = 64;
+
+/**
+ * The rate a display's charts repaint at: its own choice, else the kind's.
+ *
+ * One function, so no caller re-decides the default. A local screen is in front
+ * of the person using it and repaints every frame; a paired one is usually
+ * across the room and redrawing it thirty times a second is heat nobody sees.
+ */
+export function chartFpsFor(
+  record: Pick<DisplayRecord, "kind" | "chartFps">,
+): ChartRefreshRate {
+  return record.chartFps ?? (record.kind === "local" ? 1 : 30);
+}
+
+/**
+ * The name a person sees and edits: trimmed, and refused if that leaves nothing
+ * or leaves too much.
+ *
+ * Deliberately **not** the slug rule. `Living Room (TV)` is a name someone may
+ * have, and refusing it because it holds a space and a bracket would be a rule
+ * nobody could act on — the id was already minted from a slug when the display
+ * was created.
+ */
+export function normalizeLabel(input: unknown): string {
+  if (typeof input !== "string") {
+    throw new Error("A display label must be a string.");
+  }
+
+  const label = input.trim();
+
+  if (label.length < 1 || label.length > MAX_LABEL_LENGTH) {
+    throw new Error(
+      `A display label must be 1 to ${MAX_LABEL_LENGTH} characters, not ${label.length}.`,
+    );
+  }
+
+  return label;
+}
+
+/**
+ * How a credential is stored. Here rather than at each call site, so nothing
+ * else in the tree decides how a token becomes a hash.
+ *
+ * A token of 32 CSPRNG bytes has no dictionary to attack, so the hash's job is
+ * narrower than usual: reading the file — a backup, a synced folder, a
+ * screenshot — yields a list of displays rather than a set of usable
+ * credentials.
+ */
+export function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("base64url");
+}
+
+/**
+ * The id a label slugs to, with a suffix when the slug is already taken.
+ *
+ * Pure, so its refusals are unit-testable: a label of punctuation slugs to
+ * nothing, and an id that starts with a dash is one `DEVICE_ID_PATTERN` would
+ * drop on the next read — better to refuse it here than to write a record that
+ * disappears.
+ */
+export function displayIdFrom(label: string, suffix: string): string {
+  const slug = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  const tail = suffix.length === 0 ? "" : `-${suffix}`;
+  // The suffix wins the room it needs: an id whose suffix was truncated would
+  // not be the id the caller asked for.
+  const room = Math.max(MAX_ID_LENGTH - tail.length, 0);
+  const id = `${slug.slice(0, room).replace(/-+$/g, "")}${tail}`;
+
+  if (id.length === 0 || !DEVICE_ID_PATTERN.test(id)) {
+    throw new Error(`"${label}" yields no usable id.`);
+  }
+
+  return id;
+}
+
+function normalizeMonitor(input: unknown): MonitorHint | undefined {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return undefined;
+  }
+
+  const raw = input as Record<string, unknown>;
+  const deviceName = raw["deviceName"];
+
+  if (typeof deviceName !== "string" || deviceName.length === 0) {
+    return undefined;
+  }
+
+  const serial = raw["serial"];
+
+  return {
+    deviceName,
+    ...(typeof serial === "string" ? { serial } : {}),
+  };
+}
+
+/**
+ * Keeps only records something else will accept. A hand-edited file must not be
+ * able to introduce a display nothing else accepts, so an unusable id, a label
+ * that is not a name, an unknown kind or a duplicate id drops the record.
+ */
+function normalizeRecord(input: unknown): DisplayRecord | undefined {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return undefined;
+  }
+
+  const raw = input as Record<string, unknown>;
+
+  const id = raw["id"];
+  if (typeof id !== "string" || !DEVICE_ID_PATTERN.test(id)) return undefined;
+
+  const rawLabel = raw["label"];
+  if (typeof rawLabel !== "string") return undefined;
+  const label = rawLabel.trim();
+  if (label.length < 1 || label.length > MAX_LABEL_LENGTH) return undefined;
+
+  const kind = raw["kind"];
+  if (kind !== "paired" && kind !== "local") return undefined;
+
+  const tokenHash = raw["tokenHash"];
+  // A paired record with no hash is a display nothing can authenticate as; a
+  // local record carrying one is a credentialless display pretending otherwise.
+  if (kind === "paired" && typeof tokenHash !== "string") return undefined;
+  if (kind === "local" && tokenHash !== undefined) return undefined;
+
+  const createdAt = raw["createdAt"];
+  const lastSeenAt = raw["lastSeenAt"];
+  if (typeof createdAt !== "string" || typeof lastSeenAt !== "string") {
+    return undefined;
+  }
+
+  const monitor = normalizeMonitor(raw["monitor"]);
+  const chartFps = raw["chartFps"];
+
+  return {
+    id,
+    label,
+    kind,
+    createdAt,
+    lastSeenAt,
+    ...(typeof tokenHash === "string" ? { tokenHash } : {}),
+    ...(monitor !== undefined ? { monitor } : {}),
+    // A rate the player cannot run is dropped rather than carried, so the
+    // kind's default answers instead.
+    ...(chartFps === 1 || chartFps === 30 ? { chartFps } : {}),
+  };
+}
+
+async function readDisplays(file: string): Promise<DisplayRecord[]> {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(await readFile(file, "utf8"));
+  } catch {
+    // No file, or an unreadable one: no display has been given an identity.
+    return [];
+  }
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return [];
+  }
+
+  const raw = (parsed as Record<string, unknown>)["displays"];
+  if (!Array.isArray(raw)) return [];
+
+  const displays: DisplayRecord[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of raw) {
+    const record = normalizeRecord(entry);
+    if (record === undefined || seen.has(record.id)) continue;
+    seen.add(record.id);
+    displays.push(record);
+  }
+
+  return displays;
+}
+
+function rateOrThrow(value: unknown): ChartRefreshRate {
+  if (value === 1 || value === 30) return value;
+  throw new Error(`A chart rate must be 1 or 30, not "${String(value)}".`);
+}
+
+export function createDisplayStore(
+  directory: string,
+  options: {
+    readonly now?: () => number;
+    readonly randomSuffix?: () => string;
+  } = {},
+): DisplayStore {
+  const file = path.join(directory, FILE);
+  const now = options.now ?? Date.now;
+  const randomSuffix =
+    options.randomSuffix ?? (() => randomBytes(2).toString("hex"));
+
+  const save = async (displays: readonly DisplayRecord[]): Promise<void> => {
+    await mkdir(directory, { recursive: true });
+    await writeFile(file, `${JSON.stringify({ displays }, null, 2)}\n`, "utf8");
+  };
+
+  const add = async (
+    label: string,
+    fields: {
+      readonly kind: DisplayKind;
+      readonly tokenHash?: string;
+      readonly monitor?: MonitorHint;
+    },
+  ): Promise<DisplayRecord> => {
+    const name = normalizeLabel(label);
+    const displays = await readDisplays(file);
+    const taken = new Set(displays.map((display) => display.id));
+    const slug = displayIdFrom(name, "");
+
+    if (slug === LOCAL_DISPLAY_ID || slug === DEFAULT_DISPLAY) {
+      throw new Error(`"${slug}" is a reserved display id.`);
+    }
+
+    let id = slug;
+    if (taken.has(id)) {
+      id = displayIdFrom(name, randomSuffix());
+      if (taken.has(id)) {
+        throw new Error(`No unused id is left for "${name}".`);
+      }
+    }
+
+    const at = new Date(now()).toISOString();
+    const record: DisplayRecord = {
+      id,
+      label: name,
+      createdAt: at,
+      lastSeenAt: at,
+      ...fields,
+    };
+
+    await save([...displays, record]);
+    return record;
+  };
+
+  return {
+    async list(): Promise<readonly DisplayRecord[]> {
+      return readDisplays(file);
+    },
+
+    create(label, token): Promise<DisplayRecord> {
+      return add(label, { kind: "paired", tokenHash: hashToken(token) });
+    },
+
+    createLocal(label, monitor): Promise<DisplayRecord> {
+      return add(label, { kind: "local", monitor });
+    },
+
+    async find(id): Promise<DisplayRecord | undefined> {
+      return (await readDisplays(file)).find((record) => record.id === id);
+    },
+
+    async authenticate(token): Promise<DisplayRecord | undefined> {
+      // An empty string is no credential, and hashing it would hand a display
+      // created with one a way in.
+      if (token.length === 0) return undefined;
+
+      const hash = hashToken(token);
+      return (await readDisplays(file)).find(
+        (record) => record.tokenHash === hash,
+      );
+    },
+
+    async rotate(id, token): Promise<DisplayRecord | undefined> {
+      const displays = await readDisplays(file);
+      const index = displays.findIndex((record) => record.id === id);
+      const found = displays[index];
+
+      // A local display has no credential to replace, and giving it one would
+      // write a record the next read drops.
+      if (found === undefined || found.kind !== "paired") return undefined;
+
+      const record: DisplayRecord = { ...found, tokenHash: hashToken(token) };
+      displays[index] = record;
+      await save(displays);
+      return record;
+    },
+
+    async update(id, patch): Promise<DisplayRecord | undefined> {
+      const displays = await readDisplays(file);
+      const index = displays.findIndex((record) => record.id === id);
+      const found = displays[index];
+
+      if (found === undefined) return undefined;
+
+      const label =
+        patch.label === undefined ? found.label : normalizeLabel(patch.label);
+      const chartFps =
+        patch.chartFps === undefined
+          ? found.chartFps
+          : rateOrThrow(patch.chartFps);
+
+      // The id, the creation time and the monitor are not patchable: everything
+      // else is keyed by the id, so a rename that moved it would orphan them.
+      const record: DisplayRecord = {
+        ...found,
+        label,
+        ...(chartFps === undefined ? {} : { chartFps }),
+      };
+
+      displays[index] = record;
+      await save(displays);
+      return record;
+    },
+
+    async touch(id, at): Promise<void> {
+      const displays = await readDisplays(file);
+      const index = displays.findIndex((record) => record.id === id);
+      const found = displays[index];
+
+      if (found === undefined) return;
+
+      displays[index] = { ...found, lastSeenAt: at };
+      await save(displays);
+    },
+
+    async remove(id): Promise<boolean> {
+      const displays = await readDisplays(file);
+      const remaining = displays.filter((record) => record.id !== id);
+
+      if (remaining.length === displays.length) return false;
+
+      await save(remaining);
+      return true;
+    },
+  };
+}

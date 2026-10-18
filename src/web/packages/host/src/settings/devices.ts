@@ -40,7 +40,8 @@ export interface DeviceSettingsStore {
 const FILE = "devices.json";
 /** A display name is shown, not used as a key, so it is only length-bounded. */
 const MAX_NAME_LENGTH = 48;
-const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+/** The host's one id shape: what a provider reports, a display mints and an answer names. */
+export const DEVICE_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 function isGroup(value: string): value is AssignableGroup {
   return (ASSIGNABLE_GROUPS as readonly string[]).includes(value);
@@ -65,7 +66,11 @@ export function normalizeDeviceSettings(input: unknown): DeviceSettings {
     for (const [key, value] of Object.entries(
       rawAssigned as Record<string, unknown>,
     )) {
-      if (typeof value === "string" && isGroup(key) && ID_PATTERN.test(value)) {
+      if (
+        typeof value === "string" &&
+        isGroup(key) &&
+        DEVICE_ID_PATTERN.test(value)
+      ) {
         assigned[key] = value;
       }
     }
@@ -76,7 +81,7 @@ export function normalizeDeviceSettings(input: unknown): DeviceSettings {
     for (const [key, value] of Object.entries(
       rawNames as Record<string, unknown>,
     )) {
-      if (typeof value !== "string" || !ID_PATTERN.test(key)) {
+      if (typeof value !== "string" || !DEVICE_ID_PATTERN.test(key)) {
         continue;
       }
 

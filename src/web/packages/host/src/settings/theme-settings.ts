@@ -1,6 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ASSIGNABLE_GROUPS, type AssignableGroup } from "./devices.js";
+import {
+  ASSIGNABLE_GROUPS,
+  type AssignableGroup,
+  DEVICE_ID_PATTERN,
+} from "./devices.js";
 
 /**
  * The answers a particular theme needed, stored per theme.
@@ -23,7 +27,6 @@ export interface ThemeSettingsStore {
 
 const FILE = "theme-answers.json";
 const THEME_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const DEVICE_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 function isGroup(value: string): value is AssignableGroup {
   return (ASSIGNABLE_GROUPS as readonly string[]).includes(value);
@@ -38,7 +41,11 @@ export function normalizeAnswers(input: unknown): ThemeAnswers {
   const answers: Partial<Record<AssignableGroup, string>> = {};
 
   for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (isGroup(key) && typeof value === "string" && DEVICE_ID.test(value)) {
+    if (
+      isGroup(key) &&
+      typeof value === "string" &&
+      DEVICE_ID_PATTERN.test(value)
+    ) {
       answers[key] = value;
     }
   }
