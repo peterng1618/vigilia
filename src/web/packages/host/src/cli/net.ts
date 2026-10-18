@@ -120,6 +120,10 @@ export const VIRTUAL_ADAPTER_PATTERNS: readonly RegExp[] = [
   /loopback/i, // Npcap's and the other pseudo-adapters that are not `internal`
   /\b(vpn|wireguard|openvpn|tailscale|zerotier|nordlynx)\b/i,
   /\b(tun|tap|utun|ppp|wg)\d*\b/i,
+  /wi-?fi direct|hosted network/i, // Windows' virtual Wi-Fi adapters (192.168.137.1 is one)
+  /tunnel adapter|isatap|teredo/i, // Windows' ISATAP, Teredo and 6to4 pseudo-interfaces
+  /\btunl\d*\b/i, // Linux's tunnel stub, which the tun/tap pattern above misses
+  /^(sit|gre|gretap|erspan|ip6tnl|ip6gre)\d+$/i, // Linux's other kernel tunnel stubs
 ];
 
 /** This machine's adapters, and the interface its default IPv4 route leaves by. */
@@ -153,26 +157,43 @@ function isUnreachableAddress(address: string): boolean {
  *  The route is read through `systeminformation` — the host's existing OS reader
  *  (`providers/library.ts`) — because Node exposes no routing table at all, and
  *  the installed dependency already answers this on every platform the host
- *  runs on. **A platform that cannot answer costs one failed OS query and
- *  nothing else**: the route comes back `undefined`, which sends the pick to
- *  `rankLanAddresses`'s deterministic order rather than to a throw. */
+ *  runs on.
+ *
+ *  **Its answer must not be read as "the route was read".** Measured with
+ *  `execSync` blocked so the platform query cannot run at all: it still returns
+ *  a name — this machine answers `"Npcap Loopback Adapter"` — because before
+ *  the platform block it has already picked a fallback from the adapters
+ *  themselves (the lowest IPv6 `scopeid`, else the first non-internal one), and
+ *  its `catch` is `util.noop()`. `""` comes back only when there is no
+ *  non-internal interface at all. A returned name that is also a surviving
+ *  candidate therefore looks like "the route decided it", and `lanAddress`'s
+ *  tie-break warning is suppressed on exactly the machine where a wrong pick is
+ *  invisible. Detecting that fallback is a gap this function does not close.
+ *
+ *  **No path through here rejects.** A throw from either read — the adapter list
+ *  or the route — leaves the interfaces empty or the route unknown, so the host
+ *  answers `/api/hosting` with `address: null` rather than taking the process
+ *  somewhere nobody is looking. */
 export async function readLanSource(): Promise<LanSource> {
-  const interfaces = os.networkInterfaces();
+  let interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = {};
+  let defaultRouteInterface: string | undefined;
 
   try {
+    interfaces = os.networkInterfaces();
+
     const imported = await import("systeminformation");
     const si = (imported.default ?? imported) as {
       networkInterfaceDefault(): Promise<string>;
     };
     const name = await si.networkInterfaceDefault();
 
-    return {
-      interfaces,
-      defaultRouteInterface: name === "" ? undefined : name,
-    };
+    defaultRouteInterface = name === "" ? undefined : name;
   } catch {
-    return { interfaces, defaultRouteInterface: undefined };
+    // Nothing to rank, or nothing to rank by: either way the caller gets an
+    // answer rather than a rejection.
   }
+
+  return { interfaces, defaultRouteInterface };
 }
 
 /** The ruling's order (`vg-171`), as a pure function so a case can carry a

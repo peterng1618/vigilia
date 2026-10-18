@@ -1,9 +1,10 @@
-import type { NetworkInterfaceInfo } from "node:os";
+import os, { type NetworkInterfaceInfo } from "node:os";
 import { describe, expect, it, vi } from "vitest";
 import {
   type LanSource,
   lanAddress,
   rankLanAddresses,
+  readLanSource,
   VIRTUAL_ADAPTER_PATTERNS,
 } from "./net.js";
 
@@ -29,6 +30,10 @@ function hyperVFirst(): LanSource["interfaces"] {
     "Loopback Pseudo-Interface 1": [ipv4("127.0.0.1", true)],
     Ethernet: [ipv4("192.168.2.56")],
   };
+}
+
+function isVirtual(name: string): boolean {
+  return VIRTUAL_ADAPTER_PATTERNS.some((pattern) => pattern.test(name));
 }
 
 describe("rankLanAddresses", () => {
@@ -135,6 +140,23 @@ describe("lanAddress", () => {
   });
 });
 
+describe("readLanSource", () => {
+  it("answers rather than rejects when the adapter list cannot be read", async () => {
+    vi.spyOn(os, "networkInterfaces").mockImplementation(() => {
+      throw new Error("no adapters for you");
+    });
+
+    // `state()` used to be synchronous and could not reject; `/api/hosting` is
+    // reached through `void handle(...)` with no catch, so a rejection here
+    // would land nowhere. The route comes back unknown and the adapters empty,
+    // which `rankLanAddresses` answers as `address: null`.
+    await expect(readLanSource()).resolves.toEqual({
+      interfaces: {},
+      defaultRouteInterface: undefined,
+    });
+  });
+});
+
 describe("VIRTUAL_ADAPTER_PATTERNS", () => {
   it("names every adapter family the ruling lists", () => {
     const dropped = [
@@ -164,6 +186,45 @@ describe("VIRTUAL_ADAPTER_PATTERNS", () => {
         VIRTUAL_ADAPTER_PATTERNS.some((pattern) => pattern.test(name)),
         name,
       ).toBe(false);
+    }
+  });
+
+  it("drops the virtual Wi-Fi adapters Windows installs", () => {
+    for (const name of [
+      "Microsoft Wi-Fi Direct Virtual Adapter",
+      "Microsoft Hosted Network Virtual Adapter",
+    ]) {
+      expect(isVirtual(name), name).toBe(true);
+    }
+  });
+
+  it("drops Windows' tunnel pseudo-interfaces", () => {
+    for (const name of [
+      "Tunnel adapter isatap.{1A2B3C4D-0000-0000-0000-000000000000}",
+      "Tunnel adapter Teredo Tunneling Pseudo-Interface",
+      "Teredo Tunneling Pseudo-Interface",
+      "Tunnel adapter 6TO4 Adapter",
+    ]) {
+      expect(isVirtual(name), name).toBe(true);
+    }
+  });
+
+  it("drops Linux's tunnel stubs, which the tun/tap pattern misses", () => {
+    for (const name of [
+      "tunl0",
+      "sit0",
+      "gre0",
+      "gretap0",
+      "ip6tnl0",
+      "ip6gre0",
+    ]) {
+      expect(isVirtual(name), name).toBe(true);
+    }
+  });
+
+  it("still leaves a physical adapter alone beside the new entries", () => {
+    for (const name of ["Wi-Fi 2", "wlan0", "enp3s0", "Ethernet 3", "eth1"]) {
+      expect(isVirtual(name), name).toBe(false);
     }
   });
 });
