@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { openPane } from "./editor-rail.js";
+import { insert, openBlank, readScene } from "./rebuild-driver.js";
 import { themeToken, typeStep } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -105,4 +106,30 @@ test("a card inserted from the Add pane arrives as a unit the tree can name", as
 
   await openPane(page, "Composition");
   await expect(clocks).toHaveCount(before + 1);
+});
+
+test("the pane's two Lines are told apart by their group, not by which tile comes last", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+  await openBlank(page);
+
+  // "Line" is a shape and a chart family, and both are in the pane at once. The
+  // driver addresses a tile by the group the caller names (`vg-537`), so what
+  // proves it is the inserted object's own kind. **Not the scene's count**: a
+  // count grew either way, which is how a positional guess passed for a shape
+  // insert while handing back the chart's Line.
+  await insert(page, "Line", "shape");
+  await insert(page, "Line", "chart");
+
+  // The tags are Fabric's, and Fabric lowercases a class name — the same pair
+  // `layer-tree.ts`'s `kindOf` tells apart ("Fabric type tags are lowercase
+  // class names; the envelope keeps `VigiliaChart`").
+  expect((await readScene(page)).map((object) => object.type)).toEqual([
+    "line",
+    "vigiliachart",
+  ]);
 });

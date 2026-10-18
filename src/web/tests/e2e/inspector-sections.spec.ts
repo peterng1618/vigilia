@@ -1127,7 +1127,7 @@ test.describe("the per-kind inspector column", () => {
     await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
 
     // A text box: typography, and no crop — it has no pixels to crop.
-    await insert(page, "Text");
+    await insert(page, "Text", "text");
     await report("text");
     await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
     await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
@@ -1178,14 +1178,9 @@ test.describe("the per-kind inspector column", () => {
     await page.goto(EDITOR);
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await openBlank(page);
-    // The Shape group's own Line, not `insert(page, "Line")`: the label is a
-    // shape and a chart family, and the driver's `insert` takes the last match,
-    // which is the chart.
-    await openPane(page, "Add");
-    await page
-      .locator('[data-vigilia-add-group="shape"]')
-      .getByRole("button", { name: "Line", exact: true })
-      .click();
+    // The Shape group's own Line: the label is a shape and a chart family, and
+    // the group the caller names is what says which one was asked for (`vg-537`).
+    await insert(page, "Line", "shape");
 
     // `vg-401`'s reading, taken here rather than inferred. The field is **not**
     // in a refused state — `ControlNumber` renders `readOnly={refused !==
@@ -1487,7 +1482,7 @@ test.describe("the per-kind inspector column", () => {
     await page.goto(EDITOR);
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await openBlank(page);
-    await insert(page, "Text");
+    await insert(page, "Text", "text");
 
     // Scoped to Content: the field is the text section's, and a field that
     // rendered anywhere in the column would satisfy an unscoped read.

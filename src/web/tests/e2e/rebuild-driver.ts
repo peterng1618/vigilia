@@ -140,7 +140,16 @@ export async function openBlank(
   await expect.poll(async () => (await readScene(page)).length).toBe(0);
 }
 
-/** The button in the Add pane that makes an object, by the name it answers to.
+/** The Add pane's groups, by the kind of object each holds: the values the pane
+ *  writes to `data-vigilia-add-group`, which are `insertGroups()`'s `kind`s.
+ *
+ *  **`"text"` is the one kind the pane draws in no group at all** — a group of
+ *  one would say a region exists where there is one thing — so its scope is the
+ *  pane itself and every other kind's is its own fieldset. */
+export type AddGroup = "card" | "text" | "shape" | "chart";
+
+/** The button in the Add pane that makes an object, by the name it answers to,
+ *  in the group the caller names.
  *
  *  Read as the accessible name rather than as the text inside the button: the
  *  pane's shape and chart tiles are glyph-led (DESIGN.md §6), so a `Path` or a
@@ -148,37 +157,37 @@ export async function openBlank(
  *  cards and Text show their word, and a name is what a reader is told for
  *  either.
  *
- *  **Scoped to the object's own group, not to the pane** (`vg-211`): the pane
- *  holds the file path's controls as well, so a pane-wide name lookup is one
- *  asset button labelled with a shape word away from matching two — silently,
- *  and in this file alone. `group` is the group's `data-vigilia-add-group`
- *  value. It is omitted for the Text row, which `insertGroups()` draws in no
- *  group at all, and for a chart family — the ruling reaches the shape controls,
- *  and `vg-211`'s trailer records the rest as the same hazard left standing. */
-export function addButton(page: Page, label: string, group?: string): Locator {
+ *  **The group is required, and it is what tells two same-named tiles apart**
+ *  (`vg-537`): "Line" is a shape and a chart family, and a lookup that resolved
+ *  one of them by position answered a question the caller had not asked — the
+ *  chart's Line went in where the shape's was meant, and the assertion that
+ *  followed grew either way. It is also the scope that keeps a pane-wide name
+ *  from matching twice (`vg-211`): the pane holds the file path's controls as
+ *  well, so a pane-wide name lookup is one asset button labelled with a shape
+ *  word away from matching two — silently, and in this file alone. */
+export function addButton(page: Page, label: string, group: AddGroup): Locator {
   const scope =
-    group === undefined
+    group === "text"
       ? page.locator('[data-vigilia-panel="add"]')
       : page.locator(`[data-vigilia-add-group="${group}"]`);
   return scope.getByRole("button", { name: label, exact: true });
 }
 
-/** Inserts an object from the Add pane, by the word on the control. `group` is
- *  the group to reach it in — see `addButton`. */
+/** Inserts an object from the Add pane, by the word on the control and the group
+ *  that carries it — see `addButton`. **The family is the caller's to name and
+ *  never the driver's to infer**: the two Lines are told apart by the group they
+ *  sit in, and by nothing else (`vg-537`). */
 export async function insert(
   page: Page,
   label: string,
-  group?: string,
+  group: AddGroup,
 ): Promise<void> {
   // The rail shows one pane, and selecting a layer switches it to Composition
   // — so an author comes back to Add the same way this does. The selection's
   // own fields are in the right column, which no pane affects.
   await openPane(page, "Add");
   const before = (await readScene(page)).length;
-  const button = addButton(page, label, group);
-  // "Line" is a shape and a chart, and the legend above each is what tells them
-  // apart — the same distinction F1.17 made the screen.
-  await ((await button.count()) > 1 ? button.last() : button).click();
+  await addButton(page, label, group).click();
   await expect
     .poll(async () => (await readScene(page)).length)
     .toBeGreaterThan(before);
@@ -411,7 +420,7 @@ export async function addText(
     readonly colour?: string;
   },
 ): Promise<void> {
-  await insert(page, "Text");
+  await insert(page, "Text", "text");
   await setName(page, object.name);
   await place(page, object);
   await fill(page, '[data-vigilia-run-text="0"]', object.text);
@@ -459,7 +468,7 @@ export async function addChart(
     readonly paint?: ReadonlyArray<string | undefined>;
   },
 ): Promise<void> {
-  await insert(page, chart.family);
+  await insert(page, chart.family, "chart");
   await setName(page, chart.name);
   await place(page, chart);
   for (const key of chart.series) {
