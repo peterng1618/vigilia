@@ -2197,50 +2197,71 @@ describe("A LAN move answers before the socket it moves (vg-173)", () => {
     expect(after).toMatchObject({ lan: true, refusal: null });
   });
 
-  it("does not wait on a request that is in flight when it starts (vg-174)", async () => {
+  it("does not leave a request parked on a socket it spared (vg-174)", async () => {
     const port = await listeningHost();
 
-    // The request this case needs is one the host has accepted and is still
-    // answering: the headers are read and the body they promised has not
-    // arrived, so no response can be written and the connection cannot end.
-    // `close()` waits for every connection, so it would wait on this one
-    // forever — the move would never settle and the host would never listen
-    // again. Ordinary single-client use cannot reach this, which is why it
-    // needs constructing.
+    // The row's own mechanism, which has to be constructed because one client
+    // cannot reach it. This socket is mid-request when the move starts — its
+    // headers are read and the body it promised has not arrived — so the move
+    // spares it rather than closing it, and it goes idle-and-alive the moment
+    // that body arrives. A **second** request on it then runs its handler after
+    // `moving` is assigned, so it parks on `idle()` for a move that is parked
+    // on this very connection: a deadlock, not a slow answer.
     //
-    // `Expect: 100-continue` is how the test knows the request is in flight
+    // `Expect: 100-continue` is how the test knows the host has the request
     // rather than sleeping and hoping: Node answers it in the same run that
     // emits `request`, so waiting for that line is proof the host has it.
-    const stalled = net.connect(port, "127.0.0.1");
+    const held = net.connect(port, "127.0.0.1");
     // The move destroys this socket, so its failure is the point of the case.
-    stalled.on("error", () => {});
-    const ended = new Promise<boolean>((resolve) => {
-      stalled.once("close", () => resolve(true));
-      setTimeout(() => resolve(false), 2_000).unref();
-    });
-    const continued = new Promise<void>((resolve) => {
-      stalled.on("data", (chunk: Buffer) => {
-        if (chunk.includes("100 Continue")) resolve();
-      });
+    held.on("error", () => {});
+    const seen: string[] = [];
+    let controlAnswered = false;
+    let continueSeen: (() => void) | undefined;
+    const arrived = new Promise<void>((resolve) => {
+      continueSeen = resolve;
     });
 
-    await new Promise<void>((resolve) => stalled.once("connect", resolve));
-    stalled.write(
+    held.on("data", (chunk: Buffer) => {
+      seen.push(chunk.toString("latin1"));
+      const text = seen.join("");
+
+      if (text.includes("100 Continue")) continueSeen?.();
+
+      // The continue, the held request's own answer, and anything after them:
+      // a third status line is the socket still being dispatched on.
+      if (text.split("HTTP/1.1").length > 3) controlAnswered = true;
+    });
+
+    const ended = new Promise<boolean>((resolve) => {
+      held.once("close", () => resolve(true));
+      setTimeout(() => resolve(false), 2_000).unref();
+    });
+
+    await new Promise<void>((resolve) => held.once("connect", resolve));
+    held.write(
       [
         "PUT /api/hosting HTTP/1.1",
         `Host: 127.0.0.1:${port}`,
         "Content-Type: application/json",
         "Expect: 100-continue",
-        "Content-Length: 11",
+        // `{"lan":0}` exactly: one byte short and the parser answers the 400
+        // itself, with `Connection: close`, and the socket this case is about
+        // is gone before the move ever runs.
+        "Content-Length: 9",
         "",
         "",
       ].join("\r\n"),
     );
-    await continued;
+    await arrived;
 
-    // The move runs while that request is still in flight. Its own answer goes
-    // out first, on a connection the move takes with it — that trade is
-    // `vg-173`, measured and green.
+    // The move runs while that request is still in flight. Its own answer is
+    // owed on a connection the move takes with it — that trade is `vg-173`,
+    // measured and green.
+    //
+    // **This 200 is not the discriminating assertion**: the move starts on
+    // `finish`, so these bytes are already with the operating system before any
+    // socket is destroyed, and it passes with the fix absent too. What tells
+    // the two apart is the socket assertion below.
     const answered = await fetch(`http://127.0.0.1:${port}/api/hosting`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -2248,17 +2269,26 @@ describe("A LAN move answers before the socket it moves (vg-173)", () => {
     });
     expect(answered.status).toBe(200);
 
-    // The move settled, so the host is listening again and answers where it
+    // The held body frees the socket, and the two reads that follow are the
+    // shape the row describes. Asserted as an object rather than a boolean so a
+    // red run says which half it saw: with the fix absent this socket is still
+    // alive and still dispatching — the health read beside it answers — while
+    // the hosting read never does.
+    held.write('{"lan":0}');
+    held.write("GET /api/health HTTP/1.1\r\nHost: h\r\n\r\n");
+    held.write("GET /api/hosting HTTP/1.1\r\nHost: h\r\n\r\n");
+
+    expect({ ended: await ended, controlAnswered }).toMatchObject({
+      ended: true,
+    });
+
+    // And the move settled, so the host is listening again and answers where it
     // landed. A GET waits for a move in flight, so a 200 here is the move
-    // having finished rather than a reading taken around it — with the fix
-    // disabled there is no host left to answer this at all.
+    // having finished rather than a reading taken around it.
     const after = await (
       await fetch(`http://127.0.0.1:${port}/api/hosting`)
     ).json();
     expect(after).toMatchObject({ lan: true, refusal: null });
-
-    // And the request that was in flight is the one that was spent for it.
-    expect(await ended).toBe(true);
   });
 });
 

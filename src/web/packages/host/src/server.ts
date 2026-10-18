@@ -962,9 +962,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
         // the bytes are with the OS, not merely queued — and an asker that
         // wants to know where it landed reads the GET that follows (vg-173).
         response.once("finish", () => {
-          // Displays are holding streams open and `close()` waits for them.
-          // The host is what tracks those streams, so the host is what closes
-          // them; `closeIdleConnections()` will not take one that is open.
+          // Displays are holding streams open, and the move destroys every
+          // connection left — this one included. The host is what tracks those
+          // streams, so the host is what ends them deliberately rather than
+          // leaving them to go with the rest (`vg-174`). **Whether that end
+          // reaches the display is not established**: `SseConnection.close()`
+          // is `response.end()`, and the move destroys the socket just after
+          // it.
           for (const connection of connections) {
             connection.close();
           }
