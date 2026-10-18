@@ -206,6 +206,8 @@ adapter does not own catalog, preview or adoption semantics.
 | Device assignment and display names | `host/src/settings/devices.ts` |
 | A theme's own device answers | `host/src/settings/theme-settings.ts` |
 | Which device slots a theme needs | `host/src/settings/required-devices.ts` |
+| Which host an app folder is — the id a display re-finds it by, and the name it shows | `host/src/settings/host-record.ts` |
+| Whether a host already holds an app folder | `host/src/settings/host-lock.ts` |
 | Device-assignment resolution handed to providers | `host/src/server.ts` (`publishAssignment`) |
 | Clock/date provider | `host/src/providers/clock.ts` |
 | Instant reading, offsets and the zone list | `renderer-core/src/scene/datetime/instant.ts` |
