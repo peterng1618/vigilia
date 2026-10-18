@@ -16,10 +16,11 @@ import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { CA_CERTIFICATE_PATH, createHostServer } from "./server.js";
-import { createSessionStore } from "./session/pairing.js";
+import { newToken } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
+import { createDisplayStore } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
@@ -121,10 +122,10 @@ export async function run(argv: readonly string[]): Promise<number> {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const packagesDir = path.resolve(here, "..", "..");
 
-  // Sessions exist whether or not the LAN is on, because the control can turn it
-  // on after launch; the binding decides whether anything but loopback can reach
-  // them at all (§145).
-  const sessions = createSessionStore();
+  // Displays and their credentials exist whether or not the LAN is on, because
+  // the control can turn it on after launch; the binding decides whether anything
+  // but loopback can reach them at all (§145).
+  const displays = createDisplayStore(settingsDir);
   const hosting = createHostingSettingsStore(settingsDir);
   const storedHosting = await hosting.read();
   // Everything the host knows about *this* machine lives in one settings
@@ -199,7 +200,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     // library always has a picture for what was just saved.
     thumbnails: createThumbnailStore(themesDir),
     themeSettings: createThemeSettingsStore(settingsDir),
-    ...(sessions === undefined ? {} : { sessions }),
+    displays,
     devices: deviceSettings,
     display: displaySettings,
     fontFavorites,
@@ -372,28 +373,25 @@ export async function run(argv: readonly string[]): Promise<number> {
     );
     console.log(style("2", "  The editor stays restricted to this PC."));
 
-    if (sessions !== undefined) {
-      const hostPart = lan === undefined ? displayHost : lan;
-      const paired = sessions.create("phone");
-      // The token is in the URL because EventSource cannot set request
-      // headers; anyone who sees this link can watch, which is why it expires.
-      console.log(
-        style(
-          "2",
-          `\n  Pair a phone with this link (expires ${paired.expiresAt}):`,
-        ),
-      );
-      console.log(
-        `  ${url.replace(`://${displayHost}`, `://${hostPart}`)}/?session=${encodeURIComponent(paired.token)}`,
-      );
-      console.log(
-        style(
-          "2",
-          "  Revoke any time:  curl -X DELETE http://127.0.0.1:" +
-            `${bound}/api/pairing/sessions/${encodeURIComponent(paired.token)}`,
-        ),
-      );
-    }
+    const hostPart = lan === undefined ? displayHost : lan;
+    const token = newToken();
+    const paired = await displays.create("phone", token);
+    // The token is in the URL because EventSource cannot set request headers;
+    // anyone who sees this link can watch until the display it belongs to is
+    // removed, which is the revoke below.
+    console.log(
+      style("2", `\n  Pair a phone with this link (display ${paired.id}):`),
+    );
+    console.log(
+      `  ${url.replace(`://${displayHost}`, `://${hostPart}`)}/?session=${encodeURIComponent(token)}`,
+    );
+    console.log(
+      style(
+        "2",
+        "  Revoke any time:  curl -X DELETE http://127.0.0.1:" +
+          `${bound}/api/pairing/sessions/${encodeURIComponent(token)}`,
+      ),
+    );
   } else {
     console.log(
       style("2", "\n  Local only. Pass --host 0.0.0.0 to let phones connect."),

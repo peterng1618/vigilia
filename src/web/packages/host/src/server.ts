@@ -23,7 +23,7 @@ import {
   needsTrailingSlash,
   resolveStaticPath,
 } from "./serve/static-path.js";
-import type { DisplaySession, SessionStore } from "./session/pairing.js";
+import { newToken } from "./session/pairing.js";
 import type { ActiveThemeStore } from "./settings/active-theme.js";
 import {
   type AssignableGroup,
@@ -34,6 +34,7 @@ import type {
   DisplaySettings,
   DisplaySettingsStore,
 } from "./settings/display.js";
+import type { DisplayRecord, DisplayStore } from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
@@ -77,10 +78,10 @@ export interface HostServerOptions {
   /** Chosen baseline cadence; not a measured performance budget. */
   readonly sampleIntervalMs?: number;
   readonly now?: () => number;
-  /** LAN display sessions (§145). Omit to disable pairing entirely — a
-   * loopback-only server needs none, and a non-loopback display is then
-   * refused rather than trusted. */
-  readonly sessions?: SessionStore;
+  /** The displays this host knows, and the credentials that prove one is itself.
+   *  Omit to disable pairing entirely: a loopback-only server needs none, and a
+   *  non-loopback display is then refused rather than trusted. */
+  readonly displays?: DisplayStore;
   /** Device assignments (§145). Omit to keep defaults with no configuration. */
   readonly devices?: DeviceSettingsStore;
   /** Per-theme answers. Omitted when the host stores none. */
@@ -151,9 +152,10 @@ export interface HostingState {
   readonly refusal: string | null;
 }
 
-/** A paired phone as the header may see it: `DisplaySession` **minus its
- *  credential**. `list()` returns whole sessions, so the route maps. */
-export type HostingPeer = Omit<DisplaySession, "token">;
+/** A paired display as a surface may see it: the record **minus its credential
+ *  hash**. The hash exists so the file is a list of displays rather than a set
+ *  of credentials, and echoing it would undo exactly that. */
+export type HostingPeer = Omit<DisplayRecord, "tokenHash">;
 
 const NO_HOSTING: HostingState = {
   lan: false,
@@ -184,6 +186,64 @@ function isLoopbackRemote(address: string | undefined): boolean {
   const normalized = address.replace(/^::ffff:/, "");
 
   return normalized === "127.0.0.1" || normalized === "::1";
+}
+
+/** A request's credential, from a header (fetch) or query (EventSource cannot
+ *  set request headers, so the stream carries it in the URL). */
+function tokenFor(request: http.IncomingMessage, url: URL): string | undefined {
+  const header = request.headers[SESSION_HEADER];
+  const fromHeader = Array.isArray(header) ? header[0] : header;
+  return fromHeader ?? url.searchParams.get("session") ?? undefined;
+}
+
+/** A display as a surface may see it. */
+function peerOf(record: DisplayRecord): HostingPeer {
+  const { tokenHash: _hash, ...peer } = record;
+  return peer;
+}
+
+/**
+ * The display a request is, or `undefined` when it is not one — the single place
+ * a request becomes a display, so the credential is checked once.
+ *
+ * **Loopback answers `undefined` on purpose.** It is trusted admin and never
+ * paired, and the reserved `this-pc` has no record to return (spec § "One map"):
+ * the *key* is minted where a key is needed, not fabricated here with a
+ * `createdAt` nobody wrote. A `?session=` value matching no display is
+ * `undefined` too, and the caller refuses it as it refuses a missing credential.
+ */
+export async function displayFor(
+  request: http.IncomingMessage,
+  url: URL,
+  displays: DisplayStore | undefined,
+): Promise<DisplayRecord | undefined> {
+  if (
+    displays === undefined ||
+    isLoopbackRemote(request.socket.remoteAddress)
+  ) {
+    return undefined;
+  }
+
+  const token = tokenFor(request, url);
+
+  if (token === undefined) {
+    return undefined;
+  }
+
+  const record = await displays.authenticate(token);
+
+  if (record === undefined) {
+    return undefined;
+  }
+
+  // One write per authenticated request is what `lastSeenAt` costs, which is why
+  // it is recorded here rather than by a second polling loop. Bookkeeping must
+  // not fail the request it rode in on, so a write that refuses is dropped.
+  await displays
+    .touch(record.id, new Date().toISOString())
+    .catch(() => undefined);
+
+  return record;
 }
 
 /** Bounded JSON body for admin writes; a runaway body must not be buffered. */
@@ -490,7 +550,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const connections = new Set<SseConnection>();
   /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
   let lastUnmapped: readonly string[] = [];
-  const sessions = options.sessions;
+  const displays = options.displays;
   const saved = options.rememberLan;
   const devices = options.devices;
   const display = options.display;
@@ -584,24 +644,16 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
   }
 
-  /** A request's token, from a header (fetch) or query (EventSource cannot set
-   * request headers, so the stream carries it in the URL). */
-  function tokenFor(
+  /** Loopback is trusted admin; anything else must present a live credential. */
+  async function allowed(
     request: http.IncomingMessage,
     url: URL,
-  ): string | undefined {
-    const header = request.headers[SESSION_HEADER];
-    const fromHeader = Array.isArray(header) ? header[0] : header;
-    return fromHeader ?? url.searchParams.get("session") ?? undefined;
-  }
-
-  /** Loopback is trusted admin; anything else must present a live session. */
-  function allowed(request: http.IncomingMessage, url: URL): boolean {
+  ): Promise<boolean> {
     if (isLoopbackRemote(request.socket.remoteAddress)) {
       return true;
     }
 
-    return sessions?.verify(tokenFor(request, url)) === true;
+    return (await displayFor(request, url, displays)) !== undefined;
   }
 
   /**
@@ -669,7 +721,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      if (sessions === undefined) {
+      if (displays === undefined) {
         sendText(response, 404, "Pairing is not enabled on this host.");
         return;
       }
@@ -678,7 +730,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
         url.pathname === "/api/pairing/sessions" &&
         request.method === "GET"
       ) {
-        sendJson(response, 200, { sessions: sessions.list() });
+        const known = await displays.list();
+        sendJson(response, 200, { displays: known.map(peerOf) });
         return;
       }
 
@@ -687,17 +740,24 @@ export function createHostServer(options: HostServerOptions): HostServer {
         request.method === "POST"
       ) {
         const label = url.searchParams.get("label") ?? "display";
-        sendJson(response, 201, { session: sessions.create(label) });
+        // The credential is answered exactly once: only its hash is stored, so
+        // this is the one moment it can be handed to the display it belongs to.
+        const token = newToken();
+        const display = await displays.create(label, token);
+        sendJson(response, 201, { display: peerOf(display), token });
         return;
       }
 
+      // Revoking *is* removing (ruling 12): a display holds one credential, and
+      // the record goes with it.
       const revokeMatch = url.pathname.match(
         /^\/api\/pairing\/sessions\/([^/]+)$/,
       );
       if (revokeMatch && request.method === "DELETE") {
         const token = decodeURIComponent(revokeMatch[1] ?? "");
-        if (!sessions.revoke(token)) {
-          sendText(response, 404, "No such session.");
+        const held = await displays.authenticate(token);
+        if (held === undefined || !(await displays.remove(held.id))) {
+          sendText(response, 404, "No such display.");
           return;
         }
         sendJson(response, 200, { ok: true });
@@ -709,7 +769,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
 
     if (url.pathname === SAMPLE_STREAM_PATH) {
-      if (!allowed(request, url)) {
+      if (!(await allowed(request, url))) {
         sendText(response, 403, "This display is not paired with the host.");
         return;
       }
@@ -783,7 +843,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (request.method === "GET") {
         if (
           !isLoopbackRemote(request.socket.remoteAddress) &&
-          !allowed(request, url)
+          !(await allowed(request, url))
         ) {
           sendText(response, 403, "This display is not paired with the host.");
           return;
@@ -833,7 +893,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
     if (url.pathname === "/api/published") {
       if (
         !isLoopbackRemote(request.socket.remoteAddress) &&
-        !allowed(request, url)
+        !(await allowed(request, url))
       ) {
         sendText(response, 403, "This display is not paired with the host.");
         return;
@@ -864,7 +924,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (request.method === "GET") {
         if (
           !isLoopbackRemote(request.socket.remoteAddress) &&
-          !allowed(request, url)
+          !(await allowed(request, url))
         ) {
           sendText(response, 403, "This display is not paired with the host.");
           return;
@@ -911,15 +971,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
           [...connections].map((connection) => connection.semanticKeys),
         ),
         unmapped: lastUnmapped,
-        pairing: sessions !== undefined,
+        pairing: displays !== undefined,
       });
       return;
     }
 
-    // Where the phone should go, and the sessions this PC has minted, so the
-    // editor header can show the address and a code for it. Admin, like the
+    // Where the phone should go, and the displays this PC has paired, so the
+    // editor header can show the address and who is on it. Admin, like the
     // other settings: it names this machine's address and who is paired.
-    // The tokens themselves never leave — the header mints its own.
+    // Credentials never leave — neither the token nor the hash it is stored as.
     if (url.pathname === "/api/hosting") {
       if (!isLoopbackRemote(request.socket.remoteAddress)) {
         sendText(
@@ -981,13 +1041,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
         });
 
         // The same redaction the GET makes, for the same reason: a
-        // `DisplaySession` carries `token`, and this route answers about
+        // `DisplayRecord` carries `tokenHash`, and this route answers about
         // hosting, not about credentials.
         sendJson(response, 200, {
           ...(await binding.state()),
-          sessions: (sessions?.list() ?? []).map(
-            ({ token: _credential, ...peer }) => peer,
-          ),
+          sessions: ((await displays?.list()) ?? []).map(peerOf),
         });
         return;
       }
@@ -1004,15 +1062,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       sendJson(response, 200, {
         ...((await binding?.state()) ?? NO_HOSTING),
-        sessions: (sessions?.list() ?? []).map(
-          ({ token: _credential, ...peer }) => peer,
-        ),
+        sessions: ((await displays?.list()) ?? []).map(peerOf),
       });
       return;
     }
 
     // **The bundle is not dashboard content**, and it comes before this guard
-    // because a credential cannot reach it. A session token rides in the query
+    // because a credential cannot reach it. A credential rides in the query
     // string — `fetch` and `EventSource` carry one and `<script src>` cannot — so
     // a paired phone was served the document and then refused its own scripts
     // with a blank page. The bundle is the same bytes any loopback visitor
@@ -1039,7 +1095,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
     if (
       !isBundleAsset &&
       !isLoopbackRemote(request.socket.remoteAddress) &&
-      !allowed(request, url)
+      !(await allowed(request, url))
     ) {
       sendText(response, 403, "This display is not paired with the host.");
       return;

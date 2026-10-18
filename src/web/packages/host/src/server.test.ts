@@ -24,13 +24,14 @@ import {
   type HostingState,
   type HostServerOptions,
 } from "./server.js";
-import { createSessionStore } from "./session/pairing.js";
+import { newToken } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import {
   ASSIGNABLE_GROUPS,
   createDeviceSettingsStore,
 } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
+import { createDisplayStore, hashToken } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
@@ -767,23 +768,31 @@ describe("Host theme routes", () => {
     expect(body.unmapped).toEqual([]);
   });
 
-  describe("LAN display sessions (§145)", () => {
-    let sessions: ReturnType<typeof createSessionStore>;
+  describe("LAN displays authenticate with their own credential (§145)", () => {
+    let displays: ReturnType<typeof createDisplayStore>;
     let paired: ReturnType<typeof createHostServer>;
     let lanDir: string;
+
+    /** Pairs a display and answers the credential it holds, which is the one
+     *  thing a paired phone has and the host only ever sees hashed. */
+    async function pair(label = "phone"): Promise<string> {
+      const token = newToken();
+      await displays.create(label, token);
+      return token;
+    }
 
     beforeEach(async () => {
       lanDir = await fs.mkdtemp(
         path.join(os.tmpdir(), "vigilia-host-lan-test-"),
       );
-      sessions = createSessionStore();
+      displays = createDisplayStore(lanDir);
       paired = createHostServer({
         registry: new ProviderRegistry([]),
         bundles: { player: lanDir, editor: lanDir },
         themeStore: createThemeStore(lanDir),
         display: createDisplaySettingsStore(lanDir),
         fontFavorites: createFontFavoritesStore(lanDir),
-        sessions,
+        displays,
       });
       await request(
         paired.server,
@@ -798,7 +807,7 @@ describe("Host theme routes", () => {
       await fs.rm(lanDir, { recursive: true, force: true });
     });
 
-    it("refuses LAN display reads without a session", async () => {
+    it("refuses LAN display reads without a credential", async () => {
       const lan = { remoteAddress: "192.168.1.50" };
 
       expect(
@@ -818,27 +827,27 @@ describe("Host theme routes", () => {
       ).toBe(403);
     });
 
-    it("accepts a LAN display holding a live session, by header or query", async () => {
-      const issued = sessions.create("phone");
+    it("accepts a LAN display holding a live credential, by header or query", async () => {
+      const token = await pair();
       const lan = { remoteAddress: "192.168.1.50" };
 
       expect(
         (
           await request(paired.server, "GET", "/api/themes", undefined, {
             ...lan,
-            headers: { "x-vigilia-session": issued.token },
+            headers: { "x-vigilia-session": token },
           })
         ).status,
       ).toBe(200);
 
-      // The stream is gated by the same check, so a query token is accepted
+      // The stream is gated by the same check, so a query credential is accepted
       // (EventSource cannot set headers) and a missing one is refused. The
       // accepted stream is never awaited: it stays open by design.
       expect(
         (
           await streamStatus(
             paired.server,
-            `/ws?keys=cpu.load&session=${encodeURIComponent(issued.token)}`,
+            `/ws?keys=cpu.load&session=${encodeURIComponent(token)}`,
           )
         ).status,
       ).toBe(200);
@@ -848,11 +857,11 @@ describe("Host theme routes", () => {
     });
 
     it("lets a paired display read this PC's preferences, not change them", async () => {
-      const issued = sessions.create("phone");
+      const token = await pair();
       const lan = { remoteAddress: "192.168.1.50" };
       const pairedPhone = {
         ...lan,
-        headers: { "x-vigilia-session": issued.token },
+        headers: { "x-vigilia-session": token },
       };
 
       // A display obeys the units and the zone, so it must be able to read
@@ -888,11 +897,11 @@ describe("Host theme routes", () => {
     });
 
     it("lets a paired display read this PC's favourites, not change them", async () => {
-      const issued = sessions.create("phone");
+      const token = await pair();
       const lan = { remoteAddress: "192.168.1.50" };
       const pairedPhone = {
         ...lan,
-        headers: { "x-vigilia-session": issued.token },
+        headers: { "x-vigilia-session": token },
       };
 
       // Same asymmetry as `/api/display`, for the same reason: a paired reader
@@ -932,15 +941,20 @@ describe("Host theme routes", () => {
       ).toBe(403);
     });
 
-    it("refuses a revoked session", async () => {
-      const issued = sessions.create("phone");
-      sessions.revoke(issued.token);
+    it("refuses a credential the host has removed", async () => {
+      const token = await pair();
+      const removed = await request(
+        paired.server,
+        "DELETE",
+        `/api/pairing/sessions/${encodeURIComponent(token)}`,
+      );
+      expect(removed.status).toBe(200);
 
       expect(
         (
           await request(paired.server, "GET", "/api/themes", undefined, {
             remoteAddress: "192.168.1.50",
-            headers: { "x-vigilia-session": issued.token },
+            headers: { "x-vigilia-session": token },
           })
         ).status,
       ).toBe(403);
@@ -967,12 +981,20 @@ describe("Host theme routes", () => {
         "/api/pairing/sessions",
       );
       expect(minted.status).toBe(201);
-      expect(
-        (minted.json() as { session: { token: string } }).session.token,
-      ).toBeTruthy();
+      const body = minted.json() as {
+        display: { id: string };
+        token: string;
+      };
+      expect(body.display.id).toBe("display");
+      expect(body.token).toBeTruthy();
+      // The one moment the credential exists in the clear. The list below never
+      // carries it, because the record only ever holds its hash.
+      expect((await displays.authenticate(body.token))?.id).toBe(
+        body.display.id,
+      );
     });
 
-    it("still treats loopback as trusted admin, with no session", async () => {
+    it("still treats loopback as trusted admin, with no credential", async () => {
       expect((await request(paired.server, "GET", "/api/themes")).status).toBe(
         200,
       );
@@ -984,7 +1006,7 @@ describe("Host theme routes", () => {
     });
   });
 
-  it("refuses LAN display reads when the host has no session store", async () => {
+  it("refuses LAN display reads when the host has no display store", async () => {
     await request(
       hosted.server,
       "PUT",
@@ -992,7 +1014,7 @@ describe("Host theme routes", () => {
       themeBody(validEmptyAssetTheme),
     );
 
-    // Without a session store this host is loopback-only by construction, so a
+    // Without a display store this host is loopback-only by construction, so a
     // LAN caller is refused rather than trusted. Loopback still reads freely.
     expect(
       (
@@ -1097,6 +1119,122 @@ describe("Host theme routes", () => {
     // chooser reads, so the two cannot disagree about what it is called.
     expect(text).toContain("Starter — System dashboard");
     expect(text).not.toContain("Open the editor to build one");
+  });
+});
+
+/**
+ * Ruling 12: a pairing lasts until the host removes the client, so the credential
+ * is the display record's and a restart is not a re-pairing. These cases build a
+ * **second** server over the same settings directory, which is the only way to
+ * tell a durable credential from a session that happened to still be live.
+ */
+describe("A display's credential outlives the host that minted it", () => {
+  let settingsDir: string;
+  let running: ReturnType<typeof createHostServer> | undefined;
+
+  beforeEach(async () => {
+    settingsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-display-credential-"),
+    );
+  });
+
+  afterEach(async () => {
+    await running?.close();
+    await fs.rm(settingsDir, { recursive: true, force: true });
+  });
+
+  /** A launch over `settingsDir`, with one theme to read back. */
+  async function launch(): Promise<ReturnType<typeof createHostServer>> {
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: settingsDir, editor: settingsDir },
+      themeStore: createThemeStore(settingsDir),
+      displays: createDisplayStore(settingsDir),
+    });
+
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(createValidPackage()),
+    );
+
+    running = hosted;
+    return hosted;
+  }
+
+  const LAN = { remoteAddress: "192.168.1.50" };
+
+  it("keeps a display paired across a restart, with no code retyped", async () => {
+    const first = await launch();
+    const minted = await request(
+      first.server,
+      "POST",
+      "/api/pairing/sessions?label=Kitchen+tablet",
+    );
+    expect(minted.status).toBe(201);
+    const { display, token } = minted.json() as {
+      display: { id: string };
+      token: string;
+    };
+    expect(display.id).toBe("kitchen-tablet");
+
+    await first.close();
+
+    // A second host, over the same settings directory and nothing else: the
+    // credential is the whole of what the phone has.
+    const second = await launch();
+    const withToken = await request(
+      second.server,
+      "GET",
+      "/api/themes",
+      undefined,
+      { ...LAN, headers: { "x-vigilia-session": token } },
+    );
+    expect(withToken.status).toBe(200);
+    expect(
+      (withToken.json() as { themes: readonly { id: string }[] }).themes.map(
+        (theme) => theme.id,
+      ),
+    ).toEqual(["living-room"]);
+  });
+
+  it("refuses a token that no display holds", async () => {
+    const hosted = await launch();
+
+    // A 403 and not a 200: an unknown credential is the same refusal a missing
+    // one gets, so there is no second refusal path to get wrong.
+    expect(
+      (
+        await request(
+          hosted.server,
+          "GET",
+          `/api/themes?session=${"z".repeat(43)}`,
+          undefined,
+          LAN,
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  it("does not accept an expired-looking or absent credential", async () => {
+    const hosted = await launch();
+
+    // Nothing expires on its own any more, so there is no such thing as a stale
+    // credential the host still holds: an absent one, an empty one and one that
+    // was never issued are all refused off loopback.
+    for (const path of ["/api/themes", "/api/themes?session="]) {
+      expect(
+        (await request(hosted.server, "GET", path, undefined, LAN)).status,
+        path,
+      ).toBe(403);
+    }
+
+    // Loopback is trusted admin and never paired: it needs no credential, and
+    // `this-pc` has no record for one to have come from.
+    expect((await request(hosted.server, "GET", "/api/themes")).status).toBe(
+      200,
+    );
   });
 });
 
@@ -1823,7 +1961,7 @@ describe("a pairing guard protects dashboard content, not the bundle", () => {
       registry: new ProviderRegistry([]),
       bundles: { player: bundle, editor: bundle },
       themeStore: createThemeStore(themes),
-      sessions: createSessionStore(),
+      displays: createDisplayStore(themes),
     });
     const lan = { remoteAddress: "192.168.2.56" };
     try {
@@ -1901,7 +2039,8 @@ describe("The hosting route answers where a phone should point (§145)", () => {
   });
 
   it("answers where a phone should go, and nothing else", async () => {
-    const store = createSessionStore({ randomToken: () => "t".repeat(43) });
+    const token = "t".repeat(43);
+    const displays = createDisplayStore(hostingDir);
     build({
       hosting: stillBinding({
         lan: true,
@@ -1909,7 +2048,7 @@ describe("The hosting route answers where a phone should point (§145)", () => {
         port: 5227,
         refusal: null,
       }),
-      sessions: store,
+      displays,
     });
 
     const answered = await request(hosted.server, "GET", "/api/hosting");
@@ -1922,19 +2061,19 @@ describe("The hosting route answers where a phone should point (§145)", () => {
       sessions: [],
     });
 
-    // A token is a credential, and `DisplaySession` carries one — so a route
-    // that forwards `list()` unchanged hands it back. An assertion over an
-    // empty list passes for that implementation and for a redacting one alike,
-    // which is why this mints: without a session present, the test cannot tell
-    // them apart.
-    store.create("Kitchen phone");
+    // A `DisplayRecord` carries `tokenHash`, so a route that forwards `list()`
+    // unchanged hands back the one thing the hash exists to keep out of a
+    // reader's hands. An assertion over an empty list passes for that
+    // implementation and for a redacting one alike, which is why this pairs:
+    // without a display present, the test cannot tell them apart.
+    await displays.create("Kitchen phone", token);
     const withOne = await request(hosted.server, "GET", "/api/hosting");
     const peers = (
       withOne.json() as { sessions: readonly Record<string, unknown>[] }
     ).sessions;
     expect(peers).toHaveLength(1);
-    expect(peers[0]).not.toHaveProperty("token");
-    expect(JSON.stringify(peers)).not.toContain("t".repeat(43));
+    expect(peers[0]).not.toHaveProperty("tokenHash");
+    expect(JSON.stringify(peers)).not.toContain(hashToken(token));
   });
 
   it("keeps hosting settings on this PC", async () => {
@@ -2416,12 +2555,12 @@ describe("The publish route", () => {
 
   it("refuses a paired display, so a phone cannot cause a publish", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
-    const sessions = createSessionStore();
+    const displays = createDisplayStore(dir);
     const hosted = createHostServer({
       registry: new ProviderRegistry([]),
       bundles: { player: dir, editor: dir },
       themeStore: createThemeStore(dir),
-      sessions,
+      displays,
     });
 
     try {
@@ -2434,7 +2573,8 @@ describe("The publish route", () => {
       //
       // No theme is seeded on purpose: the refusal comes before the body is
       // decoded, so a 404 here would mean the guard had been passed.
-      const issued = sessions.create("phone");
+      const token = newToken();
+      await displays.create("phone", token);
       const fromThePhone = await request(
         hosted.server,
         "PUT",
@@ -2442,7 +2582,7 @@ describe("The publish route", () => {
         themeBody(createValidPackage()),
         {
           remoteAddress: "192.168.1.50",
-          headers: { "x-vigilia-session": issued.token },
+          headers: { "x-vigilia-session": token },
         },
       );
 
@@ -2531,7 +2671,7 @@ describe("The published overlay", () => {
       registry: new ProviderRegistry([]),
       bundles: { player: dir, editor: dir },
       themeStore: createThemeStore(dir),
-      sessions: createSessionStore(),
+      displays: createDisplayStore(dir),
     });
 
     try {
