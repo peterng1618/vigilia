@@ -80,9 +80,10 @@ export interface PairingCode {
 
 /** Reads the code the host is showing.
  *
- *  A **read**: the host mints one only when it has no live code, so a card that
- *  polls this for its countdown cannot rotate the code out from under whoever
- *  is typing it. The route is loopback-only, which is where the editor is. */
+ *  A **read and not a mint**: the host makes a code only when it has none live,
+ *  so reading the same window twice answers the same six characters — which is
+ *  what a card that redraws, or a second reader asking after the first, needs.
+ *  The route is loopback-only, which is where the editor is. */
 export async function readPairingCode(
   fetcher: typeof fetch = fetch,
 ): Promise<PairingCode | undefined> {

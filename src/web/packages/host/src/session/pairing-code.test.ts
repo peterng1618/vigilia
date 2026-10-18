@@ -82,6 +82,28 @@ describe("the one-time pairing code", () => {
     expect(await store.claim(code, "10.0.0.9")).toBe(true);
   });
 
+  it("counts a rung per guess even when the guesses are in flight together", async () => {
+    const waited: number[] = [];
+    const store = fast(waited);
+    const { code } = store.mint();
+
+    // One source, five claims issued without awaiting any of them. The rung is
+    // reserved before the wait, so each claim takes the next one; a count read
+    // on the far side of the await would have all five read the same number and
+    // settle on the free rung for ever — N guesses at every rung for an
+    // attacker firing N at a time.
+    const missed = await Promise.all(
+      Array.from({ length: 5 }, () => store.claim("ZZZZZZ", "10.0.0.9")),
+    );
+    expect(missed).toEqual([false, false, false, false, false]);
+    expect(waited).toEqual([250, 500, 1000, 2000]);
+
+    // And the ladder kept what those five spent: the sixth claim — the right
+    // code — is the sixth guess, not the second.
+    expect(await store.claim(code, "10.0.0.9")).toBe(true);
+    expect(waited).toEqual([250, 500, 1000, 2000, 4000]);
+  });
+
   it("counts misses per source, so one guesser never delays another", async () => {
     const waited: number[] = [];
     const store = fast(waited);

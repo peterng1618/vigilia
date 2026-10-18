@@ -1847,7 +1847,7 @@ describe("A display with no camera pairs by typing the one-time code", () => {
   it("reads the live code and does not rotate it", async () => {
     const first = await shown();
 
-    // A card polling for its countdown must not move the code out from under
+    // A second read of a live window must not move the code out from under
     // whoever is typing it: the same window answers the same code.
     expect(await shown()).toBe(first);
     expect((await claim({ code: first, label: "Kitchen tablet" })).status).toBe(

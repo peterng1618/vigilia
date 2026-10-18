@@ -75,8 +75,9 @@ describe("readPairingCode", () => {
       code: "ABC234",
       expiresAt: "2026-10-18T10:10:00.000Z",
     });
-    // A GET, because a read that minted would rotate the code out from under
-    // whoever is typing it — the card polls this for its countdown.
+    // A GET, because a read that minted would answer a different code than the
+    // window it just read — the same six characters a second reader has already
+    // been shown would change under it.
     const call = (
       fetcher as unknown as {
         mock: { calls: [string, RequestInit | undefined][] };

@@ -872,9 +872,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      // A read, not a rotation: the card polls this for its countdown, and a
-      // poll that minted would move the code out from under whoever is typing
-      // it (R16). A code with a window left is answered as it stands.
+      // A read, not a rotation: a second read of a live window answers the same
+      // code rather than minting another, so nothing can move the code out from
+      // under whoever is typing it (R16). Only an absent or expired window
+      // mints one.
       if (url.pathname === "/api/pairing/code" && request.method === "GET") {
         const live = pairingCodes.current() ?? pairingCodes.mint();
         sendJson(response, 200, { code: live.code, expiresAt: live.expiresAt });
