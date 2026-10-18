@@ -10,7 +10,7 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 ## Active work
 
 - **Active plan:** `2026-10-18-per-display-themes.md` — [plan](docs/superpowers/plans/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md); execution ledger `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`.
-- **Phase 1 is active** (Tasks 1.1–1.8: the display record, its credential, pairing, the one-time code, the host's own monitors), made active by the user's 2026-10-18 ruling; Tasks 1.1–1.5 are closed and the pre-flight scan plus the review loops ruled R1–R22 into the ledger.
+- **Phase 1 is active** (Tasks 1.1–1.8: the display record, its credential, pairing, the one-time code, the host's own monitors), made active by the user's 2026-10-18 ruling; Tasks 1.1–1.6 are closed and the pre-flight scan plus the review loops ruled R1–R25 into the ledger.
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
 - Plan queue after this: `2026-10-18-theme-store.md` (its phase A only — B–G each need their own plan, G before C), then the panel work; the colour/gradient spec is unreviewed and unplanned.
 - Recorded objectives rather than queued plans: a **native player app**, the only path to real device brightness (`vg-583`), and a **TURZX panel display** ([rough capture](docs/superpowers/specs/2026-10-18-turzx-panel-displays-design.md)), both sequenced after the theme store.
@@ -18,16 +18,16 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 1.5 landed (task `d2c18556`, fix round `203b5003`): the app folder now carries `host-identity.json` (`{ id, name }`, minted on first run) and `host.lock`, taken before `listen` and released on every exit.
-- Its review found the certificate-failure exit returning while still holding the lock — the one post-acquire exit the seat's own drivers never drove — and, sharper, a release that unlinked unconditionally, so a host whose lock was removed underneath it would delete the *next* host's lock and admit a third; both fixed, the second by unlinking only when the file still names this pid.
-- Rulings R19–R22: `main.ts` gained the lock's wiring because no Phase 1 file list named it (the record's half is Task 1.6's), the record file is `host-identity.json` rather than `host.json` beside the incumbent `hosting.json`, the lock file is `host.lock`, and the refusal is composed in `host-lock.ts` rather than in the parser.
-- The lock reads a holder as gone only on `ESRCH`: `EPERM` and unknown codes read as alive, because reading `EPERM` as gone would make a live host's lock stealeable, and a recycled pid can make a stale lock read as live — recorded, so the lock is a collision guard between two hosts and not a security boundary.
-- Filed rather than absorbed: `vg-614` and `vg-615` (a spec starts a second host against the project's own folder, and the `global-setup.ts` wipe deletes the running host's lock mid-run, which is why no in-repo test can cover the wiring yet) and `vg-616`; the ownership table gained its two rows in `5a8de026`.
+- Task 1.6 landed (commit `1e99f5f5`, controller `7e909469`): `GET /api/host` answers `{ id, name, port }` to an unpaired caller, registered before every guard, with the port read from the listening socket and `Access-Control-Allow-Origin: *` on that one response; `main.ts` reads-or-mints the record and passes it (R19's second half).
+- Its review approved it by construction rather than by a passing test: the route sits before the display guard in the source, its body names three fields literally instead of spreading the record, and `sendJson` is byte-identical to base, so no shared writer grew a CORS parameter (R25).
+- Rulings R23–R25: with no `host` option the route is not registered at all, so nothing is fabricated and no pre-existing case had to move; the name stays one character from `/api/hosting` because the spec publishes it and the re-find probe is built against it; and the CORS header is that route's alone.
+- Two Minors were cleaned by the controller in `7e909469` (the same why stated in the route's comment and the option's docblock) and two are carried to the final review: the new block's `afterEach` dereferencing a server `build()` may never have assigned, and the report's stale line citations.
+- Unverified and named: `main.ts` has no unit test and was not run as a real host, so the record reaching a live server rests on typecheck and reading — the phase gate closes it with a real `node packages/host/bin/vigilia.js --no-browser` and a read of `/api/host`.
 
 ## Next
 
-1. Task 1.6 (`GET /api/host`) is next, and it owns R19's second half: read-or-mint the record in `main.ts` and pass it as `host`, the wiring for the option that task adds.
-2. Review every task against its brief and evidence; run the phase gate with the exit code and the browser results named separately.
+1. Task 1.7 (the host's own monitors) is next; it produces the monitor list, the record hint and the launch line, and its brief states the boundary itself — it opens nothing, and the launch is Task 1.8's.
+2. Review every task against its brief and evidence; run the phase gate with the exit code and the browser results named separately, plus a real `node packages/host/bin/vigilia.js --no-browser` and a read of `/api/host`, which is what closes Task 1.6's unverified `main.ts` wiring.
 3. Resume the drain at Task 23.4 when per-display Phase 1 stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
 5. Revisit redesign's final acceptance item after carrying rows land; propagate ruled acceptance text before closing `vg-390`.
