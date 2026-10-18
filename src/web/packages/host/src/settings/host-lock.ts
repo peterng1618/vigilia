@@ -93,11 +93,14 @@ export async function acquireHostLock(
   if (held !== undefined && isPidAlive(held.pid)) {
     return {
       ok: false,
+      // Both folders are named, because they are one level apart and the flag
+      // takes the outer one: a reader who passes the printed path to `--app-dir`
+      // would nest a second settings folder inside the held one.
       reason:
         `${settingsDir} is held by a host on port ${held.port} ` +
         `(pid ${held.pid}), so this one would share its displays and its ` +
-        `active theme. Stop that host, or run this one with ` +
-        `--app-dir <another folder>.`,
+        `active theme. Stop that host, or run this one with --app-dir ` +
+        `pointing somewhere other than ${path.dirname(settingsDir)}.`,
     };
   }
 
@@ -115,10 +118,18 @@ export async function acquireHostLock(
   return {
     ok: true,
     lock: {
-      // Only this process writes this file while it holds it, so the release
-      // cannot take another host's lock: a steal happens only after this pid is
-      // gone, and a process that is gone does not release.
-      release: () => rm(file, { force: true }),
+      // Read back before unlinking. Something else can take this file while this
+      // process runs — a fixture that wipes the folder, or a hand deletion — and
+      // then this process's exit must not delete the lock of the host that took
+      // the folder over, which would let a third start against a held folder.
+      // A file that names nobody is removed too, so a release stays idempotent.
+      release: async () => {
+        const current = readHeld(await readJson(file));
+
+        if (current === undefined || current.pid === process.pid) {
+          await rm(file, { force: true });
+        }
+      },
     },
   };
 }

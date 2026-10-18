@@ -27,6 +27,24 @@ const FILE = "host-identity.json";
 const MAX_NAME_LENGTH = 64;
 
 /**
+ * A name worth showing: trimmed, bounded, and absent when it says nothing.
+ *
+ * One owner for the rule, because a stored name and this PC's hostname reach the
+ * same field: bounding only the stored one lets a long hostname be written whole
+ * and then truncated on the next read, so the name a display is served would
+ * change between two runs of the same host.
+ */
+function usableName(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const name = value.trim().slice(0, MAX_NAME_LENGTH);
+
+  return name.length > 0 ? name : undefined;
+}
+
+/**
  * The stored half that is usable: an id a display could store, and a name worth
  * showing. Each half stands alone, because the id is what a paired display
  * remembers — re-minting it over a bad name would orphan every display.
@@ -38,13 +56,11 @@ function readStored(input: unknown): { id?: string; name?: string } {
 
   const record = input as Record<string, unknown>;
   const id = record["id"];
-  const name = record["name"];
+  const name = usableName(record["name"]);
 
   return {
     ...(typeof id === "string" && DEVICE_ID_PATTERN.test(id) ? { id } : {}),
-    ...(typeof name === "string" && name.trim().length > 0
-      ? { name: name.trim().slice(0, MAX_NAME_LENGTH) }
-      : {}),
+    ...(name === undefined ? {} : { name }),
   };
 }
 
@@ -74,7 +90,7 @@ export async function readOrMintHostRecord(
   // a display could store and a person could read.
   const record: HostRecord = {
     id: stored.id ?? randomBytes(8).toString("hex"),
-    name: stored.name ?? hostname(),
+    name: stored.name ?? usableName(hostname()) ?? "",
   };
 
   await mkdir(settingsDir, { recursive: true });

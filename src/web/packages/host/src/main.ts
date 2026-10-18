@@ -178,6 +178,7 @@ export async function run(argv: readonly string[]): Promise<number> {
         "  The host serves https so a display can hold the screen awake and " +
         "install as an app; without one it will not start.",
     );
+    await held.lock.release();
     return 1;
   }
 

@@ -102,6 +102,18 @@ describe("readOrMintHostRecord", () => {
     );
   });
 
+  it("bounds a long hostname at mint, so the served name does not change", async () => {
+    const long = "h".repeat(120);
+
+    const first = await readOrMintHostRecord(dir, { hostname: () => long });
+    const again = await readOrMintHostRecord(dir, { hostname: () => long });
+
+    expect(first.name.length).toBeLessThanOrEqual(64);
+    // The name a display is served is the same on the next run: a cap only on
+    // the stored half writes the hostname whole and truncates it on the read.
+    expect(again).toEqual(first);
+  });
+
   it("creates the settings folder when the host has never run", async () => {
     const fresh = path.join(dir, "settings");
 

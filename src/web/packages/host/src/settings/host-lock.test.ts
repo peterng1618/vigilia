@@ -50,22 +50,25 @@ describe("acquireHostLock", () => {
   });
 
   it("refuses a folder a live host already holds", async () => {
-    const first = await acquireHostLock(dir, 5227, live);
+    const settingsDir = path.join(dir, "settings");
+    const first = await acquireHostLock(settingsDir, 5227, live);
     expect(first.ok).toBe(true);
     // Written atomically, so the temporary file is gone once it returns.
-    expect(await readdir(dir)).toEqual([FILE]);
+    expect(await readdir(settingsDir)).toEqual([FILE]);
 
-    const second = await acquireHostLock(dir, 5228, live);
+    const second = await acquireHostLock(settingsDir, 5228, live);
 
     if (second.ok) {
       throw new Error("a folder a live host holds was taken anyway");
     }
 
-    // The refusal names the folder, the port the other host is on, and the flag
-    // that separates two installs.
-    expect(second.reason).toContain(dir);
+    // The refusal names the folder that is held, the port the other host is on,
+    // and the flag that separates two installs — and the folder it offers that
+    // flag is the app folder, one level up from the held one.
+    expect(second.reason).toContain(settingsDir);
     expect(second.reason).toContain("5227");
     expect(second.reason).toContain("--app-dir");
+    expect(second.reason).toContain(`other than ${dir}`);
   });
 
   it("takes the folder back after the holder releases", async () => {
@@ -79,6 +82,37 @@ describe("acquireHostLock", () => {
 
     const again = await acquireHostLock(dir, 5227, live);
     expect(again.ok).toBe(true);
+  });
+
+  it("releases twice without throwing, including after the file is gone", async () => {
+    const held = await acquireHostLock(dir, 5227, live);
+    if (!held.ok) {
+      throw new Error(held.reason);
+    }
+
+    await held.lock.release();
+    await held.lock.release();
+
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it("leaves a lock another host has taken, so a third cannot start", async () => {
+    const held = await acquireHostLock(dir, 5227, live);
+    if (!held.ok) {
+      throw new Error(held.reason);
+    }
+
+    // Something removed this lock while this process ran — the e2e fixture wipes
+    // the folder mid-run, and a hand deletion does the same — so a second host
+    // took the folder. This process's exit must not hand the folder to a third.
+    const other = { pid: 4, port: 5228 };
+    await writeFile(path.join(dir, FILE), JSON.stringify(other), "utf8");
+
+    await held.lock.release();
+
+    expect(JSON.parse(await readFile(path.join(dir, FILE), "utf8"))).toEqual(
+      other,
+    );
   });
 
   it("takes a folder whose holder is gone", async () => {
@@ -117,9 +151,8 @@ describe("acquireHostLock", () => {
   });
 
   it("refuses a lock naming a pid the probe cannot rule out", async () => {
-    // A lock this host cannot even read a pid out of is still not proof that
-    // nobody holds the folder, so the file is taken only when the probe says the
-    // holder is gone.
+    // A readable pid the probe reads as alive is respected whatever port it
+    // names: the folder is taken only when the probe says the holder is gone.
     await writeFile(
       path.join(dir, FILE),
       JSON.stringify({ pid: process.pid, port: 5227 }),
@@ -128,6 +161,24 @@ describe("acquireHostLock", () => {
 
     const second = await acquireHostLock(dir, 5228, live);
     expect(second.ok).toBe(false);
+  });
+
+  it("takes a lock with no readable pid, because a live host always writes one", async () => {
+    // R21's direction, and the reason it is the safe one: a file that names no
+    // holder is what a process that died mid-write leaves, and respecting it
+    // would lock the owner out of their own library — while a *live* host always
+    // writes its pid, so nothing live is ever missed.
+    await writeFile(
+      path.join(dir, FILE),
+      JSON.stringify({ port: 5227 }),
+      "utf8",
+    );
+
+    const taken = await acquireHostLock(dir, 5228, live);
+
+    if (!taken.ok) {
+      throw new Error(`a lock naming no pid was respected: ${taken.reason}`);
+    }
   });
 
   it("creates the settings folder when the host has never run", async () => {
