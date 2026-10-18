@@ -91,9 +91,13 @@ Seventeen inputs and conditions the spec implies and no task's own tests exercis
 Each gets its test in the task named beside it.1. **A display whose assigned theme was deleted** — a person removes a theme from
    the library while a wall screen holds it. The display must fall to the default
    and keep showing something, never an error page or a blank stage. (Task 2.2)
-2. **A label that mints no usable id** — `"???"`, `"---"`, a 200-character name, an
-   emoji-only name. Pairing must refuse with a reason rather than mint a display
-   whose id no other file will accept. (Task 1.1)
+2. **A label that mints no usable id** — `"???"`, `"---"`, an emoji-only name, or a
+   name that is only whitespace. Pairing must refuse with a reason rather than mint a
+   display whose id no other file will accept. **A 200-character name is not one of
+   these** and the gate corrected this item's own example: `displayIdFrom` *shortens*
+   it so the disambiguating suffix still fits the 64-character bound, which is the
+   shipped and tested rule — a reader who "fixed" this by refusing long labels would
+   be breaking the case the item was written to protect. (Task 1.1)
 3. **A hand-edited `theme-answers.json` with an unknown display or group** — the
    file is a plain JSON file a person can open. An unknown key must be dropped,
    not carried into a lookup. (Task 3.1)
@@ -107,10 +111,13 @@ Each gets its test in the task named beside it.1. **A display whose assigned the
 6. **Anyone on the LAN hammering the code-claim route** — guessing must not close a
    pairing window someone is using, and the refusal must not say whether the code
    they guessed exists. (Task 1.4)
-7. **A hand-edited `displays.json`** — a record with no `tokenHash`, a duplicated
-   id, or a token pasted into the file in the clear. None may authenticate, and
-   none may make `GET /api/host` or the display list answer something a display
-   could not have been given. (Tasks 1.1, 1.3)
+7. **A hand-edited `display-clients.json`** — a record with no `tokenHash`, a
+   duplicated id, or a token pasted into the file in the clear. None may
+   authenticate, and none may make `GET /api/host` or the display list answer
+   something a display could not have been given. (Tasks 1.1, 1.3; the gate found
+   the duplicated-id and clear-token halves untested — `readDisplays` dedupes at
+   `displays.ts:347-353` and `normalizeRecord` reads only `tokenHash`, and no case
+   writes either shape, so Phase 1's gate fix round adds both.)
 8. **A second host on the same LAN answering a sweep** — a display re-finding its
    host must match the id it stored, not the first host that replies, or the
    two-host no-tangle property the spec claims is gone. (Task 4.6)
