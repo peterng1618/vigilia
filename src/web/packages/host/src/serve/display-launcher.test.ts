@@ -90,6 +90,19 @@ function recordingSpawn(opened: OpenedWindow[]): typeof spawn {
   }) as unknown as typeof spawn;
 }
 
+/** A promise the case resolves itself, so a pass can be parked inside an await. */
+function deferred<T>(): {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+} {
+  let settle: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((resolve) => {
+    settle = resolve;
+  });
+
+  return { promise, resolve: settle };
+}
+
 describe("the host's own windows", () => {
   let directory: string;
   let displays: DisplayStore;
@@ -103,13 +116,17 @@ describe("the host's own windows", () => {
     await rm(directory, { recursive: true, force: true });
   });
 
-  function launcher(opened: OpenedWindow[]) {
+  function launcher(
+    opened: OpenedWindow[],
+    monitors: () => Promise<readonly Monitor[]> = () =>
+      Promise.resolve(ATTACHED),
+  ) {
     return createDisplayLauncher({
       displays,
       port: 5227,
       browser: "/fake/chrome.exe",
       spawn: recordingSpawn(opened),
-      monitors: () => Promise.resolve(ATTACHED),
+      monitors,
       now: () => NOW,
     });
   }
@@ -296,6 +313,24 @@ describe("the host's own windows", () => {
     expect(() => windows.stop()).not.toThrow();
     expect(() => windows.close("spare-screen")).not.toThrow();
     expect(opened[0]?.kill).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not launch when it is stopped while a pass is waiting", async () => {
+    const opened: OpenedWindow[] = [];
+    const parked = deferred<readonly Monitor[]>();
+    const windows = launcher(opened, () => parked.promise);
+    await local("Left screen", hintFor(ATTACHED[1]!), STALE);
+
+    // The pass is inside its probe, which is the only place a stop can land
+    // between the entry check and a launch.
+    const pass = windows.reconcile();
+    windows.stop();
+    parked.resolve(ATTACHED);
+    await pass;
+
+    // A child inserted now would sit in a map nothing will ever clear, and the
+    // next run would put a second window on that monitor.
+    expect(opened).toEqual([]);
   });
 
   it("stops reconciling after stop()", async () => {

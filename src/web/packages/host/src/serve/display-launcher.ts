@@ -233,9 +233,13 @@ function profileDirFor(displayId: string): string {
 }
 
 /**
- * Whether a record's window is presumed to be running: a sighting inside
- * `LIVE_WINDOW_MS`, and a record no `touch` has moved — the store stamps
- * `createdAt` and `lastSeenAt` from one instant — read as never seen.
+ * Whether a record's window is presumed to be running.
+ *
+ * A record no `touch` has moved is not seen at all — the store stamps
+ * `createdAt` and `lastSeenAt` from one instant — so only a record whose
+ * `lastSeenAt` has moved can count as a sighting, and a sighting inside
+ * `LIVE_WINDOW_MS` is a window that is up. A timestamp nothing can read is no
+ * evidence of a window either.
  *
  * Nothing writes a local display's `lastSeenAt` yet, so this answers false for
  * every local display and the child map is the whole of the dedupe until a
@@ -313,6 +317,12 @@ export function createDisplayLauncher(input: {
     try {
       const monitors = await readMonitors();
       const displays = await input.displays.list();
+
+      // Checked again here, because these awaits are the only place `stop()` can
+      // interleave — it clears the map and kills what it held, so a pass resuming
+      // here would insert a child nothing will ever close again. The loop below
+      // never awaits, so the flag cannot change after this point.
+      if (stopped) return;
 
       for (const record of displays) {
         // A paired display is a device the owner set up somewhere else: the host
