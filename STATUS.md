@@ -18,15 +18,15 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- A `dist` built by `npm run build` alone has no `control-fixture.html`, so the fixture-mounting specs failed in a shape indistinguishable from a design-language violation; `openFixture` now names the cause and the recipe, and `vg-438` is verified.
-- **The row's premise was wrong and the seat measured it**: the preview does not answer that route with a 404 — `vite preview` defaults to `appType: 'spa'` and answers **200 serving `index.html`** — so the check keys on the fixture's own `#control-fixture` marker, and a status check would have been a guard that cannot fail.
-- It lands in the single opener all three fixture-mounting specs share (`design-language-contrast`, `-controls` and `-layout`, through `prepareControls`) rather than the process-wide `global-setup.ts`, which would refuse every spec that never opens the fixture; `glass-authoring` and `snapping` have their own local `openFixture` and are not consumers.
-- The proof is the reader's failure, reproduced on the integrated tree against a `build`-only `dist`: exit 1 with the named cause and recipe, thrown at `openFixture` through `prepareControls`; after `build:fixture` the same command exits 0. `npm run gate` exit 0.
-- **My first red-proof attempt read green and was wrong**: a preview server left by the seat's worktree answered the shared 4174 port over *that* worktree's `dist` (`reuseExistingServer: true`), so I measured somebody else's bundle — filed as `vg-595`, medium, because it silently invalidates browser proofs rather than failing them.
+- `lanAddress()` no longer returns the first non-internal IPv4 (`vg-171`): `rankLanAddresses` drops virtual adapters by name and prefers the interface carrying the default IPv4 route, warning with the alternatives when neither decided the pick.
+- The proof is a fixture rather than the machine — `rankLanAddresses` takes a `LanSource`, so the cases carry a virtual switch ahead of a physical NIC, a route that is not the first candidate, a tie-break naming its alternatives, and the no-regression case.
+- The review attacked the pattern list rather than reading it: 37 real adapter names, zero over-drops, but four measured under-drops it added (Windows virtual Wi-Fi, ISATAP/Teredo, Linux `tunl0` and its other tunnel stubs), plus the totality fix — `state()` is async now and `server.ts` reaches it through `void handle(...)`, so a throw was an unhandled rejection.
+- It also refuted the fix's own guarantee: a failed route query does not yield `undefined`, because `systeminformation` falls back to a name of its own, so the tie-break warning is suppressed on exactly the machine where a wrong pick is invisible — the docblock now says so and `vg-596` owns the gap.
+- With the ranking reverted, the cases fail 5 of 14 on the integrated tree (exit 1, restore proved by `cmp` + SHA-256); `npm run gate` exit 0, 265 files and 3501 tests. `vg-597` (the `execSync` `netstat -r` per `/api/hosting`) and `vg-598` (four e2e specs with their own copy of the old rule) are filed, not absorbed.
 
 ## Next
 
-1. Phase 23 (W18): the host, the schema, the persisted model and the records — eleven rows, one seat at a time, starting with 23.1's `lanAddress` ranking. `host/src/server.ts` and `renderer-core/src/charts/` are on the reuse gate's watchlist, so 23.2 and 23.4 need a decision note before their first write.
+1. Phase 23 (W18), Task 23.2: the LAN move must not wait on a request — `hosting.ts`'s `move()` calls `server.close(cb)`, which waits for active connections, so a GET arriving during the move deadlocks the host. `host/src/server.ts` is on the reuse gate's watchlist, so a decision note must claim it before the first write.
 2. Review each task against its brief and evidence; run the phase gate with exit code and browser results named separately.
 3. Resume Phase 21 after font-picker spec approval and budget ruling; resume Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
