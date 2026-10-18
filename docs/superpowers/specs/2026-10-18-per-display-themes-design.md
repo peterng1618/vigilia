@@ -863,8 +863,9 @@ outranks the map for exactly as long as it is in the URL.
 |---|---|---|
 | `GET /api/host` | **anyone** | `{ id, name, port }` and nothing else, with permissive CORS — the re-find probe of § "Finding the host after its address changes" |
 | `POST /api/pairing/claim` | **anyone**, rate-limited | exchanges a one-time code for a durable credential; says nothing about whether a code exists |
-| `GET /api/pairing/sessions` | loopback | the live codes **and** the known displays |
-| `POST /api/pairing/sessions?label=` | loopback | a new display, its durable credential and a one-time code |
+| `GET /api/pairing/code` | loopback | the live one-time code and its expiry, minting one only when none is live — **a read, never a rotation** |
+| `GET /api/pairing/sessions` | loopback | the known displays |
+| `POST /api/pairing/sessions?label=` | loopback | a new display and its durable credential, minted directly on loopback |
 | `POST /api/pairing/sessions?displayId=` | loopback | **replaces** that display's credential — rotation — keeping its record, its theme and its answers |
 | `PATCH /api/displays/:id` | loopback | `{ label?, chartFps? }` — **renames and sets the rate, and changes nothing else**; the id does not move |
 | `POST /api/displays` | loopback | `{ label, monitor, chartFps? }` — **a local monitor**, a display with no credential, launched at once |
