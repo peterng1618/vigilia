@@ -87,6 +87,15 @@ const glassRefusals: Readonly<Record<string, string>> = {
     "Frosted glass applies to one shape at a time — select the shape you want to frost.",
 };
 
+/**
+ * The kinds `glassRefused` answers in their own terms. Exported so the copy
+ * walk can probe that function over the document's own vocabulary: its answer
+ * is chosen by the key, so a probe that passes a generic argument reaches only
+ * the fallback `glassRefused` composes and the sentences above read as strings
+ * with no owner.
+ */
+export const glassRefusalKinds: readonly string[] = Object.keys(glassRefusals);
+
 export const uiCopy = {
   brand: "Vigilia",
   /** The rail's four slots. A slot's word is both its tooltip and its

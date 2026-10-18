@@ -1,4 +1,4 @@
-import { uiCopy } from "./ui-copy.js";
+import { glassRefusalKinds, uiCopy } from "./ui-copy.js";
 
 /**
  * What a surface says, for the copy net's cases.
@@ -72,6 +72,15 @@ export function paragraphsOf(element: Element): string[] {
  * argument shapes the panels pass it — a count and a name — over the counts
  * this panel renders, which yields a superset of what they show: extra entries
  * only loosen the net, they cannot break it.
+ *
+ * **A keyed function is not covered by those arguments**, and that is what the
+ * second pass is for: `glassRefused` chooses its answer by the kind it is asked
+ * with, so a generic argument reaches only the fallback and the refusal
+ * sentences read as strings no surface owns. It is probed over the keys the
+ * document can hold, which the table itself lists — a second list here would
+ * agree with it only until someone added a kind to one and not the other. The
+ * table's other keyed function needs no probe: `chartFamilyLabels` is reachable
+ * as `uiCopy.chartFamilies`, so the object walk above already collects it.
  */
 export function copy(): string[] {
   const out: string[] = [];
@@ -87,16 +96,19 @@ export function copy(): string[] {
       Object.values(value).forEach(walk);
   };
   walk(uiCopy);
+  for (const kind of glassRefusalKinds)
+    out.push(uiCopy.inspectorFields.glassRefused(kind));
   return out;
 }
 
 /**
  * Every string the landed React surfaces say: a field's own label, a control's
- * accessible name and a button's words — minus the three whose content is not
- * copy. A section header is excluded because its text is an uppercase eyebrow
- * (§2) and a count, neither a word the table owns; a converted select's trigger
- * is excluded because it prints the chosen value; and a token well is excluded
- * as the panel net excludes it, because it prints the document's own name.
+ * accessible name, a button's words, a heading's words and a definition term's
+ * — minus the three whose content is not copy. A section header is excluded
+ * because its text is an uppercase eyebrow (§2) and a count, neither a word the
+ * table owns; a converted select's trigger is excluded because it prints the
+ * chosen value; and a token well is excluded as the panel net excludes it,
+ * because it prints the document's own name.
  */
 export function spokenIn(element: Element): string[] {
   const out: string[] = [];
@@ -140,6 +152,18 @@ export function spokenIn(element: Element): string[] {
     if (button.hasAttribute("data-vigilia-zoom")) continue;
     out.push(spokenText(button).trim());
   }
+  // A heading and a definition term carry a surface's own words the way a
+  // button does, and a surface whose words are only there — the shortcut sheet's
+  // heading, its group names and its row labels — is otherwise mounted and read
+  // for its close button alone. A section header's heading is the disclosure
+  // button's, and the count beside its title is a reading rather than a word, so
+  // it is skipped exactly as the button above is.
+  for (const heading of element.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
+    if (heading.querySelector("button[aria-controls]") !== null) continue;
+    out.push(spokenText(heading).trim());
+  }
+  for (const term of element.querySelectorAll("dt"))
+    out.push(spokenText(term).trim());
   // An opened menu's rows, which are not buttons and carry no accessible name
   // of their own: their words are their text, minus the chord printed beside.
   for (const item of element.querySelectorAll(

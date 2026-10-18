@@ -6,8 +6,11 @@
  * **What this half reads.** The shell is mounted whole with a bridge and a
  * selection, so the chrome it prints only then is in the tree at all; Settings is
  * read on its Appearance, Keyboard and About tabs; the colour picker is mounted
- * open; the selection column is mounted on a text object and a shape; and the
- * three menubar menus and the canvas context menu are opened and read in turn.
+ * open; the selection column is mounted on a text object and a shape; the three
+ * menubar menus and the canvas context menu are opened and read in turn; and the
+ * `?` sheet, the publish popover and the library and new-document dialogs are
+ * each mounted and read (`vg-418` — the header once said these four were not
+ * mounted, and a header owns nothing).
  *
  * **What it deliberately does not read, and why.** Two owners of words are
  * carved out by name, because the words are theirs and not this table's:
@@ -17,29 +20,38 @@
  * own — a run's binding id, a colour's reading — which is the same carve-out
  * the panel net makes for a select's trigger.
  *
- * Surfaces this file does not mount are not read here: the `?` reference sheet,
- * the publish popover, and the library and new-document dialogs. The table's own
- * rules are `ui-copy.test.ts`, and the imperative panels and the picker they
- * mount are `ui-copy-panels.test.ts`.
+ * The table's own rules are `ui-copy.test.ts`, and the imperative panels and
+ * the picker they mount are `ui-copy-panels.test.ts`.
  */
 import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { expect, it } from "vitest";
 import { ColourPicker } from "./components/ui/colour-picker.js";
+import type { ModalSettle } from "./components/ui/modal-host.js";
 import type { EditorShellBridge } from "./editor-shell/bridge.js";
 import { CanvasContextMenu } from "./editor-shell/canvas-context-menu.js";
+import type {
+  HostingSnapshot,
+  HostingStore,
+} from "./editor-shell/hosting-store.js";
 import {
   DEFAULT_SHELL_PALETTE,
   shellPalettes,
 } from "./editor-shell/palette.js";
+import { PublishControl } from "./editor-shell/publish-control.js";
 import { Settings } from "./editor-shell/settings.js";
 import { createShellLayout } from "./editor-shell/shell-layout.js";
+import type { PublishSurfaceStore } from "./editor-shell/shell-stores.js";
+import { ShortcutReference } from "./editor-shell/shortcut-reference.js";
+import { NewDocumentChooser } from "./new-document-chooser.js";
+import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
 import { createSelectionInspector } from "./selection-inspector/index.js";
 // The reference table owns the words for actions no menu prints, so the walk
 // reads the Keyboard tab through its carve-out rather than demanding the copy
 // table own the shortcut registry.
 import { SHORTCUT_LABELS } from "./shortcut-manager/reference.js";
+import { ThemeLibraryChooser } from "./theme-library-dialog.js";
 import { uiCopy } from "./ui-copy.js";
 import { copy, paragraphsOf, saidIn, spokenIn } from "./ui-copy-readers.js";
 
@@ -160,6 +172,161 @@ it("reads the opened menus, the Settings tabs and the canvas context menu", asyn
   await act(async () => menuRoot.unmount());
   document.body.replaceChildren();
 });
+
+/**
+ * `vg-418`: the four surfaces the walk did not mount — the `?` sheet, the
+ * publish popover and the two dialogs. Each renders words an author reads, and
+ * a literal in one of them was read by no net: the header stated these four
+ * were not mounted, and a comment owns nothing.
+ *
+ * Each is mounted, read for its own words, and asserted non-empty first, so a
+ * surface that failed to mount is a failure rather than a walk that agreed with
+ * nothing. The popover is mounted open and each dialog at its first question,
+ * because a closed surface renders nothing and would pass the walk by being
+ * absent.
+ */
+it("reads the shortcut sheet, the publish popover and the two dialogs", async () => {
+  // The list is the coverage, and a surface dropped from it takes its read with
+  // it, so the count is guarded rather than left to the length of the loop —
+  // the same shape the menu rows' count takes in `ui-copy.test.ts`.
+  expect(UNMOUNTED_SURFACES).toHaveLength(4);
+  const owned = new Set(copy());
+  for (const surface of UNMOUNTED_SURFACES) {
+    const { root, destroy } = await surface.mount();
+    const said = saidIn(root);
+    expect(said, surface.name).not.toEqual([]);
+    expect(
+      said.filter(
+        (text) =>
+          !owned.has(text) && !isStoredName(text) && !isShortcutWord(text),
+      ),
+      surface.name,
+    ).toEqual([]);
+    destroy();
+  }
+});
+
+/** A surface this walk now mounts, and the mount that reads it. */
+interface UnmountedSurface {
+  readonly name: string;
+  readonly mount: () => Promise<{
+    readonly root: HTMLElement;
+    readonly destroy: () => void;
+  }>;
+}
+
+/** The four `vg-418` found. Each portals to `body` — a `Dialog` and a `Popover`
+ *  both do — so the read is over `body` rather than the mount point, which
+ *  holds none of the words. */
+const UNMOUNTED_SURFACES: readonly UnmountedSurface[] = [
+  {
+    name: "the shortcut sheet",
+    mount: async () => {
+      const root = createRoot(host());
+      await act(async () =>
+        root.render(
+          createElement(ShortcutReference, {
+            open: true,
+            onOpenChange: () => undefined,
+          }),
+        ),
+      );
+      return { root: document.body, destroy: () => close(root) };
+    },
+  },
+  {
+    name: "the publish popover",
+    mount: async () => {
+      const root = createRoot(host());
+      await act(async () =>
+        root.render(
+          createElement(PublishControl, {
+            hosting: hostingServing(),
+            surface: surfaceShown(),
+          }),
+        ),
+      );
+      await flushTasks();
+      return { root: document.body, destroy: () => close(root) };
+    },
+  },
+  {
+    name: "the library dialog",
+    mount: async () => {
+      const root = createRoot(host());
+      await act(async () =>
+        root.render(
+          createElement(ThemeLibraryChooser, {
+            themes: [{ id: "mine", name: "My theme" }],
+            templates: [STARTER_TEMPLATE],
+            settle: answeringSettle(),
+          }),
+        ),
+      );
+      return { root: document.body, destroy: () => close(root) };
+    },
+  },
+  {
+    name: "the new-document dialog",
+    mount: async () => {
+      const root = createRoot(host());
+      await act(async () =>
+        root.render(
+          createElement(NewDocumentChooser, { settle: answeringSettle() }),
+        ),
+      );
+      return { root: document.body, destroy: () => close(root) };
+    },
+  },
+];
+
+/** A mount point on `body`, which is where a portalled surface is read. */
+function host(): HTMLElement {
+  const element = document.createElement("div");
+  document.body.append(element);
+  return element;
+}
+
+/** Unmount a surface and clear what it portalled, so the next mount's read is
+ *  its own words rather than this one's. */
+function close(root: Root): void {
+  act(() => root.unmount());
+  document.body.replaceChildren();
+}
+
+/** A host that has answered, so the popover draws the surface rather than the
+ *  nothing an unread host says. No pairing is there, so it prints no address
+ *  and no expiry — the two readings a copy walk must not demand an owner for. */
+function hostingServing(): HostingStore {
+  // One snapshot, not one per read: `useSyncExternalStore` compares the answer
+  // by identity and re-renders forever on a fresh object each call.
+  const answer: HostingSnapshot = {
+    kind: "known",
+    answer: { lan: true, address: "192.168.1.5", port: 4174, refusal: null },
+    pairing: undefined,
+    reason: undefined,
+    pending: undefined,
+  };
+  return {
+    subscribe: () => () => undefined,
+    get: () => answer,
+  } as unknown as HostingStore;
+}
+
+/** The header's open flag, already set: a closed popover renders no popup. */
+function surfaceShown(): PublishSurfaceStore {
+  return {
+    subscribe: () => () => undefined,
+    get: () => true,
+    set: () => undefined,
+  } as unknown as PublishSurfaceStore;
+}
+
+/** What a modal surface calls to answer. This walk reads words, so neither
+ *  answer is ever taken. */
+function answeringSettle<T>(): ModalSettle<T> {
+  return { close: () => undefined, dismiss: () => undefined };
+}
 
 /** The menubar trigger for a menu, found by the text it carries. */
 function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
