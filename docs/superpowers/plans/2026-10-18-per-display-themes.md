@@ -126,7 +126,11 @@ Each gets its test in the task named beside it.1. **A display whose assigned the
     open a second window on that monitor, **including when a killed host left an
     orphan behind**, and it must not close the first. This is the case a naive
     launcher gets wrong in both directions, and the reason the liveness check is
-    `lastSeenAt` rather than a process scan. (Task 1.8)
+    `lastSeenAt` rather than a process scan. (Task 1.8, and the producer of that
+    check is Task 2.2's — see ruling 35: the clean-restart half is Task 1.8's and
+    closes with `stop()` killing what it opened, the killed-host half cannot be
+    verified until a window names itself on a repeating request, and the Phase 1
+    gate records it as unverified rather than verified.)
 12. **Removing a local display, and a browser the owner started themselves** —
     removal must close the window the host opened, and must never kill a browser it
     did not launch. Getting this backwards closes someone's own browsing session.
@@ -1040,6 +1044,7 @@ export interface Launcher {
   reconcile(): Promise<void>;
   /** Closes the window this launcher opened for a display, if any. */
   close(displayId: string): void;
+  /** Closes every window it opened, then stops reconciling. */
   stop(): void;
 }
 export function findBrowser(platform?: NodeJS.Platform): string | undefined;
@@ -1108,6 +1113,12 @@ it("stops reconciling after stop()", async () => {
   // stop(), then reconcile() -> no spawn.
 });
 
+it("closes the windows it opened when it stops", async () => {
+  // launch two local displays, stop() -> both children killed, and a display this
+  //   launcher never launched is untouched. A clean stop must leave no orphan, or
+  //   the next start opens a second window on a monitor that already has one.
+});
+
 it("answers undefined when no browser is installed, rather than guessing", () => {
   expect(findBrowser("linux")).toBeUndefined();   // with no candidate on PATH
 });
@@ -1161,13 +1172,43 @@ window and no explanation.
 
 **`reconcile` is a comparison, not a process scan.** For each record with
 `kind: "local"` whose monitor is attached, it launches when `lastSeenAt` is older
-than `LIVE_WINDOW_MS` and this launcher holds no live child for it. `lastSeenAt` is
-already written on every authenticated request (`displayFor`, Task 1.2) and a local
-display's page polls continuously, so *seen recently* is *running* — which is
-`launchLhm`'s reachability probe replaced by a fact the host already has. Run it on
+than `LIVE_WINDOW_MS` and this launcher holds no live child for it. Run it on
 start, when a local display is added, and on an interval; a closed window goes stale
 and comes back on the next pass, and a window on a monitor that is not attached is
 not launched at all.
+
+**That check has no producer yet, and this task must not pretend otherwise**
+(ruling 35, established while implementing it). The premise was that
+`lastSeenAt` is written on every authenticated request (`displayFor`, Task 1.2) and
+a local display's page polls continuously, so *seen recently* would be *running*.
+It is not: `displayFor` answers `undefined` for a loopback remote by design
+(`server.ts:272-277`), because loopback is trusted admin rather than an identity, so
+a local display's requests never reach `touch` and its `lastSeenAt` stays at
+`createdAt` for ever. Nothing else in this plan writes it either — Task 2.2's
+`displayKeyFor` resolves *which* display is asking but touches nothing. So in the
+shipped wiring `windowIsLive` answers false for every local display, and the child
+map is the whole of the dedupe. **What closes it:** a local display's window must
+name itself on a *repeating* request, and the host must record that sighting. That
+lands with Task 2.2, which produces the identity resolution, and with the player
+change that makes a display follow its own reassignment — a page-load touch is not
+enough, because a window loaded an hour ago is exactly the case this is for. Task
+1.8 keeps the check, with its docblock stating this, because the logic is right and
+becomes live when the producer exists; what it must not do is claim a fact the host
+does not have.
+
+**`stop()` closes the windows this launcher opened.** The plan's own claim that
+"nothing has to outlive the host" is true of a console Ctrl+C and false of every
+other way a host goes away: a child spawned without `detached` is not killed when
+its parent is signalled by a service manager, and never when the parent is killed.
+Without this, the ordinary restart — stop the host, start it again — leaves a window
+on screen that the fresh launcher cannot see, and its empty child map plus a stale
+`lastSeenAt` opens a second one on the same monitor. It never closes a window the
+owner started, which is the same rule `close` follows.
+
+**A host that is *killed* still leaves an orphan**, and until a window can identify
+itself there is no way to tell it from a display with no window: that half of
+Review Focus 11 stays open and the Phase 1 gate records it as unverified rather
+than verified.
 
 **The child is the host's own: spawn without `detached`, which is `launchChild`'s
 choice rather than `openBrowser`'s.** The user's clarification is the reason — *"the
@@ -1356,6 +1397,19 @@ also the only way to impersonate one. Two rules close that: the parameter is rea
 a paired display through the parameter, because a paired display is reached by the
 credential it was given and by nothing else. Write the reason in a comment: a
 future reader who loosens either rule has removed the reason the credential exists.
+
+**And this is where a local display's window becomes visible to the host** (ruling
+35's second half, carried here from Task 1.8). Task 1.8's launcher decides whether a
+local display already has a window by asking whether its `lastSeenAt` is inside
+`LIVE_WINDOW_MS`, and nothing produces that fact: `displayFor` answers `undefined`
+for a loopback remote by design, so a local display is never `touch`ed and its
+`lastSeenAt` stays at `createdAt` for ever. Resolving the key is what makes a
+sighting possible — a request that resolves to a **local** display must record one
+(`touch`), and the display's own page must send `?display=` on its *repeating*
+requests rather than only on load, or a window that has been up for an hour still
+reads as no window at all. Whichever half lands here, the pair has to land together:
+a touch with no repeating request changes nothing, and a repeating request with no
+touch is a request nobody records.
 
 - [ ] **Step 4: Run test to verify it passes**
 
