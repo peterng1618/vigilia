@@ -196,6 +196,68 @@ describe("createDisplayStore", () => {
     expect(await store.authenticate("anything")).toBeUndefined();
   });
 
+  it("drops the second record of a duplicated id, credential and all", async () => {
+    // A hand-edited file: two records claiming one id. The reader keeps the
+    // first, so the id is one display — and the dropped record's credential is
+    // dropped with it, or a record nothing lists could still pair.
+    await writeFile(
+      path.join(directory, FILE),
+      JSON.stringify({
+        displays: [
+          {
+            id: "kitchen-tablet",
+            label: "Kitchen tablet",
+            kind: "paired",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            lastSeenAt: "2026-01-01T00:00:00.000Z",
+            tokenHash: hashToken("first"),
+          },
+          {
+            id: "kitchen-tablet",
+            label: "Kitchen tablet again",
+            kind: "paired",
+            createdAt: "2026-01-02T00:00:00.000Z",
+            lastSeenAt: "2026-01-02T00:00:00.000Z",
+            tokenHash: hashToken("second"),
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    expect((await store.list()).map((display) => display.id)).toEqual([
+      "kitchen-tablet",
+    ]);
+    expect((await store.find("kitchen-tablet"))?.label).toBe("Kitchen tablet");
+    expect((await store.authenticate("first"))?.id).toBe("kitchen-tablet");
+    expect(await store.authenticate("second")).toBeUndefined();
+  });
+
+  it("ignores a token pasted into the file in the clear", async () => {
+    // A hand-edited file: the credential written where the reader only looks for
+    // its hash. It is not a credential, so the display authenticates as nothing
+    // and is not listed.
+    await writeFile(
+      path.join(directory, FILE),
+      JSON.stringify({
+        displays: [
+          {
+            id: "kitchen-tablet",
+            label: "Kitchen tablet",
+            kind: "paired",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            lastSeenAt: "2026-01-01T00:00:00.000Z",
+            token: "pasted-in-the-clear",
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    expect(await store.authenticate("pasted-in-the-clear")).toBeUndefined();
+    expect(await store.list()).toEqual([]);
+  });
+
   // A file that is present and unreadable is the owner's only copy of their
   // displays and credentials. Reads fail closed; writes refuse.
   it("refuses to write over a file it could not read", async () => {
