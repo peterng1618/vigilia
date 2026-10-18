@@ -271,6 +271,33 @@ describe("the host's own windows", () => {
     expect(opened).toEqual([]);
   });
 
+  it("closes the windows it opened when it stops", async () => {
+    const opened: OpenedWindow[] = [];
+    const windows = launcher(opened);
+
+    await local("Left screen", hintFor(ATTACHED[1]!), STALE);
+    await local("Right screen", hintFor(ATTACHED[0]!), STALE);
+    // A display this launcher never launched: its monitor is not attached, so no
+    // pass has opened anything for it.
+    await local("Spare screen", { deviceName: "\\\\.\\DISPLAY9" }, STALE);
+
+    await windows.reconcile();
+    expect(opened).toHaveLength(2);
+
+    windows.stop();
+
+    // A window left behind is one the next run cannot see, and its empty child
+    // map would put a second window on that monitor.
+    expect(opened[0]?.kill).toHaveBeenCalledTimes(1);
+    expect(opened[1]?.kill).toHaveBeenCalledTimes(1);
+
+    // The map is cleared as it goes: a second stop closes nothing, and neither
+    // does a close for a display whose window is already gone.
+    expect(() => windows.stop()).not.toThrow();
+    expect(() => windows.close("spare-screen")).not.toThrow();
+    expect(opened[0]?.kill).toHaveBeenCalledTimes(1);
+  });
+
   it("stops reconciling after stop()", async () => {
     const opened: OpenedWindow[] = [];
     const windows = launcher(opened);

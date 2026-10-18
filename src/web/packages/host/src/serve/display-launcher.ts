@@ -233,14 +233,13 @@ function profileDirFor(displayId: string): string {
 }
 
 /**
- * Whether a record's window is presumed to be running.
+ * Whether a record's window is presumed to be running: a sighting inside
+ * `LIVE_WINDOW_MS`, and a record no `touch` has moved — the store stamps
+ * `createdAt` and `lastSeenAt` from one instant — read as never seen.
  *
- * A sighting inside `LIVE_WINDOW_MS` is a window that is up. A record `touch`
- * has never moved is one no window has ever polled — the store stamps
- * `createdAt` and `lastSeenAt` from one instant — which is a display the owner
- * has just added: the strongest form of *not seen recently*, so it launches
- * rather than waiting out a window that does not exist. A timestamp nothing can
- * read is no evidence of a window either.
+ * Nothing writes a local display's `lastSeenAt` yet, so this answers false for
+ * every local display and the child map is the whole of the dedupe until a
+ * window names itself on a repeating request (Task 2.2).
  */
 function windowIsLive(record: DisplayRecord, now: number): boolean {
   if (record.lastSeenAt === record.createdAt) return false;
@@ -365,6 +364,18 @@ export function createDisplayLauncher(input: {
     stop(): void {
       stopped = true;
       clearInterval(timer);
+
+      // A console Ctrl+C reaches the host's own children; a service manager's
+      // signal and a killed host do not, and a window left behind is one the
+      // next run cannot see — its empty child map would put a second window on
+      // that monitor. Only a window this launcher opened is the host's to close,
+      // and the map is cleared first so a second stop() closes nothing.
+      const opened = [...windows.values()];
+      windows.clear();
+
+      for (const child of opened) {
+        if (!child.killed) child.kill();
+      }
     },
   };
 }

@@ -480,8 +480,8 @@ export async function run(argv: readonly string[]): Promise<number> {
       console.log("\nStopping.");
       // Stop only the LHM this run started; one the owner already ran is theirs.
       lhm.stop();
-      // The windows stay up: a browser the host started is still the display's
-      // own window, and the next run finds it running rather than replacing it.
+      // The windows close with the host: one left behind is one the next run
+      // cannot see, and it would put a second window on that monitor.
       launcher?.stop();
       void hosted.close().then(resolve, resolve);
     };
