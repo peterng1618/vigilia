@@ -10,7 +10,7 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 ## Active work
 
 - **Active plan:** `2026-10-18-per-display-themes.md` — [plan](docs/superpowers/plans/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md); execution ledger `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`.
-- **Phase 1 is active** (Tasks 1.1–1.8: the display record, its credential, pairing, the one-time code, the host's own monitors), made active by the user's 2026-10-18 ruling; Tasks 1.1–1.6 are closed and the pre-flight scan plus the review loops ruled R1–R25 into the ledger.
+- **Phase 1 is active** (Tasks 1.1–1.8: the display record, its credential, pairing, the one-time code, the host's own monitors), made active by the user's 2026-10-18 ruling; Tasks 1.1–1.7 are closed and the pre-flight scan plus the review loops ruled R1–R34 into the ledger.
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
 - Plan queue after this: `2026-10-18-theme-store.md` (its phase A only — B–G each need their own plan, G before C), then the panel work; the colour/gradient spec is unreviewed and unplanned.
 - Recorded objectives rather than queued plans: a **native player app**, the only path to real device brightness (`vg-583`), and a **TURZX panel display** ([rough capture](docs/superpowers/specs/2026-10-18-turzx-panel-displays-design.md)), both sequenced after the theme store.
@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 1.6 landed (commit `1e99f5f5`, controller `7e909469`): `GET /api/host` answers `{ id, name, port }` to an unpaired caller, registered before every guard, with the port read from the listening socket and `Access-Control-Allow-Origin: *` on that one response; `main.ts` reads-or-mints the record and passes it (R19's second half).
-- Its review approved it by construction rather than by a passing test: the route sits before the display guard in the source, its body names three fields literally instead of spreading the record, and `sendJson` is byte-identical to base, so no shared writer grew a CORS parameter (R25).
-- Rulings R23–R25: with no `host` option the route is not registered at all, so nothing is fabricated and no pre-existing case had to move; the name stays one character from `/api/hosting` because the spec publishes it and the re-find probe is built against it; and the CORS header is that route's alone.
-- Two Minors were cleaned by the controller in `7e909469` (the same why stated in the route's comment and the option's docblock) and two are carried to the final review: the new block's `afterEach` dereferencing a server `build()` may never have assigned, and the report's stale line citations.
-- Unverified and named: `main.ts` has no unit test and was not run as a real host, so the record reaching a live server rests on typecheck and reading — the phase gate closes it with a real `node packages/host/bin/vigilia.js --no-browser` and a read of `/api/host`.
+- Task 1.7 landed (commit `d4ce6d92`, fix round `cbb4b94b`): the host's own monitor — `listMonitors` maps the probe, `hintFor`/`isAttached` are the hint's one rule, and `launchFor` answers the URL and geometry with no argv.
+- Its review approved it and its fix round closed the one Important: `displays ?? []` fabricated "answered and found none" from a probe that did not answer, which is exactly R29's conflation.
+- Rulings: R32 makes `createLocal` refuse a hint an existing local display holds (`vg-617`); R33 moved the argv to Task 1.8's `browserCommand`; R34 defers the 405's residual on non-route paths to Task 1.8.
+- `reportedSerial` moved into `displays.ts`, so the trim is one owner asked by the validator and the hint builder alike rather than a copy in each.
+- Two seat claims were falsified by review and are recorded: R30's ordering really is untestable at this commit, and the 405's fall-through is not "the id shape by construction".
 
 ## Next
 
-1. Task 1.7 (the host's own monitors) is next; it produces the monitor list, the record hint and the launch line, and its brief states the boundary itself — it opens nothing, and the launch is Task 1.8's.
+1. Task 1.8 (the launcher and sign-in registration) is next and closes Phase 1; it carries R32 (the `createLocal` refusal), R33 (it is the one owner of the argv) and R34 (the 405's residual).
 2. Review every task against its brief and evidence; run the phase gate with the exit code and the browser results named separately, plus a real `node packages/host/bin/vigilia.js --no-browser` and a read of `/api/host`, which is what closes Task 1.6's unverified `main.ts` wiring.
 3. Resume the drain at Task 23.4 when per-display Phase 1 stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
