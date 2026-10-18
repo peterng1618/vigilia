@@ -742,6 +742,12 @@ running here*.
 - Create: `src/web/packages/host/src/settings/host-lock.ts`
 - Create: `src/web/packages/host/src/settings/host-lock.test.ts`
 - Modify: `src/web/packages/host/src/cli/args.ts` (the refusal's message)
+- Modify: `src/web/packages/host/src/main.ts` (**R19**: acquire the lock before
+  `listen`, release it on exit. Neither this task's original file list nor Task
+  1.6's named `main.ts`, so the lock would have had no production caller anywhere
+  in Phase 1 while the phase's own exit criterion claims "the host's own identity
+  and lock in the app folder". The record's wiring stays in Task 1.6, which adds the
+  option it is passed to; this task must not read the record in `main.ts`.)
 
 **Interfaces:**
 - Consumes: nothing.
@@ -790,7 +796,9 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implement**
 
-`host-record.ts` owns `host.json`, `{ id, name }`. The id is
+`host-record.ts` owns `host-identity.json`, `{ id, name }` — not `host.json`, which
+would sit one character from the incumbent `hosting.json` in the same directory
+(**R20**; the plan's Global Constraint against exactly that). The id is
 `randomBytes(8).toString("hex")` — **its job is uniqueness, not secrecy**: it is
 answered publicly by `GET /api/host` (Task 1.6), and what it defends is a display
 attaching to the wrong host, which a guessable-but-unique id already prevents. The
@@ -813,7 +821,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/settings/host-record.ts src/web/packages/host/src/settings/host-record.test.ts src/web/packages/host/src/settings/host-lock.ts src/web/packages/host/src/settings/host-lock.test.ts src/web/packages/host/src/cli/args.ts
+git add src/web/packages/host/src/settings/host-record.ts src/web/packages/host/src/settings/host-record.test.ts src/web/packages/host/src/settings/host-lock.ts src/web/packages/host/src/settings/host-lock.test.ts src/web/packages/host/src/cli/args.ts src/web/packages/host/src/main.ts
 git commit -m "feat(host): one app folder is one host, with an identity of its own"
 ```
 
@@ -825,6 +833,9 @@ The one route that answers an unpaired client, and the reason it can: it says
 **Files:**
 - Modify: `src/web/packages/host/src/server.ts`
 - Test: `src/web/packages/host/src/server.test.ts`
+- Modify: `src/web/packages/host/src/main.ts` (**R19**: read-or-mint the record and
+  pass it as `host`, the wiring for the option this task adds. Task 1.5 owns the
+  lock's half of `main.ts`.)
 
 **Interfaces:**
 - Consumes: `HostRecord`, `readOrMintHostRecord` (Task 1.5).
@@ -878,7 +889,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
+git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/host/src/main.ts
 git commit -m "feat(host): answer the identity a display re-finds its host by"
 ```
 
