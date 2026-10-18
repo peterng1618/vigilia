@@ -79,13 +79,16 @@ export function createHostBinding(
   ): Promise<
     { readonly ok: true } | { readonly ok: false; readonly reason: string }
   > {
-    // Whatever is left is this server's **idle** keep-alive sockets, and that
-    // includes the one the answer that asked for this move went out on.
-    // `closeAllConnections()` would destroy that one too and take the answer
-    // with it, leaving the asker with an empty reply — `vg-173`. Streams a
-    // display is holding are the host's to close, and it closes them before
-    // calling in: a stream that is still open is not idle.
-    server.closeIdleConnections();
+    // **Every connection goes, not only the idle ones.** `close()` waits for
+    // the connections that are still answering, and a request in flight cannot
+    // end until this move does, so waiting on it is a deadlock rather than a
+    // delay: the move never settles, the rebind never runs, and the host never
+    // listens again (`vg-174`, ruled 2026-10-12 — destroy the remaining
+    // connections rather than let `close` wait for them). What that spends is
+    // what `vg-173` measured: whichever request was unlucky gets an empty
+    // reply, and the editor's bounded re-read recovers. Streams a display is
+    // holding are the host's to close, and it closes them before calling in.
+    server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
 
     try {

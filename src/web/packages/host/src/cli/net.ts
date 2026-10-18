@@ -7,12 +7,12 @@ import { MAX_PORT_ATTEMPTS } from "./args.js";
 
 /**
  * What this module binds. `node:http`'s server and `node:https`'s do not share
- * a type, and both carry the pair the binding needs: `listen`, and
- * `closeIdleConnections` — without which a move cannot drop the sockets that
- * are merely idle without also dropping the answer that asked it to move
- * (`vg-173`). A host serving both protocols on one port presents a `net.Server`
- * wearing the same two methods, so the interface is stated rather than spelled
- * as a union.
+ * a type, and both carry what the callers need: `listen`, and the two ways a
+ * connection can be dropped — `closeIdleConnections`, which spares one with a
+ * response in flight (`vg-173`), and `closeAllConnections`, which is the one
+ * the move takes (`vg-174`). A host serving both protocols on one port presents
+ * a `net.Server` wearing the same methods, so the interface is stated rather
+ * than spelled as a union.
  */
 export interface ListenableServer extends net.Server {
   closeIdleConnections(): void;

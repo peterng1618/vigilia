@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import http from "node:http";
 import https from "node:https";
-import type { AddressInfo, Socket } from "node:net";
+import net, { type AddressInfo, type Socket } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { Readable, Writable } from "node:stream";
@@ -2195,6 +2195,70 @@ describe("A LAN move answers before the socket it moves (vg-173)", () => {
       await fetch(`http://127.0.0.1:${port}/api/hosting`)
     ).json();
     expect(after).toMatchObject({ lan: true, refusal: null });
+  });
+
+  it("does not wait on a request that is in flight when it starts (vg-174)", async () => {
+    const port = await listeningHost();
+
+    // The request this case needs is one the host has accepted and is still
+    // answering: the headers are read and the body they promised has not
+    // arrived, so no response can be written and the connection cannot end.
+    // `close()` waits for every connection, so it would wait on this one
+    // forever — the move would never settle and the host would never listen
+    // again. Ordinary single-client use cannot reach this, which is why it
+    // needs constructing.
+    //
+    // `Expect: 100-continue` is how the test knows the request is in flight
+    // rather than sleeping and hoping: Node answers it in the same run that
+    // emits `request`, so waiting for that line is proof the host has it.
+    const stalled = net.connect(port, "127.0.0.1");
+    // The move destroys this socket, so its failure is the point of the case.
+    stalled.on("error", () => {});
+    const ended = new Promise<boolean>((resolve) => {
+      stalled.once("close", () => resolve(true));
+      setTimeout(() => resolve(false), 2_000).unref();
+    });
+    const continued = new Promise<void>((resolve) => {
+      stalled.on("data", (chunk: Buffer) => {
+        if (chunk.includes("100 Continue")) resolve();
+      });
+    });
+
+    await new Promise<void>((resolve) => stalled.once("connect", resolve));
+    stalled.write(
+      [
+        "PUT /api/hosting HTTP/1.1",
+        `Host: 127.0.0.1:${port}`,
+        "Content-Type: application/json",
+        "Expect: 100-continue",
+        "Content-Length: 11",
+        "",
+        "",
+      ].join("\r\n"),
+    );
+    await continued;
+
+    // The move runs while that request is still in flight. Its own answer goes
+    // out first, on a connection the move takes with it — that trade is
+    // `vg-173`, measured and green.
+    const answered = await fetch(`http://127.0.0.1:${port}/api/hosting`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lan: true }),
+    });
+    expect(answered.status).toBe(200);
+
+    // The move settled, so the host is listening again and answers where it
+    // landed. A GET waits for a move in flight, so a 200 here is the move
+    // having finished rather than a reading taken around it — with the fix
+    // disabled there is no host left to answer this at all.
+    const after = await (
+      await fetch(`http://127.0.0.1:${port}/api/hosting`)
+    ).json();
+    expect(after).toMatchObject({ lan: true, refusal: null });
+
+    // And the request that was in flight is the one that was spent for it.
+    expect(await ended).toBe(true);
   });
 });
 
