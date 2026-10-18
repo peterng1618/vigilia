@@ -515,7 +515,7 @@ git commit -m "feat(host): a display authenticates with its own durable credenti
 **Files:**
 - Modify: `src/web/packages/host/src/server.ts`
 - Test: `src/web/packages/host/src/server.test.ts`
-- Create: `docs/decisions/0068-display-identity-in-the-server.md` (the watched
+- Create: `docs/decisions/0072-display-identity-in-the-server.md` (the watched
   path's note — see Global Constraints)
 
 **Interfaces:**
@@ -604,7 +604,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts docs/decisions/0068-display-identity-in-the-server.md
+git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts docs/decisions/0072-display-identity-in-the-server.md
 git commit -m "feat(host): pair a durable credential against a persisted display"
 ```
 

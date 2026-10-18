@@ -26,7 +26,7 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Next
 
-1. Task 1.3 (pairing against a display, with decision note `0068` claiming `server.ts`) is next; dispatch it once its brief's rulings are carried.
+1. Task 1.3 (pairing against a display, with decision note `0072` claiming `server.ts`) is next; dispatch it once its brief's rulings are carried.
 2. Review every task against its brief and evidence; run the phase gate with the exit code and the browser results named separately.
 3. Resume the drain at Task 23.4 when per-display Phase 1 stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
