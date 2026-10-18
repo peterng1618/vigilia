@@ -8,6 +8,7 @@ import {
 } from "./document.js";
 import { envelopeKeysFor, knownKeysFor } from "./envelope-keys.js";
 import {
+  namedEnvelope,
   type ValidationIssue,
   validateEnvelopeSemantics,
 } from "./envelope-semantics.js";
@@ -30,7 +31,17 @@ export type FabricEnvelopeValidationResult =
   | { readonly ok: true; readonly envelope: FabricThemeEnvelope }
   | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
 
-/** Validates the versioned product envelope; Fabric compatibility remains scene-fabric's boundary. */
+/**
+ * Validates the versioned product envelope; Fabric compatibility remains
+ * scene-fabric's boundary.
+ *
+ * This is the loader: it is where a document becomes an envelope, whatever
+ * brought the bytes here — a stored `theme.json`, the host's document route, a
+ * package an author opened. So it is also where a document that carries no name
+ * gains one ({@link namedEnvelope}), because the published schema refuses an
+ * empty `metadata.name` and a stored document that validated before that bound
+ * is not allowed to stop loading because of it.
+ */
 export function validateFabricThemeEnvelope(
   input: unknown,
   options: { readonly requireTrioRoles?: boolean } = {},
@@ -98,7 +109,10 @@ export function validateFabricThemeEnvelope(
   bindings(input["bindings"], sceneIds, issues);
 
   return issues.length === 0
-    ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
+    ? {
+        ok: true,
+        envelope: namedEnvelope(input as unknown as FabricThemeEnvelope),
+      }
     : { ok: false, issues };
 }
 

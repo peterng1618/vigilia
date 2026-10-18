@@ -440,6 +440,30 @@ describe("ThemeStore", () => {
       "Repaired",
     );
   });
+
+  /**
+   * `vg-221`. The published schema refuses an empty `metadata.name`, and this
+   * is the document that would have become unloadable because of it: written
+   * before the bound, read after it. The case is a real folder on disk rather
+   * than an object handed to the validator, because "a stored document that
+   * validates today must not become unloadable" is the whole claim.
+   */
+  it("names a stored document whose own name is empty", async () => {
+    const store = createThemeStore(tmpDir);
+    await fs.mkdir(path.join(tmpDir, "nameless"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "nameless", "theme.json"),
+      JSON.stringify(envelopeFor("nameless", "")),
+    );
+
+    const read = await store.read("nameless");
+    expect(read?.envelope.metadata?.name).toBe("nameless");
+    // The label is the document's own id, so the library line names it the way
+    // it already did before the migration existed — nothing new is invented.
+    expect((await store.list()).map((entry) => entry.name)).toEqual([
+      "nameless",
+    ]);
+  });
 });
 
 /**

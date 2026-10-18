@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   type IssueCode,
+  namedEnvelope,
   type ValidationIssue,
   validateEnvelopeSemantics,
 } from "./envelope-semantics.js";
+import type { FabricThemeEnvelope } from "./fabric-envelope.js";
 
 /**
  * The Vigilia-owned half of an envelope, decided without Fabric.
@@ -309,6 +311,24 @@ describe("background media", () => {
         },
       }),
     ).toContain("unresolved-asset-ref");
+  });
+});
+
+describe("naming a document that carries none", () => {
+  it("supplies the document's own id, and never renames a named theme", () => {
+    const nameless = baseEnvelope() as unknown as FabricThemeEnvelope;
+    expect(namedEnvelope(nameless).metadata?.name).toBe("demo-theme");
+
+    const named = {
+      ...baseEnvelope(),
+      metadata: { themeLanguage: "en", name: "Kitchen" },
+    } as unknown as FabricThemeEnvelope;
+    const again = namedEnvelope(named);
+
+    expect(again.metadata?.name).toBe("Kitchen");
+    // Returned as it is rather than rebuilt, so the label is stable across
+    // loads: a second load cannot rename a theme the author already named.
+    expect(again).toBe(named);
   });
 });
 

@@ -10,6 +10,7 @@ import {
   knownKeysFor,
   nearestKey,
 } from "./envelope-keys.js";
+import type { FabricThemeEnvelope } from "./fabric-envelope.js";
 
 /**
  * The semantic checks over the envelope fields Vigilia owns.
@@ -169,6 +170,31 @@ export function validateEnvelopeSemantics(
   );
 
   issues.push(...own.list);
+}
+
+/**
+ * The envelope with a name supplied, for a document that carries none.
+ *
+ * The published schema refuses an empty `metadata.name` (`vg-221`), so a
+ * document that validated under the previous contract would stop loading the
+ * moment that bound landed — which is why the refusal and this migration are
+ * one change rather than two. **The document's own `id` is the label**: it is
+ * persisted with the document, so the same name comes back on every load
+ * instead of a fresh one, and it is the reading every surface already falls
+ * back to when a theme carries no name, so nothing visible moves except that
+ * the name now exists and the author can rename it.
+ *
+ * Idempotent by construction: an envelope that already carries a name is
+ * returned as it is, so a second load cannot rename a theme.
+ */
+export function namedEnvelope(
+  envelope: FabricThemeEnvelope,
+): FabricThemeEnvelope {
+  const metadata = envelope.metadata ?? {};
+  if (metadata.name !== undefined && metadata.name.length > 0) {
+    return envelope;
+  }
+  return { ...envelope, metadata: { ...metadata, name: envelope.id } };
 }
 
 function validateMetadata(issues: Issues, value: unknown): void {

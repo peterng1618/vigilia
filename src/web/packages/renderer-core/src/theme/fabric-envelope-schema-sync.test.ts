@@ -182,6 +182,24 @@ describe("published Fabric theme schema", () => {
     ).toEqual({ $ref: "#/$defs/objectName" });
   });
 
+  it("refuses an empty theme name, which the loader migrates rather than relaxing", () => {
+    // `vg-221`. The schema is the only refusal, and deliberately so: the
+    // Document pane drops an emptied name rather than writing `""` (`compact`),
+    // and the envelope validator never read the name — so this is the half a
+    // tool outside this repo sees, and the loader's `namedEnvelope` is the half
+    // that keeps a stored document loading. Both bounds are pinned here because
+    // the disagreement test compares key sets alone and would not notice either
+    // one moving.
+    const name = (
+      schema().$defs["metadata"]!["properties"] as Record<
+        string,
+        Record<string, unknown>
+      >
+    )["name"]!;
+
+    expect(name).toEqual({ type: "string", minLength: 1, maxLength: 200 });
+  });
+
   it("discriminates fully declared WOFF2 font assets from other assets", () => {
     const document = schema();
     const asset = document.$defs["assetReference"]!;

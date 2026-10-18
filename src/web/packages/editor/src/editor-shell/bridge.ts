@@ -271,8 +271,10 @@ export function createEditorShellBridge(input: {
             : 1,
       locked: active !== undefined && isLocked(active),
       activeKind: activeKindOf(active),
-      // The schema lets `metadata.name` be empty, so the fallback is taken on
-      // `""` too, by the one reading the status line takes as well.
+      // The fallback is taken on `""` as well as on an absent name: the schema
+      // now refuses an empty one and the loader supplies a name (`vg-221`), but
+      // this is a reading of whatever the document holds, by the one reading the
+      // status line takes as well.
       documentName:
         identity === undefined ? undefined : documentNameOf(identity),
       releaseVersion: identity?.version,

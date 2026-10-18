@@ -30,12 +30,16 @@ describe("loadHostedTheme", () => {
     ).rejects.toThrow("404");
   });
 
-  it("loads a validated hosted envelope", async () => {
+  it("loads a validated hosted envelope, named by its own id", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => Response.json(envelope));
 
-    await expect(loadHostedTheme("living-room", fetcher)).resolves.toEqual(
-      envelope,
-    );
+    // The fixture carries no name, and the loader names what it finds unnamed
+    // (`vg-221`): the published schema refuses an empty `metadata.name`, so a
+    // document read through here gains the id it is already identified by.
+    await expect(loadHostedTheme("living-room", fetcher)).resolves.toEqual({
+      ...envelope,
+      metadata: { themeLanguage: "en", name: "living-room" },
+    });
     expect(fetcher).toHaveBeenCalledWith("/api/themes/living-room/document");
   });
 
