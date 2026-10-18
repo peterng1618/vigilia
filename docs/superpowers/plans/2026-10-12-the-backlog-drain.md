@@ -4256,7 +4256,18 @@ covers the rebuild journey, the json reporter takes its path from the environmen
 typecheck program, and three assertions and bullets that cannot fail are replaced by ones that can.
 **Tasks 22.9 and 22.10 add two more, added 2026-10-17 at Phase 20's close: the copy walk's keyed
 functions and its four unmounted surfaces (`vg-417`, `vg-418`), and the fixture page a `build`-only
-bundle lacks (`vg-438`).**
+bundle lacks (`vg-438`).** **[Closed in part 2026-10-18: Tasks 22.1–22.6 and 22.8–22.10 have landed,
+closing `vg-147`, `vg-150`, `vg-192`, `vg-167`, `vg-168`, `vg-159`, `vg-537`, `vg-417`, `vg-418` and
+`vg-438` — ten of the phase's eleven rows. **Task 22.7 cannot run as written and stays obstructed**: Task
+25.7 removed the crop notice, so its fixture can no longer raise the two gaps it was written to raise, and
+`vg-191` is the user's to withdraw or re-point rather than an agent's. The phase's acceptance is otherwise
+met: every closed row's own `check` passes, `vg-167`, `vg-168` and `vg-159` each carry a case or a
+corrected claim that fails when the fix is disabled, and the new tsconfig's coverage was shown by a
+deliberate type error in a spec and reverted with the restore proved byte-for-byte. **Five rows were
+filed by this phase's last two tasks rather than absorbed**: `vg-591`, `vg-592`, `vg-593` and `vg-594`
+from Task 22.9's review and seat, and `vg-595` from the controller's own verification of Task 22.10, where
+a stale preview server on the shared 4174 port served another worktree's `dist` and made a red proof read
+green.]**
 
 **Why a phase of its own.** Every row here is a claim about **evidence** rather than about product
 behaviour, and three of them (`vg-167`, `vg-168`, `vg-159`) are the same finding: an assertion or a
@@ -4267,7 +4278,7 @@ these are the proofs those findings were supposed to come from.
 `typecheck` script; `layer-tree.test.ts`; `bridge.dom.test.ts`; `src/web/tests/e2e/` fixtures; and the
 verification bullets of the plan `vg-159` names.
 
-**Constraints:** **ACTIVE AGAIN 2026-10-18: Phase 25 is complete, so Tasks 22.6–22.10 resume.** Tasks 22.1–22.5 are closed. **Task 22.7 is obstructed and cannot run as written — see its own note.** Previously: SUSPENDED 2026-10-17 by scheduling ruling, when the user prioritised their own 2026-10-17 reports; before that, **Active 2026-10-17 by scheduling ruling: Phases 12 and 21 are suspended, not closed, on user spec review; Phases 15–20 are closed.** Phase 21's font-picker model and `TAB_BOUND` ruling remain untouched; one phase runs at a time. **`vg-192` wires the new project into `typecheck`
+**Constraints:** **CLOSED IN PART 2026-10-18: Tasks 22.1–22.6 and 22.8–22.10 have landed and only Task 22.7 remains, obstructed and unable to run as written — see its own note and the closure annotation above.** Previously: ACTIVE AGAIN 2026-10-18, when Phase 25 completed and Tasks 22.6–22.10 resumed; SUSPENDED 2026-10-17 by scheduling ruling, when the user prioritised their own 2026-10-17 reports; before that, **Active 2026-10-17 by scheduling ruling: Phases 12 and 21 are suspended, not closed, on user spec review; Phases 15–20 are closed.** Phase 21's font-picker model and `TAB_BOUND` ruling remain untouched; one phase runs at a time. **`vg-192` wires the new project into `typecheck`
 in the same commit, or the project exists and nothing runs it** — and `gate` runs `typecheck`, so the
 wiring is what makes the check real. **`vg-147` and `vg-150` change how the browser suites run**, so no
 other task in this phase runs a browser suite concurrently — both are closed, so that constraint is spent.
@@ -4434,9 +4445,9 @@ reading the acceptance section's verdicts.
 **Interfaces:**
 - Produces: `vg-438` closed
 
-- [ ] **Step 1: The trap, measured rather than argued.** `npm run build -w @vigilia/editor` exit 0 leaves `packages/editor/dist` holding `assets/`, `favicon.svg` and `index.html`; `npm run build:fixture -w @vigilia/editor` exit 0 then adds `control-fixture.html`. So a whole-suite browser run against a bundle built by `build` alone fails the fixture-mounting `design-language-*.spec.ts` specs as a missing page and reads as a product regression.
-- [ ] **Step 2: The cause is deliberate and documented**, in `packages/editor/vite.config.fixture.ts`: the fixture is a second invocation rather than a second `rollupOptions.input` so the production build emits exactly the bundle graph it emitted before the fixture existed and does not ship test scaffolding. **So the fix is not to fold the fixture into the production build** — it is to make the missing page say so, or to make the run produce it.
-- [ ] **Step 3: Close it**, by running the whole suite against a `build`-only bundle and reading what the fixture-mounting specs report.
+- [x] **Step 1: The trap, measured rather than argued.** `npm run build -w @vigilia/editor` exit 0 leaves `packages/editor/dist` holding `assets/`, `favicon.svg` and `index.html`; `npm run build:fixture -w @vigilia/editor` exit 0 then adds `control-fixture.html`. So a whole-suite browser run against a bundle built by `build` alone fails the fixture-mounting `design-language-*.spec.ts` specs as a missing page and reads as a product regression. **Reproduced on the integrated tree, and the row's own premise corrected**: the failure is not a 404 — `vite preview` defaults to `appType: 'spa'` and answers `/control-fixture.html` with **200** and `text/html` serving `index.html`, measured as `has #control-fixture: false`, `has #app: true`. So a status check would have been a guard that cannot fail, and the check keys on the fixture's own `#control-fixture` marker instead — static markup `index.html`'s `#app` is not.
+- [x] **Step 2: The cause is deliberate and documented**, in `packages/editor/vite.config.fixture.ts`: the fixture is a second invocation rather than a second `rollupOptions.input` so the production build emits exactly the bundle graph it emitted before the fixture existed and does not ship test scaffolding. **So the fix is not to fold the fixture into the production build** — it is to make the missing page say so, or to make the run produce it. **Taken: make it say so, in the one opener.** `openFixture` in `tests/e2e/design-language-readers.ts` is the single opener all three fixture-mounting specs share (`design-language-contrast`, `-controls` and `-layout`, through `prepareControls`), so the check is scoped to exactly the specs that need the page. The process-wide `tests/e2e/global-setup.ts` was rejected with the reason: it would refuse every spec including host, player, snapping and glass specs that never open the fixture. **`glass-authoring` and `snapping` are not consumers** — each defines its own local `openFixture` that builds its own page into the root preview.
+- [x] **Step 3: Close it**, by running the whole suite against a `build`-only bundle and reading what the fixture-mounting specs report. **Done on the integrated tree, against a `dist` built by `npm run build` alone**: `npx playwright test tests/e2e/design-language-controls.spec.ts --project=desktop-chromium --workers=1 --grep "the control set renders in the design language"` exits 1 with the named cause and the recipe, thrown at `openFixture` through `prepareControls`; after `npm run build:fixture -w @vigilia/editor` the same command exits 0 with 1 passed. `npm run gate` exit 0. `vg-438` is verified. **The verification itself produced a finding**: the first red-proof attempt read `1 passed` because a preview server left running by the seat's own worktree was answering the shared 4174 port over *that* worktree's `dist` — `reuseExistingServer: true` — so the controller measured somebody else's bundle. Killing it and re-running reddened correctly. That is filed as `vg-595`, and it is the second time this phase has caught a false result by re-running rather than by reading.
 
 ---
 
