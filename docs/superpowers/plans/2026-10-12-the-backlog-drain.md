@@ -4401,11 +4401,19 @@ this phase because it is a **test driver**, and the phase's own subject is the p
 ### Task 22.9: The copy walk probes the functions it cannot enumerate, and mounts four surfaces it does not read
 
 **Added 2026-10-17 at Phase 20's close**, homing `vg-417` and `vg-418`. Both were found by Task 7.1's
-review on 2026-10-13 and both are `ui-copy.test.ts`'s — one instrument, two holes — which is why they are
+review on 2026-10-13 and both are the copy walk's — one instrument, two holes — which is why they are
 one task and not two.
 
 **Files:**
-- Modify: `src/web/packages/editor/src/editor-shell/ui-copy.test.ts`
+- Modify: `src/web/packages/editor/src/ui-copy-readers.ts` (`copy()` is the probe), `src/web/packages/editor/src/ui-copy-surfaces.test.ts` (the surface walk), `src/web/packages/editor/src/ui-copy-panels.test.ts`
+
+**Path corrected 2026-10-18 by the controller, before the seat ran**: this task and both rows named a single
+`ui-copy.test.ts`, which is the table's own rules (sentence case, pictographs, menu rows) and neither hole.
+The walk is three files — `ui-copy-readers.ts` holds `copy()`, `ui-copy-surfaces.test.ts` holds the surface
+walk and the header stating the four unmounted surfaces, `ui-copy-panels.test.ts` holds the imperative panels
+and the picker. The plan's path (`editor-shell/ui-copy.test.ts`) does not exist; the rows' OWNER field is
+stale in the same direction. Neither row's defect is affected — `vg-417` is still `copy()`'s argument list and
+`vg-418` is still the four unmounted surfaces.
 
 **Interfaces:**
 - Produces: `vg-417` and `vg-418` closed
