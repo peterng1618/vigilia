@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ChartRefreshRate } from "@vigilia/scene-fabric";
@@ -57,6 +57,8 @@ describe("createDisplayStore", () => {
     expect((await store.list()).map((display) => display.id)).toEqual([
       "kitchen-tablet",
     ]);
+    // The write is atomic, so its temporary file is gone once it returns.
+    expect(await readdir(directory)).toEqual([FILE]);
   });
 
   it("adds a suffix when the slug is taken", async () => {
@@ -154,6 +156,43 @@ describe("createDisplayStore", () => {
     expect(await store.list()).toEqual([]);
     expect(await store.find("ghost")).toBeUndefined();
     expect(await store.authenticate("anything")).toBeUndefined();
+  });
+
+  // A file that is present and unreadable is the owner's only copy of their
+  // displays and credentials. Reads fail closed; writes refuse.
+  it("refuses to write over a file it could not read", async () => {
+    const target = path.join(directory, FILE);
+    await writeFile(target, "{ not json", "utf8");
+    const before = await readFile(target);
+
+    expect(await store.list()).toEqual([]);
+    expect(await store.find("kitchen-tablet")).toBeUndefined();
+    expect(await store.authenticate("tok")).toBeUndefined();
+
+    await expect(store.create("Kitchen tablet", "tok")).rejects.toThrow(FILE);
+    await expect(
+      store.createLocal("Left screen", { deviceName: "\\\\.\\DISPLAY2" }),
+    ).rejects.toThrow(FILE);
+    await expect(
+      store.update("kitchen-tablet", { label: "Kitchen" }),
+    ).rejects.toThrow(FILE);
+    await expect(store.rotate("kitchen-tablet", "tok")).rejects.toThrow(FILE);
+    await expect(
+      store.touch("kitchen-tablet", "2026-10-18T00:00:00.000Z"),
+    ).rejects.toThrow(FILE);
+    await expect(store.remove("kitchen-tablet")).rejects.toThrow(FILE);
+
+    // Byte-identical: nothing deleted, truncated or overwritten it.
+    expect(await readFile(target)).toEqual(before);
+    expect(await readdir(directory)).toEqual([FILE]);
+  });
+
+  it("treats a missing file as a fresh install", async () => {
+    expect(await store.list()).toEqual([]);
+    expect(await store.find("kitchen-tablet")).toBeUndefined();
+    expect((await store.create("Kitchen tablet", "tok")).id).toBe(
+      "kitchen-tablet",
+    );
   });
 
   // Renaming: the label moves, the id does not.

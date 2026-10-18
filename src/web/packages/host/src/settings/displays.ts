@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ChartRefreshRate } from "@vigilia/scene-fabric";
 import { DEVICE_ID_PATTERN } from "./devices.js";
@@ -221,34 +221,70 @@ function normalizeRecord(input: unknown): DisplayRecord | undefined {
   };
 }
 
-async function readDisplays(file: string): Promise<DisplayRecord[]> {
+interface DisplayFileRead {
+  /** What the file holds; empty when it could not be read, so reads fail closed. */
+  readonly displays: DisplayRecord[];
+  /**
+   * Present when the file is there and unusable. A reader may report no
+   * displays, but a mutator must not write back: the file is the owner's only
+   * copy of their displays and credentials.
+   */
+  readonly failure?: string;
+}
+
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isMissing(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
+}
+
+async function readDisplays(file: string): Promise<DisplayFileRead> {
+  let raw: string;
+
+  try {
+    raw = await readFile(file, "utf8");
+  } catch (error) {
+    // A missing file is a fresh install, not a failure. Anything else — a
+    // permission, a directory, a bad sector — is a file we cannot account for.
+    if (isMissing(error)) return { displays: [] };
+    return { displays: [], failure: describe(error) };
+  }
+
   let parsed: unknown;
 
   try {
-    parsed = JSON.parse(await readFile(file, "utf8"));
-  } catch {
-    // No file, or an unreadable one: no display has been given an identity.
-    return [];
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    // A present file that does not parse is not an empty one.
+    return { displays: [], failure: describe(error) };
   }
 
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return [];
+    return { displays: [], failure: "the file does not hold an object" };
   }
 
-  const raw = (parsed as Record<string, unknown>)["displays"];
-  if (!Array.isArray(raw)) return [];
+  const rawDisplays = (parsed as Record<string, unknown>)["displays"];
+  if (rawDisplays !== undefined && !Array.isArray(rawDisplays)) {
+    return { displays: [], failure: '"displays" is not a list' };
+  }
 
   const displays: DisplayRecord[] = [];
   const seen = new Set<string>();
 
-  for (const entry of raw) {
+  for (const entry of rawDisplays ?? []) {
     const record = normalizeRecord(entry);
     if (record === undefined || seen.has(record.id)) continue;
     seen.add(record.id);
     displays.push(record);
   }
 
-  return displays;
+  return { displays };
 }
 
 function rateOrThrow(value: unknown): ChartRefreshRate {
@@ -270,7 +306,34 @@ export function createDisplayStore(
 
   const save = async (displays: readonly DisplayRecord[]): Promise<void> => {
     await mkdir(directory, { recursive: true });
-    await writeFile(file, `${JSON.stringify({ displays }, null, 2)}\n`, "utf8");
+    // Written beside the target and renamed over it, so a crash mid-write
+    // leaves the previous file rather than a truncated one.
+    const temporary = path.join(
+      directory,
+      `${FILE}.${randomBytes(6).toString("hex")}.tmp`,
+    );
+    await writeFile(
+      temporary,
+      `${JSON.stringify({ displays }, null, 2)}\n`,
+      "utf8",
+    );
+    await rename(temporary, file);
+  };
+
+  /**
+   * The displays, or a refusal. Every mutator is read-modify-write, so writing
+   * over a file it could not read would persist that failure as emptiness.
+   */
+  const readOrThrow = async (): Promise<DisplayRecord[]> => {
+    const { displays, failure } = await readDisplays(file);
+
+    if (failure !== undefined) {
+      throw new Error(
+        `${file} could not be read, so it was not written: ${failure}`,
+      );
+    }
+
+    return displays;
   };
 
   const add = async (
@@ -282,7 +345,7 @@ export function createDisplayStore(
     },
   ): Promise<DisplayRecord> => {
     const name = normalizeLabel(label);
-    const displays = await readDisplays(file);
+    const displays = await readOrThrow();
     const taken = new Set(displays.map((display) => display.id));
     const slug = displayIdFrom(name, "");
 
@@ -313,7 +376,7 @@ export function createDisplayStore(
 
   return {
     async list(): Promise<readonly DisplayRecord[]> {
-      return readDisplays(file);
+      return (await readDisplays(file)).displays;
     },
 
     create(label, token): Promise<DisplayRecord> {
@@ -325,7 +388,9 @@ export function createDisplayStore(
     },
 
     async find(id): Promise<DisplayRecord | undefined> {
-      return (await readDisplays(file)).find((record) => record.id === id);
+      return (await readDisplays(file)).displays.find(
+        (record) => record.id === id,
+      );
     },
 
     async authenticate(token): Promise<DisplayRecord | undefined> {
@@ -334,13 +399,13 @@ export function createDisplayStore(
       if (token.length === 0) return undefined;
 
       const hash = hashToken(token);
-      return (await readDisplays(file)).find(
+      return (await readDisplays(file)).displays.find(
         (record) => record.tokenHash === hash,
       );
     },
 
     async rotate(id, token): Promise<DisplayRecord | undefined> {
-      const displays = await readDisplays(file);
+      const displays = await readOrThrow();
       const index = displays.findIndex((record) => record.id === id);
       const found = displays[index];
 
@@ -355,7 +420,7 @@ export function createDisplayStore(
     },
 
     async update(id, patch): Promise<DisplayRecord | undefined> {
-      const displays = await readDisplays(file);
+      const displays = await readOrThrow();
       const index = displays.findIndex((record) => record.id === id);
       const found = displays[index];
 
@@ -382,7 +447,7 @@ export function createDisplayStore(
     },
 
     async touch(id, at): Promise<void> {
-      const displays = await readDisplays(file);
+      const displays = await readOrThrow();
       const index = displays.findIndex((record) => record.id === id);
       const found = displays[index];
 
@@ -393,7 +458,7 @@ export function createDisplayStore(
     },
 
     async remove(id): Promise<boolean> {
-      const displays = await readDisplays(file);
+      const displays = await readOrThrow();
       const remaining = displays.filter((record) => record.id !== id);
 
       if (remaining.length === displays.length) return false;
