@@ -97,8 +97,9 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(async () => {
-          // `ignoreSearch` because the display URL carries a theme and a
-          // session the stored key does not, and both are the same document.
+          // The key it was stored under, not the URL that asked for it: the
+          // display's own query carries a theme and a session, and the
+          // document is the same bytes either way.
           const cached = await caches.match(SHELL_DOCUMENT);
           return cached ?? Response.error();
         }),
