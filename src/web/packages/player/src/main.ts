@@ -28,6 +28,7 @@ import { mountDisplayControls } from "./display-controls.js";
 import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
 import { followPublished } from "./publish-follower.js";
+import { registerServiceWorker } from "./service-worker.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   loadDisplayPreferences,
@@ -317,4 +318,7 @@ function exposeForDiagnostics(
   Reflect.set(window, "vigilia", { handle, live });
 }
 
+// Before the theme, and outside the failure path: a display that cannot load
+// its theme is still a display that can install.
+registerServiceWorker();
 void start(artboardHost);

@@ -22,6 +22,9 @@ blob-report/
 # The secure-origin proof's host store, which is where a real CA private key is
 # minted: ignored for the reason the others are and one more (`vg-580`).
 .e2e-host-app-secure/
+# The installability proof's host store: its own library copy, on its own port,
+# so a worker registered against it cannot control the shared host (vg-577).
+.e2e-host-app-pwa/
 # Downloaded e2e font bytes; the licence is declared in the fixture envelope.
 .e2e-font-cache/
 # Staged third-party release binaries (LibreHardwareMonitor). Provenance is

@@ -1020,7 +1020,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
       url.pathname.startsWith("/assets/") ||
       // The browser probes this unprompted and without a token, and the repo
       // already links the mark deliberately so it does not.
-      url.pathname === "/favicon.svg";
+      url.pathname === "/favicon.svg" ||
+      // The two files an installable display needs, and the browser fetches
+      // both itself: `register()` carries no session and a `<link
+      // rel="manifest">` fetch carries none either, so a paired phone was
+      // refused the manifest and the worker script and the player would not
+      // install. Same rule as the assets beside them — bundle bytes, no
+      // reading, no theme, no device (docs/decisions/0019, 0071).
+      url.pathname === "/manifest.webmanifest" ||
+      url.pathname === "/sw.js";
 
     // Display reads stay open on loopback; from the LAN they need a session so
     // dashboard content is not served to every device on the network.

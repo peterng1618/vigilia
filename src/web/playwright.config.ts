@@ -52,11 +52,16 @@ const EDGE_PROBE_SPEC = /live-chart-edge\.spec\.ts/;
  * `/api/publish` and `/api/published` are only same-origin there — and a theme
  * store on disk is a fixture the preview projects do not provide. Like the host
  * specs they cannot run under the preview projects, and they cannot share their
- * port — `publish-header` owns 4227, `publish-loop` owns 4229 and
- * `editor-invalid-theme` owns 4231.
+ * port — `publish-header` owns 4227, `publish-loop` owns 4229,
+ * `editor-invalid-theme` owns 4231 and `host-secure-origin` owns 4233.
+ *
+ * The installability proof joins them for the reason `host-secure-origin` is
+ * here rather than in the host project: it starts its own host bound to the
+ * LAN and launches its own browser, because a service worker needs a secure
+ * context and `localhost` is one whatever the host does. It owns 4235.
  */
 const OWN_HOST_SPEC =
-  /(publish-(header|loop)|editor-invalid-theme|host-secure-origin)\.spec\.ts/;
+  /(publish-(header|loop)|editor-invalid-theme|host-secure-origin|host-pwa)\.spec\.ts/;
 
 /**
  * The rebuild drives its own preview on its own port, under

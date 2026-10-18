@@ -10,6 +10,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
     <title>Vigilia</title>
+    <!-- What makes this display installable, and `display: standalone` in it
+         is what draws without browser chrome on a client with no fullscreen
+         API (vg-577). The worker it points at is registered from
+         `src/service-worker.ts`. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <!-- The display is its own document, so it needs its own copy of the mark:
          without a link the browser probes `/favicon.ico` and logs a 404 on
          every load. Kept in step by hand with the editor's, which is the same

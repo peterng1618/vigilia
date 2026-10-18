@@ -9,6 +9,10 @@ const CONTENT_TYPES = new Map<string, string>([
   [".mjs", "text/javascript; charset=utf-8"],
   [".css", "text/css; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
+  // The registered media type for the extension. `application/json` would also
+  // be read, but this file is a manifest and the allowlist should say so; the
+  // player is the only bundle that ships one (docs/decisions/0071).
+  [".webmanifest", "application/manifest+json"],
   [".svg", "image/svg+xml"],
   [".png", "image/png"],
   [".jpg", "image/jpeg"],

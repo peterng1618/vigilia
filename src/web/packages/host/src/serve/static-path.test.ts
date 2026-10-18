@@ -102,6 +102,7 @@ describe("contentTypeFor", () => {
     ["main.js", "text/javascript; charset=utf-8"],
     ["style.css", "text/css; charset=utf-8"],
     ["theme.json", "application/json; charset=utf-8"],
+    ["manifest.webmanifest", "application/manifest+json"],
     ["icon.svg", "image/svg+xml"],
     ["font.woff2", "font/woff2"],
   ])("types %s correctly", (file, expected) => {
