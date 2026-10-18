@@ -25,6 +25,7 @@ import {
   type HostServerOptions,
 } from "./server.js";
 import { newToken } from "./session/pairing.js";
+import { createPairingCodeStore } from "./session/pairing-code.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import {
   ASSIGNABLE_GROUPS,
@@ -1646,6 +1647,261 @@ describe("The pairing routes mint, rotate, rename and remove displays (ruling 12
     expect(list.text()).not.toContain(fresh);
     expect(list.text()).not.toContain(hashToken(fresh));
     expect((await listed())[0]).not.toHaveProperty("tokenHash");
+  });
+});
+
+/**
+ * The other route reachable unpaired (spec § "Pairing a display that has no
+ * camera"): a device with no camera types the one-time code the host is showing
+ * and gets a durable credential back.
+ *
+ * The code is the only short-lived secret in the exchange, so what these cases
+ * pin is the window — one code at a time, a mismatch that never burns it, a
+ * penalty that is a delay rather than a lockout, and one refusal for every way a
+ * code can fail.
+ */
+describe("A display with no camera pairs by typing the one-time code", () => {
+  let dir: string;
+  let displays: ReturnType<typeof createDisplayStore>;
+  let codes: ReturnType<typeof createPairingCodeStore>;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const LAN = { remoteAddress: "192.168.1.50" };
+
+  function host(
+    overrides: Partial<HostServerOptions> = {},
+  ): ReturnType<typeof createHostServer> {
+    return createHostServer({
+      registry: new ProviderRegistry([]),
+      // The pairing page is served from the admin root, so this is the one
+      // describe that needs it: `/pair` is a phone's first request.
+      bundles: { player: dir, editor: dir, admin: ADMIN_DIR },
+      themeStore: createThemeStore(dir),
+      displays,
+      pairingCodes: codes,
+      ...overrides,
+    });
+  }
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-pairing-code-"));
+    displays = createDisplayStore(dir);
+    // The penalty is a real delay in production and no wait at all here: the
+    // cases assert what it asks for, and waiting it out would only be slower.
+    codes = createPairingCodeStore({ wait: async () => {} });
+    hosted = host();
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  /** The code the card is showing, read the way the card reads it. */
+  async function shown(
+    server: ListenableServer = hosted.server,
+  ): Promise<string> {
+    const answer = await request(server, "GET", "/api/pairing/code");
+    expect(answer.status).toBe(200);
+    return (answer.json() as { code: string }).code;
+  }
+
+  /** A claim from off loopback, which is every display that has not paired. */
+  function claim(
+    body: unknown,
+    server: ListenableServer = hosted.server,
+  ): ReturnType<typeof request> {
+    return request(
+      server,
+      "POST",
+      "/api/pairing/claim",
+      JSON.stringify(body),
+      LAN,
+    );
+  }
+
+  it("pairs a display from the code alone, with no credential and off loopback", async () => {
+    const code = await shown();
+
+    const answer = await claim({ code, label: "Kitchen tablet" });
+    expect(answer.status).toBe(200);
+
+    const body = answer.json() as { displayId: string; token: string };
+    expect(body.displayId).toBe("kitchen-tablet");
+    // The credential is the record's and it is durable (ruling 12): the code is
+    // spent by the exchange and what it bought outlives it.
+    expect((await displays.authenticate(body.token))?.id).toBe(
+      "kitchen-tablet",
+    );
+    expect(codes.current()).toBeUndefined();
+
+    // And the display is a row the owner can see and remove by name.
+    const listed = await request(hosted.server, "GET", "/api/pairing/sessions");
+    expect(
+      (listed.json() as { displays: readonly { id: string }[] }).displays.map(
+        (row) => row.id,
+      ),
+    ).toEqual(["kitchen-tablet"]);
+  });
+
+  it("answers one refusal for every way a code can fail", async () => {
+    const code = await shown();
+    const unknown = await claim({ code: "ZZZZZZ", label: "Kitchen tablet" });
+    expect(unknown.status).toBe(404);
+
+    // Spent.
+    expect((await claim({ code, label: "Kitchen tablet" })).status).toBe(200);
+    const spent = await claim({ code, label: "Office TV" });
+    expect(spent.status).toBe(404);
+    expect(spent.text()).toBe(unknown.text());
+
+    // Expired, on a host whose window has already closed.
+    const expired = host({
+      pairingCodes: createPairingCodeStore({ ttlMs: 0, wait: async () => {} }),
+    });
+    try {
+      const stale = await shown(expired.server);
+      const answer = await claim(
+        { code: stale, label: "Office TV" },
+        expired.server,
+      );
+      expect(answer.status).toBe(404);
+      expect(answer.text()).toBe(unknown.text());
+    } finally {
+      await expired.close();
+    }
+
+    // A refusal mints nothing, whatever it was that failed.
+    expect((await displays.list()).map((row) => row.id)).toEqual([
+      "kitchen-tablet",
+    ]);
+  });
+
+  it("does not let a wrong guess close the window", async () => {
+    const code = await shown();
+
+    for (let guess = 0; guess < 5; guess += 1) {
+      expect(
+        (await claim({ code: "ZZZZZZ", label: "Kitchen tablet" })).status,
+      ).toBe(404);
+    }
+
+    // Five wrong guesses, and the person typing the sixth still pairs: one live
+    // code has nothing a mismatch could have named, so nothing was spent.
+    expect((await claim({ code, label: "Kitchen tablet" })).status).toBe(200);
+    expect((await displays.list()).map((row) => row.id)).toEqual([
+      "kitchen-tablet",
+    ]);
+  });
+
+  it("answers a guesser with a growing delay, and never with a lockout", async () => {
+    const waited: number[] = [];
+    const guarded = host({
+      pairingCodes: createPairingCodeStore({
+        wait: async (ms) => {
+          waited.push(ms);
+        },
+      }),
+    });
+
+    try {
+      const code = await shown(guarded.server);
+
+      for (let guess = 0; guess < 5; guess += 1) {
+        const refused = await claim(
+          { code: "ZZZZZZ", label: "Kitchen tablet" },
+          guarded.server,
+        );
+        // The same answer however long the wait: a distinct one would say
+        // whether a code exists, which is the thing this route must not say.
+        expect(refused.status).toBe(404);
+      }
+
+      expect(waited).toEqual([250, 500, 1000, 2000]);
+
+      // And the right code still succeeds, which is the whole difference
+      // between a penalty and a lockout.
+      expect(
+        (await claim({ code, label: "Kitchen tablet" }, guarded.server)).status,
+      ).toBe(200);
+    } finally {
+      await guarded.close();
+    }
+  });
+
+  it("refuses a name that would mint a reserved id, and does not spend the code", async () => {
+    const code = await shown();
+
+    for (const label of ["this-pc", "default"]) {
+      const refused = await claim({ code, label });
+      expect(refused.status, label).toBe(400);
+      expect(refused.text()).toMatch(/reserved display id/);
+    }
+
+    // The window is untouched: a name the store refuses is the caller's to fix,
+    // and spending the code would take it from the person typing it.
+    expect(codes.current()?.code).toBe(code);
+    expect((await claim({ code, label: "Kitchen tablet" })).status).toBe(200);
+  });
+
+  it("reads the live code and does not rotate it", async () => {
+    const first = await shown();
+
+    // A card polling for its countdown must not move the code out from under
+    // whoever is typing it: the same window answers the same code.
+    expect(await shown()).toBe(first);
+    expect((await claim({ code: first, label: "Kitchen tablet" })).status).toBe(
+      200,
+    );
+
+    // And once it is spent, the next read is a new window rather than the spent
+    // code again.
+    expect(await shown()).not.toBe(first);
+  });
+
+  it("keeps the code on this PC, and refuses off loopback before minting one", async () => {
+    const minted: string[] = [];
+    const watching = host({
+      pairingCodes: {
+        ...codes,
+        mint: () => {
+          minted.push("mint");
+          return codes.mint();
+        },
+      },
+    });
+
+    try {
+      const refused = await request(
+        watching.server,
+        "GET",
+        "/api/pairing/code",
+        undefined,
+        LAN,
+      );
+      expect(refused.status).toBe(403);
+      expect(refused.text()).toBe("Pairing is available on this PC only.");
+      // The guard precedes the mint, and a store that records its calls is how
+      // that is checkable: a route that minted first would leave a mark here.
+      expect(minted).toEqual([]);
+    } finally {
+      await watching.close();
+    }
+  });
+
+  it("serves the page a phone with no credential opens", async () => {
+    const answer = await request(
+      hosted.server,
+      "GET",
+      "/pair?code=ABC234",
+      undefined,
+      LAN,
+    );
+    expect(answer.status).toBe(200);
+    expect(answer.headers["content-type"]).toContain("text/html");
+    // The page is the exchange's only client: nothing else it does reads the
+    // host, so it is the one document an unpaired device may have.
+    expect(answer.text()).toContain("/api/pairing/claim");
   });
 });
 

@@ -20,10 +20,12 @@ import { PublishControl } from "./publish-control.js";
 import type { EditorActionFacade } from "./session-facade.js";
 import { PublishSurfaceStore } from "./shell-stores.js";
 
-const token = "t".repeat(43);
+const CODE = "ABC234";
 const EXPIRES = "2026-10-08T00:00:00.000Z";
 const ADDRESS = "192.168.1.42";
 const PORT = 5227;
+/** The URL the symbol carries: the page a phone opens, with the code in it. */
+const PAIR_URL = `http://${ADDRESS}:${PORT}/pair?code=${CODE}`;
 
 // Base UI's popover needs two browser APIs jsdom has none of: floating-ui
 // observes its anchor, and the popup waits for its own open transition before
@@ -102,10 +104,14 @@ function hostServing(options: {
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.startsWith("/api/pairing/sessions")) {
+      // The code is read, never minted: the editor has no mint left, and the
+      // host is the only thing that owns the window.
+      if (url.startsWith("/api/pairing/code")) {
         return new Response(
-          JSON.stringify({ session: { token, expiresAt: EXPIRES } }),
-          { status: 201 },
+          JSON.stringify({ code: CODE, expiresAt: EXPIRES }),
+          {
+            status: 200,
+          },
         );
       }
 
@@ -278,12 +284,14 @@ it("opens the surface without moving the host, and keeps every fact behind the p
 
   expect(hostSwitch()?.getAttribute("aria-pressed")).toBe("true");
   expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
-  // The address again, as a symbol: a QR of the host's own address is an
-  // affordance, not a credential, and the code Task 1.4 adds re-points it.
-  const qr = document.querySelector("[data-vigilia-qr]");
-  expect(qr?.getAttribute("aria-label")).toBe(
-    `QR code: http://${ADDRESS}:${PORT}`,
+  // The code in type beside the address, because a device with no camera has
+  // nowhere else to read it, and the symbol carries the same one.
+  expect(document.querySelector("[data-vigilia-pair-code]")?.textContent).toBe(
+    CODE,
   );
+  expect(popupText()).toContain(uiCopy.publish.reserveAddress);
+  const qr = document.querySelector("[data-vigilia-qr]");
+  expect(qr?.getAttribute("aria-label")).toBe(`QR code: ${PAIR_URL}`);
   // A camera needs modules, not a thumbnail.
   expect(Number(qr?.getAttribute("width"))).toBeGreaterThanOrEqual(120);
 });
@@ -352,7 +360,7 @@ it("turns the host on from inside the surface, and shows what it is serving", as
   expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
   expect(
     document.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label"),
-  ).toBe(`QR code: http://${ADDRESS}:${PORT}`);
+  ).toBe(`QR code: ${PAIR_URL}`);
 });
 
 it("binds the §145 warning to the control that makes the choice", async () => {
@@ -422,12 +430,13 @@ it("shows the address the host named, with a code for it", async () => {
   await vi.waitFor(() =>
     expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`),
   );
-  // The symbol carries the address and nothing else: the credential is answered
-  // once and stored hashed, so there is none to encode here, and the code a phone
-  // types arrives with Task 1.4.
+  // **The symbol carries the code, not a credential**: it opens the page a
+  // camera-less display would have typed at, and the code is printed beside it
+  // for the device that has to type it. Both are the same mint.
   expect(
     document.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label"),
-  ).toBe(`QR code: http://${ADDRESS}:${PORT}`);
+  ).toBe(`QR code: ${PAIR_URL}`);
+  expect(popupText()).toContain(CODE);
   expect(popupText()).toContain(uiCopy.publish.warning);
 });
 

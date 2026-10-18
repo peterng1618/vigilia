@@ -24,6 +24,10 @@ import {
   resolveStaticPath,
 } from "./serve/static-path.js";
 import { newToken } from "./session/pairing.js";
+import {
+  createPairingCodeStore,
+  type PairingCodeStore,
+} from "./session/pairing-code.js";
 import type { ActiveThemeStore } from "./settings/active-theme.js";
 import {
   type AssignableGroup,
@@ -69,6 +73,11 @@ import { SseConnection } from "./transport/sse.js";
 /** Non-loopback displays present this header; loopback never needs to. */
 const SESSION_HEADER = "x-vigilia-session";
 
+/** One refusal for every way a code can fail — unknown, expired, spent or
+ *  simply wrong. A caller that could tell them apart could search the space. */
+const NO_PAIRING_CODE =
+  "That pairing code is not the one this host is showing.";
+
 /** What a theme read answers: the stored record, or undefined for a theme the
  *  store will not serve. */
 type ThemeRecord = Awaited<ReturnType<ThemeStore["read"]>>;
@@ -91,6 +100,11 @@ export interface HostServerOptions {
    *  Omit to disable pairing entirely: a loopback-only server needs none, and a
    *  non-loopback display is then refused rather than trusted. */
   readonly displays?: DisplayStore;
+  /** The one-time code a display with no camera types, and the window it is
+   *  valid in. Supplied so the launcher can print a link carrying the same code
+   *  the claim route accepts; a caller with no launcher gets a store of its
+   *  own, which is what the unit suite wants. */
+  readonly pairingCodes?: PairingCodeStore;
   /** Device assignments (§145). Omit to keep defaults with no configuration. */
   readonly devices?: DeviceSettingsStore;
   /** Per-theme answers. Omitted when the host stores none. */
@@ -560,6 +574,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
   let lastUnmapped: readonly string[] = [];
   const displays = options.displays;
+  const pairingCodes = options.pairingCodes ?? createPairingCodeStore();
   const saved = options.rememberLan;
   const devices = options.devices;
   const display = options.display;
@@ -743,9 +758,110 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // The page a device with no credential opens, so it answers before every
+    // gate below. It is served from the admin root the settings page shares —
+    // source, not a bundle — and it carries no reading of its own: the code it
+    // was opened with is what pairs the device, and the exchange is its only
+    // call.
+    if (url.pathname === "/pair" && request.method === "GET") {
+      if (bundles.admin === undefined) {
+        sendText(
+          response,
+          404,
+          "The pairing page is missing from this installation.",
+        );
+        return;
+      }
+
+      await serveStatic(
+        response,
+        bundles.admin,
+        "/pair.html",
+        "The pairing page is missing from this installation.",
+      );
+      return;
+    }
+
     // Pairing is an admin action: it mints display credentials, so it stays
     // loopback-only even when the server is LAN-reachable.
     if (url.pathname.startsWith("/api/pairing")) {
+      // The one exception, and the reason a camera-less display can pair at
+      // all: the claim exchanges a code for a credential, so it is reached by a
+      // device that has no credential, and it answers before the gate the rest
+      // of this block is behind.
+      if (url.pathname === "/api/pairing/claim" && request.method === "POST") {
+        if (displays === undefined) {
+          sendText(response, 404, "Pairing is not enabled on this host.");
+          return;
+        }
+
+        let asked: { readonly code?: unknown; readonly label?: unknown };
+
+        try {
+          const parsed: unknown = JSON.parse(await readBody(request));
+          if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            Array.isArray(parsed)
+          ) {
+            throw new Error("That is not a pairing request.");
+          }
+          asked = parsed as {
+            readonly code?: unknown;
+            readonly label?: unknown;
+          };
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
+        if (typeof asked.code !== "string") {
+          sendText(response, 400, "A pairing code is required.");
+          return;
+        }
+
+        if (typeof asked.label !== "string") {
+          sendText(response, 400, "A display name is required.");
+          return;
+        }
+
+        // The store's own label→id rule, asked **before** the code is claimed:
+        // a name it would refuse is the caller's to fix, and claiming first
+        // would spend the window on a name nobody could have used.
+        try {
+          mintedDisplayId(asked.label);
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
+        const claimed = await pairingCodes.claim(
+          asked.code,
+          request.socket.remoteAddress ?? "unknown",
+        );
+
+        if (!claimed) {
+          sendText(response, 404, NO_PAIRING_CODE);
+          return;
+        }
+
+        // A durable credential (ruling 12): the code is the only short-lived
+        // secret in this exchange, and what it buys lasts until the owner
+        // removes the client by name.
+        const token = newToken();
+        const display = await displays.create(asked.label, token);
+        sendJson(response, 200, { displayId: display.id, token });
+        return;
+      }
+
       if (!isLoopbackRemote(request.socket.remoteAddress)) {
         sendText(response, 403, "Pairing is available on this PC only.");
         return;
@@ -753,6 +869,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       if (displays === undefined) {
         sendText(response, 404, "Pairing is not enabled on this host.");
+        return;
+      }
+
+      // A read, not a rotation: the card polls this for its countdown, and a
+      // poll that minted would move the code out from under whoever is typing
+      // it (R16). A code with a window left is answered as it stands.
+      if (url.pathname === "/api/pairing/code" && request.method === "GET") {
+        const live = pairingCodes.current() ?? pairingCodes.mint();
+        sendJson(response, 200, { code: live.code, expiresAt: live.expiresAt });
         return;
       }
 

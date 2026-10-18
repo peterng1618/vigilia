@@ -16,6 +16,7 @@ import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { CA_CERTIFICATE_PATH, createHostServer } from "./server.js";
+import { createPairingCodeStore } from "./session/pairing-code.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
@@ -125,6 +126,11 @@ export async function run(argv: readonly string[]): Promise<number> {
   // the control can turn it on after launch; the binding decides whether anything
   // but loopback can reach them at all (§145).
   const displays = createDisplayStore(settingsDir);
+  // The one-time code, made here rather than inside the server so the link this
+  // run prints carries the code the claim route will accept. A code is
+  // regenerable and leaves no record, which is the property a printed link
+  // needs — a durable credential can only be answered once.
+  const pairingCodes = createPairingCodeStore();
   const hosting = createHostingSettingsStore(settingsDir);
   const storedHosting = await hosting.read();
   // Everything the host knows about *this* machine lives in one settings
@@ -200,6 +206,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     thumbnails: createThumbnailStore(themesDir),
     themeSettings: createThemeSettingsStore(settingsDir),
     displays,
+    pairingCodes,
     devices: deviceSettings,
     display: displaySettings,
     fontFavorites,
@@ -373,13 +380,15 @@ export async function run(argv: readonly string[]): Promise<number> {
     console.log(style("2", "  The editor stays restricted to this PC."));
 
     const hostPart = lan === undefined ? displayHost : lan;
-    // **No pairing link is printed.** A credential is stored hashed and answered
-    // exactly once, so a link re-printed on the next launch would be one the host
-    // does not accept — and minting a display per run leaves a record, with a
-    // credential that never expires, for a link nobody used. Pairing is the
-    // editor's code flow, which mints on demand.
+    // The link carries a **code**, not a credential. A stored hash cannot be
+    // printed again and minting a display per run leaves a record for a link
+    // nobody used, so what this prints is the one secret that can be made again
+    // — and it pairs nothing until somebody claims it (R9).
+    const code = pairingCodes.mint();
     console.log(style("2", "\n  This host is reachable on this network at:"));
-    console.log(`  ${url.replace(`://${displayHost}`, `://${hostPart}`)}/`);
+    console.log(`  http://${hostPart}:${bound}/`);
+    console.log(style("2", "  Pair a display that has no camera at:"));
+    console.log(`  http://${hostPart}:${bound}/pair?code=${code.code}`);
   } else {
     console.log(
       style("2", "\n  Local only. Pass --host 0.0.0.0 to let phones connect."),

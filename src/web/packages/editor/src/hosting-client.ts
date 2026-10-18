@@ -16,7 +16,6 @@ export interface HostingAnswer {
    *  host cannot rebind while that answer is on its socket — so this is where
    *  one is read from, on the read that follows. */
   readonly refusal: string | null;
-  readonly session?: { readonly token: string; readonly expiresAt: string };
 }
 
 const isString = (value: unknown): value is string => typeof value === "string";
@@ -71,24 +70,33 @@ async function readSettled(
   return undefined;
 }
 
-/** Mints a display credential. The host refuses anything but loopback, which is
- *  where the editor already is (§145). */
-export async function mintSession(
+/** The one-time code a display types at `/pair`, and when it stops being the
+ *  answer. Read and never minted: the window is the host's, and the host is
+ *  where the countdown's expiry is decided. */
+export interface PairingCode {
+  readonly code: string;
+  readonly expiresAt: string;
+}
+
+/** Reads the code the host is showing.
+ *
+ *  A **read**: the host mints one only when it has no live code, so a card that
+ *  polls this for its countdown cannot rotate the code out from under whoever
+ *  is typing it. The route is loopback-only, which is where the editor is. */
+export async function readPairingCode(
   fetcher: typeof fetch = fetch,
-): Promise<HostingAnswer["session"]> {
+): Promise<PairingCode | undefined> {
   try {
-    const response = await fetcher("/api/pairing/sessions?label=display", {
-      method: "POST",
-    });
+    const response = await fetcher("/api/pairing/code");
     if (!response.ok) return undefined;
 
-    const { session } = (await response.json()) as {
-      session?: { token?: unknown; expiresAt?: unknown };
+    const body = (await response.json()) as {
+      code?: unknown;
+      expiresAt?: unknown;
     };
-    if (!isString(session?.token) || !isString(session.expiresAt))
-      return undefined;
+    if (!isString(body.code) || !isString(body.expiresAt)) return undefined;
 
-    return { token: session.token, expiresAt: session.expiresAt };
+    return { code: body.code, expiresAt: body.expiresAt };
   } catch {
     return undefined;
   }
@@ -133,11 +141,12 @@ export async function setLan(
   }
 }
 
-/** The URL the QR carries. The token rides in the query because `EventSource`
- *  cannot set a request header, which is why it is short-lived. */
+/** The URL the QR carries: the page a display with no camera opens, with the
+ *  code it would otherwise have to type already in it. A code and not a
+ *  credential, so the URL is worth reading over a shoulder exactly once. */
 export function displayUrl(
   answer: { readonly address: string; readonly port: number },
-  token: string,
+  code: string,
 ): string {
-  return `http://${answer.address}:${answer.port}/?session=${encodeURIComponent(token)}`;
+  return `http://${answer.address}:${answer.port}/pair?code=${encodeURIComponent(code)}`;
 }

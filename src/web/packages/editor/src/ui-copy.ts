@@ -496,6 +496,14 @@ export const uiCopy = {
      *  surface it is on before it reads them. */
     surface: "Publishing",
     address: "Phone address",
+    /** The one-time code, printed beside the address because the symbol that
+     *  carries it needs a camera and the device may not have one. */
+    code: "Pairing code",
+    /** The one step that makes an address change invisible, said here because
+     *  the card is the only moment the owner is thinking about it (spec §
+     *  "Finding the host after its address changes"). */
+    reserveAddress:
+      "Reserve this address in your router, or give this PC a name, and the display's URL never breaks.",
     warning:
       "Plain HTTP on your own network — trusted networks only, never the internet.",
     copy: "Copy link",

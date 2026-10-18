@@ -1,4 +1,10 @@
-import { type HostingAnswer, readHosting, setLan } from "../hosting-client.js";
+import {
+  type HostingAnswer,
+  type PairingCode,
+  readHosting,
+  readPairingCode,
+  setLan,
+} from "../hosting-client.js";
 
 /** What the shell knows about the host behind it, and the one place that answers
  *  "is this editor publishing".
@@ -13,12 +19,11 @@ export type HostingSnapshot =
   | {
       readonly kind: "known";
       readonly answer: HostingAnswer;
-      /** The credential a phone pairs with, which is not the editor session.
-       *  **Always absent until Task 1.4 lands the code flow**: a durable
-       *  credential is minted once and stored hashed, so minting on every read
-       *  would leave a display — and a credential that never expires — behind
-       *  each one, and the control would have nothing it could show for it. */
-      readonly pairing: HostingAnswer["session"] | undefined;
+      /** The one-time code a phone types, which is what the card prints beside
+       *  the address and the symbol. Read from the host, never minted here: the
+       *  host owns the window, and a read that arrives while the LAN is off
+       *  would mint a code nobody can see. */
+      readonly pairing: PairingCode | undefined;
       /** A refusal, in the host's own words. */
       readonly reason: string | undefined;
       /** The state a toggle is asking for, while the host is deciding. */
@@ -50,6 +55,12 @@ export class HostingStore {
     for (const listener of this.#listeners) listener();
   }
 
+  /** The code, read only while the host is serving the LAN: that is the only
+   *  state the card draws it in, and a host on loopback has no display to pair. */
+  async #code(answer: HostingAnswer): Promise<PairingCode | undefined> {
+    return answer.lan ? await readPairingCode() : undefined;
+  }
+
   /** The host's first answer. An unread host is `absent`, not "not live". A
    *  build with no `fetch` at all reaches the same place, which is why this
    *  catches rather than letting the constructor's promise reject unhandled. */
@@ -63,10 +74,7 @@ export class HostingStore {
       this.#emit({
         kind: "known",
         answer,
-        // Nothing is minted here: the host answers a credential once and keeps
-        // only its hash, so a mint per read is a display per read. Task 1.4
-        // replaces this with the code exchange.
-        pairing: undefined,
+        pairing: await this.#code(answer),
         reason: undefined,
         pending: undefined,
       });
@@ -96,7 +104,7 @@ export class HostingStore {
       this.#emit({
         kind: "known",
         answer,
-        pairing: answer.lan ? current.pairing : undefined,
+        pairing: await this.#code(answer),
         reason: outcome.reason,
         pending: undefined,
       });
@@ -107,7 +115,9 @@ export class HostingStore {
     this.#emit({
       kind: "known",
       answer,
-      pairing: undefined,
+      // Read after the move: a code fetched before the LAN came on is one the
+      // host may have replaced, and the card shows this the moment it opens.
+      pairing: await this.#code(answer),
       reason: answer.refusal ?? undefined,
       pending: undefined,
     });

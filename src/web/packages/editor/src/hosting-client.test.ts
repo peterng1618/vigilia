@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { displayUrl, mintSession, readHosting } from "./hosting-client.js";
+import { displayUrl, readHosting, readPairingCode } from "./hosting-client.js";
 
 const answer = (
   url: string,
@@ -58,38 +58,52 @@ describe("readHosting", () => {
   });
 });
 
-describe("mintSession", () => {
-  it("mints from the host, which is the only thing that may", async () => {
+describe("readPairingCode", () => {
+  it("reads the code the host is showing, and mints nothing", async () => {
     const fetcher = vi.fn(
       async () =>
         new Response(
           JSON.stringify({
-            session: {
-              token: "t".repeat(43),
-              expiresAt: "2026-10-08T00:00:00.000Z",
-            },
+            code: "ABC234",
+            expiresAt: "2026-10-18T10:10:00.000Z",
           }),
-          { status: 201 },
+          { status: 200 },
         ),
     ) as unknown as typeof fetch;
 
-    expect(await mintSession(fetcher)).toEqual({
-      token: "t".repeat(43),
-      expiresAt: "2026-10-08T00:00:00.000Z",
+    expect(await readPairingCode(fetcher)).toEqual({
+      code: "ABC234",
+      expiresAt: "2026-10-18T10:10:00.000Z",
     });
+    // A GET, because a read that minted would rotate the code out from under
+    // whoever is typing it — the card polls this for its countdown.
+    const call = (
+      fetcher as unknown as {
+        mock: { calls: [string, RequestInit | undefined][] };
+      }
+    ).mock.calls[0];
+    expect(call?.[0]).toBe("/api/pairing/code");
+    expect(call?.[1]).toBeUndefined();
+  });
+
+  it("answers nothing when the host has no code to show", async () => {
+    const missing = vi.fn(
+      async () => new Response("", { status: 404 }),
+    ) as unknown as typeof fetch;
+    expect(await readPairingCode(missing)).toBeUndefined();
+
+    // A body with no code in it is the same absence: a card that printed a
+    // blank would be showing a code that is not one.
     expect(
-      String(
-        (fetcher as unknown as { mock: { calls: string[][] } }).mock
-          .calls[0]?.[0],
-      ),
-    ).toBe("/api/pairing/sessions?label=display");
+      await readPairingCode(answer("/api/pairing/code", { code: null })),
+    ).toBeUndefined();
   });
 });
 
 describe("displayUrl", () => {
-  it("puts the session in the query, because a script cannot send a header", () => {
-    expect(displayUrl({ address: "192.168.1.42", port: 5227 }, "abc/def")).toBe(
-      "http://192.168.1.42:5227/?session=abc%2Fdef",
+  it("opens the page a camera-less display would have typed at, code and all", () => {
+    expect(displayUrl({ address: "192.168.1.42", port: 5227 }, "ABC234")).toBe(
+      "http://192.168.1.42:5227/pair?code=ABC234",
     );
   });
 });

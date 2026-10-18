@@ -1,5 +1,6 @@
 import { Popover } from "@base-ui/react/popover";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { displayUrl } from "../hosting-client.js";
 import type { PublishSwitch } from "../publish-client.js";
 import { useActiveShortcuts } from "../shortcut-manager/bindings.js";
 import {
@@ -32,6 +33,17 @@ import type { PublishSurfaceStore } from "./shell-stores.js";
  */
 /** The one control that carries the warning, so a fixed id is the whole address. */
 const WARNING_ID = "vigilia-publish-warning";
+
+/** When the code stops being the answer, in the reader's own clock: the host
+ *  answers an instant, and an instant is not what a person reads. A value the
+ *  clock cannot parse is shown as it arrived rather than as a wrong time. */
+function expiryOf(at: string): string {
+  const when = new Date(at);
+
+  return Number.isNaN(when.getTime())
+    ? at
+    : when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 export function PublishControl({
   session,
@@ -114,13 +126,13 @@ export function PublishControl({
   const { answer, reason, pending } = known;
   // **The address is the host's, not a credential's.** It exists only while the
   // LAN is on, so turning it off takes the URL off the screen rather than leaving
-  // a stale one behind — and it is drawn whether or not anything is paired,
-  // because the address is what a display has to reach. It appears as text and as
-  // a QR symbol; the code that pairs a display arrives with Task 1.4's exchange.
+  // a stale one behind — and it is drawn whether or not a code has been read,
+  // because the address is what a display has to reach.
   const shown =
     open && answer.address !== null && answer.port !== null
       ? { address: answer.address, port: answer.port }
       : undefined;
+  const code = known.pairing;
   const label = open
     ? uiCopy.publish.stop
     : pending === true
@@ -200,16 +212,35 @@ export function PublishControl({
                   {uiCopy.publish.address}
                 </span>
                 <code className="editor-shell-publish-url">{`http://${shown.address}:${shown.port}`}</code>
-                {/* **The address again, as a symbol — never a credential.** A QR
-                    of the host's own address is an affordance, so it stays while
-                    the code flow that pairs a display is missing. 5 px per module
-                    because the address alone is a shorter payload than the URL
-                    this used to carry, and a camera needs the same target: the
-                    dom test asserts the box. Task 1.4 re-points it at the code. */}
-                <QrCode
-                  text={`http://${shown.address}:${shown.port}`}
-                  modulePitch={5}
-                />
+                {code === undefined ? null : (
+                  <>
+                    {/* The code in type, because the symbol beside it needs a
+                        camera: one mint, two presentations. */}
+                    <span className="editor-shell-publish-label">
+                      {uiCopy.publish.code}
+                    </span>
+                    <span
+                      className="editor-shell-publish-code"
+                      data-vigilia-pair-code=""
+                    >
+                      {code.code}
+                    </span>
+                    <span className="editor-shell-publish-expiry">
+                      {uiCopy.publish.expires(expiryOf(code.expiresAt))}
+                    </span>
+                    {/* **The symbol, which now carries the code rather than a
+                        credential.** The page it opens asks for nothing else,
+                        so a phone with a camera pairs in one scan and the
+                        credential never appears in a URL. */}
+                    <QrCode
+                      text={displayUrl(shown, code.code)}
+                      modulePitch={5}
+                    />
+                  </>
+                )}
+                <span className="editor-shell-publish-note">
+                  {uiCopy.publish.reserveAddress}
+                </span>
               </>
             )}
           </Popover.Popup>
