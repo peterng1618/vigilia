@@ -260,6 +260,73 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
   await expect.poll(() => list.evaluate((node) => node.scrollTop)).toBe(offset);
 });
 
+/** §7.7's per-pane offsets, on every pane and not only the layer list.
+ *
+ *  The rule is one sentence — "preserve per-pane offsets and disclosure state
+ *  across routine updates" — and `choosePane` implements it once, over a map
+ *  keyed by the rail's slot. The case above pins it for the Composition pane;
+ *  a proof of one pane is a proof of that pane's luck, so this walks all four
+ *  and asserts each one comes back where it was left.
+ *
+ *  **A pane that cannot scroll proves nothing**, so each slot's offset is read
+ *  back off the element after it is written: a pane whose body fits fails here
+ *  with the slot named rather than passing on a `0` that survived a swap.
+ *  Composition is opened to its full length first for the reason the case above
+ *  gives — ten collapsed cards fit a 721px panel. Add, Tokens and Document
+ *  overflow at rest (93, 1177 and 168px at 1280×720), which is where the two
+ *  surfaces the archived bullet named — Document and Assets — are covered.
+ *
+ *  The offset lives on the showing pane's **body** (§7.7, `vg-208`), and a
+ *  browser discards a `display: none` box's scroll position — the swap hides
+ *  the pane it leaves — so what the read-back finds after the return is the
+ *  shell's own restore and not the box remembering.
+ */
+test("each pane comes back to the offset it was left at", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  await openEveryGroup(page);
+
+  const measured: Record<string, number> = {};
+  for (const slot of ["Composition", "Add", "Tokens", "Document"]) {
+    await openPane(page, slot);
+    const body = paneBody(page);
+    await expect(body, `${slot} is the pane showing`).toHaveCount(1);
+
+    const offset = await body.evaluate((node) => {
+      node.scrollTop = 300;
+      return node.scrollTop;
+    });
+    // The guard, not the assertion: a pane that fits its box cannot be left at
+    // an offset, so a swap that "restored" 0 would pass without proving
+    // anything.
+    expect(offset, `${slot}'s body is long enough to scroll`).toBeGreaterThan(
+      0,
+    );
+
+    // Away and back. The partner is whichever slot this one is not, so the
+    // swap always leaves the pane it is about.
+    await openPane(page, slot === "Composition" ? "Add" : "Composition");
+    await openPane(page, slot);
+
+    const returned = await body.evaluate((node) => node.scrollTop);
+    measured[slot] = returned;
+    expect(
+      returned,
+      `${slot} came back to ${returned} rather than the ${offset} it was left at`,
+    ).toBe(offset);
+  }
+
+  const report = JSON.stringify(measured);
+  console.log(`pane-offsets ${report}`);
+  testInfo.annotations.push({ type: "pane-offsets", description: report });
+});
+
 /** §7.7's desktop-density proof, for the one cluster the rail's column can
  *  starve. **Reachability, not visibility.**
  *

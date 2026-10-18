@@ -465,6 +465,15 @@ case the projection already agreed with it.
 - Unit: entering twice names the group once — a context holding one group twice would dim every
   row twice over and is what the manager's own `context[0] !== entry` guard prevents; assert
   the bridge does not defeat it.
+  *(Superseded 2026-10-18. The bridge carries no entering-twice contract to assert: `bridge.ts`'s
+  `enterGroup` is one hop — resolve the row, hand the entry object to the manager, republish —
+  and holds no context of its own, so it has no guard to defeat and a case written over it would
+  be asserting the manager through the bridge. The property is the manager's, and it is
+  structural rather than guarded: `grouping-manager/index.ts`'s `setContext([entry])` is
+  single-element by construction, so a two-copy context is unrepresentable. It is proved where it
+  lives, at `entered-group-state.dom.test.ts`'s "leaves one level when the same group is entered
+  again". The panel cannot reach a second entry either — its one control reads *leave* for the
+  entered group (`composition-pane.tsx`).)*
 
 **Commit:** `feat(editor): the panel can enter a group, not only select it`
 
@@ -719,6 +728,11 @@ is what would drop it.
   the right column contains no document panel at all.
 - Browser: open Document, put the panel at an offset, swap to Assets and back — the offset
   survives, the same way `editor-pane-bar.spec.ts:68` pins it for the layer list.
+  *(Delivered 2026-10-18 by `editor-rail.spec.ts`'s "each pane comes back to the offset it was
+  left at", which walks all four slots — Document and Add among them — leaves each at an offset,
+  swaps away and back, and reads the offset again. The pane bar this bullet names was replaced by
+  the rail (`c6ee8d32`), and the layer-list case it pointed at is that same file's "a collapse
+  between two swaps does not lose the list's scroll".)*
 
 **Commit:** `feat(editor): the document's own panel lives in the left column`
 
@@ -791,6 +805,10 @@ your file list, so correct it here.
 - Unit: the document panel lists the tokens and presets by name and resolves them, with nothing
   selected **and** with a selection — the difference from today is the second half, and it is
   the whole of `vg-146`. Assert on a group selection, which is the case the row measured.
+  *(Discharged 2026-10-18 by pointer, and no unit case is owed: the panel takes no selection of
+  its own by construction. The proof is `composition-panel.spec.ts`'s "keeps the document's own
+  controls reachable while a card is selected", which selects `group-cpu-card` — the case the row
+  measured — and reads the Document pane with the selection standing.)*
 - Unit: a token edited after mount is reflected on the next render — the panel never held a
   copy of globals and must not start.
 - Unit: there is no `role="tab"` anywhere in the shell, and `uiCopy` has no `inspector` key —
