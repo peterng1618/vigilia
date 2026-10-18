@@ -117,7 +117,10 @@ Each gets its test in the task named beside it.1. **A display whose assigned the
    something a display could not have been given. (Tasks 1.1, 1.3; the gate found
    the duplicated-id and clear-token halves untested — `readDisplays` dedupes at
    `displays.ts:347-353` and `normalizeRecord` reads only `tokenHash`, and no case
-   writes either shape, so Phase 1's gate fix round adds both.)
+   writes either shape, so Phase 1's gate fix round adds both. **The ordering is
+   stated here because the test was otherwise its only record:** a record whose id was
+   already seen is the one dropped, so the first in the file wins and a refactor may not
+   flip which credential survives.)
 8. **A second host on the same LAN answering a sweep** — a display re-finding its
    host must match the id it stored, not the first host that replies, or the
    two-host no-tangle property the spec claims is gone. (Task 4.6)
