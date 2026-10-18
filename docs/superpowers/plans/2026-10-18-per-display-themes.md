@@ -902,6 +902,8 @@ is on this PC. No new dependency — `systeminformation` is already here.
 **Files:**
 - Create: `src/web/packages/host/src/settings/monitors.ts`
 - Create: `src/web/packages/host/src/settings/monitors.test.ts`
+- Modify: `src/web/packages/host/src/settings/displays.ts`
+- Test: `src/web/packages/host/src/settings/displays.test.ts`
 - Modify: `src/web/packages/host/src/server.ts`
 - Test: `src/web/packages/host/src/server.test.ts`
 
@@ -917,8 +919,8 @@ export async function listMonitors(): Promise<readonly Monitor[]>;
 export function hintFor(monitor: Monitor): MonitorHint;
 /** Whether a stored hint still matches something attached. */
 export function isAttached(hint: MonitorHint, monitors: readonly Monitor[]): boolean;
-/** The URL to open, and the command line that puts it on that monitor. */
-export function launchFor(monitor: Monitor, port: number, displayId: string): { readonly url: string; readonly command: string };
+/** The URL to open on that monitor, and the geometry a window needs. */
+export function launchFor(monitor: Monitor, port: number, displayId: string): { readonly url: string; readonly position: readonly [number, number]; readonly size: readonly [number, number] };
 ```
 
 - [ ] **Step 1: Write the failing test**
@@ -942,12 +944,11 @@ it("matches a hint on serial when it has one, and on deviceName when it does not
   expect(isAttached({ deviceName: "\\\\.\\DISPLAY9" }, ATTACHED)).toBe(false);
 });
 
-it("builds a URL on loopback and a command that targets the monitor", () => {
-  const { url, command } = launchFor(ATTACHED[1]!, 5227, "left-screen");
+it("builds a loopback URL and the geometry that puts a window on the monitor", () => {
+  const { url, position, size } = launchFor(ATTACHED[1]!, 5227, "left-screen");
   expect(url).toBe("http://127.0.0.1:5227/?display=left-screen");
-  expect(command).toContain("--window-position=2560,0");
-  expect(command).toContain("--window-size=1920,1080");
-  expect(command).toContain(url);
+  expect(position).toEqual([2560, 0]);
+  expect(size).toEqual([1920, 1080]);
 });
 
 // server.test.ts
@@ -983,13 +984,15 @@ Expected: FAIL — cannot resolve `./monitors.js`.
 resolution change is not an identity change, and a stored `currentResX` would go
 stale silently. `launchFor` builds the URL on `127.0.0.1` rather than the LAN
 address, because a local monitor is on this PC and the loopback address is the one
-that cannot change; the command is a Chromium-family command line with
-`--window-position` and `--window-size` from the monitor, `--start-fullscreen`, and
-a comment naming it as advice for a shortcut rather than something the host runs.
+that cannot change, and answers the geometry beside it. **It builds no command
+line** (ruling 33): the argv belongs to the launcher, which is the only owner that
+knows the browser and the per-display profile directory, so a flag set built here
+as well would drift from the one the host actually runs the first time either side
+adds a flag — and nothing fails when it does.
 
-**The host launches it** — ruling 13, Task 1.8. This task produces the URL, the
-command line and the geometry; it does not spawn anything. Keep the two apart so
-the pure part is testable without a process.
+**The host launches it** — ruling 13, Task 1.8. This task produces the URL and the
+geometry; it does not spawn anything and it does not build the command line. Keep
+the pure part apart from the process so it is testable without one.
 
 **A record whose hint matches nothing stays.** `GET /api/displays/monitors` answers
 what is attached, and the surface compares — the host does not delete a display
@@ -1040,7 +1043,7 @@ export interface Launcher {
   stop(): void;
 }
 export function findBrowser(platform?: NodeJS.Platform): string | undefined;
-export function browserCommand(browser: string, monitor: Monitor, port: number, displayId: string): { readonly file: string; readonly args: readonly string[] };
+export function browserCommand(browser: string, target: { readonly url: string; readonly position: readonly [number, number]; readonly size: readonly [number, number] }, profileDir: string): { readonly file: string; readonly args: readonly string[] };
 /** Registers the *host* at sign-in, so every local monitor survives a reboot. */
 export function registerHostAutostart(command: string): Promise<{ readonly ok: boolean; readonly message: string }>;
 export const LIVE_WINDOW_MS = 15_000;
@@ -1133,11 +1136,15 @@ Expected: FAIL — cannot resolve `./display-launcher.js`.
 
 `findBrowser` looks for a Chromium-family executable at the platform's known
 install paths and on `PATH`, and answers `undefined` rather than guessing — a
-guessed path is a display that silently never appears. `browserCommand` reuses
-Task 1.7's `launchFor` for the URL and geometry and adds `--app=<url>`,
-`--start-fullscreen`, `--user-data-dir=<settings>/display-<id>` (a separate profile
-per display, so the wall screen does not carry the owner's session or extensions),
-`--no-first-run`, `--no-default-browser-check`, and `--disable-extensions`.
+guessed path is a display that silently never appears. **`browserCommand` is the one
+owner of the argv** (ruling 33): Task 1.7's `launchFor` answers the URL and the
+geometry and builds no command line, so this is where the flag set lives — a second
+builder in `monitors.ts` would drift from this one the first time either side adds a
+flag, and nothing fails when it does. It takes `launchFor`'s result and the
+per-display profile directory and adds `--app=<url>`, `--start-fullscreen`,
+`--user-data-dir=<profileDir>` (a separate profile per display, so the wall screen
+does not carry the owner's session or extensions), `--no-first-run`,
+`--no-default-browser-check`, and `--disable-extensions`.
 
 **One monitor holds one local display, and the store is what says so** (ruling 32,
 from Task 1.7's own trailer). The hint *is* a local display's identity, so a second
