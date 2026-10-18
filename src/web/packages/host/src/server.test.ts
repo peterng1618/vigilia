@@ -1892,7 +1892,7 @@ describe("The hosting route answers where a phone should point (§145)", () => {
     state: HostingState,
     setLan: HostBinding["setLan"] = async () => ({ ok: true }),
   ): HostBinding {
-    return { state: () => state, setLan, idle: async () => {} };
+    return { state: async () => state, setLan, idle: async () => {} };
   }
 
   afterEach(async () => {
@@ -1975,7 +1975,7 @@ describe("The hosting route answers where a phone should point (§145)", () => {
     let remembered: boolean | undefined;
     build({
       hosting: {
-        state: () => ({
+        state: async () => ({
           lan,
           address: lan ? "192.168.1.42" : null,
           port: 5227,
@@ -2045,7 +2045,7 @@ describe("The hosting route answers where a phone should point (§145)", () => {
     let remembered = false;
     build({
       hosting: {
-        state: () => ({ lan: false, address: null, port: 5227, refusal }),
+        state: async () => ({ lan: false, address: null, port: 5227, refusal }),
         setLan: async () => {
           refusal = "Port 5227 is not free on 0.0.0.0: EADDRINUSE";
           return { ok: false, reason: refusal };
@@ -2089,7 +2089,7 @@ describe("The hosting route answers where a phone should point (§145)", () => {
     });
     build({
       hosting: {
-        state: () => ({
+        state: async () => ({
           lan: true,
           address: "192.168.1.42",
           port: 5227,

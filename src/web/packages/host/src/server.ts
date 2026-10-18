@@ -980,7 +980,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         // `DisplaySession` carries `token`, and this route answers about
         // hosting, not about credentials.
         sendJson(response, 200, {
-          ...binding.state(),
+          ...(await binding.state()),
           sessions: (sessions?.list() ?? []).map(
             ({ token: _credential, ...peer }) => peer,
           ),
@@ -999,7 +999,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       await binding?.idle();
 
       sendJson(response, 200, {
-        ...(binding?.state() ?? NO_HOSTING),
+        ...((await binding?.state()) ?? NO_HOSTING),
         sessions: (sessions?.list() ?? []).map(
           ({ token: _credential, ...peer }) => peer,
         ),

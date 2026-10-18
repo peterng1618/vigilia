@@ -16,8 +16,12 @@ import { type ListenableServer, lanAddress } from "./net.js";
  */
 
 export interface HostBinding {
-  /** The state the host reports to the editor: what it is bound to now. */
-  readonly state: () => HostingState;
+  /** The state the host reports to the editor: what it is bound to now.
+   *
+   *  Async because the address is: ranking the adapters asks the OS which one
+   *  carries the default route, and Node exposes that through no synchronous
+   *  call (`vg-171`). */
+  readonly state: () => Promise<HostingState>;
   /** Rebinds on the same port. Resolves false, with a reason, when the new
    *  interface will not take that port — the old binding is restored.
    *
@@ -47,9 +51,9 @@ export function createHostBinding(
   let refusal: string | null = null;
   let moving: Promise<void> = Promise.resolve();
 
-  const state = (): HostingState => ({
+  const state = async (): Promise<HostingState> => ({
     lan: !isLoopbackHost(host),
-    address: isLoopbackHost(host) ? null : (lanAddress() ?? null),
+    address: isLoopbackHost(host) ? null : ((await lanAddress()) ?? null),
     port,
     refusal,
   });

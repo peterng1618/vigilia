@@ -57,16 +57,16 @@ describe("createHostBinding", () => {
     const { server, port } = await listening("127.0.0.1");
     const binding = createHostBinding(server, { port, host: "127.0.0.1" });
 
-    expect(binding.state().lan).toBe(false);
+    expect((await binding.state()).lan).toBe(false);
 
     const turned = await binding.setLan(true);
     expect(turned.ok).toBe(true);
-    expect(binding.state().lan).toBe(true);
-    expect(binding.state().port).toBe(port);
+    expect((await binding.state()).lan).toBe(true);
+    expect((await binding.state()).port).toBe(port);
 
     await binding.setLan(false);
-    expect(binding.state().lan).toBe(false);
-    expect(binding.state().port).toBe(port);
+    expect((await binding.state()).lan).toBe(false);
+    expect((await binding.state()).port).toBe(port);
   });
 
   it("keeps the port when the interface will not take it, and says so", async () => {
@@ -98,7 +98,7 @@ describe("createHostBinding", () => {
     // the restore line gone this resolves "squatter", not "ok": the failure is
     // a wrong answer rather than a hang.
     expect(await reachable(port)).toBe("ok");
-    expect(binding.state().lan).toBe(false);
-    expect(binding.state().port).toBe(port);
+    expect((await binding.state()).lan).toBe(false);
+    expect((await binding.state()).port).toBe(port);
   });
 });

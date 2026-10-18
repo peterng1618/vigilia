@@ -99,17 +99,156 @@ export function waitUntilReachable(
   });
 }
 
-/** First non-internal IPv4 address, suitable for same-LAN clients. */
-export function lanAddress(): string | undefined {
-  for (const interfaces of Object.values(os.networkInterfaces())) {
-    for (const candidate of interfaces ?? []) {
-      if (candidate.family === "IPv4" && !candidate.internal) {
-        return candidate.address;
-      }
+/**
+ * Adapter names a phone on the same Wi-Fi cannot reach, matched against the
+ * interface name.
+ *
+ * **Data, not a heuristic** (`vg-171`): a Hyper-V switch, a WSL adapter, a
+ * Docker bridge, a VM's host-only network and the tunnel a VPN installs all
+ * carry a perfectly plausible dotted quad, and a phone that dials one of them
+ * just fails to connect. A new virtual adapter is a line here rather than a new
+ * rule inside `rankLanAddresses`.
+ */
+export const VIRTUAL_ADAPTER_PATTERNS: readonly RegExp[] = [
+  /vEthernet/i, // Hyper-V's switch, and the WSL and Docker Desktop ones riding it
+  /hyper-?v/i,
+  /wsl/i,
+  /docker/i,
+  /^br-/i, // Docker's bridge on Linux
+  /vbox|virtualbox/i,
+  /vmware|vmnet/i,
+  /loopback/i, // Npcap's and the other pseudo-adapters that are not `internal`
+  /\b(vpn|wireguard|openvpn|tailscale|zerotier|nordlynx)\b/i,
+  /\b(tun|tap|utun|ppp|wg)\d*\b/i,
+];
+
+/** This machine's adapters, and the interface its default IPv4 route leaves by. */
+export interface LanSource {
+  readonly interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]>;
+  /** The interface carrying the default IPv4 route, or `undefined` when this
+   *  platform will not say. */
+  readonly defaultRouteInterface: string | undefined;
+}
+
+/** What a phone should dial, and what else was in the running. */
+export interface LanChoice {
+  readonly address: string | undefined;
+  /** The candidates that survived beside the chosen one, when the default route
+   *  did not decide the pick. Empty when the route decided it, or when only one
+   *  candidate survived. */
+  readonly alternatives: readonly string[];
+}
+
+/** Loopback, link-local and the unspecified address: nothing a phone can dial. */
+function isUnreachableAddress(address: string): boolean {
+  return (
+    address.startsWith("127.") ||
+    address.startsWith("169.254.") ||
+    address === "0.0.0.0"
+  );
+}
+
+/** The adapters to rank, and the default route to rank them by.
+ *
+ *  The route is read through `systeminformation` — the host's existing OS reader
+ *  (`providers/library.ts`) — because Node exposes no routing table at all, and
+ *  the installed dependency already answers this on every platform the host
+ *  runs on. **A platform that cannot answer costs one failed OS query and
+ *  nothing else**: the route comes back `undefined`, which sends the pick to
+ *  `rankLanAddresses`'s deterministic order rather than to a throw. */
+export async function readLanSource(): Promise<LanSource> {
+  const interfaces = os.networkInterfaces();
+
+  try {
+    const imported = await import("systeminformation");
+    const si = (imported.default ?? imported) as {
+      networkInterfaceDefault(): Promise<string>;
+    };
+    const name = await si.networkInterfaceDefault();
+
+    return {
+      interfaces,
+      defaultRouteInterface: name === "" ? undefined : name,
+    };
+  } catch {
+    return { interfaces, defaultRouteInterface: undefined };
+  }
+}
+
+/** The ruling's order (`vg-171`), as a pure function so a case can carry a
+ *  fixture rather than the adapters the machine running the test happens to
+ *  have: drop loopback, link-local and internal; drop virtual adapters by name;
+ *  prefer the interface carrying the default route; otherwise keep the choice
+ *  deterministic and name the alternatives.
+ *
+ *  **Interface index is not something Node exposes.** `os.networkInterfaces()`
+ *  returns adapters in the OS's own order and nothing else, so "lowest index"
+ *  is read as **first enumerated** — the only ordering available on every
+ *  platform the host runs on. */
+export function rankLanAddresses(source: LanSource): LanChoice {
+  const candidates: { readonly name: string; readonly address: string }[] = [];
+
+  for (const [name, addresses] of Object.entries(source.interfaces)) {
+    if (VIRTUAL_ADAPTER_PATTERNS.some((pattern) => pattern.test(name))) {
+      continue;
+    }
+
+    const usable = (addresses ?? []).find(
+      (candidate) =>
+        candidate.family === "IPv4" &&
+        !candidate.internal &&
+        !isUnreachableAddress(candidate.address),
+    );
+
+    if (usable !== undefined) {
+      candidates.push({ name, address: usable.address });
     }
   }
 
-  return undefined;
+  const [first] = candidates;
+
+  if (first === undefined) {
+    return { address: undefined, alternatives: [] };
+  }
+
+  const routed = candidates.find(
+    (candidate) => candidate.name === source.defaultRouteInterface,
+  );
+
+  if (routed !== undefined) {
+    return { address: routed.address, alternatives: [] };
+  }
+
+  return {
+    address: first.address,
+    alternatives: candidates
+      .slice(1)
+      .map((candidate) => `${candidate.name} ${candidate.address}`),
+  };
+}
+
+/** The address a phone on the same LAN should dial.
+ *
+ *  `source` is injectable so a case carries a fixture; the host reads the
+ *  machine it is on. A pick made without a default route to go by is not
+ *  silent: the row this exists for (`vg-171`) is invisible on the machine that
+ *  makes it — the header renders a plausible dotted quad either way — so the
+ *  alternatives go on the record where a wrong pick can be found without a
+ *  phone. The host's logging surface is `console` (`main.ts` prints its whole
+ *  banner through it) and there is no logger beside it to duplicate. */
+export async function lanAddress(
+  source?: LanSource,
+): Promise<string | undefined> {
+  const choice = rankLanAddresses(source ?? (await readLanSource()));
+
+  if (choice.alternatives.length > 0) {
+    console.warn(
+      `LAN address ${choice.address} chosen without a default route to go by. ` +
+        `Other candidates: ${choice.alternatives.join(", ")}.`,
+    );
+  }
+
+  return choice.address;
 }
 
 /** Every address and name this machine answers to, for a certificate's SANs.

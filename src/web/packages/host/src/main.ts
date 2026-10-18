@@ -294,7 +294,7 @@ export async function run(argv: readonly string[]): Promise<number> {
   const url = `http://${displayHost}:${bound}`;
   /** The address a display would use, whether or not the LAN is open — the
    *  certificate covers it either way, and the console names it. */
-  const lan = lanAddress();
+  const lan = await lanAddress();
 
   console.log(`\nVigilia v${VERSION}`);
 
