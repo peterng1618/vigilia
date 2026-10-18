@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- The display record and its durable credential landed (Phase 1 Tasks 1.1–1.2, `ea05dd45..7f635c32`): `settings/displays.ts` owns `display-clients.json` with hashed credentials and nothing that expires, and the session store is gone.
-- Task 1.1's review found a data-loss path the brief itself mandated — a corrupt file read as empty while every mutator is read-modify-write, so the next write persisted the emptiness; the store now refuses a write-back over a file it cannot read and writes temp-then-rename.
-- Task 1.2's review found a Critical the task introduced: an unguarded `displays.create` with `void handle(...)` and no `unhandledRejection` handler meant `POST /api/pairing/sessions?label=` killed the host; the route now answers 400 with the store's own rule and the wrapper catches a rejected `handle`.
-- Its second round restored the publish QR that the first round's mint removal had deleted, and the store's read-modify-write is now serialized, because a `touch` racing a `remove` resurrected a removed display and its credential.
-- Filed rather than absorbed: `vg-602` (a corrupt store is never reported), `vg-603` (the editor mints nothing until Task 1.4) and `vg-604` (the order-dependent `publish-loop` case, attribution not established).
+- Task 1.3 landed (task `bbb34289`, fix round `e3eff3fb`, note commit `eebdaaa5`): pairing mints, lists, renames and removes displays, rotation keeps the record and replaces the credential, and `DELETE /api/pairing/sessions/:token` is retired with its only caller.
+- Its review found a `PATCH` rate the caller can fix answering 500 where the ruling makes it a 400 — corrected by exporting `normalizePatch` from the store rather than writing a second copy of the rule — and a decision note numbered `0068` colliding with one already on the mainline, renumbered to `0072` with the plan and STATUS following.
+- Rung 4 of that note now names `decolua/9remote` at `033dd6e3`, the study the design already rests on, which the task brief never pointed at; the first instruction to add it arrived after the implementer's turn had ended, so the artifact was checked rather than the send assumed.
+- Rulings R1–R14 are in the plan's ledger, including R13 (input the caller can fix is a 400) and R14 (the note number).
+- Filed rather than absorbed: `vg-605` (two wire names that still say sessions while meaning displays) and, earlier, `vg-602`, `vg-603` and `vg-604`.
 
 ## Next
 
-1. Task 1.3 (pairing against a display, with decision note `0072` claiming `server.ts`) is next; dispatch it once its brief's rulings are carried.
+1. Task 1.4 (the one-time code and `/pair`) is next, and it owns four things the plan does not name: `vg-603`'s editor pairing client, the console link `main.ts` no longer prints (R8), the QR's payload (R11), and the code flow that replaces the mint (R9).
 2. Review every task against its brief and evidence; run the phase gate with the exit code and the browser results named separately.
 3. Resume the drain at Task 23.4 when per-display Phase 1 stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
