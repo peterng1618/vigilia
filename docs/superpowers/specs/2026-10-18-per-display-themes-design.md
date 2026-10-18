@@ -109,6 +109,19 @@ see a client. **A monitor is a place a client is asked to appear, not an
 identity**: the same page dragged to another screen is the same display, and a
 screen with nothing on it is not a display at all.
 
+**A USB panel would be the exception, and it is not designed here.** "Panel" in
+the sentence above means a screen a client is drawn on, not a USB panel.
+Everything above defines a display as something the host **serves**; a TURZX or
+Lian Li panel is a device the host **drives**, with no URL, no session and nothing
+to admit (`2026-10-18-turzx-panel-displays-design.md`). It would therefore be a
+**third admission path** beside pairing and specification — attached to this PC,
+found rather than admitted — and a third `kind`. **The record and the maps below
+are expected to carry it unchanged**, since a panel has no credential exactly as a
+local monitor has none. What is *not* claimed here is anything a panel does: this
+design has no panel field, no panel route and no panel phase, and the capability
+model a panel needs is its own approved design
+(`2026-10-18-display-capabilities-design.md`).
+
 **There are two ways a client becomes known**, and the difference is only how it
 was admitted:
 
@@ -987,9 +1000,22 @@ from the session, so a display writes its own key or nothing.
    the Host settings surface should say so beside the monitor rather than leaving it
    to be discovered. What would change the answer is a measured power cost large
    enough that the honest thing is a refusal.
+9. **What a third kind — a USB panel — needs from this record.** § "What a display
+   is" names it as a third admission path, and nothing here decides what it adds. A
+   panel is identified by hardware — a VID/PID, or a serial — rather than by a name
+   this host minted, so the record would gain a field where a paired display has a
+   `tokenHash` and a local monitor has a `MonitorHint`. **Phase 1 is where the
+   record is created**, which is the one moment that field is cheap to add and
+   awkward to add after four phases have shipped. Not decided here: it belongs to
+   the panel brainstorm, and this entry exists so that brainstorm finds the
+   question rather than rediscovering it.
 
 ## Not verified, and must be before this is planned
 
+- **That this record and its maps carry a USB panel unchanged.** § "What a display
+  is" predicts it, from the fact that a panel has no credential exactly as a local
+  monitor has none. Nothing has been built or driven, and the panel work has not
+  started, so the prediction is unproven.
 - **That a session token is the only identity a LAN request carries.** Read from
   `session.ts` and `allowed()`; not driven against a real paired phone.
 - **That `/api/published`'s poll interval suits a reassignment.** The interval is
