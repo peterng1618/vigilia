@@ -26,7 +26,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Next
 
-1. Resume Phase 22, one seat at a time, in the plan's own order: 22.6 the bullets plan 4 wrote, then 22.7 one fixture for both gaps, 22.8 the insert driver's family, 22.9 the copy walk, 22.10 a built bundle's fixture page.
+1. Resume Phase 22, one seat at a time: 22.6 the bullets plan 4 wrote, then 22.8 the insert driver's family, 22.9 the copy walk and 22.10 a built bundle's fixture page. **22.7 is obstructed and skipped** — Task 25.7 removed the crop notice, so its fixture can no longer raise both gaps, and `vg-191` waits on the user.
 2. Review each task against its brief and evidence; run the phase gate with exit code and browser results named separately.
 3. Resume Phase 21 after font-picker spec approval and budget ruling; resume Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.

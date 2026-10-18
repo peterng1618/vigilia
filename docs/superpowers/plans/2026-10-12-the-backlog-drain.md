@@ -4267,10 +4267,10 @@ these are the proofs those findings were supposed to come from.
 `typecheck` script; `layer-tree.test.ts`; `bridge.dom.test.ts`; `src/web/tests/e2e/` fixtures; and the
 verification bullets of the plan `vg-159` names.
 
-**Constraints:** **SUSPENDED 2026-10-17 by scheduling ruling: the user prioritised their own 2026-10-17 reports, so Phase 25 runs first and Tasks 22.6–22.10 resume after it.** Tasks 22.1–22.5 are closed; the phase is suspended, not closed, and its remaining rows are untouched. Previously: **Active 2026-10-17 by scheduling ruling: Phases 12 and 21 are suspended, not closed, on user spec review; Phases 15–20 are closed.** Phase 21's font-picker model and `TAB_BOUND` ruling remain untouched; one phase runs at a time. **`vg-192` wires the new project into `typecheck`
+**Constraints:** **ACTIVE AGAIN 2026-10-18: Phase 25 is complete, so Tasks 22.6–22.10 resume.** Tasks 22.1–22.5 are closed. **Task 22.7 is obstructed and cannot run as written — see its own note.** Previously: SUSPENDED 2026-10-17 by scheduling ruling, when the user prioritised their own 2026-10-17 reports; before that, **Active 2026-10-17 by scheduling ruling: Phases 12 and 21 are suspended, not closed, on user spec review; Phases 15–20 are closed.** Phase 21's font-picker model and `TAB_BOUND` ruling remain untouched; one phase runs at a time. **`vg-192` wires the new project into `typecheck`
 in the same commit, or the project exists and nothing runs it** — and `gate` runs `typecheck`, so the
 wiring is what makes the check real. **`vg-147` and `vg-150` change how the browser suites run**, so no
-other task in this phase runs a browser suite concurrently.
+other task in this phase runs a browser suite concurrently — both are closed, so that constraint is spent.
 
 **Acceptance:** each row's own `check` passes; `vg-167`, `vg-168` and `vg-159` each carry a case or a
 corrected claim that fails when the fix is disabled; the new tsconfig's coverage is shown by a deliberate
@@ -4362,11 +4362,21 @@ project timeout so wide it hides a real hang.
 
 ### Task 22.7: One fixture raises both gaps
 
+**OBSTRUCTED 2026-10-18 by the user's own ruling in Phase 25 — do not execute this as written.** Task 25.7
+removed the crop notice and the bleed mark, because the user ruled "BOTH, EVERYWHERE". So a document that
+bleeds no longer raises a strip at all: the composition gap this task exists to make legible has no surface
+left to be legible on, and "one fixture raises both gaps" cannot be built. `vg-191` therefore lost its
+subject rather than half of it, and it is the **user's** to withdraw or re-point (STATUS carries it as a
+pending decision) — an agent may not withdraw a register row. What is left of the row is its data-gap half,
+which Task 22.9's neighbours and the existing fixtures already cover. **This task resumes only if the user
+re-points `vg-191` at a surface that still exists**; until then Phase 22 runs 22.6, 22.8, 22.9 and 22.10 and
+skips this one.
+
 **Files:**
 - Modify: `src/web/tests/e2e/` fixtures
 
 **Interfaces:**
-- Produces: `vg-191` closed
+- Produces: `vg-191` closed — **no longer achievable as written**; see the note above.
 
 - [ ] **Step 1: Add one document that both bleeds and binds a key the host cannot report.** The requirement's rationale is that an unreadable sensor and a cropped object must be legible as DIFFERENT things, which is why two strips may be on screen at once.
 - [ ] **Step 2: Today's two-strip assertion passes with a transport gap standing in for the composition gap**, which is a different pair — so the fixture inventory is the entry it is missing, against a requirement that already exists.
