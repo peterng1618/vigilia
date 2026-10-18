@@ -55,7 +55,8 @@ const EDGE_PROBE_SPEC = /live-chart-edge\.spec\.ts/;
  * port — `publish-header` owns 4227, `publish-loop` owns 4229 and
  * `editor-invalid-theme` owns 4231.
  */
-const OWN_HOST_SPEC = /(publish-(header|loop)|editor-invalid-theme)\.spec\.ts/;
+const OWN_HOST_SPEC =
+  /(publish-(header|loop)|editor-invalid-theme|host-secure-origin)\.spec\.ts/;
 
 /**
  * The rebuild drives its own preview on its own port, under
@@ -126,6 +127,11 @@ export default defineConfig({
       // The real Node host, not a preview server: hosted theme loading, package
       // asset serving and the SSE stream are otherwise never browser-tested.
       command: `node packages/host/bin/vigilia.js --no-browser --port ${HOST_PORT} --app-dir ${HOST_APP_DIR}`,
+      // http, which the host still serves beside https on the same port
+      // (0070). The pairing link these specs drive is the one the host prints,
+      // and what that link should carry belongs to the per-display-themes
+      // spec; the secure origin is read by `host-secure-origin.spec.ts`, which
+      // starts its own host on the LAN and launches its own browser.
       url: `http://127.0.0.1:${HOST_PORT}/api/health`,
       reuseExistingServer: true,
       timeout: 60_000,

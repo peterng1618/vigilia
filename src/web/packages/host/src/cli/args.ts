@@ -63,8 +63,13 @@ Extended sensors (temperatures, fans, power) come from LibreHardwareMonitor
 when it is running; Vigilia reads its web server and never controls its
 hardware support. Everything else is read through systeminformation.
 
+The host serves https beside http on the same port, from a certificate it
+issues itself, and prints the root certificate to install. A display holds the
+screen awake and installs as an app only at the https origin, and only once
+that root is installed on it — this PC included.
+
 LAN access is off by default. Passing --host 0.0.0.0 serves your hardware
-telemetry to every device on the network; plain LAN HTTP has no
+telemetry to every device on the network; plain http there has no
 confidentiality, so use it on trusted networks only, never the internet.`;
 
 /** True only for addresses restricted to this machine. */

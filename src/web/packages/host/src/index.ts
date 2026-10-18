@@ -19,8 +19,10 @@ export {
 } from "./cli/args.js";
 
 export {
+  type ListenableServer,
   lanAddress,
   listenWithFallback,
+  localNames,
   openBrowser,
   waitUntilReachable,
 } from "./cli/net.js";
@@ -65,6 +67,11 @@ export type {
   HostServer,
   HostServerOptions,
 } from "./server.js";
-export { createHostServer, DEFAULT_SAMPLE_INTERVAL_MS } from "./server.js";
+export {
+  CA_CERTIFICATE_PATH,
+  createHostServer,
+  DEFAULT_SAMPLE_INTERVAL_MS,
+} from "./server.js";
+export { createSecureOrigin, type SecureOrigin } from "./tls/authority.js";
 export { KeepLatestSlot } from "./transport/keep-latest.js";
 export { SseConnection } from "./transport/sse.js";

@@ -1,7 +1,6 @@
-import type http from "node:http";
 import type { HostingState } from "../server.js";
 import { isLoopbackHost } from "./args.js";
-import { lanAddress } from "./net.js";
+import { type ListenableServer, lanAddress } from "./net.js";
 
 /**
  * The one listener, and the two addresses it can be told to sit on.
@@ -37,7 +36,7 @@ export interface HostBinding {
 }
 
 export function createHostBinding(
-  server: http.Server,
+  server: ListenableServer,
   initial: { readonly port: number; readonly host: string },
 ): HostBinding {
   const port = initial.port;

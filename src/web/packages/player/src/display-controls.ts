@@ -13,15 +13,17 @@ import { uiCopy } from "./ui-copy.js";
  * bands, so this file is a script with no colours in it.
  *
  * **Two of the three can be refused, and saying so is the point.** The host
- * serves plain http on a LAN port (`vg-580`), and the two APIs are gated on
- * things a phone at `http://<lan-ip>:<port>` does not have: the Screen Wake
- * Lock API on a secure context, and arbitrary-element fullscreen on a client
- * that implemented it at all — iPhone Safari never has, and Task 25.6's
- * standalone mode is that client's honest path instead. **`localhost` IS a
- * secure context**, so a run on the host machine sees the wake lock present and
- * proves nothing about the phone it is for. Each control is feature-detected at
- * runtime, and one that cannot do its job says why when it is pressed rather
- * than sitting there doing nothing.
+ * serves https beside http on the same port, from a certificate it issues
+ * itself (`vg-580`, `docs/decisions/0070`), so the display is a secure context
+ * at the https origin once that root is installed — and at the http origin, or
+ * before the root is installed, the two APIs are gated on things a phone at
+ * `http://<lan-ip>:<port>` does not have: the Screen Wake Lock API on a secure
+ * context, and arbitrary-element fullscreen on a client that implemented it at
+ * all — iPhone Safari never has, and Task 25.6's standalone mode is that
+ * client's honest path instead. **`localhost` IS a secure context**, so a run on
+ * the host machine sees the wake lock present and proves nothing about the phone
+ * it is for. Each control is feature-detected at runtime, and one that cannot do
+ * its job says why when it is pressed rather than sitting there doing nothing.
  *
  * The dimmer is an overlay over the rendered picture and is named as that. A
  * browser cannot set a device's panel brightness, and a control that claimed to

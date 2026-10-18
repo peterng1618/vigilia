@@ -18,6 +18,8 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `jsdom` | 26.1.0 | MIT | DOM tests |
 | `canvas` | 3.2.3 | MIT | native raster test dependency |
 | `@types/node` | 22.10.2 | MIT | types |
+| `@types/node-forge` | 1.3.11 | MIT | types for `node-forge` |
+| `node-forge` | 1.4.0 | BSD-3-Clause (of `BSD-3-Clause OR GPL-2.0`) | host: issues the local CA and leaf a display's secure origin needs |
 | `qr` | 0.7.2 | MIT OR Apache-2.0 | QR symbol for the display link |
 | `jsqr` | 1.4.0 | Apache-2.0 | devDependency: decodes the QR round-trip |
 | `@google/design.md` | 0.4.0 | Apache-2.0 | devDependency: lints `DESIGN.md` in the design gate |
@@ -31,6 +33,22 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `@tailwindcss/vite` | 4.3.3 | MIT | editor dev |
 | `@types/react` | 19.3.0 | MIT | types |
 | `@types/react-dom` | 19.3.0 | MIT | types |
+
+`node-forge` 1.4.0 was added on 2026-10-18 with `docs/decisions/0070`. Its
+licence is dual, `(BSD-3-Clause OR GPL-2.0)`, verified from the installed
+package's `package.json`; **BSD-3-Clause is the one taken**, which is permissive
+and carries no source obligation. It has no dependencies of its own, which is
+most of why it was chosen over the alternatives the note compares.
+
+It carries one advisory, recorded here because a dependency list is where a
+reader looks for it: [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv),
+high, CWE-347, RSA PKCS#1 v1.5 signature **verification** accepting extra nested
+`DigestAlgorithm` elements. The affected range is `<= 1.4.0` and no patched
+version is published. The host uses `node-forge` to *generate and sign*
+certificates and never calls its verifier — every certificate it issues is
+verified with `node:crypto`'s `X509Certificate.verify()` and then by the browser
+that has to accept the chain. `docs/decisions/0070` records the reasoning and
+the alternatives it was weighed against.
 
 `@google/design.md` 0.4.0 is Apache-2.0. Its installed `package.json` carries no
 `license` field (and the registry publishes none), so the licence was verified

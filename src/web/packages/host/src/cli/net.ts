@@ -1,14 +1,27 @@
 import { spawn } from "node:child_process";
-import type { Server } from "node:http";
 import net from "node:net";
 import os from "node:os";
 import { MAX_PORT_ATTEMPTS } from "./args.js";
 
 /** Launch I/O: bind, probe, discover LAN address, and open the browser. */
 
+/**
+ * What this module binds. `node:http`'s server and `node:https`'s do not share
+ * a type, and both carry the pair the binding needs: `listen`, and
+ * `closeIdleConnections` — without which a move cannot drop the sockets that
+ * are merely idle without also dropping the answer that asked it to move
+ * (`vg-173`). A host serving both protocols on one port presents a `net.Server`
+ * wearing the same two methods, so the interface is stated rather than spelled
+ * as a union.
+ */
+export interface ListenableServer extends net.Server {
+  closeIdleConnections(): void;
+  closeAllConnections(): void;
+}
+
 /** Retries only EADDRINUSE, bounded by `maxAttempts`; returns the actual port. */
 export function listenWithFallback(
-  server: Server,
+  server: ListenableServer,
   port: number,
   host: string,
   maxAttempts = MAX_PORT_ATTEMPTS,
@@ -97,6 +110,34 @@ export function lanAddress(): string | undefined {
   }
 
   return undefined;
+}
+
+/** Every address and name this machine answers to, for a certificate's SANs.
+ *
+ *  **All of them, not the one in use**, because the host can be moved onto the
+ *  LAN after it has started (`createHostBinding`): a leaf covering only loopback
+ *  would present a name mismatch to the first phone that connected, and the
+ *  owner would have no way to tell that from a root they had not installed.
+ *
+ *  Read once, at start. That is the whole of what a changed DHCP lease costs: a
+ *  restart re-reads this list and re-issues the leaf, and the root a display
+ *  already installed stays valid, so nothing has to be installed again. */
+export function localNames(): readonly string[] {
+  const names = new Set<string>(["localhost", os.hostname()]);
+
+  for (const interfaces of Object.values(os.networkInterfaces())) {
+    for (const candidate of interfaces ?? []) {
+      // Internal entries are the loopback literals, added below by hand rather
+      // than read: a browser at `https://127.0.0.1:5227` is the commonest
+      // reader of all, and no interface has to be up for it to exist.
+      if (!candidate.internal) names.add(candidate.address);
+    }
+  }
+
+  names.add("127.0.0.1");
+  names.add("::1");
+
+  return [...names];
 }
 
 /** Opens the platform browser without turning failure into a host startup failure. */

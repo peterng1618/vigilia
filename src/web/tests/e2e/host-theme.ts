@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { type APIRequestContext, request } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 
 /** Seeds a theme package into the host's themes directory so a browser test can
@@ -18,6 +19,26 @@ const FONT_SOURCE_URL =
 const FONT_CACHE_DIR = path.join(here, "..", "..", ".e2e-font-cache");
 
 export const HOST_PORT = 4175;
+
+/**
+ * A client for a host this spec started, accepting the certificate it issues
+ * itself (`docs/decisions/0070`).
+ *
+ * The host serves both protocols on one port, so a spec may read it either way;
+ * this exists for the ones that read the **secure** origin, which is the one a
+ * display is meant to use. Node's own `fetch` cannot be told to accept a root
+ * this machine's trust store has not been given — installing one is the owner's
+ * step and a test must not take it — so the choice is this or a process-wide
+ * `NODE_TLS_REJECT_UNAUTHORIZED`, which would also switch the check off for the
+ * font download in this file.
+ *
+ * `request.newContext` rather than the `request` fixture, because a spec that
+ * polls a host does it in `beforeAll`, where fixtures do not exist. **Dispose
+ * it.**
+ */
+export async function hostClient(baseURL: string): Promise<APIRequestContext> {
+  return request.newContext({ ignoreHTTPSErrors: true, baseURL });
+}
 /** Binds the clock only, so the settings page asks it nothing about devices. */
 export const HOST_THEME_ID = "e2e-hosted";
 /** Binds a disk, so the settings page has a question to ask it. */

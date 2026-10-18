@@ -1,0 +1,219 @@
+import {
+  createPublicKey,
+  generateKeyPairSync,
+  randomBytes,
+  X509Certificate,
+} from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import net from "node:net";
+import path from "node:path";
+import forge from "node-forge";
+
+/**
+ * The certificates a secure origin needs: one root this machine keeps, and a
+ * leaf signed by it for the addresses the machine has now.
+ *
+ * **Why a CA and not a self-signed leaf** (`vg-580`): a browser will not
+ * register a service worker on a certificate it had to warn about, and a
+ * self-signed certificate is warned about on every device until it is trusted
+ * by hand — where a root is trusted once and every later leaf is free. That is
+ * the whole of the arrangement: the root is the thing a device installs, and
+ * the leaf is disposable, which is what makes a moved LAN address cheap.
+ *
+ * The decision, the seven rungs and the advisory carried with `node-forge` are
+ * `docs/decisions/0070`.
+ */
+
+/** Under the 398-day ceiling browsers apply to a TLS server certificate, so no
+ *  client refuses the leaf on that ground alone. It costs nothing: a leaf is
+ *  re-issued at every start and never written down. */
+const LEAF_DAYS = 397;
+/** The root is what a device installs, so it is the thing worth keeping. */
+const CA_DAYS = 3_650;
+/** Back-dated, so a device whose clock is behind this PC's does not read the
+ *  certificate as not-yet-valid. */
+const CLOCK_SKEW_MS = 3_600_000;
+const DAY_MS = 86_400_000;
+const CA_CERT_FILE = "ca.crt";
+const CA_KEY_FILE = "ca.key";
+const CA_COMMON_NAME = "Vigilia Local CA";
+/** The private key is a secret. Where the platform honours a mode this keeps it
+ *  to its owner; on Windows the mode is ignored and the file inherits the
+ *  profile directory's ACL, which is already this user's alone. */
+const KEY_MODE = 0o600;
+
+export interface SecureOrigin {
+  /** The root, PEM — what a display installs to trust this host. */
+  readonly certificate: string;
+  /** Where the root lives, so the console can name a file rather than a shape. */
+  readonly certificatePath: string;
+  /** The leaf's private key, PEM. In memory only, never written. */
+  readonly key: string;
+  /** The leaf, PEM, covering every name it was asked for. */
+  readonly leaf: string;
+  /** What the server presents: the leaf and then the root.
+   *
+   *  **The root is sent, and that is not a trust decision.** A client still
+   *  refuses a root it has not installed — presenting one never grants trust —
+   *  but a client that has not been given the chain cannot build one at all, and
+   *  that is the difference between `ERR_CERT_AUTHORITY_INVALID` and a
+   *  certificate a device can be told to accept. Measured: with the leaf alone
+   *  Chrome could not verify the chain even with the root allowlisted by SPKI,
+   *  because the allowlist is consulted while the chain is built and the root
+   *  was nowhere in it. */
+  readonly chain: string;
+}
+
+/**
+ * The root at `directory`, created if this machine does not have one yet, plus
+ * a fresh leaf for `names`.
+ *
+ * A missing root is **regenerated rather than refused**: the host still has a
+ * job to do, and the cost of a new root is that each display installs it again,
+ * which is a step the owner can take. What it must not do is serve an insecure
+ * origin quietly, so the caller reports which of the two happened.
+ */
+export async function createSecureOrigin(
+  directory: string,
+  names: readonly string[],
+): Promise<SecureOrigin> {
+  const { certificate, key, certificatePath } =
+    await loadOrCreateAuthority(directory);
+  const leaf = issueLeaf(certificate, key, names);
+
+  return {
+    certificate,
+    certificatePath,
+    chain: leaf.leaf + certificate,
+    ...leaf,
+  };
+}
+
+/** A serial number that is positive, which RFC 5280 requires and a random
+ *  16-byte integer is not: with the top bit set, the DER INTEGER reads as
+ *  negative and Node reports it with a leading `-`. */
+function serialNumber(): string {
+  const leading = randomBytes(1)[0] ?? 0;
+  return (
+    (leading & 0x7f).toString(16).padStart(2, "0") +
+    randomBytes(15).toString("hex")
+  );
+}
+
+/** A keypair made by `node:crypto`, not by forge: the pure-JS generator is
+ *  orders of magnitude slower and this one is native. */
+function newKeyPair(): {
+  readonly privateKey: string;
+  readonly publicKey: string;
+} {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+  });
+
+  return {
+    privateKey: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+    publicKey: publicKey.export({ type: "spki", format: "pem" }).toString(),
+  };
+}
+
+async function loadOrCreateAuthority(directory: string): Promise<{
+  readonly certificate: string;
+  readonly key: string;
+  readonly certificatePath: string;
+}> {
+  const certificatePath = path.join(directory, CA_CERT_FILE);
+  const keyPath = path.join(directory, CA_KEY_FILE);
+
+  try {
+    const [certificate, key] = await Promise.all([
+      readFile(certificatePath, "utf8"),
+      readFile(keyPath, "utf8"),
+    ]);
+
+    // **Present but not a pair is the one half-state a read cannot see.** The
+    // key is written first and the certificate second, so a crash between the
+    // two leaves a new key beside the old certificate; every leaf signed with
+    // that key would then fail to chain to the root the devices installed, and
+    // the owner would get a certificate warning with nothing to explain it.
+    // One verification costs nothing and is the only way to tell.
+    if (new X509Certificate(certificate).verify(createPublicKey(key))) {
+      return { certificate, key, certificatePath };
+    }
+  } catch {
+    // Absent, unreadable, or not a matching pair. A root this machine cannot
+    // use is a root it does not have: generating a new one costs every display
+    // one re-install, and refusing to start costs the owner their host.
+  }
+
+  const { pki, md } = forge;
+  const keys = newKeyPair();
+  const root = pki.createCertificate();
+  const subject = [
+    { name: "commonName", value: CA_COMMON_NAME },
+    { name: "organizationName", value: "Vigilia" },
+  ];
+
+  root.publicKey = pki.publicKeyFromPem(keys.publicKey);
+  root.serialNumber = serialNumber();
+  root.validity.notBefore = new Date(Date.now() - CLOCK_SKEW_MS);
+  root.validity.notAfter = new Date(Date.now() + CA_DAYS * DAY_MS);
+  root.setSubject(subject);
+  root.setIssuer(subject);
+  root.setExtensions([
+    { name: "basicConstraints", cA: true, critical: true },
+    { name: "keyUsage", keyCertSign: true, cRLSign: true, critical: true },
+  ]);
+  root.sign(pki.privateKeyFromPem(keys.privateKey), md.sha256.create());
+
+  const certificate = pki.certificateToPem(root);
+
+  await mkdir(directory, { recursive: true });
+  // The key first: a certificate written without its key is the one half-state
+  // that would look usable and is not.
+  await writeFile(keyPath, keys.privateKey, {
+    encoding: "utf8",
+    mode: KEY_MODE,
+  });
+  await writeFile(certificatePath, certificate, "utf8");
+
+  return { certificate, key: keys.privateKey, certificatePath };
+}
+
+function issueLeaf(
+  authorityCertificate: string,
+  authorityKey: string,
+  names: readonly string[],
+): { readonly key: string; readonly leaf: string } {
+  const { pki, md } = forge;
+  const authority = pki.certificateFromPem(authorityCertificate);
+  const keys = newKeyPair();
+  const leaf = pki.createCertificate();
+
+  leaf.publicKey = pki.publicKeyFromPem(keys.publicKey);
+  leaf.serialNumber = serialNumber();
+  leaf.validity.notBefore = new Date(Date.now() - CLOCK_SKEW_MS);
+  leaf.validity.notAfter = new Date(Date.now() + LEAF_DAYS * DAY_MS);
+  // The first name, whatever it is: a subject is required and a modern client
+  // reads the SANs instead, so this only has to be non-empty and honest.
+  leaf.setSubject([{ name: "commonName", value: names[0] ?? "vigilia" }]);
+  leaf.setIssuer(authority.subject.attributes);
+  leaf.setExtensions([
+    { name: "basicConstraints", cA: false, critical: true },
+    {
+      name: "keyUsage",
+      digitalSignature: true,
+      keyEncipherment: true,
+      critical: true,
+    },
+    { name: "extKeyUsage", serverAuth: true },
+    {
+      name: "subjectAltName",
+      altNames: names.map((name) =>
+        net.isIP(name) === 0 ? { type: 2, value: name } : { type: 7, ip: name },
+      ),
+    },
+  ]);
+  leaf.sign(pki.privateKeyFromPem(authorityKey), md.sha256.create());
+
+  return { key: keys.privateKey, leaf: pki.certificateToPem(leaf) };
+}

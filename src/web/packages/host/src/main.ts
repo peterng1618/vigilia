@@ -6,6 +6,7 @@ import { createHostBinding, type HostBinding } from "./cli/hosting.js";
 import {
   lanAddress,
   listenWithFallback,
+  localNames,
   openBrowser,
   waitUntilReachable,
 } from "./cli/net.js";
@@ -14,7 +15,7 @@ import { LhmSensorProvider } from "./providers/lhm.js";
 import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
-import { createHostServer } from "./server.js";
+import { CA_CERTIFICATE_PATH, createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
@@ -24,6 +25,7 @@ import { createHostingSettingsStore } from "./settings/hosting.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
+import { createSecureOrigin, type SecureOrigin } from "./tls/authority.js";
 
 /** Launcher: bind, verify reachability, then print/open URLs. */
 
@@ -137,6 +139,30 @@ export async function run(argv: readonly string[]): Promise<number> {
   // this PC, so it sits with the other settings and never in a theme folder.
   const fontFavorites = createFontFavoritesStore(settingsDir);
 
+  // The certificate is not optional, and the reason is the origin rather than
+  // any route: a phone at `http://<lan-ip>:<port>` is not a secure context, so
+  // it can neither hold a screen wake lock nor register the service worker an
+  // installable app needs (`vg-580`, `docs/decisions/0070`). Serving plain http
+  // would fail on the display and pass on this PC, which is the trap the row
+  // exists to remove — so a host that cannot produce a certificate refuses to
+  // start and says which directory it could not write, rather than starting
+  // into an origin that is known to be wrong.
+  let origin: SecureOrigin;
+  try {
+    origin = await createSecureOrigin(
+      path.join(settingsDir, "tls"),
+      localNames(),
+    );
+  } catch (error) {
+    console.error(
+      `Could not prepare a certificate in ${path.join(settingsDir, "tls")}: ` +
+        `${error instanceof Error ? error.message : String(error)}\n` +
+        "  The host serves https so a display can hold the screen awake and " +
+        "install as an app; without one it will not start.",
+    );
+    return 1;
+  }
+
   // The server needs the binding, and the binding needs the port the socket
   // actually took — which is not known until the socket is listening. So the
   // option is a getter over this variable rather than a reader captured at
@@ -146,6 +172,12 @@ export async function run(argv: readonly string[]): Promise<number> {
 
   const hosted = createHostServer({
     registry,
+    // The leaf, signed by the root a display installs once. In memory only:
+    // a leaf is disposable, which is what makes a moved address free.
+    tls: { key: origin.key, cert: origin.chain },
+    // And the root itself, for the device that has to trust it before it can
+    // read anything else.
+    caCertificate: origin.certificate,
     // Where a phone should point, whether one can reach this host at all, and
     // how to move it there.
     get hosting() {
@@ -260,6 +292,9 @@ export async function run(argv: readonly string[]): Promise<number> {
       ? "localhost"
       : initialHost;
   const url = `http://${displayHost}:${bound}`;
+  /** The address a display would use, whether or not the LAN is open — the
+   *  certificate covers it either way, and the console names it. */
+  const lan = lanAddress();
 
   console.log(`\nVigilia v${VERSION}`);
 
@@ -271,6 +306,23 @@ export async function run(argv: readonly string[]): Promise<number> {
 
   console.log(`  Dashboard  ${url}`);
   console.log(`  Editor     ${url}/editor`);
+
+  // The step that has to come before any of it, printed on every run rather
+  // than once: adding a second display is the common case and it is the same
+  // step. The path is named as well as the URL because a browser on this PC
+  // would meet the warning it is being asked to remove, while an installer can
+  // read the file directly.
+  console.log(
+    style(
+      "2",
+      `  Certificate  ${origin.certificatePath}` +
+        `\n  This host serves https on the same port, and a display holds the` +
+        `\n  screen awake and installs as an app only there. Install this root` +
+        `\n  once per device, this PC included:` +
+        `\n    https://${lan ?? displayHost}:${bound}${CA_CERTIFICATE_PATH}` +
+        "\n  A device without it shows a certificate warning, not a broken display.",
+    ),
+  );
 
   // Say what the extended sensors will do, rather than leaving the display to
   // show gaps without explanation.
@@ -296,8 +348,6 @@ export async function run(argv: readonly string[]): Promise<number> {
   }
 
   if (!isLoopbackHost(initialHost)) {
-    const lan = lanAddress();
-
     console.log(
       style(
         "33",

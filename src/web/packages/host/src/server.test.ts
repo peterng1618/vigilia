@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import http from "node:http";
+import https from "node:https";
+import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { Readable, Writable } from "node:stream";
@@ -12,9 +14,11 @@ import {
 import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHostBinding, type HostBinding } from "./cli/hosting.js";
+import type { ListenableServer } from "./cli/net.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import {
+  CA_CERTIFICATE_PATH,
   createHostServer,
   type HostingState,
   type HostServerOptions,
@@ -30,6 +34,7 @@ import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { encodeThemeContent } from "./themes/wire.js";
+import { createSecureOrigin } from "./tls/authority.js";
 
 /** The library is a folder, so a save is the document and its bytes (ADR-0017),
  *  plus what the client says the save is based on. */
@@ -152,7 +157,7 @@ function createPackageWithAsset(
 }
 
 function request(
-  server: http.Server,
+  server: ListenableServer,
   method: string,
   urlPath: string,
   body?: Uint8Array | string,
@@ -245,7 +250,7 @@ function request(
 
 /** Resolves as soon as headers are written, for a stream that stays open. */
 function streamStatus(
-  server: http.Server,
+  server: ListenableServer,
   urlPath: string,
   remoteAddress = "192.168.1.50",
 ): Promise<{ status: number; headers: Record<string, unknown> }> {
@@ -2490,6 +2495,231 @@ describe("The published overlay", () => {
     } finally {
       await hosted.close();
       await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * The origin, which is the whole of Task 25.8b: a display that cannot hold a
+ * wake lock or register a service worker is a display at a plain-http origin,
+ * and no route decides that.
+ */
+describe("The host's secure origin", () => {
+  let tmpDir: string;
+  let origin: Awaited<ReturnType<typeof createSecureOrigin>>;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-origin-"));
+    origin = await createSecureOrigin(tmpDir, ["localhost", "127.0.0.1"]);
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  /** The host as the launcher builds it: a certificate, and the root to hand
+   *  out. Both protocols on one port, read over a real socket. */
+  function host({ withRoot = true }: { readonly withRoot?: boolean } = {}) {
+    return createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      tls: { key: origin.key, cert: origin.chain },
+      ...(withRoot ? { caCertificate: origin.certificate } : {}),
+    });
+  }
+
+  /**
+   * The same host without a certificate, so the in-process `request` helper can
+   * reach the router.
+   *
+   * A route answers identically on both protocols — one handler, two servers —
+   * and the helper is the only way to *be* a non-loopback reader, which is the
+   * state the root route exists for. The transport is proven over a real socket
+   * in the cases above rather than pretended at here.
+   */
+  function plainHost({
+    withRoot = true,
+  }: {
+    readonly withRoot?: boolean;
+  } = {}) {
+    return createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      ...(withRoot ? { caCertificate: origin.certificate } : {}),
+    });
+  }
+
+  /** A real TLS handshake against a real socket, trusting the root this host
+   *  just made — not `rejectUnauthorized: false`, which would accept any
+   *  certificate and prove nothing about the one under test. */
+  function get(
+    port: number,
+    urlPath: string,
+  ): Promise<{ status: number; body: string }> {
+    return new Promise((resolve, reject) => {
+      const call = https.request(
+        // The address rather than a hostname: this is the client a phone is,
+        // and an IP has to be covered by a SAN rather than by a CN.
+        { host: "127.0.0.1", port, path: urlPath, ca: origin.certificate },
+        (answer) => {
+          const chunks: Buffer[] = [];
+          answer.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+          answer.on("end", () =>
+            resolve({
+              status: answer.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString("utf8"),
+            }),
+          );
+        },
+      );
+      call.on("error", reject);
+      call.end();
+    });
+  }
+
+  it("answers over https, on a chain the client accepts", async () => {
+    const hosted = host();
+    await new Promise<void>((resolve) =>
+      hosted.server.listen(0, "127.0.0.1", resolve),
+    );
+
+    try {
+      const port = (hosted.server.address() as AddressInfo).port;
+      const answer = await get(port, "/api/health");
+
+      expect(answer.status).toBe(200);
+      // The route's own body, read off the wire rather than assumed: a client
+      // that accepted the chain is a client that reached the router.
+      expect(JSON.parse(answer.body)).toMatchObject({ displays: 0 });
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("still answers plain http on the same port, so the pairing link keeps working", async () => {
+    // **The case that fails if the listener is made https-only.** The link the
+    // host prints and the QR carries is `http://<lan-ip>:<port>`, and it
+    // belongs to the spec that owns pairing — so this task may not leave it
+    // pointing at a protocol the port no longer answers. Both protocols on one
+    // port is what makes that true, and nothing else does.
+    const hosted = host();
+    await new Promise<void>((resolve) =>
+      hosted.server.listen(0, "127.0.0.1", resolve),
+    );
+
+    try {
+      const port = (hosted.server.address() as AddressInfo).port;
+      const answer = await fetch(`http://127.0.0.1:${port}/api/health`);
+
+      expect(answer.status).toBe(200);
+      expect(await answer.json()).toMatchObject({ displays: 0 });
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("prunes a kept connection the inner servers cannot see, so a move can land", async () => {
+    // **The case that fails when this port stops pruning for itself.** The
+    // binding closes idle sockets before it rebinds (`vg-173`), and a server
+    // handed sockets by `emit("connection")` never builds the connection
+    // registry its own `closeIdleConnections()` reads. So a browser's kept
+    // connection is invisible to both inner servers, `close()` waits on it for
+    // ever, and the editor's host switch stays off — the failure this case was
+    // written from, at the LAN address and over the editor.
+    const hosted = host();
+    await new Promise<void>((resolve) =>
+      hosted.server.listen(0, "127.0.0.1", resolve),
+    );
+
+    const agent = new http.Agent({ keepAlive: true, maxSockets: 1 });
+
+    try {
+      const port = (hosted.server.address() as AddressInfo).port;
+      await new Promise<void>((resolve, reject) => {
+        const call = http.request(
+          { host: "127.0.0.1", port, path: "/api/health", agent },
+          (answer) => {
+            answer.resume();
+            answer.on("end", () => resolve());
+          },
+        );
+        call.on("error", reject);
+        call.end();
+      });
+      // A connection really is being kept, which is what makes the assertion
+      // below about the port rather than about a client that hung up.
+      expect(Object.values(agent.freeSockets).flat()).toHaveLength(1);
+
+      hosted.server.closeIdleConnections();
+
+      const closed = await Promise.race([
+        hosted.close().then(() => "closed" as const),
+        new Promise<"timed out">((resolve) => {
+          setTimeout(() => resolve("timed out"), 5_000);
+        }),
+      ]);
+
+      // Only reachable on a failure, and a test that failed has already said so
+      // — this is what keeps the open handle from holding the worker up.
+      hosted.server.closeAllConnections();
+      expect(closed).toBe("closed");
+    } finally {
+      agent.destroy();
+    }
+  });
+
+  it("is plain http when the caller brings no certificate, which is why the launcher always does", async () => {
+    // The case that fails when the change is disabled: the same client, the
+    // same route, no certificate — and the handshake does not complete. It is
+    // about the transport rather than a number, so it cannot pass on a machine
+    // where the answer happens to be different.
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+    });
+    await new Promise<void>((resolve) =>
+      hosted.server.listen(0, "127.0.0.1", resolve),
+    );
+
+    try {
+      const port = (hosted.server.address() as AddressInfo).port;
+      await expect(get(port, "/api/health")).rejects.toThrow();
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("offers the root to a device that has no session and has not paired", async () => {
+    const hosted = plainHost();
+
+    try {
+      // A non-loopback reader with no token: exactly the state a phone is in
+      // while it is looking at the warning this route exists to remove.
+      const answer = await request(
+        hosted.server,
+        "GET",
+        CA_CERTIFICATE_PATH,
+        undefined,
+        { remoteAddress: "192.168.1.50" },
+      );
+
+      expect(answer.status).toBe(200);
+      expect(answer.headers["content-type"]).toBe("application/x-x509-ca-cert");
+      expect(answer.text()).toBe(origin.certificate);
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("says it has none rather than answering with nothing", async () => {
+    const hosted = plainHost({ withRoot: false });
+
+    try {
+      const answer = await request(hosted.server, "GET", CA_CERTIFICATE_PATH);
+      expect(answer.status).toBe(404);
+      expect(answer.text()).toContain("no certificate");
+    } finally {
+      await hosted.close();
     }
   });
 });

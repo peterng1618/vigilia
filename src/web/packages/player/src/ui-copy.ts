@@ -96,6 +96,9 @@ export const uiCopy = {
    * can act on rather than a mechanism: the wake lock's sentence names the
    * *origin* the display was served from, because that is what a phone at
    * `http://<lan-ip>:<port>` lacks and no setting on the phone can change it.
+   * The host now serves https beside http on the same port, from a certificate
+   * it issues itself (`vg-580`, `docs/decisions/0070`), so a reader has two
+   * things to act on — the scheme and the root — and both are named.
    * The dimmer's label names the overlay and says outright that it is not the
    * screen's own brightness — a browser cannot set that, and a control that
    * implied otherwise would be lying to the reader in front of it.
@@ -113,9 +116,11 @@ export const uiCopy = {
     },
     keepAwake: {
       label: "Awake",
-      /** The origin, not the phone: this is the half a reader can act on. */
+      /** The origin, not the phone: this is the half a reader can act on, and
+       *  the host prints both the address to install its certificate from and
+       *  the `https` origin to reload. */
       unavailable:
-        "This browser has no wake lock. The host must serve this display over a secure origin (https, or a certificate this phone trusts) before the screen can be held awake.",
+        "This browser has no wake lock. This display is not a secure origin: it was opened over http, or the host's certificate is not installed on this phone. Use the host's https address, install its certificate, then reload.",
       /** The API exists and the client said no — a policy, a battery saver, a
        *  request with no user activation left. The reader has to be told the
        *  lock is not held, because the button's own state is the only place

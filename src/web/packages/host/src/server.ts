@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import http from "node:http";
+import https from "node:https";
+import net from "node:net";
 import path from "node:path";
 import {
   createBatch,
@@ -9,6 +11,7 @@ import {
 } from "@vigilia/renderer-core";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
+import type { ListenableServer } from "./cli/net.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
 import {
@@ -116,7 +119,24 @@ export interface HostServerOptions {
   /** The document an author is publishing, held in memory. Omitted when the
    *  host keeps none; every display then shows the stored theme. */
   readonly published?: PublishedStore;
+  /** The leaf and its key. Omitted only by the unit suite: the launcher always
+   *  brings one, because a display that cannot hold a wake lock or register a
+   *  service worker is the failure `vg-580` exists to remove, and it is the
+   *  origin rather than any route that decides it. See `docs/decisions/0070`. */
+  readonly tls?: { readonly key: string; readonly cert: string };
+  /** The root a display installs, served at `CA_CERTIFICATE_PATH`. Omitted when
+   *  the host has none to offer, and the route then says so. */
+  readonly caCertificate?: string;
 }
+
+/** Where a display downloads the root it has to trust.
+ *
+ *  **Deliberately outside every check the router makes below**: the device
+ *  fetching this has not been paired yet, and is looking at a browser
+ *  certificate warning while it does — a session and a trusted certificate are
+ *  precisely what it cannot present. The root is public by construction; its
+ *  key is never served and never leaves this machine. */
+export const CA_CERTIFICATE_PATH = "/vigilia-ca.crt";
 
 export interface HostingState {
   /** True when this host is reachable beyond loopback right now. */
@@ -143,7 +163,7 @@ const NO_HOSTING: HostingState = {
 };
 
 export interface HostServer {
-  readonly server: http.Server;
+  readonly server: ListenableServer;
   readonly connectionCount: number;
   close(): Promise<void>;
 }
@@ -272,6 +292,18 @@ function sendHtml(
   response.end(body);
 }
 
+/** A root certificate is a file a device installs, not a document it reads, so
+ *  it is served as one. The media type is what makes a phone offer to install
+ *  it rather than render it as text, and it is the type the operating systems
+ *  themselves use for a `.crt`. */
+function sendCertificate(response: http.ServerResponse, body: string): void {
+  response.writeHead(200, {
+    "content-type": "application/x-x509-ca-cert",
+    "content-disposition": 'attachment; filename="vigilia-ca.crt"',
+  });
+  response.end(body);
+}
+
 function sendText(
   response: http.ServerResponse,
   status: number,
@@ -339,6 +371,94 @@ async function serveStatic(
   sendText(response, 404, built ? "Not found." : missingBundleHint);
 }
 
+/** The first byte of a TLS handshake, and not a byte any HTTP request method
+ *  begins with. */
+const TLS_HANDSHAKE_BYTE = 0x16;
+
+/**
+ * One port, two protocols.
+ *
+ * A display's secure origin and the pairing link the host already prints
+ * (`http://<lan-ip>:<port>`) have to be the same port, because one listener on
+ * one port is what §145 asks for and a second port would be a second thing to
+ * find. So the first byte on a socket decides who owns it: `0x16` is a TLS
+ * ClientHello, and anything else is HTTP.
+ *
+ * **Plain http is a cost here, not a feature.** On a LAN it is an origin with
+ * no wake lock and no service worker — the state `vg-580` exists to remove —
+ * and it is kept only because the pairing link that points at it belongs to the
+ * per-display-themes spec, which owns what that link should carry. A display
+ * reaches the secure origin by typing `https` in front of the address until
+ * then. Recorded in `docs/decisions/0070`.
+ */
+function createPortListener(
+  plain: http.Server,
+  secure: https.Server,
+): ListenableServer {
+  /** Sockets this port accepted and handed on. */
+  const handed = new Set<net.Socket>();
+  /** The subset with a response in flight, which are not idle. */
+  const answering = new Set<net.Socket>();
+
+  const listener = net.createServer({ pauseOnConnect: true }, (socket) => {
+    handed.add(socket);
+    socket.once("close", () => handed.delete(socket));
+
+    socket.once("readable", () => {
+      const first = socket.read(1) as Buffer | null;
+
+      if (first === null) {
+        socket.destroy();
+        return;
+      }
+
+      // Put the byte back before handing the socket over: the inner server
+      // parses it as though it had accepted the connection itself.
+      socket.unshift(first);
+      const owner = first[0] === TLS_HANDSHAKE_BYTE ? secure : plain;
+      owner.emit("connection", socket);
+    });
+  });
+
+  // **The pruning the binding asks for is this port's, not an inner server's.**
+  // A server handed sockets by `emit("connection")` never builds the connection
+  // registry its own `closeIdleConnections()` reads — that registry is made when
+  // a server *listens*, and neither inner server ever does. Measured: with the
+  // pruning delegated to them, the move's `close()` never resolved, because the
+  // browser's keep-alive socket was invisible to both inner servers and the port
+  // waited on it forever, so the editor's host switch stayed off (`vg-173`'s
+  // shape, arrived at from the other end). This port accepted the sockets, so
+  // this port closes them, and it learns which are mid-response from the inner
+  // servers' own `request` events rather than from a private field.
+  for (const owner of [plain, secure]) {
+    owner.on("request", (request, response) => {
+      const { socket } = request;
+      const done = (): void => {
+        answering.delete(socket);
+      };
+
+      answering.add(socket);
+      // `finish` and not only `close`: a keep-alive response is finished and
+      // idle long before its socket closes, and the move is triggered from
+      // exactly that moment — a socket held until `close` would leave
+      // `server.close()` waiting on the connection that is asking to move.
+      response.once("finish", done);
+      response.once("close", done);
+    });
+  }
+
+  return Object.assign(listener, {
+    closeIdleConnections(): void {
+      for (const socket of handed) {
+        if (!answering.has(socket)) socket.destroy();
+      }
+    },
+    closeAllConnections(): void {
+      for (const socket of handed) socket.destroy();
+    },
+  }) as ListenableServer;
+}
+
 export function createHostServer(options: HostServerOptions): HostServer {
   const { registry, bundles } = options;
   const themeStore = options.themeStore ?? createThemeStore(DEFAULT_THEMES_DIR);
@@ -356,6 +476,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const thumbnails = options.thumbnails;
   const themeSettings = options.themeSettings;
   const published = options.published ?? createPublishedStore();
+  const caCertificate = options.caCertificate;
 
   /**
    * Hands the providers the assignment every current input resolves to. Three
@@ -479,15 +600,43 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
   }
 
-  const server = http.createServer((request, response) => {
+  const route = (
+    request: http.IncomingMessage,
+    response: http.ServerResponse,
+  ): void => {
     void handle(request, response);
-  });
+  };
+
+  const plain = http.createServer(route);
+  const secure =
+    options.tls === undefined
+      ? undefined
+      : https.createServer(options.tls, route);
+
+  // One port, and both protocols when a certificate is present. The launcher
+  // always brings one (0070); the unit suite does not, and a route answers the
+  // same either way.
+  const server: ListenableServer =
+    secure === undefined ? plain : createPortListener(plain, secure);
 
   async function handle(
     request: http.IncomingMessage,
     response: http.ServerResponse,
   ): Promise<void> {
     const url = new URL(request.url ?? "/", "http://host.invalid");
+
+    // Before every gate below, and before pairing in particular: a device
+    // reading this is being asked to trust the host, which is the step that has
+    // to come first.
+    if (url.pathname === CA_CERTIFICATE_PATH && request.method === "GET") {
+      if (caCertificate === undefined) {
+        sendText(response, 404, "This host serves no certificate of its own.");
+        return;
+      }
+
+      sendCertificate(response, caCertificate);
+      return;
+    }
 
     // Pairing is an admin action: it mints display credentials, so it stays
     // loopback-only even when the server is LAN-reachable.
