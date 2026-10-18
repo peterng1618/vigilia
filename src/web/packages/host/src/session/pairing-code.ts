@@ -94,12 +94,6 @@ export function createPairingCodeStore(
       // ladder would then advance once per batch of concurrent guesses, which
       // is N guesses at every rung for an attacker firing N at a time. Taking
       // the rung here is what makes the delay count guesses.
-      // **Reserved before the await, not counted after it.** The count is read
-      // again on the far side of the wait, so two claims in flight from one
-      // source would both read the same number and both write it back — the
-      // ladder would then advance once per batch of concurrent guesses, which
-      // is N guesses at every rung for an attacker firing N at a time. Taking
-      // the rung here is what makes the delay count guesses.
       misses.set(source, missed + 1);
 
       // The first miss is free: a person who mistyped once is the likeliest

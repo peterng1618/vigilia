@@ -71,8 +71,8 @@ async function readSettled(
 }
 
 /** The one-time code a display types at `/pair`, and when it stops being the
- *  answer. Read and never minted: the window is the host's, and the host is
- *  where the countdown's expiry is decided. */
+ *  answer. Read and never minted: the window is the host's, and its expiry is
+ *  the host's to decide. */
 export interface PairingCode {
   readonly code: string;
   readonly expiresAt: string;
