@@ -205,6 +205,22 @@ export async function movingElements(page: Page): Promise<string[]> {
 
 export async function openFixture(page: Page): Promise<void> {
   await page.goto(FIXTURE);
+  // A `dist` built by `npm run build` alone has no `control-fixture.html`: the
+  // production build's `emptyOutDir` deletes it and `vite.config.fixture.ts`
+  // adds it only in a second invocation, so `vite preview` falls back to
+  // `index.html` — whose `#app` mount is not this page's `#control-fixture`.
+  // Without this, the specs fail at the `[data-fixture-root]` assert below in a
+  // shape indistinguishable from a design-language violation. Name the cause
+  // and the recipe instead.
+  if ((await page.locator("#control-fixture").count()) === 0) {
+    throw new Error(
+      `${FIXTURE} served no control fixture: the built editor has no ` +
+        "`control-fixture.html`, so the preview fell back to `index.html`. " +
+        "Build it with `npm run build:fixture -w @vigilia/editor` after " +
+        "`npm run build -w @vigilia/editor` — the production build empties " +
+        "`dist` and deletes the fixture page.",
+    );
+  }
   await expect(page.locator("[data-fixture-root]")).toBeVisible();
   await freeze(page);
 }
