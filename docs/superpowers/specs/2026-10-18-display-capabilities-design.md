@@ -1,7 +1,7 @@
 # Display capabilities — design
 
-- **Status:** design for review, 2026-10-18. **Not queued**, no plan, and not
-  approved for one. It cannot be built before the per-display plan's Phase 1.
+- **Status:** **approved 2026-10-18, and panel-only.** Not queued, and it should
+  **not** get a plan of its own — see "Where this is built" below.
 - **Register:** no row. Nothing here is a defect against shipped behaviour.
 - **Depends on:** `2026-10-18-per-display-themes-design.md`, whose Task 4.1
   creates `host/src/settings/displays.ts`. Until that lands there is no display
@@ -18,6 +18,35 @@ becomes **expressible and assignable** under this model and remains
 **undriven**: the host has still never drawn a pixel
 (`2026-10-18-turzx-panel-displays-design.md`). If this spec reads as "panels
 work now", it has failed.
+
+## Where this is built, and why not before
+
+**The user ruled on 2026-10-18: this is for the panel work.** *"This is mainly
+for the panel work. We don't have any phone display today that's struggled with
+video or glass."*
+
+That removes the only present-day consumer. Every display this product has is a
+browser, every browser does video and glass, so **nothing here has an observable
+effect until a panel exists**: every profile would be permissive, every toggle
+inert, and `unavailable` would never be reached. An abstraction with no reader is
+the failure the reuse rule exists to prevent, so this gets **no plan of its own**
+and is built as a phase of the panel work.
+
+**Order, and the two hard dependencies in it:**
+
+1. **Per-display themes** — already queued. Its Task 4.1 creates
+   `host/src/settings/displays.ts`, and until that exists there is no display
+   record to hang a profile on.
+2. **The panel work** — a brainstorm that has not happened, whose first step is
+   the reuse-gate search its own capture names, and whose real blocker is
+   choosing a renderer for a host that has never drawn a pixel. This design does
+   not settle that, and cannot be built ahead of it.
+3. **This, as a phase inside that work.**
+
+The cost of the ordering is that the display column, the theme row and the
+active route are touched twice rather than once — three files, once. That is
+cheaper than shipping inert code, and it is the whole reason the answer is not
+"fold it into the per-display plan's Phase 4".
 
 **Two approaches were considered and are deliberately not taken.** A
 `DisplayDriver` interface with `capabilities()` / `present(frame)` /
@@ -195,22 +224,17 @@ That is the whole point of one model: the second reader costs nothing.
 
 ## Open questions
 
-1. **Does a phone actually struggle?** The whole present-day motivation is that
-   a video background plus glass is expensive on a phone, and **nothing has
-   measured it**. If it does not struggle, this design has no present-day user
-   and belongs with the panel work instead. This is the first thing to settle,
-   and it is a measurement rather than a decision.
-2. **What is a display "known" by?** The per-display spec identifies a display
+1. **What is a display "known" by?** The per-display spec identifies a display
    by `kind` and, for a local monitor, a `MonitorHint`. Neither names a model.
    A panel would be known by VID/PID; a browser is not a model at all. So
    `display-profiles.ts` has **exactly one useful row today** — a browser, all
    features `default-on` — and its real content arrives with panels. Whether the
    table should exist before it has a second row is a fair question.
-3. **Is `chartFps` a capability?** The per-display spec already gives a display
+2. **Is `chartFps` a capability?** The per-display spec already gives a display
    a repaint cadence. A cadence is not a boolean and does not fit this model, so
    it stays where it is — but the two are both "what this display can afford",
    and a later reader will ask why one is a toggle and the other a number.
-4. **What happens to a theme's cost warning now?** The per-display spec puts a
+3. **What happens to a theme's cost warning now?** The per-display spec puts a
    cost warning on the host's theme row. A display that has switched a feature
    off no longer pays that cost, so the warning and the toggle can disagree.
    Neither this design nor that one resolves it.
@@ -218,9 +242,10 @@ That is the whole point of one model: the second reader costs nothing.
 ## Not verified
 
 - **That any display differs from any other today.** Every display this product
-  has is a browser, and every browser does video and glass. The model has no
-  observable effect until a profile says `unavailable` or a consumer flips a
-  toggle, and the phone case in open question 1 is assumed rather than measured.
+  has is a browser, and every browser does video and glass — **the user confirmed
+  this on 2026-10-18**, having seen no phone struggle. So the model has no
+  observable effect until a panel exists: no profile is non-permissive and no
+  toggle changes anything.
 - **That the still-frame path renders the first frame.** It renders whatever
   the `<img>` decodes to, and nothing here establishes that an `<img>` sourced
   from a video file shows frame 1 rather than failing or showing nothing. That
