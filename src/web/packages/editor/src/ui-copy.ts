@@ -88,11 +88,12 @@ const glassRefusals: Readonly<Record<string, string>> = {
 };
 
 /**
- * The kinds `glassRefused` answers in their own terms. Exported so the copy
- * walk can probe that function over the document's own vocabulary: its answer
- * is chosen by the key, so a probe that passes a generic argument reaches only
- * the fallback `glassRefused` composes and the sentences above read as strings
- * with no owner.
+ * The kinds `glassRefused` answers in their own terms — the refused ones, not
+ * the document's whole vocabulary: `Rect` and `Circle` are frostable and are
+ * not here. Exported so the copy walk can probe that function over them: its
+ * answer is chosen by the key, so a probe that passes a generic argument reaches
+ * only the fallback `glassRefused` composes and the sentences above read as
+ * strings with no owner.
  */
 export const glassRefusalKinds: readonly string[] = Object.keys(glassRefusals);
 

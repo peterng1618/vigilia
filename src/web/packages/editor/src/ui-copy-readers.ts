@@ -4,13 +4,13 @@ import { glassRefusalKinds, uiCopy } from "./ui-copy.js";
  * What a surface says, for the copy net's cases.
  *
  * Responsibility: the shared readers only — `spokenIn` for a mounted tree's
- * labels, accessible names and buttons, `saidIn` and `paragraphsOf` for the
- * paragraphs `spokenIn` does not read, `spokenText` for one element's own words
- * with its decoration stripped, and `copy` for every string the table can
- * produce. The rules are asserted by the three files that read through them:
- * `ui-copy.test.ts` (the table's own), `ui-copy-panels.test.ts` (the imperative
- * panels and the picker they mount) and `ui-copy-surfaces.test.ts` (the landed
- * React surfaces).
+ * labels, accessible names, buttons, headings and definition terms, `saidIn`
+ * and `paragraphsOf` for the paragraphs `spokenIn` does not read, `spokenText`
+ * for one element's own words with its decoration stripped, and `copy` for
+ * every string the table can produce. The rules are asserted by the three files
+ * that read through them: `ui-copy.test.ts` (the table's own),
+ * `ui-copy-panels.test.ts` (the imperative panels and the picker they mount)
+ * and `ui-copy-surfaces.test.ts` (the landed React surfaces).
  *
  * **Importing this module also patches the jsdom gaps below.** Every file that
  * reads a mounted surface needs them, because the words are read through Base UI
@@ -68,19 +68,26 @@ export function paragraphsOf(element: Element): string[] {
 }
 
 /**
- * Every string the table can produce. A function entry is called with the
- * argument shapes the panels pass it — a count and a name — over the counts
- * this panel renders, which yields a superset of what they show: extra entries
- * only loosen the net, they cannot break it.
+ * Every string the table can produce, and the limit of that claim.
  *
- * **A keyed function is not covered by those arguments**, and that is what the
- * second pass is for: `glassRefused` chooses its answer by the kind it is asked
- * with, so a generic argument reaches only the fallback and the refusal
- * sentences read as strings no surface owns. It is probed over the keys the
- * document can hold, which the table itself lists — a second list here would
- * agree with it only until someone added a kind to one and not the other. The
- * table's other keyed function needs no probe: `chartFamilyLabels` is reachable
- * as `uiCopy.chartFamilies`, so the object walk above already collects it.
+ * **What the walk covers.** A function entry is called with **one** argument —
+ * a count the panels render, or a name — so a function of one argument whose
+ * answer does not depend on a key is collected whole, and extra entries only
+ * loosen the net, they cannot break it.
+ *
+ * **What it cannot cover.** A keyed function's answer is chosen by its key, so a
+ * generic argument reaches only its fallback: `glassRefused` is probed over
+ * `glassRefusalKinds`, the kinds the table answers in their own terms, because a
+ * second list here would agree with it only until someone added a kind to one
+ * and not the other. And a function of two or more arguments is still called
+ * with one, so its later arguments arrive `undefined` and the sentence it
+ * composes over a dynamic value is collected by nothing —
+ * `panels.artboardOutside` and `draftRecovery.lead` are the two, and a surface
+ * printing one goes falsely **red**. Widening the pool cannot close that: a
+ * sentence interpolating the theme's own name can never equal a probe's output.
+ *
+ * `chartFamilyLabels` needs no probe of its own: it is reachable as
+ * `uiCopy.chartFamilies`, so the object walk above already collects it.
  */
 export function copy(): string[] {
   const out: string[] = [];

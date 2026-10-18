@@ -9,8 +9,12 @@
  * open; the selection column is mounted on a text object and a shape; the three
  * menubar menus and the canvas context menu are opened and read in turn; and the
  * `?` sheet, the publish popover and the library and new-document dialogs are
- * each mounted and read (`vg-418` — the header once said these four were not
- * mounted, and a header owns nothing).
+ * each mounted (`vg-418` — the header once said these four were not mounted, and
+ * a header owns nothing). **The popover is the one read only in part**, and the
+ * limit is stated rather than implied: its own warning is a bare `<span>`, which
+ * no reader in this vocabulary reads, and its trigger carries the
+ * `aria-controls` the button rule skips, so neither word is owned by anything.
+ * That gap is the row's, not this walk's.
  *
  * **What it deliberately does not read, and why.** Two owners of words are
  * carved out by name, because the words are theirs and not this table's:
@@ -179,19 +183,19 @@ it("reads the opened menus, the Settings tabs and the canvas context menu", asyn
  * a literal in one of them was read by no net: the header stated these four
  * were not mounted, and a comment owns nothing.
  *
- * Each is mounted, read for its own words, and asserted non-empty first, so a
- * surface that failed to mount is a failure rather than a walk that agreed with
- * nothing. The popover is mounted open and each dialog at its first question,
- * because a closed surface renders nothing and would pass the walk by being
- * absent.
+ * Each is mounted and read — the header names the one read only in part — and
+ * asserted non-empty first, so a surface that failed to mount is a failure
+ * rather than a walk that agreed with nothing. The popover is mounted open and
+ * each dialog at its first question, because a closed surface renders nothing
+ * and would pass the walk by being absent.
  */
 it("reads the shortcut sheet, the publish popover and the two dialogs", async () => {
   // The list is the coverage, and a surface dropped from it takes its read with
   // it, so the count is guarded rather than left to the length of the loop —
   // the same shape the menu rows' count takes in `ui-copy.test.ts`.
-  expect(UNMOUNTED_SURFACES).toHaveLength(4);
+  expect(READ_SURFACES).toHaveLength(4);
   const owned = new Set(copy());
-  for (const surface of UNMOUNTED_SURFACES) {
+  for (const surface of READ_SURFACES) {
     const { root, destroy } = await surface.mount();
     const said = saidIn(root);
     expect(said, surface.name).not.toEqual([]);
@@ -206,8 +210,8 @@ it("reads the shortcut sheet, the publish popover and the two dialogs", async ()
   }
 });
 
-/** A surface this walk now mounts, and the mount that reads it. */
-interface UnmountedSurface {
+/** One surface this walk reads, and the mount that puts it in the tree. */
+interface ReadSurface {
   readonly name: string;
   readonly mount: () => Promise<{
     readonly root: HTMLElement;
@@ -215,10 +219,10 @@ interface UnmountedSurface {
   }>;
 }
 
-/** The four `vg-418` found. Each portals to `body` — a `Dialog` and a `Popover`
- *  both do — so the read is over `body` rather than the mount point, which
- *  holds none of the words. */
-const UNMOUNTED_SURFACES: readonly UnmountedSurface[] = [
+/** The four surfaces `vg-418` found unmounted, each mounted here. They portal to
+ *  `body` — a `Dialog` and a `Popover` both do — so the read is over `body`
+ *  rather than the mount point, which holds none of the words. */
+const READ_SURFACES: readonly ReadSurface[] = [
   {
     name: "the shortcut sheet",
     mount: async () => {
