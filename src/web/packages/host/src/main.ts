@@ -16,7 +16,6 @@ import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { CA_CERTIFICATE_PATH, createHostServer } from "./server.js";
-import { newToken } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
@@ -374,24 +373,13 @@ export async function run(argv: readonly string[]): Promise<number> {
     console.log(style("2", "  The editor stays restricted to this PC."));
 
     const hostPart = lan === undefined ? displayHost : lan;
-    const token = newToken();
-    const paired = await displays.create("phone", token);
-    // The token is in the URL because EventSource cannot set request headers;
-    // anyone who sees this link can watch until the display it belongs to is
-    // removed, which is the revoke below.
-    console.log(
-      style("2", `\n  Pair a phone with this link (display ${paired.id}):`),
-    );
-    console.log(
-      `  ${url.replace(`://${displayHost}`, `://${hostPart}`)}/?session=${encodeURIComponent(token)}`,
-    );
-    console.log(
-      style(
-        "2",
-        "  Revoke any time:  curl -X DELETE http://127.0.0.1:" +
-          `${bound}/api/pairing/sessions/${encodeURIComponent(token)}`,
-      ),
-    );
+    // **No pairing link is printed.** A credential is stored hashed and answered
+    // exactly once, so a link re-printed on the next launch would be one the host
+    // does not accept — and minting a display per run leaves a record, with a
+    // credential that never expires, for a link nobody used. Pairing is the
+    // editor's code flow, which mints on demand.
+    console.log(style("2", "\n  This host is reachable on this network at:"));
+    console.log(`  ${url.replace(`://${displayHost}`, `://${hostPart}`)}/`);
   } else {
     console.log(
       style("2", "\n  Local only. Pass --host 0.0.0.0 to let phones connect."),

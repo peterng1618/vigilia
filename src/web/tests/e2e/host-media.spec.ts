@@ -990,13 +990,13 @@ test.describe("a paired display fetching a theme asset", () => {
 
     const host = await startLanHost(LAN_PORT);
     try {
-      // Minting is loopback-only by design; the phone only ever holds the token.
+      // Minting is loopback-only by design; the phone only ever holds the
+      // credential, which the route answers once beside the display it belongs to.
       const minted = await request.post(
         `http://127.0.0.1:${LAN_PORT}/api/pairing/sessions?label=e2e`,
       );
       expect(minted.status()).toBe(201);
-      const token = ((await minted.json()) as { session: { token: string } })
-        .session.token;
+      const token = ((await minted.json()) as { token: string }).token;
 
       // The route and the content type the asset URL depends on, from an
       // address the host does not treat as its own.

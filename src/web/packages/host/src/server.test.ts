@@ -1236,6 +1236,68 @@ describe("A display's credential outlives the host that minted it", () => {
       200,
     );
   });
+
+  it("answers a label the store would refuse, and keeps serving", async () => {
+    const hosted = await launch();
+
+    // Every one of these makes `displays.create` throw, and a thrown handler is
+    // an uncaught exception in Node: the host would be gone, not refusing. The
+    // route asks the store's own rules first, so each is a 400 with the reason.
+    const refused: readonly (readonly [string, RegExp])[] = [
+      ["", /label/],
+      ["x".repeat(65), /label/],
+      ["!!!", /usable id/],
+      ["this pc", /reserved/],
+      ["default", /reserved/],
+    ];
+
+    for (const [label, reason] of refused) {
+      const answer = await request(
+        hosted.server,
+        "POST",
+        `/api/pairing/sessions?label=${encodeURIComponent(label)}`,
+      );
+
+      expect(answer.status, `label ${JSON.stringify(label)}`).toBe(400);
+      expect(answer.text(), `label ${JSON.stringify(label)}`).toMatch(reason);
+    }
+
+    // Still serving, and nothing was minted on the way through.
+    expect((await request(hosted.server, "GET", "/api/health")).status).toBe(
+      200,
+    );
+    expect(
+      (await request(hosted.server, "GET", "/api/pairing/sessions")).json(),
+    ).toEqual({ displays: [] });
+  });
+
+  it("answers 500 rather than dying when a store refuses mid-request", async () => {
+    const store = createDisplayStore(settingsDir);
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: settingsDir, editor: settingsDir },
+      themeStore: createThemeStore(settingsDir),
+      displays: {
+        ...store,
+        // A file the store cannot read: every mutator refuses, and `list` is
+        // made to refuse here so the rejection lands inside `handle`.
+        list: () =>
+          Promise.reject(new Error(`${settingsDir} could not be read`)),
+      },
+    });
+    running = hosted;
+
+    const answer = await request(hosted.server, "GET", "/api/pairing/sessions");
+    expect(answer.status).toBe(500);
+    // The reason names this machine's own file, and this route answers LAN
+    // callers too, so it stays out of the body.
+    expect(answer.text()).not.toContain(settingsDir);
+
+    // The listener is still there to answer the next request.
+    expect((await request(hosted.server, "GET", "/api/health")).status).toBe(
+      200,
+    );
+  });
 });
 
 /** A template the product ships, and the list the host's pages read it from. */

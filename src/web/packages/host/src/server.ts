@@ -35,6 +35,7 @@ import type {
   DisplaySettingsStore,
 } from "./settings/display.js";
 import type { DisplayRecord, DisplayStore } from "./settings/displays.js";
+import { mintedDisplayId } from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
@@ -675,11 +676,32 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
   }
 
+  /**
+   * The one place a request becomes a response, and the one place a rejected
+   * handler is stopped.
+   *
+   * **A rejection here would be an uncaught exception**, and Node ends the
+   * process on one: every refusal a store can make — a file it could not read, a
+   * label it would not mint — would take the listener down with it and leave the
+   * host gone until someone started it again. So the response is answered
+   * instead, with the reason kept out of the body: it names this machine's own
+   * files, and this route answers LAN callers too. Both servers share this
+   * wrapper, so neither can reach the process.
+   */
   const route = (
     request: http.IncomingMessage,
     response: http.ServerResponse,
   ): void => {
-    void handle(request, response);
+    handle(request, response).catch(() => {
+      // A response already on the wire cannot be replaced; ending the connection
+      // is all that is left.
+      if (response.headersSent || response.writableEnded) {
+        response.destroy();
+        return;
+      }
+
+      sendText(response, 500, "The host could not answer that request.");
+    });
   };
 
   const plain = http.createServer(route);
@@ -740,6 +762,20 @@ export function createHostServer(options: HostServerOptions): HostServer {
         request.method === "POST"
       ) {
         const label = url.searchParams.get("label") ?? "display";
+        // A label the store would refuse is answered rather than thrown: the
+        // store's own rules decide, so the route and the file agree, and the
+        // author is told which rule they broke instead of a 500.
+        try {
+          mintedDisplayId(label);
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
         // The credential is answered exactly once: only its hash is stored, so
         // this is the one moment it can be handed to the display it belongs to.
         const token = newToken();

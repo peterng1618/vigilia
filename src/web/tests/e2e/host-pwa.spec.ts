@@ -131,11 +131,12 @@ test.describe("the player as an installed app", () => {
       throw new Error(`the host never answered on ${PORT}`);
     }
 
-    // Pairing is an admin action and is loopback-only, so the session a display
-    // carries is minted from here rather than from the phone.
+    // Pairing is an admin action and is loopback-only, so the credential a
+    // display carries is minted from here rather than from the phone. The route
+    // answers it once, beside the display it belongs to: the record holds only
+    // its hash, so nothing can hand it back a second time.
     const paired = await probe.post("/api/pairing/sessions?label=pwa");
-    token = ((await paired.json()) as { session: { token: string } }).session
-      .token;
+    token = ((await paired.json()) as { token: string }).token;
     await probe.dispose();
 
     authority = await readFile(CA_FILE, "utf8");

@@ -1,6 +1,5 @@
 import { Popover } from "@base-ui/react/popover";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { displayUrl } from "../hosting-client.js";
 import type { PublishSwitch } from "../publish-client.js";
 import { useActiveShortcuts } from "../shortcut-manager/bindings.js";
 import {
@@ -10,7 +9,6 @@ import {
 import { uiCopy } from "../ui-copy.js";
 import { documentNameOf } from "./bridge.js";
 import type { HostingStore } from "./hosting-store.js";
-import { QrCode } from "./qr-symbol.js";
 import type { EditorActionFacade } from "./session-facade.js";
 import type { PublishSurfaceStore } from "./shell-stores.js";
 
@@ -112,20 +110,15 @@ export function PublishControl({
   // reason. Neither is drawn as "not publishing".
   if (known === undefined) return null;
 
-  const { answer, pairing, reason, pending } = known;
-  // The address and the pairing exist only while the LAN is on, so turning it
-  // off takes the URL off the screen rather than leaving a stale one behind.
+  const { answer, reason, pending } = known;
+  // **The address is the host's, not a credential's.** It exists only while the
+  // LAN is on, so turning it off takes the URL off the screen rather than leaving
+  // a stale one behind — and it is drawn whether or not anything is paired,
+  // because the address is what a display has to reach. The code that pairs it
+  // arrives with Task 1.4's exchange; until then this surface claims no link.
   const shown =
-    open &&
-    answer.address !== null &&
-    answer.port !== null &&
-    pairing !== undefined
-      ? {
-          address: answer.address,
-          port: answer.port,
-          token: pairing.token,
-          expiresAt: pairing.expiresAt,
-        }
+    open && answer.address !== null && answer.port !== null
+      ? { address: answer.address, port: answer.port }
       : undefined;
   const label = open
     ? uiCopy.publish.stop
@@ -206,15 +199,6 @@ export function PublishControl({
                   {uiCopy.publish.address}
                 </span>
                 <code className="editor-shell-publish-url">{`http://${shown.address}:${shown.port}`}</code>
-                <span className="editor-shell-publish-expiry">
-                  {uiCopy.publish.expires(shown.expiresAt)}
-                </span>
-                <QrCode
-                  text={displayUrl(
-                    { address: shown.address, port: shown.port },
-                    shown.token,
-                  )}
-                />
               </>
             )}
           </Popover.Popup>

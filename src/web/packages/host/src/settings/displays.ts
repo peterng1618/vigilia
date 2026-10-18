@@ -149,6 +149,27 @@ export function displayIdFrom(label: string, suffix: string): string {
   return id;
 }
 
+/**
+ * The id a new display's label would be minted from, refused with the store's own
+ * words when it cannot be one: an empty or over-long label, one that slugs to
+ * nothing, or one that slugs to a reserved id.
+ *
+ * Exported because the pairing route has to *answer* a label the store would
+ * refuse rather than let it throw — a rejected request handler is an uncaught
+ * exception in Node, so a refused label would take the listener down with it.
+ * A second copy of these three rules in the route would be a second thing to keep
+ * true.
+ */
+export function mintedDisplayId(label: unknown): string {
+  const id = displayIdFrom(normalizeLabel(label), "");
+
+  if (id === LOCAL_DISPLAY_ID || id === DEFAULT_DISPLAY) {
+    throw new Error(`"${id}" is a reserved display id.`);
+  }
+
+  return id;
+}
+
 function normalizeMonitor(input: unknown): MonitorHint | undefined {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return undefined;
@@ -336,6 +357,28 @@ export function createDisplayStore(
     return displays;
   };
 
+  /**
+   * One write at a time.
+   *
+   * Every mutator is read-modify-write over the whole file, so two overlapping
+   * ones lose the earlier: a removal landing between a `touch`'s read and its
+   * save is undone, and the display — with its credential — comes back, which is
+   * a revocation that did not happen. The chain is the whole of the
+   * serialization; a link that rejects must not break the ones behind it.
+   *
+   * Nothing nests: `add` is private and lock-free, so each mutator takes the
+   * lock exactly once.
+   */
+  let writing: Promise<unknown> = Promise.resolve();
+  const writeExclusively = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = writing.then(work, work);
+    writing = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  };
+
   const add = async (
     label: string,
     fields: {
@@ -347,13 +390,8 @@ export function createDisplayStore(
     const name = normalizeLabel(label);
     const displays = await readOrThrow();
     const taken = new Set(displays.map((display) => display.id));
-    const slug = displayIdFrom(name, "");
+    let id = mintedDisplayId(name);
 
-    if (slug === LOCAL_DISPLAY_ID || slug === DEFAULT_DISPLAY) {
-      throw new Error(`"${slug}" is a reserved display id.`);
-    }
-
-    let id = slug;
     if (taken.has(id)) {
       id = displayIdFrom(name, randomSuffix());
       if (taken.has(id)) {
@@ -380,11 +418,13 @@ export function createDisplayStore(
     },
 
     create(label, token): Promise<DisplayRecord> {
-      return add(label, { kind: "paired", tokenHash: hashToken(token) });
+      return writeExclusively(() =>
+        add(label, { kind: "paired", tokenHash: hashToken(token) }),
+      );
     },
 
     createLocal(label, monitor): Promise<DisplayRecord> {
-      return add(label, { kind: "local", monitor });
+      return writeExclusively(() => add(label, { kind: "local", monitor }));
     },
 
     async find(id): Promise<DisplayRecord | undefined> {
@@ -404,67 +444,78 @@ export function createDisplayStore(
       );
     },
 
-    async rotate(id, token): Promise<DisplayRecord | undefined> {
-      const displays = await readOrThrow();
-      const index = displays.findIndex((record) => record.id === id);
-      const found = displays[index];
+    rotate(id, token): Promise<DisplayRecord | undefined> {
+      return writeExclusively(async () => {
+        const displays = await readOrThrow();
+        const index = displays.findIndex((record) => record.id === id);
+        const found = displays[index];
 
-      // A local display has no credential to replace, and giving it one would
-      // write a record the next read drops.
-      if (found === undefined || found.kind !== "paired") return undefined;
+        // A local display has no credential to replace, and giving it one would
+        // write a record the next read drops.
+        if (found === undefined || found.kind !== "paired") return undefined;
 
-      const record: DisplayRecord = { ...found, tokenHash: hashToken(token) };
-      displays[index] = record;
-      await save(displays);
-      return record;
+        const record: DisplayRecord = {
+          ...found,
+          tokenHash: hashToken(token),
+        };
+        displays[index] = record;
+        await save(displays);
+        return record;
+      });
     },
 
-    async update(id, patch): Promise<DisplayRecord | undefined> {
-      const displays = await readOrThrow();
-      const index = displays.findIndex((record) => record.id === id);
-      const found = displays[index];
+    update(id, patch): Promise<DisplayRecord | undefined> {
+      return writeExclusively(async () => {
+        const displays = await readOrThrow();
+        const index = displays.findIndex((record) => record.id === id);
+        const found = displays[index];
 
-      if (found === undefined) return undefined;
+        if (found === undefined) return undefined;
 
-      const label =
-        patch.label === undefined ? found.label : normalizeLabel(patch.label);
-      const chartFps =
-        patch.chartFps === undefined
-          ? found.chartFps
-          : rateOrThrow(patch.chartFps);
+        const label =
+          patch.label === undefined ? found.label : normalizeLabel(patch.label);
+        const chartFps =
+          patch.chartFps === undefined
+            ? found.chartFps
+            : rateOrThrow(patch.chartFps);
 
-      // The id, the creation time and the monitor are not patchable: everything
-      // else is keyed by the id, so a rename that moved it would orphan them.
-      const record: DisplayRecord = {
-        ...found,
-        label,
-        ...(chartFps === undefined ? {} : { chartFps }),
-      };
+        // The id, the creation time and the monitor are not patchable: everything
+        // else is keyed by the id, so a rename that moved it would orphan them.
+        const record: DisplayRecord = {
+          ...found,
+          label,
+          ...(chartFps === undefined ? {} : { chartFps }),
+        };
 
-      displays[index] = record;
-      await save(displays);
-      return record;
+        displays[index] = record;
+        await save(displays);
+        return record;
+      });
     },
 
-    async touch(id, at): Promise<void> {
-      const displays = await readOrThrow();
-      const index = displays.findIndex((record) => record.id === id);
-      const found = displays[index];
+    touch(id, at): Promise<void> {
+      return writeExclusively(async () => {
+        const displays = await readOrThrow();
+        const index = displays.findIndex((record) => record.id === id);
+        const found = displays[index];
 
-      if (found === undefined) return;
+        if (found === undefined) return;
 
-      displays[index] = { ...found, lastSeenAt: at };
-      await save(displays);
+        displays[index] = { ...found, lastSeenAt: at };
+        await save(displays);
+      });
     },
 
-    async remove(id): Promise<boolean> {
-      const displays = await readOrThrow();
-      const remaining = displays.filter((record) => record.id !== id);
+    remove(id): Promise<boolean> {
+      return writeExclusively(async () => {
+        const displays = await readOrThrow();
+        const remaining = displays.filter((record) => record.id !== id);
 
-      if (remaining.length === displays.length) return false;
+        if (remaining.length === displays.length) return false;
 
-      await save(remaining);
-      return true;
+        await save(remaining);
+        return true;
+      });
     },
   };
 }

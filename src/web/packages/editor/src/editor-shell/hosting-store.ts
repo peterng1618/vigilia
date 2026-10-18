@@ -1,9 +1,4 @@
-import {
-  type HostingAnswer,
-  mintSession,
-  readHosting,
-  setLan,
-} from "../hosting-client.js";
+import { type HostingAnswer, readHosting, setLan } from "../hosting-client.js";
 
 /** What the shell knows about the host behind it, and the one place that answers
  *  "is this editor publishing".
@@ -18,7 +13,11 @@ export type HostingSnapshot =
   | {
       readonly kind: "known";
       readonly answer: HostingAnswer;
-      /** The credential a phone pairs with, which is not the editor session. */
+      /** The credential a phone pairs with, which is not the editor session.
+       *  **Always absent until Task 1.4 lands the code flow**: a durable
+       *  credential is minted once and stored hashed, so minting on every read
+       *  would leave a display — and a credential that never expires — behind
+       *  each one, and the control would have nothing it could show for it. */
       readonly pairing: HostingAnswer["session"] | undefined;
       /** A refusal, in the host's own words. */
       readonly reason: string | undefined;
@@ -64,7 +63,10 @@ export class HostingStore {
       this.#emit({
         kind: "known",
         answer,
-        pairing: answer.lan ? await mintSession() : undefined,
+        // Nothing is minted here: the host answers a credential once and keeps
+        // only its hash, so a mint per read is a display per read. Task 1.4
+        // replaces this with the code exchange.
+        pairing: undefined,
         reason: undefined,
         pending: undefined,
       });
@@ -105,7 +107,7 @@ export class HostingStore {
     this.#emit({
       kind: "known",
       answer,
-      pairing: answer.lan ? await mintSession() : undefined,
+      pairing: undefined,
       reason: answer.refusal ?? undefined,
       pending: undefined,
     });

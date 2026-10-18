@@ -135,6 +135,43 @@ describe("createDisplayStore", () => {
     );
   });
 
+  it("keeps a display removed when a removal and a touch overlap", async () => {
+    // Both are read-modify-write over the whole file, so without serialization
+    // the touch writes back the snapshot it read — the record, with its
+    // credential — over the removal, and a revoked display is paired again.
+    // The removal starts first and the touch second, which is the interleave
+    // that resurrects: the touch reads the file as it was before the removal.
+    for (let round = 0; round < 5; round += 1) {
+      const token = `tok-${round}`;
+      const record = await store.create(`Kitchen tablet ${round}`, token);
+
+      const removing = store.remove(record.id);
+      const touching = store.touch(record.id, "2026-10-18T00:00:00.000Z");
+
+      expect(await removing).toBe(true);
+      await touching;
+
+      expect(await store.find(record.id), `round ${round}`).toBeUndefined();
+      expect(await store.authenticate(token), `round ${round}`).toBeUndefined();
+    }
+  });
+
+  it("serializes overlapping writes rather than losing the earlier one", async () => {
+    // The same shape from the other end: two creations racing must both land, so
+    // the file holds both displays rather than the last writer's snapshot.
+    const created = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        store.create(`Tablet ${index}`, `tok-${index}`),
+      ),
+    );
+
+    const stored = await store.list();
+    expect(stored).toHaveLength(created.length);
+    for (const record of created) {
+      expect(stored.some((entry) => entry.id === record.id)).toBe(true);
+    }
+  });
+
   it("drops a stored record whose tokenHash is missing", async () => {
     // A hand-edited file: a paired display nothing could ever authenticate as.
     await writeFile(
