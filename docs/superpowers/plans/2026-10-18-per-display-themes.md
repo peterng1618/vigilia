@@ -1195,7 +1195,7 @@ Do not silently do nothing on a platform that is not implemented.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/host/src/serve/display-launcher.test.ts packages/host/src/server.test.ts packages/host/src/providers/lhm-launcher.test.ts`
+Run: `npx vitest run packages/host/src/serve/display-launcher.test.ts packages/host/src/server.test.ts packages/host/src/settings/displays.test.ts packages/host/src/providers/lhm-launcher.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
