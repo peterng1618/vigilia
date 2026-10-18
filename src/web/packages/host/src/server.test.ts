@@ -15,7 +15,7 @@ import {
 import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHostBinding, type HostBinding } from "./cli/hosting.js";
-import type { ListenableServer } from "./cli/net.js";
+import { type ListenableServer, listenWithFallback } from "./cli/net.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import {
@@ -38,6 +38,7 @@ import {
   LOCAL_DISPLAY_ID,
 } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
+import type { HostRecord } from "./settings/host-record.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { encodeThemeContent } from "./themes/wire.js";
@@ -1013,6 +1014,208 @@ describe("Host theme routes", () => {
     it("reports pairing availability through /api/health", async () => {
       const health = await request(paired.server, "GET", "/api/health");
       expect((health.json() as { pairing: boolean }).pairing).toBe(true);
+    });
+  });
+
+  /**
+   * The one route an unpaired client may read, and the reason a display that has
+   * lost its host's address can find it again (R23–R25). What these cases hold is
+   * the promise that makes the exemption safe: the body is the identity and the
+   * port, and nothing else this host holds.
+   */
+  describe("The host route `/api/host` answers who this host is, and nothing else", () => {
+    let hostDir: string;
+    let hosted: ReturnType<typeof createHostServer>;
+    let displays: ReturnType<typeof createDisplayStore>;
+    let occupier: net.Server | undefined;
+
+    /** The identity a display would have stored for this host. */
+    const record: HostRecord = { id: "3f9a1c0b7d2e4a68", name: "Study PC" };
+
+    beforeEach(async () => {
+      hostDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), "vigilia-host-identity-test-"),
+      );
+      displays = createDisplayStore(hostDir);
+    });
+
+    afterEach(async () => {
+      if (occupier !== undefined) {
+        await new Promise<void>((resolve) => {
+          occupier?.close(() => resolve());
+        });
+        occupier = undefined;
+      }
+      // `fetch` leaves a keep-alive socket and `close()` waits for connections,
+      // so a teardown that only closed the server would hang on its own client.
+      hosted.server.closeAllConnections();
+      await hosted.close();
+      await fs.rm(hostDir, { recursive: true, force: true });
+    });
+
+    /** The route reads no theme, so the bundles are only a temp directory. */
+    function build(
+      options: Omit<
+        HostServerOptions,
+        "registry" | "bundles" | "themeStore"
+      > = {},
+    ): void {
+      hosted = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: hostDir, editor: hostDir },
+        themeStore: createThemeStore(hostDir),
+        ...options,
+      });
+    }
+
+    it("answers an unpaired caller with the identity and nothing else", async () => {
+      build({ host: record });
+
+      const answered = await request(
+        hosted.server,
+        "GET",
+        "/api/host",
+        undefined,
+        { remoteAddress: "192.168.1.50" },
+      );
+
+      expect(answered.status).toBe(200);
+      expect(answered.json()).toEqual({
+        id: record.id,
+        name: record.name,
+        // Not listening in this harness, which is the honest answer rather than
+        // a port invented for the field.
+        port: null,
+      });
+      // Exactly these three, so a field added for another route's sake cannot
+      // ride along unseen: the exemption is for this body and no wider.
+      expect(
+        Object.keys(answered.json() as Record<string, unknown>).sort(),
+      ).toEqual(["id", "name", "port"]);
+    });
+
+    it("is readable cross-origin, because a re-find sweep is cross-origin", async () => {
+      build({ host: record });
+
+      const answered = await request(
+        hosted.server,
+        "GET",
+        "/api/host",
+        undefined,
+        { remoteAddress: "192.168.1.50" },
+      );
+
+      expect(answered.headers["access-control-allow-origin"]).toBe("*");
+      // A wildcard origin with credentials is refused by a browser, and a sweep
+      // sends none: this header would only invite a later reader to send the
+      // token cross-origin.
+      expect(answered.headers).not.toHaveProperty(
+        "access-control-allow-credentials",
+      );
+    });
+
+    it("does not leak the credential or the display list", async () => {
+      build({ host: record, displays });
+
+      const tokens = [newToken(), newToken()];
+      await displays.create("Kitchen phone", tokens[0] ?? "");
+      await displays.create("Hallway phone", tokens[1] ?? "");
+
+      const answered = await request(
+        hosted.server,
+        "GET",
+        "/api/host",
+        undefined,
+        { remoteAddress: "192.168.1.50" },
+      );
+      const bytes = answered.text();
+
+      expect(
+        Object.keys(answered.json() as Record<string, unknown>).sort(),
+      ).toEqual(["id", "name", "port"]);
+
+      // Neither the credential nor the hash it is stored as: the route answers
+      // about who this host is, not about who is paired with it.
+      for (const token of tokens) {
+        expect(bytes).not.toContain(token);
+        expect(bytes).not.toContain(hashToken(token));
+      }
+    });
+
+    it("answers the port it is actually listening on, not one it was given", async () => {
+      // Two sources could be mistaken for the port — the binding's state and the
+      // port the host was asked to take — so both are made to differ from the
+      // socket: the binding reports 1, and the port asked for is held by another
+      // listener, so the host falls back to the next one.
+      build({
+        host: record,
+        hosting: {
+          state: async () => ({
+            lan: false,
+            address: null,
+            port: 1,
+            refusal: null,
+          }),
+          setLan: async () => ({ ok: true }),
+          idle: async () => {},
+        },
+      });
+
+      occupier = net.createServer();
+      const held = await new Promise<number>((resolve, reject) => {
+        occupier?.once("error", reject);
+        occupier?.listen(0, "127.0.0.1", () => {
+          const address = occupier?.address();
+          resolve(
+            typeof address === "object" && address !== null ? address.port : 0,
+          );
+        });
+      });
+
+      const bound = await listenWithFallback(hosted.server, held, "127.0.0.1");
+      expect(bound).not.toBe(held);
+
+      const answered = await request(hosted.server, "GET", "/api/host");
+
+      // The port in the answer is the one in the URL a display would dial, which
+      // is what a re-find needs: the fallback port, not the one asked for.
+      expect(answered.json()).toMatchObject({ port: bound });
+
+      // And over a real socket, where the header's precedence is Node's rather
+      // than the harness's: `writeHead` keeps a name it does not set, so what
+      // was set before `sendJson` is on the wire.
+      const real = await fetch(`http://127.0.0.1:${bound}/api/host`);
+      expect(real.headers.get("access-control-allow-origin")).toBe("*");
+      await expect(real.json()).resolves.toMatchObject({ port: bound });
+    });
+
+    it("answers 404 like any unknown path when this host has no identity", async () => {
+      // No `host` option: the route is not registered at all. An id minted to
+      // fill the answer would be an identity no display could have stored, and a
+      // host with nothing to say should not be found by a sweep.
+      build({});
+
+      const answered = await request(hosted.server, "GET", "/api/host");
+
+      expect(answered.status).toBe(404);
+    });
+
+    it("is read before the display guard, by a caller refused beside it", async () => {
+      build({ host: record, displays });
+      const lan = { remoteAddress: "192.168.1.50" };
+
+      // Unpaired and off-loopback, which is exactly the caller a re-find sweep
+      // is: the route answers it, while the same caller is refused on the
+      // guarded route beside it. A route registered after that guard would
+      // answer 403 here rather than the identity.
+      expect(
+        (await request(hosted.server, "GET", "/api/host", undefined, lan))
+          .status,
+      ).toBe(200);
+      expect(
+        (await request(hosted.server, "GET", "/api/themes", undefined, lan))
+          .status,
+      ).toBe(403);
     });
   });
 

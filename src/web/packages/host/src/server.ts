@@ -49,6 +49,7 @@ import {
   normalizePatch,
 } from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
+import type { HostRecord } from "./settings/host-record.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import {
@@ -151,6 +152,11 @@ export interface HostServerOptions {
   /** The root a display installs, served at `CA_CERTIFICATE_PATH`. Omitted when
    *  the host has none to offer, and the route then says so. */
   readonly caCertificate?: string;
+  /** Which host this app folder is (§ "Finding the host after its address
+   *  changes"), answered by `GET /api/host`. Omitted when this host has no
+   *  identity: the route is then not registered at all, because an id minted to
+   *  fill the answer is one no display could have stored. */
+  readonly host?: HostRecord;
 }
 
 /** Where a display downloads the root it has to trust.
@@ -584,6 +590,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const themeSettings = options.themeSettings;
   const published = options.published ?? createPublishedStore();
   const caCertificate = options.caCertificate;
+  const hostRecord = options.host;
 
   /**
    * Hands the providers the assignment every current input resolves to. Three
@@ -779,6 +786,48 @@ export function createHostServer(options: HostServerOptions): HostServer {
         "/pair.html",
         "The pairing page is missing from this installation.",
       );
+      return;
+    }
+
+    // **The one route an unpaired client may read**, and the reason a display
+    // that has lost its host's address can find it again: a re-find sweep asks
+    // every host on the network who it is and keeps the one whose id it stored.
+    // So it answers before every gate below — the display guard in particular —
+    // and its body is fixed by that promise: the identity, the port, and nothing
+    // else this host holds. The name is one character from `/api/hosting`, the
+    // LAN on/off setting, deliberately and not by accident (R24).
+    //
+    // **Not registered when this host has no identity**, so it answers 404 like
+    // any unknown path: an id minted to fill the field would be one no display
+    // could have stored, and a host with nothing to say should not be found by a
+    // sweep at all (R23).
+    if (
+      hostRecord !== undefined &&
+      url.pathname === "/api/host" &&
+      request.method === "GET"
+    ) {
+      // **Cross-origin, and this route alone.** A sweep reaches hosts by their
+      // LAN addresses, so every one of those reads is cross-origin and a browser
+      // refuses it without this header. It is set on this response rather than in
+      // `sendJson` on purpose: a shared writer that could turn CORS on is one
+      // edit away from making every route in this file cross-origin readable,
+      // and this route is meant to be the single deliberate exception (R25).
+      // No `Access-Control-Allow-Credentials`: a sweep sends no credential, and
+      // a wildcard origin with credentials is refused by browsers anyway.
+      response.setHeader("Access-Control-Allow-Origin", "*");
+
+      // The port comes from the socket, never from an option or the binding: a
+      // host that fell back to the next port must answer the port a display
+      // actually has to dial. Null for a server that is not listening, the same
+      // honest absence `/api/hosting` reports.
+      const address = server.address();
+
+      sendJson(response, 200, {
+        id: hostRecord.id,
+        name: hostRecord.name,
+        port:
+          typeof address === "object" && address !== null ? address.port : null,
+      });
       return;
     }
 

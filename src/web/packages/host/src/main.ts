@@ -23,6 +23,7 @@ import { createDisplaySettingsStore } from "./settings/display.js";
 import { createDisplayStore } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { acquireHostLock } from "./settings/host-lock.js";
+import { readOrMintHostRecord } from "./settings/host-record.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
@@ -156,6 +157,11 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Which curated font trios this author reaches for. Author preference about
   // this PC, so it sits with the other settings and never in a theme folder.
   const fontFavorites = createFontFavoritesStore(settingsDir);
+  // Which host this app folder is, read or minted after the lock so a second
+  // host cannot answer with the same identity: `GET /api/host` gives it to
+  // anyone who asks, and it is what a display stores to re-find this host after
+  // its address changes (§ "Finding the host after its address changes").
+  const hostRecord = await readOrMintHostRecord(settingsDir);
 
   // The certificate is not optional, and the reason is the origin rather than
   // any route: a phone at `http://<lan-ip>:<port>` is not a secure context, so
@@ -197,6 +203,8 @@ export async function run(argv: readonly string[]): Promise<number> {
     // And the root itself, for the device that has to trust it before it can
     // read anything else.
     caCertificate: origin.certificate,
+    // Who this host is, so a display that has lost its address can ask.
+    host: hostRecord,
     // Where a phone should point, whether one can reach this host at all, and
     // how to move it there.
     get hosting() {
