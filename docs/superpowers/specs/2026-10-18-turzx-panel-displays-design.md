@@ -2,7 +2,8 @@
 
 - **Status:** **rough capture, 2026-10-18 — long-term roadmap only.** Not queued,
   no plan, and **not approved for one**: this needs its own brainstorm first. It
-  exists so the protocol research is not lost.
+  exists so the protocol research is not lost. **Sequenced after the theme store**
+  (user ruling 2026-10-18), which itself follows the per-display plan.
 - **Register:** no row. Nothing here is a defect against shipped behaviour.
 - **Depends on:** `2026-10-18-per-display-themes-design.md`. A panel would be a
   **third** display kind in that model, and the first display the host has to draw

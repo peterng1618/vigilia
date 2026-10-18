@@ -32,16 +32,20 @@ inert, and `unavailable` would never be reached. An abstraction with no reader i
 the failure the reuse rule exists to prevent, so this gets **no plan of its own**
 and is built as a phase of the panel work.
 
-**Order, and the two hard dependencies in it:**
+**Order, ruled by the user on 2026-10-18 — theme store first, panel support
+after:**
 
 1. **Per-display themes** — already queued. Its Task 4.1 creates
    `host/src/settings/displays.ts`, and until that exists there is no display
-   record to hang a profile on.
-2. **The panel work** — a brainstorm that has not happened, whose first step is
+   record to hang a profile on. It stays first whatever else moves, because its
+   own landing order makes it *"a prerequisite of the store's phase A rather than
+   a sibling"*, so the theme store cannot precede it.
+2. **The theme store** — queued behind per-display.
+3. **The panel work** — a brainstorm that has not happened, whose first step is
    the reuse-gate search its own capture names, and whose real blocker is
    choosing a renderer for a host that has never drawn a pixel. This design does
    not settle that, and cannot be built ahead of it.
-3. **This, as a phase inside that work.**
+4. **This, as a phase inside the panel work.**
 
 The cost of the ordering is that the display column, the theme row and the
 active route are touched twice rather than once — three files, once. That is
