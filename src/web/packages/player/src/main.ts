@@ -67,11 +67,23 @@ function displayStorage(): Storage | undefined {
 
 const storage = displayStorage();
 
+/** One re-find is 253 requests to addresses that mostly are not there, and the
+ *  follower reports a failed tick every couple of seconds; this is what keeps a
+ *  host that is simply asleep from putting every display on its /24 on that
+ *  cadence. Fixed rather than backing off — if a real display shows the traffic
+ *  matters, the next step is a growing interval. A failed sweep is retried,
+ *  because a host that was still booting is the case this exists for. */
+const REFIND_COOLDOWN_MS = 60_000;
+
 /**
  * Records who this display's host is, on every load rather than once at pairing.
  * `localStorage` is per-origin, so a record written at the old address is
  * invisible to the page at the new one: storing once would make the first move
  * work and lose the host on the second (R60).
+ *
+ * **The one writer.** `displaySession` reads the record and never writes it, so
+ * there is no second place that could write an identity the URL does not carry
+ * (R72).
  *
  * `/api/host` is unauthenticated and cross-origin readable, and this call is
  * same-origin, so it carries no credential — the identity is public and the
@@ -279,10 +291,12 @@ async function startHostedTheme(
   const reResolve = (): void => {
     window.location.href = reResolveUrl(window.location.href);
   };
-  // The ladder, and the two things that keep it off the network: a sweep of 253
-  // addresses is not something to start twice, and a page the browser has put
-  // in its back/forward cache must not keep probing a LAN it has left.
+  // The ladder, and the three things that keep it off the network: a sweep of
+  // 253 addresses is not something to start twice, one that just ran is not
+  // worth repeating inside the cooldown, and a page the browser has put in its
+  // back/forward cache must not keep probing a LAN it has left.
   let refinding = false;
+  let lastRefindAt: number | undefined;
   let disposed = false;
 
   /** Deliberately not `session.fetch`: `/api/host` is unauthenticated and
@@ -320,12 +334,22 @@ async function startHostedTheme(
   const refind = async (): Promise<void> => {
     const pairing =
       storage === undefined ? undefined : readStoredPairing(storage);
+    const now = Date.now();
 
-    if (pairing === undefined || refinding || disposed) {
+    // The clock starts when a sweep does, so a sweep that found nothing is
+    // retried after the cooldown rather than never — the case this is for is a
+    // host that was still booting when the first one ran.
+    if (
+      pairing === undefined ||
+      refinding ||
+      disposed ||
+      (lastRefindAt !== undefined && now - lastRefindAt < REFIND_COOLDOWN_MS)
+    ) {
       return;
     }
 
     refinding = true;
+    lastRefindAt = now;
 
     try {
       const found = await refindHost(pairing, probe);
@@ -361,8 +385,9 @@ async function startHostedTheme(
     onRefused: (reason) => showConnectionState("refused", 0, reason),
     onThemeChange: reResolve,
     // The one sighting of a host that has stopped answering, and the only thing
-    // that can start the ladder: the follower reports the episode once, and
-    // `refind` decides whether this display has an identity to match.
+    // that can start the ladder. The follower reports every failed tick;
+    // `refind` decides whether this display has an identity to match and
+    // whether the last sweep is far enough behind it to run another.
     onUnreachable: () => void refind(),
   });
   const chartRefresh = startChartRefresh(refresh, 30, undefined, {

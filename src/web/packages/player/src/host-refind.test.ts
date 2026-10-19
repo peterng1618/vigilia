@@ -158,6 +158,13 @@ describe("the stored pairing", () => {
       JSON.stringify({ hostId: "h1" }),
     );
     expect(readStoredPairing(storage)).toBeUndefined();
+    // And a record with every field but no identity: nothing answers a blank
+    // `hostId`, so it is not a pairing and must not read as one (R72).
+    storage.setItem(
+      "vigilia.display.pairing",
+      JSON.stringify({ ...pairing, hostId: "" }),
+    );
+    expect(readStoredPairing(storage)).toBeUndefined();
   });
 
   it("answers nothing when the storage itself refuses", () => {

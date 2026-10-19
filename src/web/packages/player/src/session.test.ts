@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { readStoredPairing } from "./host-refind.js";
+import { readStoredPairing, storePairing } from "./host-refind.js";
 import { displaySession } from "./session.js";
 
 /** The browser's own `Storage`, without a browser. */
@@ -91,78 +91,66 @@ describe("display session token", () => {
   });
 });
 
-describe("what a load remembers", () => {
-  it("stores the credential it was handed and stops reading it from the URL", () => {
+describe("what a load reads, and what it writes", () => {
+  it("resolves the credential from the URL, and from storage when the URL carries none", () => {
     const storage = memoryStorage();
-    displaySession("http://192.168.1.10:5227/?session=abc", fetch, storage);
-
-    expect(readStoredPairing(storage)?.token).toBe("abc");
-
-    // A later load with no query resolves the session from storage. This is the
-    // half that makes storing it worth anything: the host's own redirect keeps
-    // the query, but a URL that arrives without one is still this display.
-    const later = displaySession("http://192.168.1.10:5227/", fetch, storage);
-
-    expect(later.token).toBe("abc");
-  });
-
-  it("keeps the host identity beside the credential", () => {
-    const storage = memoryStorage();
-
-    displaySession(
-      "http://192.168.1.10:5227/?session=abc&host=h1&name=study-pc&port=5227",
+    const first = displaySession(
+      "http://192.168.1.10:5227/?session=abc",
       fetch,
       storage,
     );
 
-    expect(readStoredPairing(storage)).toEqual({
+    expect(first.token).toBe("abc");
+
+    // The record `rememberPairing` writes, and the only thing that makes the
+    // second half of this case meaningful: the host's own redirect keeps the
+    // query, but a URL that arrives without one is still this display.
+    storePairing(storage, {
       hostId: "h1",
       hostName: "study-pc",
       port: 5227,
       token: "abc",
       lastAddress: "192.168.1.10",
     });
+
+    const later = displaySession("http://192.168.1.10:5227/", fetch, storage);
+
+    expect(later.token).toBe("abc");
   });
 
-  it("lets a fresh pairing link replace a stored one", () => {
+  it("writes no pairing of its own", () => {
+    // The identity comes from `GET /api/host` and nowhere else: `pair.html`
+    // navigates to `/?session=<token>` and nothing in the repo emits `host=`,
+    // `name=` or `port=` (R72). A second writer here could only produce a record
+    // with an empty `hostId` — which reads back as a valid pairing, matches no
+    // probe, and would overwrite a good one on any load where `/api/host`
+    // failed.
+    const storage = memoryStorage();
+
+    displaySession("http://192.168.1.10:5227/?session=abc", fetch, storage);
+
+    expect(readStoredPairing(storage)).toBeUndefined();
+  });
+
+  it("lets a fresh pairing link replace a stored credential", () => {
     // Otherwise a display re-paired to a second host keeps the first one's
     // token, and answers a host that never issued it.
     const storage = memoryStorage();
 
-    displaySession(
-      "http://192.168.1.10:5227/?session=first&host=h1&name=a&port=5227",
-      fetch,
-      storage,
-    );
-    displaySession(
-      "http://192.168.1.10:5227/?session=second&host=h2&name=b&port=5227",
-      fetch,
-      storage,
-    );
-
-    expect(readStoredPairing(storage)?.token).toBe("second");
-    expect(readStoredPairing(storage)?.hostId).toBe("h2");
-  });
-
-  it("keeps the identity a load already stored, and moves its address", () => {
-    // The host's own redirect preserves the query, so a re-served page carries
-    // its token and no identity parameters. The address is the one thing that
-    // has to move with the load, because that is what the ladder tries first.
-    const storage = memoryStorage();
-
-    displaySession(
-      "http://192.168.1.10:5227/?session=abc&host=h1&name=study-pc&port=5227",
-      fetch,
-      storage,
-    );
-    displaySession("http://192.168.1.44:5227/?session=abc", fetch, storage);
-
-    expect(readStoredPairing(storage)).toEqual({
+    storePairing(storage, {
       hostId: "h1",
-      hostName: "study-pc",
+      hostName: "a",
       port: 5227,
-      token: "abc",
-      lastAddress: "192.168.1.44",
+      token: "first",
+      lastAddress: "192.168.1.10",
     });
+
+    const fresh = displaySession(
+      "http://192.168.1.10:5227/?session=second",
+      fetch,
+      storage,
+    );
+
+    expect(fresh.token).toBe("second");
   });
 });

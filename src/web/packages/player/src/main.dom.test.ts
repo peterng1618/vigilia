@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-environment-options {"url": "http://192.168.1.10:5227/"}
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readStoredPairing } from "./host-refind.js";
@@ -83,6 +84,142 @@ class SilentEventSource {
   addEventListener(): void {}
   close(): void {}
 }
+
+/**
+ * The player's own pacing, which is where the retry lives (R72).
+ *
+ * The follower reports every failed tick — a fact, not a policy — so four failed
+ * ticks inside one cooldown must be one sweep rather than four, and a failed
+ * sweep must be allowed another once the cooldown passes. Measured both ways:
+ * with the cooldown removed this case sees 1265 requests (one sweep per tick,
+ * plus the one the load started with), and with the retry removed it never sees
+ * the second 253. Timers are faked because a cooldown of real seconds is a test
+ * nobody would wait for.
+ *
+ * It runs before the cases below because a jsdom file shares one window: a
+ * display another case mounted is still holding real timers, and this case's
+ * clock is what is under test.
+ */
+describe("the player's re-find pacing", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+    // The cases below drive `main.ts` through their own import, and a module
+    // this case already evaluated would not run its start sequence again.
+    vi.resetModules();
+  });
+
+  /** Microtasks only: the mount, the poll and the sweep are promises, and the
+   *  fake clock is advanced explicitly where a timer is the point. */
+  async function flush(): Promise<void> {
+    for (let turn = 0; turn < 400; turn += 1) {
+      await Promise.resolve();
+    }
+  }
+
+  it("sweeps once per cooldown, not once per failed tick", async () => {
+    // The display this case mounts gets no frames: a minute of fake time is
+    // ~1900 repaints at the chart loop's rate, and every one of them is work
+    // this case is not about. `window`'s own pair, because the chart loop binds
+    // those rather than the globals `vi.stubGlobal` replaces — and stubbing the
+    // globals alone left the case at 17 s of a 20 s budget.
+    vi.spyOn(window, "requestAnimationFrame").mockReturnValue(0);
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(
+      () => undefined,
+    );
+    vi.useFakeTimers();
+    skeleton();
+    history.replaceState(
+      {},
+      "",
+      "/?theme=living-room&display=d1&theme-source=map&session=paired-token",
+    );
+    vi.stubGlobal("EventSource", SilentEventSource);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+
+    const asked: string[] = [];
+    /** Requests to a swept address: another *address* on this /24, which is what
+     *  the sweep is. The ladder's two known candidates are this page's own
+     *  address and the host's name, so neither is counted, and one ladder run
+     *  makes exactly 253 of these — the number `sweepAddresses` gives. The page
+     *  is at a LAN address rather than a name because a name has no /24 to
+     *  sweep, and the display this task is for is the one whose URL is one. */
+    const swept = (): number =>
+      asked.filter((url) => {
+        const target = new URL(url, window.location.href);
+        return (
+          target.origin !== window.location.origin &&
+          /^\d+\.\d+\.\d+\.\d+$/.test(target.hostname)
+        );
+      }).length;
+
+    Object.defineProperty(window, "fetch", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        asked.push(url);
+
+        if (url === "/api/host") {
+          return json({ id: "h1", name: "study-pc", port: 5227 });
+        }
+        // The host has moved: every poll fails, so every tick reports it.
+        if (url.startsWith("/api/published")) {
+          throw new Error("down");
+        }
+        if (url.endsWith("/document")) return json(mountedEnvelope());
+        if (url === "/api/themes") return json({ themes: [] });
+        // Any swept address: a host that is not this display's.
+        return json({});
+      }),
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    /** One failed tick, and the microtasks its report sets off: the sweep is 253
+     *  promises deep, so the clock cannot be advanced in one block without
+     *  starving it — and a sweep still in flight is a sweep the next tick is
+     *  meant to leave alone. */
+    const failedTick = async (): Promise<void> => {
+      await vi.advanceTimersByTimeAsync(2_000);
+      await flush();
+    };
+
+    await import("./main.js");
+    await flush();
+
+    expect(swept()).toBe(253);
+
+    // Four failed ticks inside the cooldown are one sweep, not four.
+    for (let tick = 0; tick < 4; tick += 1) {
+      await failedTick();
+    }
+
+    expect(swept()).toBe(253);
+
+    // Past the cooldown a failed tick is allowed another, which is the retry a
+    // latch in the follower could never give this display. One advance, because
+    // no sweep is in flight here: every tick in the window is blocked by the
+    // cooldown until the first one that is not, and that one sweeps.
+    await vi.advanceTimersByTimeAsync(62_000);
+    await flush();
+
+    expect(swept()).toBe(506);
+  });
+});
 
 describe("a rejection that arrives after the scene mounted", () => {
   it("replaces the display that was already drawn", async () => {

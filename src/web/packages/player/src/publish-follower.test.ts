@@ -249,33 +249,26 @@ describe("followPublished's unreachable report", () => {
     expect(onUnreachable).toHaveBeenCalled();
   });
 
-  it("reports one unreachable episode once, and a later one again", async () => {
-    // The caller's answer to this is a sweep of 253 addresses, so a host that
-    // is simply asleep must not put every display on the /24 on a cadence.
-    let reachable = false;
+  it("reports every unreachable tick, and leaves the pacing to its caller", async () => {
+    // A latch here was the first shape ruled and it strands the display: the one
+    // sweep misses while the host is still booting, no tick can succeed while
+    // the host is at its old address, so the latch never clears and nothing is
+    // tried again (R72). The follower reports a fact; the player owns the
+    // cooldown.
     const onUnreachable = vi.fn();
     const stop = followPublished(
       {
         pageUrl: MAP_PAGE,
-        fetch: vi.fn(async () =>
-          reachable
-            ? new Response(JSON.stringify({ revision: 1 }))
-            : Promise.reject(new Error("down")),
-        ),
+        fetch: vi.fn(async () => Promise.reject(new Error("down"))),
       },
       vi.fn(),
       { intervalMs: 5, onUnreachable },
     );
 
     await settle(40);
-    expect(onUnreachable).toHaveBeenCalledTimes(1); // not once per failed tick
-    reachable = true;
-    await settle(20);
-    reachable = false;
-    await settle(40);
     stop();
 
-    expect(onUnreachable).toHaveBeenCalledTimes(2); // a new episode reports
+    expect(onUnreachable.mock.calls.length).toBeGreaterThan(1);
   });
 });
 

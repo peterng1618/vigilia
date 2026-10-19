@@ -40,6 +40,9 @@ export const PROBE_TIMEOUT_MS = 1_500;
 /** 254 sockets at once is how a display becomes a problem for its own network. */
 const DEFAULT_CONCURRENCY = 8;
 
+/** A record without an id is not a pairing: nothing answers a blank `hostId`,
+ *  so the ladder could never match it, and reading it as valid is how a blank
+ *  record would take the place of a good one (R72). */
 function isPairedHost(value: unknown): value is PairedHost {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -49,6 +52,7 @@ function isPairedHost(value: unknown): value is PairedHost {
 
   return (
     typeof record["hostId"] === "string" &&
+    record["hostId"].length > 0 &&
     typeof record["hostName"] === "string" &&
     typeof record["port"] === "number" &&
     typeof record["token"] === "string" &&

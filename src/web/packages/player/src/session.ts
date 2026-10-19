@@ -1,11 +1,7 @@
 /** A paired display carries its host session in the page URL, because
  * `EventSource` cannot set request headers. Loopback displays carry none. */
 
-import {
-  type PairedHost,
-  readStoredPairing,
-  storePairing,
-} from "./host-refind.js";
+import { readStoredPairing } from "./host-refind.js";
 
 export interface DisplaySessionToken {
   readonly token: string | undefined;
@@ -23,57 +19,24 @@ export interface DisplaySessionToken {
 }
 
 /**
- * What this load writes down: the identity the URL carries if it carries one,
- * the identity already stored if it does not, this load's own address, and the
- * credential. Written on **every** load, because `localStorage` is per-origin:
- * a record left at the old address is invisible to the page at the new one, so
- * storing once at pairing would make the first move work and lose the host on
- * the second (R60).
+ * **Reads storage, never writes it.** `rememberPairing` is the single writer,
+ * because the identity comes from `GET /api/host` and nowhere else: nothing in
+ * the repo emits `host=`, `name=` or `port=`, so a record written here could
+ * only carry an empty `hostId` — which reads back as a valid pairing, matches
+ * no probe, and would overwrite a good one on any load where the route failed
+ * (R72).
  *
- * The port comes from the URL's own authority unless the URL names one, and a
- * page whose port cannot be read writes nothing: a pairing with no port is not
- * a pairing, and guessing 80 would send the display to a host that is not
- * there.
+ * The URL wins when it carries a token, so a fresh pairing link still replaces
+ * a stale stored credential; storage answers only when the URL does not.
  */
-function pairingFor(
-  page: URL,
-  token: string,
-  stored: PairedHost | undefined,
-): PairedHost | undefined {
-  const port = Number(page.searchParams.get("port") ?? page.port);
-
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    return undefined;
-  }
-
-  return {
-    hostId: page.searchParams.get("host") ?? stored?.hostId ?? "",
-    hostName: page.searchParams.get("name") ?? stored?.hostName ?? "",
-    port,
-    token,
-    lastAddress: page.hostname,
-  };
-}
-
 export function displaySession(
   pageUrl: string,
   fetcher: typeof fetch,
   storage?: Storage,
 ): DisplaySessionToken {
-  const page = new URL(pageUrl);
   const stored = storage === undefined ? undefined : readStoredPairing(storage);
-  // The URL wins when it carries a token: a fresh pairing link has to be able to
-  // replace a stale stored one, or a display re-paired to a second host keeps
-  // the first host's credential.
-  const token = page.searchParams.get("session") ?? stored?.token ?? undefined;
-
-  if (storage !== undefined && token !== undefined) {
-    const pairing = pairingFor(page, token, stored);
-
-    if (pairing !== undefined) {
-      storePairing(storage, pairing);
-    }
-  }
+  const token =
+    new URL(pageUrl).searchParams.get("session") ?? stored?.token ?? undefined;
 
   return {
     token,
