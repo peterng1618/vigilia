@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 4.3 (`c9729ff3`, fix `80ba6991`): both host pages read the display map and write `{ display, id }`, the display column is drawn by `theme-list.js` with `data-kind` per row, and the fallback rule is one exported `shownTheme` rather than three copies.
-- **R53: `/api/themes/:id/answers` now resolves the display it is asked for.** It read and wrote `DEFAULT_DISPLAY` unconditionally, under a comment claiming it read "the answers of whoever asked" — which its own code did not do. Proven on a real host: answering for `This PC` wrote `this-pc.system-disk`, left `default` empty, and `?display=nobody` answered 404.
-- The fix round's shape is the lesson: the first implementation was not wrong but **undiscriminated** — the moved stub passed whether or not the page sent the display, and `kind` reached the module and was dropped one function later.
-- `npm run test` 271 files and **3697 tests** exit 0, `host-settings.spec.ts` 7 expected / 0 unexpected exit 0, typecheck exit 0.
-- **The browser suite does not tie the two halves together**: `host-settings.spec.ts:73`'s `answersFor` sends no `?display=`, so it stays green if the page stops sending one. Named for the Phase 4 gate.
+- Task 4.4 (`8cd57486` + three fix rounds to `061f6cfd`): the editor client gains `assign(display, id)` and `listDisplays()`, the seam `2026-10-18-theme-store.md` consumes.
+- **The finding that mattered was the seam's shape**: `listDisplays` returned only the route's `displays`, and the default lives in a separate top-level field — so the consuming plan's Task A.9, which must offer the default and is forbidden a list of its own, could not have been written against it. Found by reading the consumer one task early (R57).
+- Three rounds, each a different kind of nothing-fails: a seam too narrow, a harness that could return a **different** function than the manager received, and a fallback case that did not pin the type checks it named.
+- **R56: a Step 5 `git add` is illustrative, not exhaustive.** Task 4.4's named two files and touched six — the fourth wrong staging list, so the fix is a rule rather than a fifth patch.
+- `npm run test` 152 files and **2043 tests** exit 0, typecheck exit 0. **Nothing consumes `listDisplays` yet**, so its shape is asserted only against a mock `fetch`.
 
 ## Next
 
-1. **Phase 4 continues at Task 4.4** (the assign action the store consumes); the scan and the three tasks so far have ruled R45–R55.
+1. **Phase 4 continues at Task 4.5** (the display's own chooser); the scan and the four tasks so far have ruled R45–R58.
 2. `vg-620` is the open one to weigh first: a client disconnecting mid-stream kills the host, which makes every browser proof in this repo unreliable and takes every other display's stream with it.
 3. Resume the drain at Task 23.4 when this plan stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
