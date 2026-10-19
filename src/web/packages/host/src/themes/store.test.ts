@@ -260,7 +260,7 @@ describe("ThemeStore", () => {
       save: async () => "base-after-save",
       // The display map is not what this test is about: it exercises the mount.
       assign: async () => undefined,
-      listDisplays: async () => [],
+      listDisplays: async () => ({ default: null, displays: [] }),
     });
 
     // The document the mount opened, not the argument it passed: which theme

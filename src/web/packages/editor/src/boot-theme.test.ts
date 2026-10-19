@@ -61,7 +61,7 @@ function clientOpening(opened: ThemeLibraryContent): ThemeLibraryClient {
     open: vi.fn(async () => opened),
     save: vi.fn(async () => "base-after-save"),
     assign: vi.fn(async () => undefined),
-    listDisplays: vi.fn(async () => []),
+    listDisplays: vi.fn(async () => ({ default: null, displays: [] })),
   };
 }
 
@@ -121,7 +121,7 @@ describe("the editor on a URL that names a theme", () => {
       }),
       save: vi.fn(async () => "base-after-save"),
       assign: vi.fn(async () => undefined),
-      listDisplays: vi.fn(async () => []),
+      listDisplays: vi.fn(async () => ({ default: null, displays: [] })),
     };
 
     const outcome = await bootTheme("?theme=broken-theme", client);
@@ -157,7 +157,7 @@ describe("the editor on a URL that names a theme", () => {
       }),
       save: vi.fn(async () => "base-after-save"),
       assign: vi.fn(async () => undefined),
-      listDisplays: vi.fn(async () => []),
+      listDisplays: vi.fn(async () => ({ default: null, displays: [] })),
     };
 
     await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toEqual(
@@ -200,7 +200,7 @@ describe("the editor on a URL that names a theme", () => {
       open: vi.fn(async () => content),
       save: vi.fn(async () => "base-after-save"),
       assign: vi.fn(async () => undefined),
-      listDisplays: vi.fn(async () => []),
+      listDisplays: vi.fn(async () => ({ default: null, displays: [] })),
     };
 
     await expect(bootTheme("", client)).resolves.toEqual({ kind: "none" });

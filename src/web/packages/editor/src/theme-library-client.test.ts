@@ -347,8 +347,8 @@ describe("ThemeLibraryClient", () => {
       expect.objectContaining({ method: "PUT" }),
     );
     // Both keys, always: the route names the display from the body on loopback
-    // and answers 400 without one, so a request missing it would write to this
-    // PC or nothing at all.
+    // and answers 400 "A display is required." without one, so a request that
+    // left it out is refused rather than reaching this PC.
     const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({
       display: "kitchen-tablet",
@@ -380,7 +380,7 @@ describe("ThemeLibraryClient", () => {
     );
   });
 
-  it("lists every display with the theme it holds", async () => {
+  it("lists every display with the theme it holds, and the default beside them", async () => {
     const mockFetch = vi.fn(
       async () =>
         new Response(
@@ -405,13 +405,38 @@ describe("ThemeLibraryClient", () => {
       fetch: mockFetch as unknown as typeof fetch,
     });
 
-    // This PC is always first, and a display holding nothing of its own reads
-    // as `null` rather than as the theme it falls back to.
-    await expect(client.listDisplays()).resolves.toEqual([
-      { id: "this-pc", label: "This PC", theme: null },
-      { id: "kitchen-tablet", label: "Kitchen Tablet", theme: "kitchen-strip" },
-    ]);
+    // The route's own shape, unchanged: this PC first, a display holding nothing
+    // of its own reading as `null`, and the default as its own field rather than
+    // as a row — "what an unassigned display shows" is a theme id, not a display.
+    await expect(client.listDisplays()).resolves.toEqual({
+      default: "living-room",
+      displays: [
+        { id: "this-pc", label: "This PC", theme: null },
+        {
+          id: "kitchen-tablet",
+          label: "Kitchen Tablet",
+          theme: "kitchen-strip",
+        },
+      ],
+    });
     expect(mockFetch).toHaveBeenCalledWith("/api/themes/active");
+  });
+
+  it("reports the host's own answer when the display map cannot be read", async () => {
+    const mockFetch = vi.fn(
+      async () =>
+        new Response("This host keeps no active theme.", { status: 404 }),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    // A host that keeps no active theme answers this, and it is not a list: the
+    // caller has to hear it rather than be handed an empty map that reads as
+    // "no displays are paired".
+    await expect(client.listDisplays()).rejects.toThrow(
+      "This host keeps no active theme.",
+    );
   });
 
   it("refuses invalid theme IDs without fetching", async () => {

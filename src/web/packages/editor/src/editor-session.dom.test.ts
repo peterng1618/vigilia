@@ -136,7 +136,7 @@ describe("EditorSession", () => {
       open: vi.fn(async () => ({ envelope, assets: {} })),
       save: vi.fn(async () => "base-after-save"),
       assign: vi.fn(async () => undefined),
-      listDisplays: vi.fn(async () => []),
+      listDisplays: vi.fn(async () => ({ default: null, displays: [] })),
     };
 
     const extensions = new EditorSession({
@@ -961,7 +961,7 @@ describe("EditorSession", () => {
       save: vi.fn(async () => "base-after-save"),
       saveThumbnail: vi.fn(async (_id: string, _png: Uint8Array) => {}),
       assign: vi.fn(async () => undefined),
-      listDisplays: vi.fn(async () => []),
+      listDisplays: vi.fn(async () => ({ default: null, displays: [] })),
     };
     const extensions = new EditorSession({
       assetManager: new AssetManager(),

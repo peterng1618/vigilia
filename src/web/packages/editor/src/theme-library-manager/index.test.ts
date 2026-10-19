@@ -80,6 +80,11 @@ function harness(options: {
     base: "base-from-open",
   }));
   const saveThumbnail = vi.fn(async () => {});
+  // Spies rather than inert stubs: the manager calls neither, and a test that
+  // means to forbid a call can read that off them rather than trusting a
+  // default that would resolve either way.
+  const assign = vi.fn(async () => undefined);
+  const listDisplays = vi.fn(async () => ({ default: null, displays: [] }));
   const markSaved = vi.fn();
   const announceChange = vi.fn();
   const warn = vi.fn();
@@ -103,8 +108,8 @@ function harness(options: {
       open,
       save,
       saveThumbnail,
-      assign: async () => undefined,
-      listDisplays: async () => [],
+      assign,
+      listDisplays,
       ...options.client,
     },
     onError,
@@ -115,6 +120,8 @@ function harness(options: {
     manager,
     save,
     saveThumbnail,
+    assign,
+    listDisplays,
     markSaved,
     announceChange,
     warn,

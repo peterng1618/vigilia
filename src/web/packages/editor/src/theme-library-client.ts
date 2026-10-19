@@ -58,7 +58,8 @@ export class ThemeValidationError extends Error {
  * One row of the display map: a display and the theme it holds.
  *
  * The route also sends `kind` for the host page's own warning table, which is
- * the page's question and not this seam's.
+ * the page's question and not this seam's. The default is not a row — it is the
+ * theme a display holding none of its own falls to — so it travels beside these.
  */
 export interface ThemedDisplay {
   readonly id: string;
@@ -91,9 +92,15 @@ export interface ThemeLibraryClient {
   /** Puts a theme on one display, or on `"default"` — what a display holding no
    *  choice of its own falls to. */
   assign(display: string, id: string): Promise<void>;
-  /** Every display this host holds, each with the theme it shows. This PC is
-   *  always present and always first. */
-  listDisplays(): Promise<readonly ThemedDisplay[]>;
+  /** Every display this host holds with the theme it shows, and the theme a
+   *  display holding none falls to. This PC is always present and always first.
+   *
+   *  The default is its own field and never a row: a theme id is not a display
+   *  id, and a pseudo-row would make the two indistinguishable. */
+  listDisplays(): Promise<{
+    readonly default: string | null;
+    readonly displays: readonly ThemedDisplay[];
+  }>;
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
@@ -296,7 +303,10 @@ export function createThemeLibraryClient(options?: {
       }
     },
 
-    async listDisplays(): Promise<readonly ThemedDisplay[]> {
+    async listDisplays(): Promise<{
+      readonly default: string | null;
+      readonly displays: readonly ThemedDisplay[];
+    }> {
       const response = await fetcher(`${baseUrl}/api/themes/active`);
       if (!response.ok) {
         throw new Error(
@@ -304,13 +314,20 @@ export function createThemeLibraryClient(options?: {
             "Could not list the displays.",
         );
       }
-      const body = (await response.json()) as { readonly displays?: unknown };
-      if (!Array.isArray(body?.displays)) {
-        return [];
-      }
-      return (body.displays as readonly ThemedDisplay[]).map(
-        ({ id, label, theme }) => ({ id, label, theme }),
-      );
+      const body = (await response.json()) as {
+        readonly default?: unknown;
+        readonly displays?: unknown;
+      };
+      return {
+        // A host that names no default is one where nothing falls back, which
+        // is `null` rather than a theme id invented here.
+        default: typeof body?.default === "string" ? body.default : null,
+        displays: Array.isArray(body?.displays)
+          ? (body.displays as readonly ThemedDisplay[]).map(
+              ({ id, label, theme }) => ({ id, label, theme }),
+            )
+          : [],
+      };
     },
   };
 }
