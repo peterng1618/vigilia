@@ -2431,7 +2431,7 @@ task hiding it.
 - Modify: `src/web/packages/host/src/server.ts` (`/api/published` carries the rate)
 - Test: `src/web/packages/host/src/server.test.ts`
 - Modify: `src/web/packages/player/src/main.ts`
-- Test: `src/web/packages/player/src/main.test.ts`
+- Test: `src/web/packages/player/src/main.dom.test.ts`
 - Modify: `src/web/packages/scene-fabric/src/scene.ts`
 - Test: `src/web/packages/scene-fabric/src/scene.dom.test.ts`
 
@@ -2440,45 +2440,92 @@ task hiding it.
   and `ChartRefreshRate` (`scene-fabric`).
 - Produces:
   - `/api/published`'s `display` gains `readonly chartFps: ChartRefreshRate`.
-  - `mountFabricScene` subscribes `onFrame` **only when a backdrop reader exists**:
-    `FabricSceneOptions` gains `readonly samplesBackdrop?: () => boolean`, and
-    `scene.ts` passes `onFrame` only when it answers true at mount.
+  - `mountFabricScene` passes `onFrame` that repaints **only while a glass panel has a
+    surface**: `scene.ts` consults the handle it already creates —
+    `glass.liveSurfaces() > 0` (`glass.ts:519`) — inside the `onFrame` closure. **No new
+    `FabricSceneOptions` field** (R64): `createGlass` is the only thing that knows what a
+    glass treatment is (`glass.ts:281-284`), so a caller-answered flag would be a second
+    owner of that question and would need the "re-evaluate on `update()`" rule to compensate
+    for state `sync()` already maintains.
+
+**Rulings carried into this task (R64).** The gate is the scene's own, not the caller's.
+Both `media` and `glass` must be lazy in both directions, because `media` is created first:
+`let media: … | undefined`, then `createGlass({ backdrop: () => media?.backdrop() })`, then
+assign `media` with an `onFrame` that reads the already-assigned `glass`. The predicate must
+**not** gate the mount's own render (`scene.ts:159`) — a panel's surface is allocated during
+a render, so gating that render stalls the gate at zero forever. And `/api/published`'s
+`chartFps` arrives over JSON as an unvalidated number: `setRate` stores it raw and divides by
+it (`chart-refresh.ts:51`), so `setRate(0)` makes the comparison `< Infinity` and the display
+freezes silently. **The player narrows to `1 | 30` and keeps its current rate on anything
+else.**
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// server.test.ts
+// server.test.ts — real cases, with the status and the body asserted.
 it("carries the display's rate on the poll the player already makes", async () => {
-  // A local display with no rate set -> /api/published's display.chartFps is 1.
-  // The same display after update(id, { chartFps: 30 }) -> 30.
+  const local = await store.createLocal("This PC", { width: 1920, height: 1080 });
+  const before = await publishedFor(local.id);
+  expect(before.display.chartFps).toBe(1); // local, no rate set
+
+  await store.update(local.id, { chartFps: 30 });
+  const after = await publishedFor(local.id);
+  expect(after.display.chartFps).toBe(30);
 });
 
-// main.test.ts
+// main.dom.test.ts
 it("starts the refresh loop at the rate the host gave it", async () => {
-  // A published display with chartFps 1 -> startChartRefresh called with 1, not
-  //   the 30 the player used to hardcode.
+  // The poll answers chartFps 1 -> the loop runs at 1, not the 30 the player
+  // hardcoded. Observed on the loop's own repaint cadence, not on the argument,
+  // so the case still means something if the wiring moves.
+  await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
+  expect(refreshCadenceMs()).toBe(1_000);
 });
 
 it("follows a rate change without a reload", async () => {
-  // The poll answers a new rate -> setRate is called on the existing loop.
+  // A later poll answers 30 -> the same loop's cadence changes; no reload, and
+  // no second loop started.
+  await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
+  answerChartFps(30);
+  await vi.waitFor(() => expect(refreshCadenceMs()).toBe(Math.round(1_000 / 30)));
+  expect(refreshLoopsStarted()).toBe(1);
 });
 
-// scene.dom.test.ts
+it("keeps its rate when the host sends one it cannot honour", async () => {
+  // setRate stores the number raw and divides by it, so a 0 makes the cadence
+  // comparison `< Infinity` — true forever — and the display stops refreshing
+  // with nothing logged. Refuse the value rather than coercing it.
+  await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
+  answerChartFps(0);
+  expect(setRateCalls()).not.toContain(0);
+  expect(refreshCadenceMs()).toBe(1_000);
+});
+
+// scene.dom.test.ts — the callback itself is what is observed: "zero repaints"
+// and "the loop never started" are different claims and only the second is what
+// the fix does.
 it("starts no per-frame repaint when nothing samples the backdrop", async () => {
-  // A video background and samplesBackdrop() === false -> no
-  //   requestVideoFrameCallback was ever registered, so a 60 fps video repaints
-  //   the canvas zero times.
+  mountVideoScene({ glass: false });
+  expect(videoFrameCallbacksRegistered()).toBe(0);
 });
 
 it("still repaints per frame when a glass panel samples the backdrop", async () => {
-  // samplesBackdrop() === true -> one callback per decoded frame, because a
-  //   frozen frame behind a blur is the bug the loop exists to prevent.
+  // A frozen frame behind a blur is the bug the loop exists to prevent.
+  mountVideoScene({ glass: true });
+  expect(videoFrameCallbacksRegistered()).toBe(1);
 });
 ```
 
+Every helper above is **defined by the case itself**, not found elsewhere: `publishedFor` is
+a request against the host's own server, and the rest are the test's own seams. The player
+cases observe the cadence through `startChartRefresh`'s third positional parameter — the
+`FrameDriver` — which is what a fake frame clock is for; do not add a production accessor to
+observe it. The scene cases observe `requestVideoFrameCallback` registration, which is the
+platform call `background-media.ts` makes.
+
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run packages/player/src/main.test.ts packages/scene-fabric/src/scene.dom.test.ts`
+Run: `npx vitest run packages/player/src/main.dom.test.ts packages/scene-fabric/src/scene.dom.test.ts`
 Expected: FAIL — `chartFps` is undefined; the frame callback is registered either way.
 
 - [ ] **Step 3: Implement**
@@ -2488,28 +2535,29 @@ reads its rate from the poll it already makes and no new route appears. The play
 passes it to `startChartRefresh` and calls `setRate` when a later poll changes it —
 the loop already has `setRate`, so this is a call and not a restart.
 
-**The gate is `samplesBackdrop`, and it is the point of the task.** `scene.ts` today
-passes `onFrame: () => canvas.requestRenderAll()` unconditionally, and
+**The gate is the glass handle's own `liveSurfaces()`, and it is the point of the task.**
+`scene.ts` today passes `onFrame: () => canvas.requestRenderAll()` unconditionally, and
 `background-media.ts` drives it from `requestVideoFrameCallback`, so a 60 fps video
-repaints the whole canvas 60 times a second whether or not anything reads the
-backdrop. Only glass does — `createGlass` is the one consumer, through
-`backdrop()`. So the caller answers whether any object in the scene carries a glass
-treatment, and `scene.ts` subscribes `onFrame` only then. **Re-evaluate it on
-`update()`**, because a theme can gain a glass panel after mount, and a frozen frame
-behind a blur is exactly the bug the loop was added for.
+repaints the whole canvas 60 times a second whether or not anything reads the backdrop.
+Only glass does — `createGlass` is the one consumer, through `backdrop()`. The scene
+already holds that handle, so `onFrame` asks it instead of asking the caller: a panel
+with a surface is exactly "something will read the backdrop". **Nothing needs
+re-evaluating on `update()`** — `createGlass.sync` re-reads the tree on every object add
+and remove (`glass.ts:276-284`), which is how a theme that gains a panel after mount is
+already handled.
 
 Keep `background-media.ts` unchanged: it already starts no loop unless a video is the
 media and an `onFrame` was given, which is the same reasoning one level up.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/player/src/main.test.ts packages/scene-fabric/src/scene.dom.test.ts packages/scene-fabric/src/background-media.dom.test.ts packages/host/src/server.test.ts`
+Run: `npx vitest run packages/player/src/main.dom.test.ts packages/scene-fabric/src/scene.dom.test.ts packages/scene-fabric/src/background-media.dom.test.ts packages/host/src/server.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/player/src/main.ts src/web/packages/player/src/main.test.ts src/web/packages/scene-fabric/src/scene.ts src/web/packages/scene-fabric/src/scene.dom.test.ts
+git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/player/src/main.ts src/web/packages/player/src/main.dom.test.ts src/web/packages/scene-fabric/src/scene.ts src/web/packages/scene-fabric/src/scene.dom.test.ts
 git commit -m "feat(player): refresh at the display's own rate, and stop repainting for a video nobody samples"
 ```
 
