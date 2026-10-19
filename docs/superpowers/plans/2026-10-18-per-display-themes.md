@@ -2774,3 +2774,18 @@ Then the browser proof this plan's visible work needs — the two host pages and
 the player's reassignment — with bundles rebuilt after any source change, one
 worker, and each run's own JSON report. Report the gate's exit code and the
 browser results as two separate facts.
+
+**The browser run carries three claims no unit test can hold (R66), and each is
+reported on its own:**
+
+1. **A reassignment lands (Task 4.2, R50/R51).** A display on a `map` page is served one
+   theme; the host assigns another; the display shows the new one **without a manual
+   navigation**. `location.reload()` re-serves the id already in the URL, and a
+   reassignment changes exactly that id.
+2. **The answers URL resolves end to end (Task 4.3, R53).** Answering for a display that is
+   not `default` writes and reads *that* display's answers.
+3. **A chosen theme navigates and lands (Task 4.5, R62).** Operating the chooser on a `map`
+   page shows the chosen theme; the same control does not appear on a `link` page.
+
+A LAN origin is plain http and **not** a secure context, so no `wakeLock` or
+`serviceWorker` claim may rest on it, and the proof names the origin it ran on.
