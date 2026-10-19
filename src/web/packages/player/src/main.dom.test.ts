@@ -236,8 +236,20 @@ describe("the theme chooser's mount condition", () => {
   });
 
   it("offers nothing on a link page, whose theme id is the person's instruction", async () => {
+    // The map case leaves `window.vigilia` set, and `vi.resetModules()` clears
+    // modules, not the window: without this the check below would read the
+    // previous run's signal and prove nothing.
+    Reflect.deleteProperty(window, "vigilia");
     // Paired, so the absence is the mount condition and not the missing token.
     await mountAt("?theme=living-room&theme-source=link&session=paired-token");
+
+    // `mountAt` waits on the controls (`main.ts:186`), which mount before the
+    // chooser's condition is decided (`:204`). `window.vigilia` is set at the
+    // end of that same start sequence (`:245`), after the decision, so awaiting
+    // it is what makes the absence below a fact about the decision rather than
+    // about a wait that stopped short of it.
+    const diagnostics = window as unknown as { readonly vigilia?: unknown };
+    await vi.waitFor(() => expect(diagnostics.vigilia).toBeDefined());
 
     expect(document.querySelector("[data-vigilia-theme-chooser]")).toBeNull();
   });

@@ -211,6 +211,11 @@ describe("choosing a theme for this display", () => {
     const strip = document.querySelector<HTMLElement>(CHOOSER) as HTMLElement;
 
     expect(strip.style.padding).toBe(reference.style.padding);
+    // The inset's own token, not only that the two strips agree: a `stripInset`
+    // that stopped emitting it would take both sides with it, and the comparison
+    // above would still pass. `side: "bottom"` carries it in the shorthand's
+    // bottom slot.
+    expect(strip.style.padding).toContain("env(safe-area-inset-bottom)");
     expect(strip.style.font).toBe(reference.style.font);
     expect(strip.dataset["vigiliaChromeStrip"]).toBeDefined();
   });
