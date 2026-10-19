@@ -2753,6 +2753,22 @@ this theme"*. The cost warning is that pattern rather than a second one.
 - Test: `src/web/packages/host/src/themes/store.test.ts`
 - Test: `src/web/packages/host/src/theme-list.dom.test.ts`
 - Test: `src/web/tests/e2e/host-settings.spec.ts` (the browser proof)
+- Modify: `src/web/tests/e2e/host-theme.ts` — **conditionally, and in practice certainly: no
+  fixture has a video background (R89).**
+
+**The browser proof needs a fixture that does not exist (R89).** Every theme in `host-theme.ts`
+declares its media as `svg` or `image` — the media theme's own `backgroundMedia.assetId` is
+`"badge"`, declared `kind: "svg"` — so **nothing in the e2e tree produces `"video-background"` or
+`"glass-over-video"`**, and the proof's central case ("the note appears when a video theme is chosen
+for a host monitor") has nothing to run against. `host-media.spec.ts:76` builds a video asset
+inline (`{ id: "loop", kind: "video", path: "assets/loop.webm", license: … }`), which is the shape
+to follow; the shared `host-theme.ts` is the better home, because the settings page reads themes
+from `HOST_THEMES_DIR` and a fixture local to another spec is not on disk for this one. **The asset
+declaration is what the cost reads, not the file** — `performanceCostsOf` never opens it and
+`envelope-semantics.ts` only checks that the ref resolves against a declared asset of kind
+`image | svg | video` — so no `.webm` need exist. `license` is not optional in these fixtures.
+One video theme with **no** glass is what the proof needs: it yields `["video-background"]`, which
+is the only cost whose answer differs by kind, and that difference is the whole point of the case.
 
 **The decision note lands before the first write to `renderer-core/src/theme/`** (R47):
 that directory is on the reuse gate's watchlist and the gate matches a claim by path, so
@@ -2944,7 +2960,7 @@ on screen after the page settles.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/decisions/0073-a-themes-cost-is-read-from-the-envelope-alone.md src/web/packages/renderer-core/src/theme/performance-cost.ts src/web/packages/renderer-core/src/theme/performance-cost.test.ts src/web/packages/renderer-core/src/index.ts src/web/packages/host/src/themes/store.ts src/web/packages/host/src/themes/store.test.ts src/web/packages/host/public/theme-list.js src/web/packages/host/src/theme-list.dom.test.ts src/web/tests/e2e/host-settings.spec.ts
+git add docs/decisions/0073-a-themes-cost-is-read-from-the-envelope-alone.md src/web/packages/renderer-core/src/theme/performance-cost.ts src/web/packages/renderer-core/src/theme/performance-cost.test.ts src/web/packages/renderer-core/src/index.ts src/web/packages/host/src/themes/store.ts src/web/packages/host/src/themes/store.test.ts src/web/packages/host/public/theme-list.js src/web/packages/host/src/theme-list.dom.test.ts src/web/tests/e2e/host-theme.ts src/web/tests/e2e/host-settings.spec.ts
 git commit -m "feat(host): the assignment says what the theme will cost the display"
 ```
 
