@@ -2028,6 +2028,15 @@ refused rather than answered as the default.
 pages only pass it. The display's `kind` travels with it and is read by Task 4.8's
 warning; the warning itself is not this task's, and this task must not add one.
 
+**Two things the first implementation of this got wrong, and both are the same mistake**
+(R55). The resolution rule — *this display's theme, else the default's* — was written out
+three times, byte-identical in two of them (`settings.html:144-148`, `library.html:69-73`,
+`theme-list.js:234-238`); it is the feature's core, so it lives in `theme-list.js` and the
+pages call it. And `kind` reached `theme-list.js`'s option but was **dropped at
+`addDisplay`**, so no `data-kind` reached the row and no test would have failed if the
+route stopped sending it — a value that survives only until the next function is not
+travelling. Put it on the row and assert it.
+
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `npx playwright test tests/e2e/host-settings.spec.ts --workers=1`
