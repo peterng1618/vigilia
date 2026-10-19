@@ -27,6 +27,7 @@ import { createDisplayLauncher } from "./serve/display-launcher.js";
 import {
   CA_CERTIFICATE_PATH,
   createHostServer,
+  displayKeyFor,
   type HostingState,
   type HostServerOptions,
 } from "./server.js";
@@ -4072,6 +4073,213 @@ describe("The published overlay", () => {
       await hosted.close();
       await fs.rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * Every display holds its own theme, so `/` has to answer the display that
+ * asked rather than this PC (spec § "One map"). `?display=` names a local
+ * monitor, and that is the one caller loopback is trusted for.
+ */
+describe("The root page resolves the display that asked", () => {
+  let dir: string;
+  let store: ReturnType<typeof createThemeStore>;
+  let activeTheme: ReturnType<typeof createActiveThemeStore>;
+  let displays: ReturnType<typeof createDisplayStore>;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const LAN = { remoteAddress: "192.168.1.50" };
+
+  /** Two themes, so a resolution that finds nothing lands on the chooser
+   *  rather than on the only theme there is. */
+  async function library(): Promise<void> {
+    await store.write("living-room", createValidPackage());
+    await store.write("studio", createValidPackage("studio", "Studio"));
+  }
+
+  /** Pairs a display and answers the credential it holds. */
+  async function pair(label = "Kitchen tablet"): Promise<string> {
+    const token = newToken();
+    await displays.create(label, token);
+    return token;
+  }
+
+  /** The theme `GET /` resolved to, read off the redirect it answers with. The
+   *  caller's own parameters ride along, so the theme is picked out of them. */
+  async function root(
+    urlPath = "/",
+    options?: { remoteAddress?: string },
+  ): Promise<string | undefined> {
+    const answer = await request(
+      hosted.server,
+      "GET",
+      urlPath,
+      undefined,
+      options,
+    );
+    expect(answer.status).toBe(302);
+    const location = answer.headers.location as string | undefined;
+
+    return location === undefined
+      ? undefined
+      : (new URL(location, "http://host").searchParams.get("theme") ??
+          undefined);
+  }
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-root-display-"));
+    store = createThemeStore(dir);
+    activeTheme = createActiveThemeStore(dir);
+    displays = createDisplayStore(dir);
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: store,
+      activeTheme,
+      displays,
+    });
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("gives each display its own theme at the root", async () => {
+    await library();
+    await activeTheme.write(LOCAL_DISPLAY_ID, "living-room");
+
+    const token = await pair();
+    await activeTheme.write("kitchen-tablet", "studio");
+
+    expect(await root()).toBe("living-room");
+    expect(await root(`/?session=${encodeURIComponent(token)}`, LAN)).toBe(
+      "studio",
+    );
+  });
+
+  it("falls back to the default for a display with no entry", async () => {
+    await library();
+    await activeTheme.write(DEFAULT_DISPLAY, "living-room");
+
+    // Paired, so it is served; never assigned a theme of its own.
+    const token = await pair();
+
+    expect(await root(`/?session=${encodeURIComponent(token)}`, LAN)).toBe(
+      "living-room",
+    );
+  });
+
+  it("falls back to the default when the assigned theme was deleted", async () => {
+    await library();
+    await activeTheme.write(DEFAULT_DISPLAY, "living-room");
+    await activeTheme.write("kitchen-tablet", "gone");
+
+    const token = await pair();
+
+    expect(await root(`/?session=${encodeURIComponent(token)}`, LAN)).toBe(
+      "living-room",
+    );
+  });
+
+  it("lets an explicit ?theme= outrank the assignment", async () => {
+    await library();
+    await activeTheme.write(LOCAL_DISPLAY_ID, "living-room");
+
+    expect(await root("/?theme=studio")).toBe("studio");
+  });
+
+  it("resolves a local monitor from loopback", async () => {
+    await library();
+    await displays.createLocal("Left screen", {
+      deviceName: "\\\\.\\DISPLAY2",
+    });
+    await activeTheme.write("left-screen", "studio");
+
+    expect(await root("/?display=left-screen")).toBe("studio");
+  });
+
+  it("refuses to resolve a local monitor from off this PC", async () => {
+    await library();
+    await displays.createLocal("Left screen", {
+      deviceName: "\\\\.\\DISPLAY2",
+    });
+    await activeTheme.write("left-screen", "studio");
+
+    // Naming a display is not a way to become one: an unpaired caller from the
+    // LAN never reaches the resolution at all.
+    const refused = await request(
+      hosted.server,
+      "GET",
+      "/?display=left-screen",
+      undefined,
+      LAN,
+    );
+    expect(refused.status).toBe(403);
+
+    // And a paired one that names it is still served as itself.
+    const token = await pair();
+    await activeTheme.write("kitchen-tablet", "living-room");
+
+    expect(
+      await root(
+        `/?display=left-screen&session=${encodeURIComponent(token)}`,
+        LAN,
+      ),
+    ).toBe("living-room");
+  });
+
+  it("refuses to resolve a *paired* display from loopback by naming it", async () => {
+    await library();
+    await pair();
+    await activeTheme.write(LOCAL_DISPLAY_ID, "living-room");
+    await activeTheme.write("kitchen-tablet", "studio");
+
+    // `?display=` names local displays only, so a paired display is reached by
+    // its credential and by nothing else.
+    expect(await root("/?display=kitchen-tablet")).toBe("living-room");
+  });
+
+  it("answers displayKeyFor for the four kinds of caller", async () => {
+    const token = await pair();
+    await displays.createLocal("Left screen", {
+      deviceName: "\\\\.\\DISPLAY2",
+    });
+
+    const message = (remoteAddress: string): http.IncomingMessage =>
+      ({ socket: { remoteAddress }, headers: {} }) as http.IncomingMessage;
+
+    expect(
+      await displayKeyFor(
+        message("127.0.0.1"),
+        new URL("http://host/"),
+        displays,
+      ),
+    ).toBe(LOCAL_DISPLAY_ID);
+
+    expect(
+      await displayKeyFor(
+        message("::ffff:127.0.0.1"),
+        new URL("http://host/?display=left-screen"),
+        displays,
+      ),
+    ).toBe("left-screen");
+
+    expect(
+      await displayKeyFor(
+        message("192.168.1.50"),
+        new URL(`http://host/?session=${encodeURIComponent(token)}`),
+        displays,
+      ),
+    ).toBe("kitchen-tablet");
+
+    expect(
+      await displayKeyFor(
+        message("192.168.1.50"),
+        new URL("http://host/"),
+        displays,
+      ),
+    ).toBe(DEFAULT_DISPLAY);
   });
 });
 

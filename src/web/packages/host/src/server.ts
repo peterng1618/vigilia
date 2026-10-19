@@ -299,6 +299,34 @@ export async function displayFor(
   return record;
 }
 
+/**
+ * The display a request is served as, which is the key its theme is stored
+ * under. Not `displayFor` with a fallback, because loopback is a display of its
+ * own: it is this PC, which is never paired and has no record to return.
+ *
+ * **`?display=` names local displays only, and that restriction is the security
+ * property rather than a nicety.** A local monitor has no credential, so the
+ * parameter is the only thing that could identify it — and so the only thing
+ * that could impersonate one. Two rules close that: it is read only on
+ * loopback, and matched only against records whose kind is `local`. A paired
+ * display is reached by the credential it was given and by nothing else, which
+ * is the reason that credential exists.
+ */
+export async function displayKeyFor(
+  request: http.IncomingMessage,
+  url: URL,
+  displays: DisplayStore | undefined,
+): Promise<string> {
+  if (isLoopbackRemote(request.socket.remoteAddress)) {
+    const named = url.searchParams.get("display");
+    const record = named === null ? undefined : await displays?.find(named);
+
+    return record?.kind === "local" ? record.id : LOCAL_DISPLAY_ID;
+  }
+
+  return (await displayFor(request, url, displays))?.id ?? DEFAULT_DISPLAY;
+}
+
 /** Bounded JSON body for admin writes; a runaway body must not be buffered. */
 async function readBody(
   request: http.IncomingMessage,
@@ -729,6 +757,32 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
       throw error;
     }
+  }
+
+  /**
+   * The theme the asking display was assigned, or the default's when it holds
+   * no entry of its own — and none when that too is unset, which leaves the
+   * caller to decide what to show. A display nobody has assigned a theme to is
+   * an unpaired client, and `default` is the display such a client is served as.
+   */
+  async function assignedThemeFor(
+    request: http.IncomingMessage,
+    url: URL,
+    exists: (id: string) => Promise<boolean>,
+  ): Promise<string | undefined> {
+    if (activeTheme === undefined) {
+      return undefined;
+    }
+
+    const display = await displayKeyFor(request, url, displays);
+    const own = await activeTheme.read(display, exists);
+
+    return (
+      own ??
+      (display === DEFAULT_DISPLAY
+        ? undefined
+        : await activeTheme.read(DEFAULT_DISPLAY, exists))
+    );
   }
 
   /**
@@ -2149,18 +2203,17 @@ export function createHostServer(options: HostServerOptions): HostServer {
     // Host-served player uses a stored theme and live data; standalone preview stays deterministic.
     if (url.pathname === "/" && !url.searchParams.has("data")) {
       // Resolution order, in the consumer's terms: what the author is
-      // publishing now, then an explicit link, then the theme they chose, then
-      // the only theme if there is exactly one. Several themes and no choice
-      // means the library is the right next step.
+      // publishing now, then an explicit link, then the theme this display was
+      // assigned, then the default this PC holds, then the only theme if there
+      // is exactly one. Several themes and no choice means the library is the
+      // right next step.
       const available = await themeStore.list();
       const requested = url.searchParams.get("theme");
+      const exists = async (id: string): Promise<boolean> =>
+        available.some((entry) => entry.id === id);
       const stored =
-        requested === null && activeTheme !== undefined
-          ? // A request that has not identified itself is an unpaired client,
-            // which the default display is.
-            await activeTheme.read(DEFAULT_DISPLAY, async (id: string) =>
-              available.some((entry) => entry.id === id),
-            )
+        requested === null
+          ? await assignedThemeFor(request, url, exists)
           : undefined;
       const theme =
         published.read()?.id ??
