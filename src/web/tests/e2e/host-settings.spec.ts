@@ -115,11 +115,18 @@ async function assignedSystemDisk(request: APIRequestContext): Promise<string> {
   return (await deviceState(request)).assigned["system-disk"] ?? "";
 }
 
+/** One theme's answers, for the default display unless another is named — which
+ *  is the whole of the difference the case below is about. */
 async function answersFor(
   request: APIRequestContext,
   id: string,
+  display?: string,
 ): Promise<Record<string, string>> {
-  const response = await request.get(`${HOST}/api/themes/${id}/answers`);
+  const query =
+    display === undefined ? "" : `?display=${encodeURIComponent(display)}`;
+  const response = await request.get(
+    `${HOST}/api/themes/${id}/answers${query}`,
+  );
   const body = (await response.json()) as { answers: Record<string, string> };
   return body.answers;
 }
@@ -395,6 +402,56 @@ test.describe("the settings page a consumer configures", () => {
     await expect(page.locator('select[data-group="system-disk"]')).toHaveValue(
       global,
     );
+  });
+
+  /**
+   * The answers URL resolves end to end, for a display that is not `default`.
+   *
+   * The page builds it as
+   * `/api/themes/<theme>/answers?display=<the row that is showing>` — so this is
+   * the one case where the query, the route's own `display` parameter and the
+   * store's per-display key all have to agree. A URL that dropped the query would
+   * still answer 200 and still save; it would just save under `default`, which is
+   * why the second assertion is the one that matters.
+   */
+  test("answers a theme's question for the display the page is showing for", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass owns the shared host state",
+    );
+
+    const disks = await disksOn(request);
+    test.skip(disks.length === 0, "this machine reports no disks");
+
+    resetStores();
+    const previous = seedPairedDisplay();
+    const chosen = disks[0]!;
+
+    try {
+      await page.goto(`${HOST}/settings`);
+      await chooseTheme(page, HOST_DISK_THEME_ID, PAIRED_DISPLAY_ID);
+      await expect(questions(page)).toBeVisible();
+
+      await page
+        .locator('select[data-question="system-disk"]')
+        .selectOption(chosen);
+      await expect(page.locator("#status")).toHaveText(
+        "Saved. Only this theme is affected.",
+      );
+
+      // Written and read back under that display...
+      expect(
+        await answersFor(request, HOST_DISK_THEME_ID, PAIRED_DISPLAY_ID),
+      ).toEqual({ "system-disk": chosen });
+      // ...and not under the default, which is where a URL that dropped the
+      // query would have put it.
+      expect(await answersFor(request, HOST_DISK_THEME_ID)).toEqual({});
+    } finally {
+      restoreDisplays(previous);
+    }
   });
 
   test("shows no questions for a theme that reads nothing", async ({

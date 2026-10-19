@@ -1,9 +1,16 @@
+import { type ChildProcess, spawn } from "node:child_process";
+import { cpSync, mkdirSync, rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
-import { networkInterfaces } from "node:os";
+import { networkInterfaces, tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, type Page, test } from "@playwright/test";
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  test,
+} from "@playwright/test";
 import { SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
 import { uiCopy } from "../../packages/player/src/ui-copy.js";
 import { canvasProp, sceneBounds, sceneProperty } from "./canvas-probe.js";
@@ -26,6 +33,8 @@ import {
   HOST_PORT,
   HOST_TEMP_THEME_ID,
   HOST_THEME_ID,
+  HOST_THEMES_DIR,
+  hostClient,
   TEMPERATURE_NODE_ID,
 } from "./host-theme.js";
 import { isDesktopSurface } from "./surface.js";
@@ -2927,6 +2936,337 @@ test.describe("the display's own controls", () => {
       expect(reported.wakeLock).toBe("undefined");
     } finally {
       await bundle.close();
+    }
+  });
+});
+
+/**
+ * The per-display themes this plan added, on a host of this file's own.
+ *
+ * **Why this file starts a host at all.** Three of the boundary's claims are
+ * about a *paired* display, and the shared host cannot serve one: `displayKeyFor`
+ * answers a loopback request as `this-pc` whatever credential it carries, and
+ * the host on 4175 is bound to loopback — so the only displays it resolves are
+ * this PC and a local monitor. The chooser is the case that makes this
+ * unavoidable (a session-less reader is offered no control at all, and a
+ * loopback write names no display and is refused), so the display has to arrive
+ * from a non-loopback origin. `host-pwa.spec.ts` and `host-secure-origin.spec.ts`
+ * start their own `--host 0.0.0.0` host for the same reason; this is that
+ * arrangement on this file's own port and app folder.
+ *
+ * **The `0.0.0.0` binding is load-bearing twice.** A paired display is only a
+ * display at a non-loopback address, and the re-find case needs a second origin
+ * at the *same port* — `originFor(address, pairing.port)` — so it moves to
+ * `127.0.0.2`, which a host bound to `127.0.0.1` does not answer at all.
+ */
+const THEMED_HOST_PORTS: Readonly<Record<string, number>> = {
+  "desktop-host": 4241,
+  "phone-host": 4243,
+};
+
+test.describe("a paired display and the theme it is given", () => {
+  let host: ChildProcess | undefined;
+  /** Where a display reaches the host: the LAN address, plain http. */
+  let origin = "";
+  /** The host's loopback origin, which is the admin path every write here uses. */
+  let admin = "";
+  /** The second address the re-find moves to — same port, different address. */
+  let secondAddress = "";
+  let port = 0;
+  let hostId = "";
+  let hostName = "";
+
+  test.beforeAll(async ({}, testInfo) => {
+    const address = lanAddress();
+
+    // No LAN address on this machine: every case here skips rather than
+    // reporting a loopback run as a paired display's.
+    if (address === undefined) return;
+
+    port = THEMED_HOST_PORTS[testInfo.project.name] ?? 4241;
+    origin = `http://${address}:${port}`;
+    admin = `http://127.0.0.1:${port}`;
+    secondAddress = `http://127.0.0.2:${port}`;
+
+    // Its own app folder, outside the repository tree: two projects run this
+    // file, and the host lock refuses a second host against a held folder.
+    const appDir = join(
+      tmpdir(),
+      `vigilia-e2e-displays-${testInfo.project.name}`,
+    );
+    rmSync(appDir, { recursive: true, force: true });
+    mkdirSync(appDir, { recursive: true });
+    // The same library the shared host serves, copied rather than rebuilt: the
+    // themes are `global-setup.ts`'s fixture and this host only has to serve it.
+    cpSync(HOST_THEMES_DIR, join(appDir, "themes"), { recursive: true });
+
+    host = spawn(
+      "node",
+      [
+        "packages/host/bin/vigilia.js",
+        "--no-browser",
+        "--port",
+        String(port),
+        // `0.0.0.0` is the point: a host bound to loopback has no LAN origin to
+        // read and no second address to be found at, and a case that ran anyway
+        // would be reading the trap.
+        "--host",
+        "0.0.0.0",
+        "--app-dir",
+        appDir,
+      ],
+      { cwd: process.cwd(), stdio: "ignore" },
+    );
+
+    const probe = await hostClient(admin);
+    let ready = false;
+
+    for (let attempt = 0; attempt < 120 && !ready; attempt += 1) {
+      try {
+        ready = (await probe.get("/api/health")).ok();
+      } catch {
+        // Not up yet.
+      }
+      if (!ready) await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    if (!ready) {
+      await probe.dispose();
+      host.kill();
+      host = undefined;
+      return;
+    }
+
+    // The identity a display stores, and the one a re-find matches on.
+    const identity = (await (await probe.get("/api/host")).json()) as {
+      readonly id: string;
+      readonly name: string;
+    };
+    hostId = identity.id;
+    hostName = identity.name;
+    await probe.dispose();
+  });
+
+  test.afterAll(() => {
+    host?.kill();
+    host = undefined;
+  });
+
+  /**
+   * A display paired the way the host pairs one — through the route, so its
+   * record and its credential are the store's own rather than a hand-written
+   * file this spec would have to keep in step with `hashToken`.
+   */
+  async function pairDisplay(
+    request: APIRequestContext,
+    label: string,
+  ): Promise<{ readonly id: string; readonly token: string }> {
+    const response = await request.post(
+      `${admin}/api/pairing/sessions?label=${encodeURIComponent(label)}`,
+    );
+    const body = (await response.json()) as {
+      readonly display: { readonly id: string };
+      readonly token: string;
+    };
+    return { id: body.display.id, token: body.token };
+  }
+
+  /** The assignment, from this PC: the loopback admin path, which names a display. */
+  async function assign(
+    request: APIRequestContext,
+    display: string,
+    theme: string,
+  ): Promise<void> {
+    const response = await request.put(`${admin}/api/themes/active`, {
+      data: { display, id: theme },
+    });
+
+    expect(response.ok(), response.ok() ? "" : await response.text()).toBe(
+      true,
+    );
+  }
+
+  /** The ids of the composition's own root objects, off the mounted canvas. */
+  function rootNodeIds(page: Page): Promise<string[]> {
+    return page.evaluate(() => {
+      const canvas = (
+        window as unknown as {
+          vigilia?: {
+            handle: {
+              canvas: {
+                getObjects(): readonly { get(key: string): unknown }[];
+              };
+            };
+          };
+        }
+      ).vigilia?.handle.canvas;
+
+      return (canvas?.getObjects() ?? []).map((object) =>
+        String(object.get("id")),
+      );
+    });
+  }
+
+  test("a reassignment lands on a display that is already showing", async ({
+    page,
+    request,
+  }) => {
+    test.skip(origin === "", "this machine has no LAN address");
+
+    const display = await pairDisplay(request, "E2E reassignment");
+
+    try {
+      // One theme, on a map page: the host resolved this id for this display.
+      await assign(request, display.id, HOST_CHART_THEME_ID);
+      await page.goto(`${origin}/?session=${display.token}`);
+      await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+      expect(new URL(page.url()).searchParams.get("theme-source")).toBe("map");
+      expect(new URL(page.url()).searchParams.get("theme")).toBe(
+        HOST_CHART_THEME_ID,
+      );
+      await expect.poll(() => rootNodeIds(page)).toContain(CHART_NODE_ID);
+
+      // The host assigns another.
+      await assign(request, display.id, HOST_THEME_ID);
+
+      // The display shows it, with no manual navigation. **Asserted on the node
+      // only the new theme has**, not only on the URL: a reload would re-serve
+      // the id already in the URL and leave the old document in place, which a
+      // URL comparison alone would not tell apart from the move.
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get("theme"), {
+          timeout: 20_000,
+        })
+        .toBe(HOST_THEME_ID);
+      await expect
+        .poll(() => rootNodeIds(page), { timeout: 20_000 })
+        .toContain(CLOCK_NODE_ID);
+    } finally {
+      await request.delete(`${admin}/api/displays/${display.id}`);
+    }
+  });
+
+  test("the chooser shows its choice on a map page and is absent on a link page", async ({
+    page,
+    request,
+  }) => {
+    test.skip(origin === "", "this machine has no LAN address");
+
+    const display = await pairDisplay(request, "E2E chooser");
+
+    try {
+      await assign(request, display.id, HOST_CHART_THEME_ID);
+      await page.goto(`${origin}/?session=${display.token}`);
+      await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+
+      const chooser = page.locator("[data-vigilia-theme-chooser]");
+      await expect(chooser).toBeVisible();
+      await chooser
+        .locator("select[data-vigilia-theme-select]")
+        .selectOption(HOST_THEME_ID);
+
+      // The write is this display's own and the page lands on the chosen theme
+      // through the same navigation an assignment takes.
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get("theme"), {
+          timeout: 20_000,
+        })
+        .toBe(HOST_THEME_ID);
+      await expect
+        .poll(() => rootNodeIds(page), { timeout: 20_000 })
+        .toContain(CLOCK_NODE_ID);
+
+      // The same control is absent on a link page — **carrying the same
+      // credential**, so what is read is the source and not a missing session.
+      // A token-less page would be absent for the other reason.
+      await page.goto(
+        `${origin}/?theme=${HOST_CHART_THEME_ID}&session=${display.token}`,
+      );
+      await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+      await expect(page.locator("[data-vigilia-theme-chooser]")).toHaveCount(0);
+    } finally {
+      await request.delete(`${admin}/api/displays/${display.id}`);
+    }
+  });
+
+  test("a re-find moves the display to the host's second address", async ({
+    page,
+    request,
+  }) => {
+    test.skip(origin === "", "this machine has no LAN address");
+
+    // The address the display already knows, and the second one the host answers
+    // at: **the same port**, which is what a re-find match is
+    // (`originFor(address, pairing.port)`). Both are this machine, because the
+    // host is bound to `0.0.0.0` and so answers across the loopback block.
+    const known = `http://127.0.0.1:${port}`;
+    const elsewhereAddress = new URL(secondAddress).hostname;
+    /** How many of the sweep's probes the route itself answered. */
+    let probesAnswered = 0;
+    /**
+     * Flipped once the load has stored its pairing. Before that the display's own
+     * `/api/host` is the one the route must let through — it is what writes the
+     * identity the ladder matches on — and the ladder's probe of the same URL
+     * must fail.
+     */
+    let moved = false;
+
+    await page.route(
+      (url) => url.port === String(port),
+      async (route) => {
+        const target = new URL(route.request().url());
+
+        if (target.pathname === "/api/host") {
+          if (target.hostname === elsewhereAddress) {
+            probesAnswered += 1;
+            await route.fulfill({ json: { id: hostId, name: hostName, port } });
+            return;
+          }
+
+          if (moved) {
+            await route.abort();
+            return;
+          }
+        }
+
+        await route.continue();
+      },
+    );
+    // The host has stopped answering where the display is looking, and has not
+    // moved yet — so the display is left on the page it is already showing.
+    await page.route("**/api/published*", (route) =>
+      moved && new URL(route.request().url()).hostname !== elsewhereAddress
+        ? route.abort()
+        : route.continue(),
+    );
+
+    const display = await pairDisplay(request, "E2E refind");
+
+    try {
+      // This PC's own theme, because the address the display loads at is
+      // loopback and the host resolves a loopback request as `this-pc`.
+      await assign(request, "this-pc", HOST_CHART_THEME_ID);
+      await page.goto(`${known}/?session=${display.token}`);
+      await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+
+      await expect
+        .poll(() =>
+          page.evaluate(() => localStorage.getItem("vigilia.display.pairing")),
+        )
+        .not.toBeNull();
+
+      moved = true;
+
+      await expect
+        .poll(() => page.url(), { timeout: 40_000 })
+        .toContain(`${secondAddress}/`);
+      await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+      // **The route really intercepted**, so the hop came from the ladder and not
+      // from a URL that happened to compare equal: the second address's own
+      // `/api/host` is answered here rather than by any host on this machine.
+      expect(probesAnswered).toBeGreaterThan(0);
+    } finally {
+      await request.delete(`${admin}/api/displays/${display.id}`);
     }
   });
 });
