@@ -133,6 +133,16 @@ export const uiCopy = {
         "Dim the display — an overlay over the picture, not the screen's own brightness",
     },
   },
+  /**
+   * The display's own theme chooser (`theme-chooser.ts`). A refusal is the
+   * host's sentence wherever it has one; these are the two cases where the
+   * answer did not arrive at all.
+   */
+  chooser: {
+    label: "Theme",
+    listFailed: "Could not list this host's themes.",
+    chooseFailed: "Could not change this display's theme.",
+  },
 } as const;
 
 /** A sentence, plus the one token that identifies which case it was. */

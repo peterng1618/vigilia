@@ -30,6 +30,7 @@ import { showLoadFailure } from "./load-failure.js";
 import { followPublished, reResolveUrl } from "./publish-follower.js";
 import { registerServiceWorker } from "./service-worker.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
+import { createThemeChooser } from "./theme-chooser.js";
 import {
   loadDisplayPreferences,
   loadHostedFontAssets,
@@ -196,6 +197,22 @@ async function startHostedTheme(
   const reResolve = (): void => {
     window.location.href = reResolveUrl(window.location.href);
   };
+  // A display the host resolved can choose another theme for itself, and shows
+  // it through the same navigation an assignment takes. A link's id is the
+  // person's instruction and a published page's is what it shows; `reResolveUrl`
+  // keeps both, so a chooser there would change nothing.
+  const chooser =
+    new URL(window.location.href).searchParams.get("theme-source") === "map"
+      ? createThemeChooser({
+          session,
+          side: "bottom",
+          current: theme.id,
+          onChosen: () => reResolve(),
+          // The host's sentence goes where every other refusal on this display
+          // goes; the player, not the chooser, decides where that is.
+          onError: (message) => showConnectionState("refused", 0, message),
+        })
+      : undefined;
   const stopFollowing = followPublished(session, reResolve, {
     onRefused: (reason) => showConnectionState("refused", 0, reason),
     onThemeChange: reResolve,
@@ -218,6 +235,7 @@ async function startHostedTheme(
       // Before the scene goes: the controls' own listeners and any wake lock
       // are theirs to release, and a discarded page must not keep a phone awake.
       controls.dispose();
+      chooser?.dispose();
       // The scene owns the glass handle, the media layer and any video frame
       // callback, and none of them is released by the teardown above.
       handle.dispose();
