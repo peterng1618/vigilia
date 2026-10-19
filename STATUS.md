@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 4.1 (`9d9b9e1b`): `/api/themes/active` is the display map — `GET` answers `{ default, displays, themes, templates }` with `this-pc` first and `theme: null` for a display holding none, `PUT` answers the same map, and `ActiveThemeStore.readAll` was added for it (R45).
-- The write's authority is derived: a paired request's key is its own authenticated record's id (`server.ts:1807`), verified by review to read no body field, and the admin `GET` stays loopback-only.
-- Red proof 10 failed / 154 passed before, 164 passed after; `packages/host` green at 41 files and 648 tests, `typecheck` exit 0.
-- **Both host pages are broken on `develop` until Task 4.3**, which is the plan's own 4.1 → 4.3 order: each still PUTs a bare `{ id }` and reads the removed `active` key.
-- The Phase 4 scan and the review ruled R45–R49, including R49's correction of the scan itself — two DOM test files stub the replaced shape and no task owned them.
+- Task 4.2 (`03ff819f`, fix `a300573d`): a reassignment reaches a display already showing — `/api/published` answers `display.theme`, the follower compares it beside the revision, and a local display's poll now names itself so the host records the sighting (R40's pair).
+- **The feature would have shipped dead**: `location.reload()` re-serves the theme id already in the URL, because `GET /` skips its resolution when `data` is present and its own 302 sets `data=live`. The publish flow hides this — a publish keeps the id and changes the document. R51's `reResolveUrl` fixes it.
+- Fix round 1 also stopped the follower reloading after its own callback, made `DisplayStore.touch` decline a write inside 5 s, and moved `themeStore.list()` inside the link check.
+- Red proofs 4 player / 1 store / 1 listing cases; `npm run test` 271 files and **3689 tests** exit 0, typecheck exit 0.
+- **No browser has seen a reassignment land** — `publish-loop.spec.ts` would show it, and it is red at `:402` (`vg-604`) while a Playwright run's stream closes are the shape that killed the host in `vg-620`.
 
 ## Next
 
-1. **Phase 4 continues at Task 4.2** (a reassignment reaches a display that is already showing); its pre-flight scan is done and ruled R45–R49, and 4.2 carries R40's sighting pair.
+1. **Phase 4 continues at Task 4.3** (the two host pages write the display they name); the scan and the two tasks so far have ruled R45–R52.
 2. `vg-620` is the open one to weigh first: a client disconnecting mid-stream kills the host, which makes every browser proof in this repo unreliable and takes every other display's stream with it.
 3. Resume the drain at Task 23.4 when this plan stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
