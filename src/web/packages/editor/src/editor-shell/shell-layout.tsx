@@ -1,7 +1,10 @@
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { CARD_LIBRARY } from "../card-library.js";
+import { hitTargetClasses } from "../components/ui/control-well.js";
 import { CompositionPane } from "../panes/composition/composition-pane.js";
 import type { PublishSwitch } from "../publish-client.js";
 import {
@@ -45,6 +48,77 @@ import {
 } from "./shell-stores.js";
 import { ShortcutReference } from "./shortcut-reference.js";
 import { StatusReadout } from "./status-readout.js";
+
+/**
+ * The shell's three surfaces. `editor` owns the document and the canvas; the
+ * other two own no canvas at all, and each renders its own region in the
+ * content area instead of the editor's body.
+ *
+ * It is a mode and not a route: nothing persists it, nothing outside the shell
+ * reads it, and the store mode is a surface in this same React tree rather than
+ * an iframe over another page.
+ */
+export type ShellMode = "editor" | "themes" | "this-pc";
+
+/**
+ * What the shell's React root is given: the surface showing, and the request for
+ * another one.
+ *
+ * The mode is a prop rather than state inside `Shell` so the region a later task
+ * hangs here reads the answer from one owner — `ShellRoot` below holds the mode
+ * and the one guard in front of it — instead of each region keeping its own copy
+ * of which surface is showing.
+ */
+export interface ShellLayoutProps {
+  readonly mode: ShellMode;
+  readonly onModeChange: (mode: ShellMode) => void;
+}
+
+/** The three modes, in the order the header draws them. `satisfies` rather than
+ *  a bare array, so a `ShellMode` added without a label fails to compile here
+ *  rather than rendering a segment with no name. */
+const SHELL_MODES = [
+  { id: "editor", name: uiCopy.modes.editor },
+  { id: "themes", name: uiCopy.modes.themes },
+  { id: "this-pc", name: uiCopy.modes.thisPc },
+] as const satisfies readonly {
+  readonly id: ShellMode;
+  readonly name: string;
+}[];
+
+/**
+ * DESIGN.md §5's Segmented, in the header's **bare** form (see 0074).
+ *
+ * The one Segmented component (`components/ui/control-segmented.tsx`) is a
+ * labelled *row* — §5's 74px label column beside a value cell — and the header
+ * drawing (`docs/design/mockups/current/shell.html`) draws this one as a well
+ * with the three names in it and no label at all, so the group is its own
+ * label and the primitive is composed here rather than the row vocabulary
+ * growing a fourth shape for one caller.
+ *
+ * The chosen item is lifted to `--stage` with `--text` — the shared chosen
+ * treatment, never an accent fill: §4 allows one accent-filled element per
+ * region and the header's is the publish control.
+ */
+function ModeSwitch(props: ShellLayoutProps): React.JSX.Element {
+  return (
+    <ToggleGroup
+      className="editor-shell-mode-switch"
+      value={[props.mode]}
+      aria-label={uiCopy.modes.label}
+      onValueChange={(next) => {
+        const chosen = next[0];
+        if (chosen !== undefined) props.onModeChange(chosen as ShellMode);
+      }}
+    >
+      {SHELL_MODES.map((mode) => (
+        <Toggle key={mode.id} value={mode.id} className={hitTargetClasses}>
+          {mode.name}
+        </Toggle>
+      ))}
+    </ToggleGroup>
+  );
+}
 
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Composition pane has no node
@@ -167,7 +241,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const hosting = new HostingStore();
   const getView = (): EditorViewControls | undefined => view;
 
-  function Shell(): React.JSX.Element {
+  function Shell({ mode, onModeChange }: ShellLayoutProps): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
     /** Whether the OS is still choosing. Initialized from storage — the same
      *  question `createShellLayout` asked for `initial` — and moved from there
@@ -302,6 +376,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             Settings, at the accepted cost of no at-a-glance readout. */}
         <header className="editor-shell-header">
           <strong>{uiCopy.brand}</strong>
+          {/* §7.1's mode switch, in the header rather than in a strip under it:
+              §7.2 forbids a second horizontal bar, and two stacked rows of
+              navigation make the first read as chrome rather than a choice. */}
+          <ModeSwitch mode={mode} onModeChange={onModeChange} />
           <ShellMenuBar store={store} getView={getView} />
           <PublishControl
             session={store.bridge?.session}
@@ -310,7 +388,16 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             surface={publishSurface}
           />
         </header>
-        <div className="editor-shell-body" data-collapsed={collapsed}>
+        {/* The editor's body is **hidden, never unmounted**, while another mode
+            shows. The canvas host lives inside it, so taking it off the tree
+            would destroy the open document on the way to the store — which is
+            the invariant a mode switch has to keep, and the reason the switch
+            asks before it leaves a dirty one. */}
+        <div
+          className="editor-shell-body"
+          data-collapsed={collapsed}
+          hidden={mode !== "editor"}
+        >
           {/* The rail is the left edge's own column, ahead of the pane's, so
               the canvas gets the pane's width back and the slots read as one
               vertical choice rather than a second navigation bar. */}
@@ -476,6 +563,18 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             )}
           </aside>
         </div>
+        {/* The mode's own region — the seam a non-editor surface fills. A task
+            that lands one replaces this element's body and nothing around it:
+            the switch, the header, the status bar and the editor's own body are
+            the shell's, and a region is what a mode adds. Empty until then,
+            because a mode with no surface yet is a mode with nothing to draw
+            rather than a placeholder standing in for one (§9). */}
+        {mode === "editor" ? null : (
+          <section
+            className="editor-shell-mode"
+            data-vigilia-mode-region={mode}
+          />
+        )}
         {/* §7.6's strip: readouts only, the counts on the left and the save
             state and live mark on the right. The message span sits between the
             counts and the diagnostic, so a report is added to the left's
@@ -494,9 +593,39 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     );
   }
 
+  /**
+   * The mode, and the one guard in front of it.
+   *
+   * The shell opens on the editor — the document is what an author came for —
+   * and the mode is never persisted: it is chrome, not authored state.
+   *
+   * **The guard fires on the way out of the editor and nowhere else.** Leaving
+   * the editor is the only transition that can cost an unsaved document, so
+   * moving between the other two modes asks nothing; and it is the browser's own
+   * dialog, the instrument `beforeunload` already uses for this same fact in
+   * `editor-main.ts`, because the shell's facade exposes `isDirty()` and no
+   * prompt. A refusal returns before the mode moves, so the switch stays where
+   * the author left it.
+   */
+  function ShellRoot(): React.JSX.Element {
+    const [mode, setMode] = useState<ShellMode>("editor");
+    const requestMode = (next: ShellMode): void => {
+      if (next === mode) return;
+      if (
+        mode === "editor" &&
+        store.bridge?.session.isDirty() === true &&
+        !window.confirm(uiCopy.modes.unsaved)
+      ) {
+        return;
+      }
+      setMode(next);
+    };
+    return <Shell mode={mode} onModeChange={requestMode} />;
+  }
+
   flushSync(() => {
     reactRoot = createRoot(root);
-    reactRoot.render(<Shell />);
+    reactRoot.render(<ShellRoot />);
   });
 
   const stage = root.querySelector<HTMLElement>("#stage");

@@ -200,11 +200,22 @@ which of those three a surface is.
 home elsewhere is not repeated here — Insert lives in the Add pane, so the
 header has no Insert menu.
 
-- Left: brand mark, then `File`, `Edit`, `View`.
+- Left: brand mark, then the **mode switch**, then `File`, `Edit`, `View`.
 - Right: the publish chord, then the **primary button**. `Publish` is the only
   filled, accent-coloured button in the editor.
 - **The header never shows the document's identity** and never shows a
   per-document readout. Both are on the canvas (§7.5).
+
+**The header carries the shell's mode switch, and there is no bar under it.** The
+shell has three modes — the editor, the theme store and this PC — and the switch
+between them is the header's own control, a §5 `Segmented` with the labels
+`Editor`, `Themes` and `This PC`. A strip under the header would be the second
+horizontal bar §7.2 forbids, so the header owns the choice and its **right-hand
+region is per-mode**: `File`/`Edit`/`View` and the publish control are the
+editor's, a mode with actions of its own carries them there, and a mode with none
+shows nothing beside the switch. The editor's own body is hidden, not unmounted,
+while another mode shows — a mode switch never loses an unsaved document, and it
+asks before it leaves a dirty one (`docs/decisions/0074`).
 
 Why `View` stays: the things in it — preview/source, chart refresh, run display
 — are changed *while* designing, many times a session. Settings is for
@@ -467,6 +478,16 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 | **Labelled button** | A label in `--text-sm` on the `--vigilia-control-bg` fill, 1px `--edge`, `--radius-md`, `6px 12px` padding | You can answer the surface that raised it; it is chrome around an answer, not a control in a panel |
 | **Rail slot** | A 36px square at `--radius-lg`, glyph only | One of §7.2's four panes; at most one is open |
 | **Choice row** | A `--radius-md` row at `--panel-2` carrying a swatch and a name; the chosen row is lifted to `--stage` with the accent border | One member of a closed set where each member has its own colour |
+
+**`Segmented` has a bare form, and the header's mode switch is it.** §7.1's
+switch is the well this table describes — `--panel-2` inside a 1px `--edge` at
+`--radius-md`, the chosen name lifted to `--stage` with `--text` — and it carries
+no row label, because the three names inside the well are the whole control and
+the header drawing draws no label beside them. It is composed from the same
+primitive the labelled row is (`components/ui/control-segmented.tsx` is that
+row), so it is this control rather than a second one; the label the rule below
+requires is the group's own name, not a column
+(`docs/decisions/0074`).
 
 **The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
 carries an editable field now, so the 24×24 target below binds it: the control pads its wells with

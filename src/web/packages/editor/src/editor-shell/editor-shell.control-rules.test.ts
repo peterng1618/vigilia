@@ -180,15 +180,23 @@ function colourBearingMarkableControls(): readonly string[] {
  *  - `.editor-shell-dialog > button` — a dialog's own buttons (`?` sheet, theme
  *    dialog), which are direct children of the dialog and no registry's.
  *  - `.editor-shell-dialog > button:hover` — the same buttons on hover.
+ *  - `.editor-shell-mode-switch button` — §7.1's three mode segments. The
+ *    switch chooses a shell surface; it renders no registry action, so no
+ *    control carrying the mark is ever inside it, and a `<button>` takes its
+ *    ink from the UA's own rule rather than by inheritance.
+ *  - `.editor-shell-mode-switch button[aria-pressed="true"]` — the chosen
+ *    segment, whose lifted ink is the shared chosen treatment.
  *
- * Measured at `d9f81f1f` by parsing every rule body in the stylesheet, which is
- * how this set was reproduced rather than copied: those six are the complete
- * family.
+ * The first six were measured at `d9f81f1f` by parsing every rule body in the
+ * stylesheet, which is how that set was reproduced rather than copied; the last
+ * two arrived with the mode switch (0074).
  */
 const MARKABLE_CONTROL_ALLOWLIST: readonly string[] = [
   ".editor-shell-dialog > button",
   ".editor-shell-dialog > button:hover",
   ".editor-shell-menubar button",
+  ".editor-shell-mode-switch button",
+  '.editor-shell-mode-switch button[aria-pressed="true"]',
   ".editor-shell-rail button",
   ".editor-shell-rail button.editor-shell-rail-settings",
   '.editor-shell-rail button[aria-pressed="true"]',

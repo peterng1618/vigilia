@@ -1370,3 +1370,147 @@ it("teaches a File row exactly the chord whose id runs the call that row runs", 
 
   layout.destroy();
 });
+
+/** The three mode segments, in the order the header draws them. */
+function modeSegments(root: HTMLElement): readonly HTMLButtonElement[] {
+  return Array.from(
+    root.querySelectorAll<HTMLButtonElement>(
+      ".editor-shell-mode-switch button",
+    ),
+  );
+}
+
+/** What a screen reader is told about each segment — the chosen state is
+ *  `aria-pressed`, which is the half a sighted reader sees as the lifted fill. */
+function chosen(root: HTMLElement): readonly (string | null)[] {
+  return modeSegments(root).map((segment) =>
+    segment.getAttribute("aria-pressed"),
+  );
+}
+
+/**
+ * §7.1's mode switch: three surfaces, one showing, in the header.
+ *
+ * The shell opens on the editor, so the first read is also the resting state:
+ * the body is laid out and no other mode's region is in the tree. The switch
+ * then has to move both halves — the chosen segment and which region is
+ * rendered — and coming back has to restore the editor rather than leave the
+ * region behind.
+ *
+ * **The body is hidden, not unmounted**, and that is the invariant rather than
+ * an implementation detail: the canvas host lives inside it, so taking the body
+ * off the tree would destroy the open document on the way to the store. The
+ * assertion is on the element still being there and `hidden`.
+ */
+it("offers the three modes and marks the active one", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+
+  expect(
+    modeSegments(root).map((segment) => segment.textContent),
+    "the header does not offer the three modes, in order",
+  ).toEqual([uiCopy.modes.editor, uiCopy.modes.themes, uiCopy.modes.thisPc]);
+  expect(chosen(root)).toEqual(["true", "false", "false"]);
+  expect(root.querySelector<HTMLElement>(".editor-shell-body")?.hidden).toBe(
+    false,
+  );
+  expect(root.querySelector("[data-vigilia-mode-region]")).toBeNull();
+
+  await act(async () => modeSegments(root)[1]?.click());
+
+  expect(chosen(root), "the chosen segment did not move").toEqual([
+    "false",
+    "true",
+    "false",
+  ]);
+  expect(
+    root.querySelector<HTMLElement>(".editor-shell-body")?.hidden,
+    "the editor's body was unmounted or left showing, not hidden",
+  ).toBe(true);
+  expect(
+    root
+      .querySelector("[data-vigilia-mode-region]")
+      ?.getAttribute("data-vigilia-mode-region"),
+    "the themes mode renders no region",
+  ).toBe("themes");
+
+  await act(async () => modeSegments(root)[0]?.click());
+
+  expect(chosen(root)).toEqual(["true", "false", "false"]);
+  expect(root.querySelector<HTMLElement>(".editor-shell-body")?.hidden).toBe(
+    false,
+  );
+
+  layout.destroy();
+});
+
+/**
+ * §7.2's "a second horizontal bar under the header is forbidden".
+ *
+ * A mode strip under the header would satisfy the first case above and be the
+ * exact thing the section rules out, so where the switch is drawn is its own
+ * claim: inside the header element, with nothing between the header and the
+ * content region.
+ */
+it("does not render a second horizontal bar", () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const header = root.querySelector(".editor-shell-header");
+  const body = root.querySelector(".editor-shell-body");
+
+  expect(
+    header?.querySelector(".editor-shell-mode-switch"),
+    "the mode switch is not inside the header",
+  ).not.toBeNull();
+  // Nothing sits between the header and the content region: the element after
+  // the header is the body itself, not a bar the switch was moved into.
+  expect(body?.previousElementSibling).toBe(header);
+  expect(
+    body?.querySelector(".editor-shell-mode-switch"),
+    "the switch moved into the content region",
+  ).toBeNull();
+
+  layout.destroy();
+});
+
+/**
+ * The plan's one invariant, driven directly: a mode switch never loses an
+ * unsaved document.
+ *
+ * A dirty document is the case that separates a guard from a no-op, so the
+ * bridge is told the document differs from its last save and the browser's own
+ * dialog is answered both ways. **The negative half is the load-bearing one**:
+ * a refusal must leave the chosen segment where it was, which is what "the mode
+ * does not change until it answers" means, and a test that only read the accept
+ * path would pass on a switch that never asked.
+ */
+it("asks the dirty guard before it leaves a dirty document", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  layout.setBridge(
+    bridgeStub({ session: { ...facade(), isDirty: () => true } }),
+    undefined,
+  );
+  await Promise.resolve();
+
+  const guard = vi.spyOn(window, "confirm").mockReturnValue(false);
+  await act(async () => modeSegments(root)[1]?.click());
+
+  expect(guard, "the dirty guard was not asked").toHaveBeenCalledTimes(1);
+  expect(chosen(root), "the mode moved while the guard was refusing").toEqual([
+    "true",
+    "false",
+    "false",
+  ]);
+
+  guard.mockReturnValue(true);
+  await act(async () => modeSegments(root)[1]?.click());
+  expect(chosen(root), "the guard's yes did not move the mode").toEqual([
+    "false",
+    "true",
+    "false",
+  ]);
+
+  guard.mockRestore();
+  layout.destroy();
+});

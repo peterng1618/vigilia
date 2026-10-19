@@ -352,6 +352,27 @@ export const uiCopy = {
     view: "View",
   },
   /**
+   * The shell's three modes, as the header's switch names them (DESIGN.md
+   * §7.1). Each names the *surface* rather than the mechanism behind it, and
+   * two of the three are words the product already uses: `Themes` is what the
+   * store lists, and `This PC` is the host's own page title. The user chose
+   * these three on 2026-10-19 over the draft's *theme store*, *theme editor*
+   * and *host settings*.
+   */
+  modes: {
+    /** The switch's own name. The three labels inside are the options, so a
+     *  group with no name announces "Editor, pressed" with nothing saying what
+     *  is being chosen. */
+    label: "Shell modes",
+    editor: "Editor",
+    themes: "Themes",
+    thisPc: "This PC",
+    /** Asked before the editor is left with unsaved work. The browser's own
+     *  dialog, so the two answers are its own OK and Cancel — the instrument
+     *  `beforeunload` already uses for the same fact. */
+    unsaved: "This theme has unsaved changes. Leave the editor?",
+  },
+  /**
    * How a chord reads. What a key *prints* is deliberately not here: the caps
    * and the marks for unnamed keys are the platform's own and change with
    * neither language nor product, so they live beside the formatter that spells

@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The per-display plan closed after its final whole-branch review**: 14 of the plan's 17 acceptance conditions covered, 2 covered but weak and 1 with no test at all; one fix round (`81880916`) closed four, and the re-review caught that the fix round's own item-4 repair had *dropped* the existence half, so the controller repaired it (`0986dee4`) and red-proved it in both directions (R97, R98).
-- **The review's load-bearing finding is filed, not re-opened**: five display-management routes have no caller in any shipped surface, and my own route scan found a sixth (`/api/pairing/sessions`); the spec hands that surface to the store spec, so the gap is between two documents — `vg-628`, issue 38 (R97).
-- **Six cross-cutting findings filed as rows and issues 38–43**, each checked against both registers first: the unreachable surface, an unread `display.id`, the theme-id pattern's six owners, the fallback rule's two owners, `server.ts` at 2689 lines, and **the theme store plan's A.10 deleting the surface this plan's Task 4.3 rewrote** (`vg-633`) (R97).
-- **The spec flipped to `implemented` and the plan archived**; the theme store plan's reference to it now points at `archive/`, and `docs:check` exits 0 over 961 files.
-- **What the closes kept as limits rather than claims**: item 17 is closed only as far as the harness reaches (a real untrusted origin cannot be stood up), and the browser suites are not run by `gate`, so every "covered" verdict means the case exists and discriminates at HEAD.
+- **Theme store Task A.1 landed: the header's `Segmented` switches the shell between Editor, Themes and This PC** (`shell-layout.tsx`, `ui-copy.ts`, `editor-shell.css`), the labels the user chose on 2026-10-19, with the chosen item lifted to `--stage`/`--text` rather than an accent fill (§4 spends the header's accent on publish).
+- **The editor's body is hidden, never unmounted, so a switch cannot lose the document** — and the dirty guard is the browser's own dialog, asked only on the way out of the editor with an unsaved document, with a refusal leaving the mode where it was.
+- **§7.1 and §5 are amended in the same commit** — the header carries the mode switch and its action region is per-mode; §5's `Segmented` gains its bare form — and `docs/decisions/0074` claims `shell-layout.tsx` with all seven reuse-gate rungs.
+- **Browser proof in `editor-rail.spec.ts`**: the switch's geometry (32px well in the 42px strip), its chosen paint, and a real dirty document driven through the dialog both ways; desktop-chromium passes, phone skips.
+- **`design:check` stays red for the reason the last plan recorded** — the remainder is 20 against its ceiling of 19 (`vg-626`), reproduced at HEAD with this work stashed, so this commit neither caused nor cleared it.
 
 ## Next
 

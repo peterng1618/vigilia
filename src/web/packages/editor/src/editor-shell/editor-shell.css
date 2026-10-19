@@ -772,6 +772,57 @@ body,
   letter-spacing: 0.18em;
   color: var(--shell-accent);
 }
+/* §7.1's mode switch: §5's Segmented, in the header's bare form (0074). The
+   well is the control's own — `--panel-2` inside a 1px `--edge` at
+   `--radius-md` — and it is the group that carries the three labels, with no
+   row label beside it, because the drawing draws none. The chosen item is
+   lifted to `--stage` with `--text`: the shared chosen treatment, never an
+   accent fill (§4 — the header's one accent-filled control is the publish
+   button). The 22px label inside 4px of padding is a 32px box with the border,
+   which is what keeps the switch inside the 42px strip. */
+.editor-shell-mode-switch {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--shell-edge);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+}
+/* Both colours are on the segment, not on the well it sits in: a `<button>`
+   takes its ink from the UA's own rule rather than by inheritance, which is the
+   same reason `.editor-shell-rail button` states its own. Neither is reachable
+   by §4's destructive mark — the mode switch renders no registry action — so
+   both are in `editor-shell.control-rules.test.ts`'s allowlist. */
+.editor-shell-mode-switch button {
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-8);
+  background: transparent;
+  color: var(--shell-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  cursor: pointer;
+}
+.editor-shell-mode-switch button[aria-pressed="true"] {
+  background: var(--stage);
+  color: var(--shell-text);
+}
+.editor-shell-mode-switch button:focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+/* The mode's own region, beside the editor's body rather than inside it. It
+   fills what the body leaves, so a surface A.2 and A.8 land here is handed the
+   whole content area and lays out its own header row within it. */
+.editor-shell-mode {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+}
 /* The publish facts, in the popover the one button opens. A column, because it
    stacks a sentence, a line of code and a code symbol — and what keeps the
    header itself one row that never grows with the LAN. `--elev-2` is §3's row

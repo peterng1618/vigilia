@@ -22,6 +22,11 @@ const EDITOR = "http://127.0.0.1:4174/";
  *  it from here — §3's step table has no entry for it. */
 const RAIL_ACCENT_BAR_PX = 2;
 
+/** §7.1's header strip, in px, for the same reason: `--header-height` is a
+ *  density rather than one of §3's steps, so the one value is written here and
+ *  the mode-switch case spells its message from this. */
+const HEADER_STRIP_PX = 42;
+
 test("asking for the pane already showing leaves it showing", async ({
   page,
 }, testInfo) => {
@@ -1000,4 +1005,147 @@ test("Tab and Shift+Tab stay inside the settings modal, and Escape returns focus
   await expect(close).toBeVisible();
   await close.click();
   await expect(dialog).toBeHidden();
+});
+
+/**
+ * §7.1's mode switch, as a rendered box and as the guard in front of it.
+ *
+ * Two facts live only in a browser. The first is the switch's geometry: it is
+ * the header's own control, so it has to fit the 42px strip rather than grow it,
+ * and the chosen segment's *paint* — the shared chosen treatment, a lifted
+ * ground and `--text`, never the accent — is a resolved cascade, which jsdom
+ * does not apply. The second is the dirty guard: it is the browser's own dialog,
+ * so the case drives a real document dirty through the product's own route
+ * (duplicate a layer), dismisses the dialog and reads that the mode did not
+ * move, then accepts it and reads that it did.
+ *
+ * The header measurement is the report's evidence as well as an assertion, so a
+ * run that changes the strip's height says so rather than failing obscurely.
+ */
+test("the header's mode switch moves the shell, and asks before it leaves a dirty document", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const header = page.locator(".editor-shell-header");
+  const group = header.locator(".editor-shell-mode-switch");
+  await expect(group, "the mode switch is not in the header").toBeVisible();
+  const segment = (name: string) =>
+    group.getByRole("button", { name, exact: true });
+
+  await expect(group.getByRole("button")).toHaveCount(3);
+  await expect(segment("Editor")).toHaveAttribute("aria-pressed", "true");
+  await expect(segment("Themes")).toHaveAttribute("aria-pressed", "false");
+  await expect(segment("This PC")).toHaveAttribute("aria-pressed", "false");
+
+  const paint = await group.evaluate((node) => {
+    const segments = [...node.querySelectorAll("button")];
+    const chosen = segments.find(
+      (button) => button.getAttribute("aria-pressed") === "true",
+    );
+    const rest = segments.find(
+      (button) => button.getAttribute("aria-pressed") === "false",
+    );
+    const strip = node.closest(".editor-shell-header");
+    if (chosen === undefined || rest === undefined || strip === null) {
+      throw new Error("no chosen segment, unchosen segment or header");
+    }
+    // The **whole background**, not `backgroundColor`: `--stage` resolves to the
+    // shell's backdrop, which is a gradient in most palettes, and a gradient is
+    // `background-image` — reading the colour alone would report both segments
+    // as transparent and pass a switch that paints nothing.
+    const paintOf = (element: Element) => {
+      const style = getComputedStyle(element);
+      return `${style.backgroundColor} ${style.backgroundImage}`;
+    };
+    return {
+      well: Math.round(node.getBoundingClientRect().height),
+      header: Math.round(strip.getBoundingClientRect().height),
+      chosenFill: paintOf(chosen),
+      restFill: paintOf(rest),
+      chosenInk: getComputedStyle(chosen).color,
+      restInk: getComputedStyle(rest).color,
+    };
+  });
+  const report = JSON.stringify(paint);
+  console.log(`mode-switch ${report}`);
+  testInfo.annotations.push({ type: "mode-switch", description: report });
+
+  expect(
+    paint.header,
+    `the switch grew the header's ${HEADER_STRIP_PX}px strip`,
+  ).toBe(HEADER_STRIP_PX);
+  expect(
+    paint.well,
+    `the switch overflows the header (${report})`,
+  ).toBeLessThan(paint.header);
+  // The chosen treatment, measured rather than assumed: a lifted ground and
+  // `--text`, and neither is the region's accent — §4 spends the header's one
+  // accent-filled control on the publish button.
+  expect(
+    paint.chosenFill,
+    `the chosen segment paints the same ground as an unchosen one (${report})`,
+  ).not.toBe(paint.restFill);
+  expect(
+    paint.chosenInk,
+    `the chosen segment paints the same ink as an unchosen one (${report})`,
+  ).not.toBe(paint.restInk);
+
+  // ── The guard, on a document the product dirtied ──────────────────────────
+  const identity = page.locator(".editor-shell-identity");
+  await expect(identity).toHaveAttribute("data-dirty", "false");
+  await selectLayer(page, "group-cpu-card");
+  await page
+    .locator("[data-vigilia-canvas-toolbar] [aria-label='Duplicate']")
+    .click();
+  await expect(
+    identity,
+    "the product did not mark the document dirty, so the guard is untested",
+  ).toHaveAttribute("data-dirty", "true");
+
+  // One handler for both answers: the question is asked twice, refused once and
+  // accepted once, and a handler swapped between the two would also be a second
+  // subscription silently answering.
+  let asked = 0;
+  let accept = false;
+  page.on("dialog", async (dialog) => {
+    asked += 1;
+    if (accept) await dialog.accept();
+    else await dialog.dismiss();
+  });
+  await segment("Themes").click();
+  await expect(
+    segment("Editor"),
+    "the mode moved while the guard was refused",
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(asked, "leaving a dirty document asked nothing").toBe(1);
+
+  accept = true;
+  await segment("Themes").click();
+  await expect(segment("Themes")).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.locator(".editor-shell-body"),
+    "the editor's body was unmounted rather than hidden",
+  ).toBeHidden();
+  await expect(
+    page.locator("[data-vigilia-mode-region]"),
+    "the themes mode renders no region",
+  ).toHaveAttribute("data-vigilia-mode-region", "themes");
+  await expect(group, "the switch left the header").toBeVisible();
+
+  // And back: the editor is the document's surface, and the switch returns it
+  // without a reload and without a second question.
+  await segment("Editor").click();
+  await expect(segment("Editor")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".editor-shell-body")).toBeVisible();
+  await expect(page.locator("[data-vigilia-mode-region]")).toHaveCount(0);
+  await expect(
+    identity,
+    "the document did not survive the round trip",
+  ).toHaveAttribute("data-dirty", "true");
 });
