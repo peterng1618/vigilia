@@ -71,7 +71,7 @@ function harness(options: {
   readonly assets?: AssetManager;
   readonly base?: string;
   readonly picture?: () => Promise<Uint8Array | undefined>;
-  readonly client?: ThemeLibraryClient;
+  readonly client?: Partial<ThemeLibraryClient>;
 }) {
   const save = vi.fn(async () => "base-after-save");
   const open = vi.fn(async () => ({
@@ -98,11 +98,14 @@ function harness(options: {
     confirmReplacement: async () => true,
     onSaved,
     onNewFromStarter,
-    client: options.client ?? {
+    client: {
       list: async () => [],
       open,
       save,
       saveThumbnail,
+      assign: async () => undefined,
+      listDisplays: async () => [],
+      ...options.client,
     },
     onError,
     onOpenTheme,

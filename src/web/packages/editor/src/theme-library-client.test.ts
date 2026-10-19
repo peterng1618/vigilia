@@ -329,6 +329,91 @@ describe("ThemeLibraryClient", () => {
     );
   });
 
+  it("assigns to the display it was given, and to no other", async () => {
+    const mockFetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({ ok: true, default: null, displays: [] }),
+          { status: 200 },
+        ),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    await client.assign("kitchen-tablet", "kitchen-strip");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/themes/active",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    // Both keys, always: the route names the display from the body on loopback
+    // and answers 400 without one, so a request missing it would write to this
+    // PC or nothing at all.
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      display: "kitchen-tablet",
+      id: "kitchen-strip",
+    });
+
+    // `default` is a display key in its own right — what a display with no
+    // choice of its own falls to — so it travels the same road.
+    await client.assign("default", "kitchen-strip");
+    const [, second] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(JSON.parse(String(second.body))).toEqual({
+      display: "default",
+      id: "kitchen-strip",
+    });
+  });
+
+  it("reports a refusal as the host's own message", async () => {
+    const mockFetch = vi.fn(
+      async () => new Response("No such display.", { status: 404 }),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    // A bare status would leave the author guessing which of the two 404s this
+    // is — an unknown display or an unknown theme.
+    await expect(client.assign("ghost", "living-room")).rejects.toThrow(
+      "No such display.",
+    );
+  });
+
+  it("lists every display with the theme it holds", async () => {
+    const mockFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            default: "living-room",
+            displays: [
+              { id: "this-pc", label: "This PC", kind: "local", theme: null },
+              {
+                id: "kitchen-tablet",
+                label: "Kitchen Tablet",
+                kind: "paired",
+                theme: "kitchen-strip",
+              },
+            ],
+            themes: [],
+            templates: [],
+          }),
+          { status: 200 },
+        ),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    // This PC is always first, and a display holding nothing of its own reads
+    // as `null` rather than as the theme it falls back to.
+    await expect(client.listDisplays()).resolves.toEqual([
+      { id: "this-pc", label: "This PC", theme: null },
+      { id: "kitchen-tablet", label: "Kitchen Tablet", theme: "kitchen-strip" },
+    ]);
+    expect(mockFetch).toHaveBeenCalledWith("/api/themes/active");
+  });
+
   it("refuses invalid theme IDs without fetching", async () => {
     const mockFetch = vi.fn();
     const client = createThemeLibraryClient({
@@ -339,6 +424,9 @@ describe("ThemeLibraryClient", () => {
       client.save("../escape", { envelope, assets: {} }),
     ).rejects.toThrow("Invalid theme id");
     await expect(client.open("../escape")).rejects.toThrow("Invalid theme id");
+    await expect(client.assign("this-pc", "../escape")).rejects.toThrow(
+      "Invalid theme id",
+    );
     expect(mockFetch).not.toHaveBeenCalled();
   });
 });

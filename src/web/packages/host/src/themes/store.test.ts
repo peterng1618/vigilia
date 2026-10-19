@@ -258,6 +258,9 @@ describe("ThemeStore", () => {
         return stored;
       },
       save: async () => "base-after-save",
+      // The display map is not what this test is about: it exercises the mount.
+      assign: async () => undefined,
+      listDisplays: async () => [],
     });
 
     // The document the mount opened, not the argument it passed: which theme

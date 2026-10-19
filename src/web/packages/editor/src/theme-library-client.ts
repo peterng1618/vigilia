@@ -54,6 +54,20 @@ export class ThemeValidationError extends Error {
   }
 }
 
+/**
+ * One row of the display map: a display and the theme it holds.
+ *
+ * The route also sends `kind` for the host page's own warning table, which is
+ * the page's question and not this seam's.
+ */
+export interface ThemedDisplay {
+  readonly id: string;
+  readonly label: string;
+  /** The theme this display holds, or `null` for one holding none of its own —
+   *  which is not the same as showing the default. */
+  readonly theme: string | null;
+}
+
 export interface ThemeLibraryClient {
   list(): Promise<readonly ThemeLibraryEntry[]>;
   open(id: string): Promise<ThemeLibraryContent>;
@@ -74,6 +88,12 @@ export interface ThemeLibraryClient {
    *  cannot delete must simply not offer deletion, rather than fail at the
    *  moment the author presses the button. */
   remove?(id: string): Promise<void>;
+  /** Puts a theme on one display, or on `"default"` — what a display holding no
+   *  choice of its own falls to. */
+  assign(display: string, id: string): Promise<void>;
+  /** Every display this host holds, each with the theme it shows. This PC is
+   *  always present and always first. */
+  listDisplays(): Promise<readonly ThemedDisplay[]>;
 }
 
 const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
@@ -252,6 +272,45 @@ export function createThemeLibraryClient(options?: {
           `Could not move "${id}" to the trash (${response.status}): ${errorText}`,
         );
       }
+    },
+
+    async assign(display: string, id: string): Promise<void> {
+      if (!THEME_ID_REGEX.test(id)) {
+        throw new Error("Invalid theme id.");
+      }
+      const response = await fetcher(`${baseUrl}/api/themes/active`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        // Both keys always travel. The route reads the display from the body
+        // for a loopback caller and answers 400 without one, so leaving it out
+        // is a refusal rather than a write to this PC.
+        body: JSON.stringify({ display, id }),
+      });
+      if (!response.ok) {
+        // The refusal is the host's own word — "No such display." or "No such
+        // theme." — and it is the one that says which of the two this was.
+        throw new Error(
+          (await response.text().catch(() => "")) ||
+            "Could not assign the theme.",
+        );
+      }
+    },
+
+    async listDisplays(): Promise<readonly ThemedDisplay[]> {
+      const response = await fetcher(`${baseUrl}/api/themes/active`);
+      if (!response.ok) {
+        throw new Error(
+          (await response.text().catch(() => "")) ||
+            "Could not list the displays.",
+        );
+      }
+      const body = (await response.json()) as { readonly displays?: unknown };
+      if (!Array.isArray(body?.displays)) {
+        return [];
+      }
+      return (body.displays as readonly ThemedDisplay[]).map(
+        ({ id, label, theme }) => ({ id, label, theme }),
+      );
     },
   };
 }
