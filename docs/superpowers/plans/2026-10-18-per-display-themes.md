@@ -2579,14 +2579,12 @@ the comment *"Said on the row rather than in a page-level status line: it belong
 this theme"*. The cost warning is that pattern rather than a second one.
 
 **Files:**
-- Create: `docs/decisions/0069-a-themes-cost-is-read-from-the-envelope-alone.md`
+- Create: `docs/decisions/0073-a-themes-cost-is-read-from-the-envelope-alone.md`
 - Create: `src/web/packages/renderer-core/src/theme/performance-cost.ts`
 - Create: `src/web/packages/renderer-core/src/theme/performance-cost.test.ts`
 - Modify: `src/web/packages/renderer-core/src/index.ts` (the public barrel)
 - Modify: `src/web/packages/host/src/themes/store.ts` (`ThemeStoreEntry` gains `costs`)
 - Modify: `src/web/packages/host/public/theme-list.js` (the policy, the sentence, the note)
-- Modify: `src/web/packages/host/public/library.html` (pass the row's display kind)
-- Modify: `src/web/packages/host/public/settings.html` (the same)
 - Test: `src/web/packages/host/src/themes/store.test.ts`
 - Test: `src/web/packages/host/src/theme-list.dom.test.ts`
 - Test: `src/web/tests/e2e/host-settings.spec.ts` (the browser proof)
@@ -2594,7 +2592,7 @@ this theme"*. The cost warning is that pattern rather than a second one.
 **The decision note lands before the first write to `renderer-core/src/theme/`** (R47):
 that directory is on the reuse gate's watchlist and the gate matches a claim by path, so
 notes 0003 and 0015 — which claim `document.ts` and `glass.ts` — do not cover a new
-`performance-cost.ts` and the hook refuses the write until 0069 exists and claims it.
+`performance-cost.ts` and the hook refuses the write until 0073 exists and claims it.
 The seven rungs are worked and recorded in the note; the gate's own rule is that the
 searches are the evidence.
 
@@ -2610,10 +2608,25 @@ searches are the evidence.
     `readonly costs: readonly PerformanceCost[]` — computed in `entryFor` from the
     envelope it is already handed, so `list()`, `read` and `write` all carry it.
   - `host/public/theme-list.js`:
-    - `export function costsFor(kind: "paired" | "local" | "default", costs: readonly PerformanceCost[]): readonly PerformanceCost[]`
     - `export function costWarning(kind: "paired" | "local" | "default", costs: readonly PerformanceCost[]): string | undefined`
-    - `themeList(themes, { …, displayKind })` — the kind of the display this list is
-      assigning to, so a row can say what that display will pay.
+    - `themeList` gains **no** option (R65). The kind of the row being assigned to is
+      `displays.find((d) => d.id === selected)?.kind ?? "default"` — `ActiveDisplay` already
+      carries `kind` (`server.ts:105-107`, whose comment says it travels for this warning
+      table), and `selected` already names the row. A separate parameter could disagree with
+      `selected`, which is the one fact they would have to share.
+
+**Rulings carried into this task (R65).** The note is **`0073`**, because
+`0069-the-crop-notice-and-the-bleed-mark-are-removed.md` already exists and the directory
+runs to 0072. `costsFor` is not exported — `costWarning` is its only consumer. Glass is
+found by walking the **envelope's own JSON tree**, not `glass.ts`'s `walk`: that generator is
+private (`glass.ts:746`) and yields `FabricObject`, and `renderer-core` is Fabric-free. The
+reuse that is real is `isGlassTreatment` / `VIGILIA_GLASS_PROPERTY`, which are exported
+(`renderer-core/src/theme/glass.ts:8,79`) — `glassTreatment` takes a `get(name)` accessor
+and is for revived objects only. The background's asset is
+`artboard.backgroundMedia.assetId` resolved against the envelope's **top-level `assets`**
+(`envelope-semantics.ts:347-360`), and `"gif"` needs no case: `background-media.ts:300-302`
+accepts only image, SVG and video and refuses the rest, so `video-background` is exactly
+`kind === "video"`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2664,8 +2677,12 @@ it("says nothing for a theme with no cost", () => {
 
 // themes/store.test.ts — the costs ride the listing the route already sends.
 it("carries each theme's costs on the entry it already built", async () => {
-  // A video theme's entry.costs is ["video-background"]; a plain theme's is [].
-  //   No second read of theme.json: list() already reads it for the row.
+  const store = await storeWith({ "night-sky": videoEnvelope, "plain": plainEnvelope });
+  const list = await store.list();
+  const byId = new Map(list.map((entry) => [entry.id, entry]));
+  // Both asserted, so the case cannot pass by the field being absent on both.
+  expect(byId.get("night-sky")?.costs).toEqual(["video-background"]);
+  expect(byId.get("plain")?.costs).toEqual([]);
 });
 ```
 
@@ -2678,7 +2695,7 @@ Expected: FAIL — cannot resolve `./performance-cost.js`.
 
 **The decision note comes first**, because `renderer-core/src/theme/` is on the reuse
 gate's watchlist and the hook refuses the write until a note claims the path
-(`0069-a-themes-cost-is-read-from-the-envelope-alone.md`). It records all seven
+(`0073-a-themes-cost-is-read-from-the-envelope-alone.md`). It records all seven
 reuse-gate rungs, including the rungs that found nothing: the searches are the evidence,
 and a note that names a conclusion without saying what was searched is worth nothing.
 Rungs 1–2 are the load-bearing ones — `glassTreatment` and `validateBackgroundMedia`
@@ -2687,12 +2704,18 @@ envelope rather than a second owner of either.
 
 `performanceCostsOf` reads the envelope and answers costs, in a fixed order so the
 output is stable. A video background is `artboard.backgroundMedia.assetId` resolved
-against the envelope's own asset declarations to an entry whose **declared** `kind` is
+against the envelope's own top-level `assets` to an entry whose **declared** `kind` is
 `"video"` — the declaration decides, because the model already refuses to infer an
-asset's type from its path (`AssetKind`'s own comment). Glass is any object carrying a
-treatment under `VIGILIA_GLASS_PROPERTY`, found by walking the scene the way `glass.ts`'s
-own `walk` does — but **reuse `glassTreatment` rather than re-testing the property**, so
-the vocabulary keeps one owner.
+asset's type from its path (`AssetKind`'s own comment), and `gif` is refused as a
+background outright rather than being a second animated kind to reason about. Glass is
+any object carrying a treatment under `VIGILIA_GLASS_PROPERTY`, found by walking **the
+envelope's own JSON tree** — `renderer-core` is Fabric-free, so `glass.ts`'s walker is
+neither reachable nor applicable — and each node is tested with **`isGlassTreatment` on
+its `VIGILIA_GLASS_PROPERTY` value**, not by re-testing the shape by hand.
+`glassTreatment` itself is for revived objects and takes a `get(name)` accessor
+(`glass.ts:69-71`), so it does not apply to raw JSON; `isGlassTreatment`
+(`glass.ts:79`) does. Both live in the same module, so the vocabulary still keeps one
+owner.
 
 **It takes `unknown`, not an envelope, and never throws.** It runs on a theme the host
 has on disk, and a listing is the wrong place to raise: a malformed envelope has no
@@ -2702,7 +2725,7 @@ costs rather than an exception that would fail the whole list.
 handed it, so `list()` pays nothing new for this. `entryFor`'s callers are `list`, `read`
 and `write`; all three get the field, and only `list`'s reaches the page.
 
-`costsFor` and `costWarning` live in `theme-list.js`, because that is the one place a
+`costWarning` lives in `theme-list.js`, because that is the one place a
 cost is ever shown: `glass-over-video` is a cost for every kind, `video-background` for
 `"local"` and for `"default"`, which has no kind and may land on a host monitor. **One
 sentence per cost, naming the cost** — the repaint, or the idle — because a warning that
@@ -2710,8 +2733,10 @@ says "performance" is a warning nobody can act on. The sentence is taken from th
 editor's own copy rather than imported, which is what `DELETE_LEAD` in the same file
 already does and for the same reason: the host serves this module with no build step.
 
-`themeList` gains `displayKind` and puts `costWarning(displayKind, theme.costs)` on the
-row as a note, hidden while there is nothing to say. **The note is raised when the row
+`themeList` **gains no option**: it reads the kind off the row it is already assigning to,
+`displays.find((d) => d.id === selected)?.kind ?? "default"`, and puts
+`costWarning(kind, theme.costs)` on each theme row as a note, hidden while there is
+nothing to say. **The note is raised when the row
 is chosen for a display and before the write lands**, and it is the row's, so it is still
 on screen after the page settles — `library.html` reloads on a successful choice today,
 and a warning wiped by that reload is a warning nobody read.
@@ -2731,7 +2756,7 @@ on screen after the page settles.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/decisions/0069-a-themes-cost-is-read-from-the-envelope-alone.md src/web/packages/renderer-core/src/theme/performance-cost.ts src/web/packages/renderer-core/src/theme/performance-cost.test.ts src/web/packages/renderer-core/src/index.ts src/web/packages/host/src/themes/store.ts src/web/packages/host/src/themes/store.test.ts src/web/packages/host/public/theme-list.js src/web/packages/host/src/theme-list.dom.test.ts src/web/packages/host/public/library.html src/web/packages/host/public/settings.html src/web/tests/e2e/host-settings.spec.ts
+git add docs/decisions/0073-a-themes-cost-is-read-from-the-envelope-alone.md src/web/packages/renderer-core/src/theme/performance-cost.ts src/web/packages/renderer-core/src/theme/performance-cost.test.ts src/web/packages/renderer-core/src/index.ts src/web/packages/host/src/themes/store.ts src/web/packages/host/src/themes/store.test.ts src/web/packages/host/public/theme-list.js src/web/packages/host/src/theme-list.dom.test.ts src/web/tests/e2e/host-settings.spec.ts
 git commit -m "feat(host): the assignment says what the theme will cost the display"
 ```
 
