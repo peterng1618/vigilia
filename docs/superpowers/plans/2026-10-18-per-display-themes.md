@@ -1539,12 +1539,22 @@ misread** (ruling 42). The reader above does not read
 `{"wall": {"gpu": "gpu-0"}}` as the answers it holds: `wall` matches
 `DEVICE_ID_PATTERN` and `gpu` matches `THEME_ID`, so the old file reads as a display
 named after a theme, holding a theme named after a group. A file that holds **no**
-value whose keys are all `THEME_ID`-valid is the old shape, and it is read as
-`{ [DEFAULT_DISPLAY]: <old file> }` — the same reading Task 2.1 gave
-`active-theme.json`, because one answer set per theme is the answers of whoever
-asked, and that is the default display. The trigger is deliberately as narrow as
-2.1's corrected one: a file that already holds a display named after a theme id
-must not be rewritten.
+level at all is the old shape, and it is read as `{ [DEFAULT_DISPLAY]: <old file> }`
+— the same reading Task 2.1 gave `active-theme.json`, because one answer set per
+theme is the answers of whoever asked, and that is the default display. The
+trigger is deliberately as narrow as 2.1's corrected one: a file that already
+holds a display named after a theme id must not be rewritten.
+
+**A level is told from an answers map by its depth, not by its key names**, and
+Task 3.1's seat caught the first version of this ruling contradicting its own
+diagnosis. The old file's values are *device ids* — strings — where a level's
+values are *answers maps*; so a value is a level when it holds **at least one**
+theme whose answers are an object. The ruling first said "no value whose keys are
+all `THEME_ID`-valid", which never holds for the old file at all: `gpu` is a
+`THEME_ID`-valid key, so that trigger would have read every old file as the new
+shape and lost every answer in it. *At least one*, not every, for 2.1's reason: a
+single unusable theme key must not flip a good level into the old shape and take
+every display it holds with it.
 
 **Three call sites in `server.ts` move to `DEFAULT_DISPLAY`** (ruling 41), for
 ruling 38's reason: the assignment's read, the answers route's read and its write.
