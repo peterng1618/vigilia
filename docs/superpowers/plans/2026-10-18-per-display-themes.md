@@ -2784,9 +2784,11 @@ searches are the evidence.
 `0069-the-crop-notice-and-the-bleed-mark-are-removed.md` already exists and the directory
 runs to 0072. `costsFor` is not exported — `costWarning` is its only consumer. Glass is
 found by walking the **envelope's own JSON tree**, not `glass.ts`'s `walk`: that generator is
-private (`glass.ts:746`) and yields `FabricObject`, and `renderer-core` is Fabric-free. The
+private (`scene-fabric/src/glass.ts:746`) and yields `FabricObject`, and `renderer-core` is
+Fabric-free. **Two files are named `glass.ts`** — the walker is the scene-fabric one;
+`renderer-core/src/theme/glass.ts` is 90 lines and has no walker at all. The
 reuse that is real is `isGlassTreatment` / `VIGILIA_GLASS_PROPERTY`, which are exported
-(`renderer-core/src/theme/glass.ts:8,79`) — `glassTreatment` takes a `get(name)` accessor
+(`renderer-core/src/theme/glass.ts:8,78`) — `glassTreatment` takes a `get(name)` accessor
 and is for revived objects only. The background's asset is
 `artboard.backgroundMedia.assetId` resolved against the envelope's **top-level `assets`**
 (`envelope-semantics.ts:347-360`), and `"gif"` needs no case: `background-media.ts:300-302`
@@ -2874,13 +2876,15 @@ against the envelope's own top-level `assets` to an entry whose **declared** `ki
 asset's type from its path (`AssetKind`'s own comment), and `gif` is refused as a
 background outright rather than being a second animated kind to reason about. Glass is
 any object carrying a treatment under `VIGILIA_GLASS_PROPERTY`, found by walking **the
-envelope's own JSON tree** — `renderer-core` is Fabric-free, so `glass.ts`'s walker is
-neither reachable nor applicable — and each node is tested with **`isGlassTreatment` on
-its `VIGILIA_GLASS_PROPERTY` value**, not by re-testing the shape by hand.
+envelope's own JSON tree** — the tree is `envelope.scene` (`fabric-envelope.ts:35`, the
+opaque Fabric-authored scene, whose own objects are under its `objects` key) — because
+`renderer-core` is Fabric-free and `scene-fabric/src/glass.ts`'s walker is therefore
+neither reachable nor applicable. Each node is tested with **`isGlassTreatment` on its
+`VIGILIA_GLASS_PROPERTY` value**, not by re-testing the shape by hand.
 `glassTreatment` itself is for revived objects and takes a `get(name)` accessor
-(`glass.ts:69-71`), so it does not apply to raw JSON; `isGlassTreatment`
-(`glass.ts:79`) does. Both live in the same module, so the vocabulary still keeps one
-owner.
+(`renderer-core/src/theme/glass.ts:69`), so it does not apply to raw JSON;
+`isGlassTreatment` (`renderer-core/src/theme/glass.ts:78`) does. Both live in the same
+module, so the vocabulary still keeps one owner.
 
 **It takes `unknown`, not an envelope, and never throws.** It runs on a theme the host
 has on disk, and a listing is the wrong place to raise: a malformed envelope has no
