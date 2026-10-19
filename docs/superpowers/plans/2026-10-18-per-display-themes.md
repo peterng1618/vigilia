@@ -2813,8 +2813,12 @@ it("finds neither for a plain theme, and neither for glass over an image", () =>
 });
 
 it("does not call an image background a video one", () => {
-  // The same envelope with asset.kind "image" -> no cost. The declaration is what
-  //   decides, not the file extension, which the model already refuses to infer.
+  // Built from the case above's own fixture with one field changed: the asset's
+  // **declared** `kind` becomes "image" while its `path` still names the video
+  // file. The declaration decides, and the stale path is what proves it — an
+  // implementation that sniffed the extension answers ["video-background"] here.
+  // An empty body would have passed whatever the implementation did (R88).
+  expect(performanceCostsOf(withAssetKind(videoWithGlass, "image"))).toEqual([]);
 });
 
 it("answers no costs for anything malformed, and never throws", () => {
@@ -2831,15 +2835,19 @@ it("warns about glass over video for every kind of row", () => {
 });
 
 it("warns about a video background only for a host monitor, and for the default", () => {
-  expect(costWarning("local", ["video-background"])).toMatch(/idle|never/i);
+  // Matched on the one word the prose above names, not an alternation: a
+  // sentence containing "never" without naming the idle is not this warning.
+  expect(costWarning("local", ["video-background"])).toMatch(/idle/i);
   expect(costWarning("paired", ["video-background"])).toBeUndefined();
   // The default has no kind and may land on a host monitor, so it is told.
-  expect(costWarning("default", ["video-background"])).toMatch(/idle|never/i);
+  expect(costWarning("default", ["video-background"])).toMatch(/idle/i);
 });
 
 it("says nothing for a theme with no cost", () => {
+  // `undefined` is the assertion, not a weak match on one word: a theme with no
+  // cost has no sentence at all, so there is nothing for a reader to dismiss.
   expect(costWarning("local", [])).toBeUndefined();
-  expect(costWarning("local", ["glass-over-video"])).not.toMatch(/performance/i);
+  expect(costWarning("default", [])).toBeUndefined();
 });
 
 // themes/store.test.ts — the costs ride the listing the route already sends.
