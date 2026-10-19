@@ -108,9 +108,9 @@ describe("the caption LibreHardwareMonitor can give", () => {
       ],
     };
     const provider = lhmFrom(payload);
-    provider.setAssignment({ gpu: "nvidia-geforce-rtx-3080-ti" });
-
-    const entries = await provider.sample(GPU_KEYS, NOW);
+    const entries = await provider.sample(GPU_KEYS, NOW, {
+      gpu: "nvidia-geforce-rtx-3080-ti",
+    });
 
     expect(textOf(entries, "gpu.name")).toBe("NVIDIA GeForce RTX 3080 Ti");
     expect(sampleOf(entries, "gpu.load")?.value).toBeLessThan(99);
@@ -125,9 +125,9 @@ describe("the caption LibreHardwareMonitor can give", () => {
       ],
     };
     const provider = lhmFrom(payload);
-    provider.setAssignment({ gpu: "a-card-this-pc-does-not-have" });
-
-    const entries = await provider.sample(GPU_KEYS, NOW);
+    const entries = await provider.sample(GPU_KEYS, NOW, {
+      gpu: "a-card-this-pc-does-not-have",
+    });
 
     expect(sampleOf(entries, "gpu.load")).toMatchObject({ status: "missing" });
     expect(sampleOf(entries, "gpu.name")).toMatchObject({ status: "missing" });
@@ -162,9 +162,9 @@ describe("the caption LibreHardwareMonitor can give", () => {
 describe("the volume caption LibreHardwareMonitor can give", () => {
   it("names the drive the system-disk keys describe", async () => {
     const provider = lhmFrom(realPayload());
-    provider.setAssignment({ systemDisk: "lexar-500gb-ssd" });
-
-    const entries = await provider.sample(["disk.total", "disk.name"], NOW);
+    const entries = await provider.sample(["disk.total", "disk.name"], NOW, {
+      systemDisk: "lexar-500gb-ssd",
+    });
 
     expect(sampleOf(entries, "disk.total")?.value).toBeCloseTo(500.1, 1);
     expect(textOf(entries, "disk.name")).toBe("Lexar 500GB SSD");

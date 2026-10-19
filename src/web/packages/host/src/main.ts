@@ -270,10 +270,6 @@ export async function run(argv: readonly string[]): Promise<number> {
     fontFavorites,
     onDisplayChange: (settings) => clockProvider.setTimeZone(settings.timeZone),
     activeTheme,
-    onDeviceAssignment: (assignment) => {
-      lhmProvider.setAssignment(assignment);
-      libraryProvider.setAssignment(assignment);
-    },
     // Both providers know the machine's devices; LHM's list is richer, so its
     // entries come first and the library fills in what LHM does not report
     // (a machine without LHM still gets a usable device list).
@@ -304,22 +300,6 @@ export async function run(argv: readonly string[]): Promise<number> {
   // already shows the time the consumer asked for.
   const storedDisplay = await displaySettings.read();
   clockProvider.setTimeZone(storedDisplay.timeZone);
-
-  // Apply the settled device choices before the first poll.
-  const storedDevices = await deviceSettings.read();
-  const initialAssignment = {
-    ...(storedDevices.assigned.gpu === undefined
-      ? {}
-      : { gpu: storedDevices.assigned.gpu }),
-    ...(storedDevices.assigned["system-disk"] === undefined
-      ? {}
-      : { systemDisk: storedDevices.assigned["system-disk"] }),
-    ...(storedDevices.assigned["data-disk"] === undefined
-      ? {}
-      : { dataDisk: storedDevices.assigned["data-disk"] }),
-  };
-  lhmProvider.setAssignment(initialAssignment);
-  libraryProvider.setAssignment(initialAssignment);
 
   // `--host` wins for the run; a run without it obeys what this PC remembers.
   const initialHost = hostGiven

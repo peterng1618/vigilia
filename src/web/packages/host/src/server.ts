@@ -13,7 +13,12 @@ import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
-import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
+import {
+  type DisplayAsk,
+  groupByAssignment,
+  ProviderRegistry,
+  unionOfKeys,
+} from "./providers/registry.js";
 import type { Launcher } from "./serve/display-launcher.js";
 import {
   createPublishedStore,
@@ -119,8 +124,6 @@ export interface HostServerOptions {
   readonly thumbnails?: ThumbnailStore;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
   readonly activeTheme?: ActiveThemeStore;
-  /** Called after an assignment change so providers re-read it. */
-  readonly onDeviceAssignment?: (assignment: DeviceAssignment) => void;
   /** The consumer's display preferences. Omit when the host stores none. */
   readonly display?: DisplaySettingsStore;
   /** Which curated font trios this author favours. Omit when the host stores
@@ -648,16 +651,6 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const hostRecord = options.host;
 
   /**
-   * Hands the providers the assignment every current input resolves to. Three
-   * things can change it — this PC's devices, which theme is chosen, and a
-   * theme's own answers — so each has to publish, or a display keeps showing the
-   * device the consumer just replaced.
-   */
-  async function publishAssignment(): Promise<void> {
-    options.onDeviceAssignment?.(await currentAssignment());
-  }
-
-  /**
    * The move a PUT asked for, run once that PUT's answer is on the wire. Its
    * refusal is state rather than a status for the same reason: the request that
    * asked for the move cannot be answered with its outcome, so the next GET
@@ -669,8 +662,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
     if (outcome?.ok === true) await saved?.(on);
   }
 
-  /** Assignments in the shape providers consume; unset groups mean defaults. */
-  async function currentAssignment(): Promise<DeviceAssignment> {
+  /**
+   * Assignments in the shape providers consume; unset groups mean defaults.
+   *
+   * Resolved for one display, because both inputs are per display: which theme
+   * it holds, and the answers it gave for that theme. Nothing is held between
+   * ticks — a consumer who reassigns a device is served it on that display's
+   * next sample.
+   */
+  async function currentAssignment(display: string): Promise<DeviceAssignment> {
     const stored =
       devices === undefined ? EMPTY_DEVICE_SETTINGS : await devices.read();
 
@@ -680,14 +680,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
     const chosen =
       activeTheme === undefined
         ? undefined
-        : await activeTheme.read(DEFAULT_DISPLAY, async () => true);
-    // Answers are keyed by display as well as theme, and this path resolves no
-    // display yet: the default's entry is the one this file held before it was
-    // keyed by display, so a caller with no display is served what it was.
+        : await activeTheme.read(display, async () => true);
+    // The chosen theme is the display's own, so the answers read are the ones
+    // this display gave for the theme it is showing.
     const perTheme =
       chosen === undefined || themeSettings === undefined
         ? {}
-        : await themeSettings.read(DEFAULT_DISPLAY, chosen);
+        : await themeSettings.read(display, chosen);
 
     // The group is the settings module's `AssignableGroup`, not a union
     // re-spelled here: the owner is `ASSIGNABLE_GROUPS` (`settings/devices.ts`),
@@ -1258,6 +1257,12 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
+        // The answers the display gave go with it: an id is minted again by the
+        // next display of that name, and it must not inherit a device its
+        // predecessor chose. Nothing is swept when the store is absent, because
+        // no answers were ever written.
+        await themeSettings?.removeDisplay(id);
+
         // The window goes with the record, and only a window this host opened
         // is the host's to close.
         options.launcher?.close(id);
@@ -1295,7 +1300,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendText(response, 403, "This display is not paired with the host.");
         return;
       }
-      openStream(request, response, url);
+      await openStream(request, response, url);
       return;
     }
 
@@ -1332,7 +1337,6 @@ export function createHostServer(options: HostServerOptions): HostServer {
         try {
           const body = JSON.parse(await readBody(request)) as unknown;
           const saved = await devices.write(body);
-          await publishAssignment();
           sendJson(response, 200, { ok: true, assigned: saved });
         } catch (error: unknown) {
           sendText(
@@ -1692,9 +1696,6 @@ export function createHostServer(options: HostServerOptions): HostServer {
           }
 
           await activeTheme.write(DEFAULT_DISPLAY, id);
-          // The chosen theme may answer a device question for itself, so the
-          // choice is part of what the providers read.
-          await publishAssignment();
           sendJson(response, 200, { ok: true, active: id });
         } catch (error) {
           sendText(
@@ -1785,7 +1786,6 @@ export function createHostServer(options: HostServerOptions): HostServer {
         try {
           const body = JSON.parse(await readBody(request)) as unknown;
           const saved = await themeSettings.write(DEFAULT_DISPLAY, rawId, body);
-          await publishAssignment();
           sendJson(response, 200, { ok: true, answers: saved });
         } catch (error) {
           sendText(
@@ -2279,17 +2279,39 @@ export function createHostServer(options: HostServerOptions): HostServer {
     );
   }
 
-  function openStream(
+  async function openStream(
     request: http.IncomingMessage,
     response: http.ServerResponse,
     url: URL,
-  ): void {
+  ): Promise<void> {
     const keys = (url.searchParams.get("keys") ?? "")
       .split(",")
       .map((key) => key.trim())
       .filter((key) => key.length > 0);
 
-    const connection = new SseConnection(response, keys);
+    // Resolving the display reads the store, and a client that leaves during
+    // that read has already emitted the `close` the listeners below would have
+    // removed this connection on. So the event is kept until there is a
+    // connection to remove — a connection nobody drops writes to a socket that
+    // is gone on every later tick.
+    let gone = false;
+    const noteGone = (): void => {
+      gone = true;
+    };
+
+    request.on("close", noteGone);
+    request.on("error", noteGone);
+
+    const display = await displayKeyFor(request, url, displays);
+    const connection = new SseConnection(response, keys, display);
+
+    request.off("close", noteGone);
+    request.off("error", noteGone);
+
+    if (gone) {
+      connection.close();
+      return;
+    }
 
     connections.add(connection);
 
@@ -2302,46 +2324,89 @@ export function createHostServer(options: HostServerOptions): HostServer {
     request.on("error", drop);
   }
 
-  /** Polls the union once, then offers one batch to every display. */
+  /**
+   * Samples once per distinct assignment and offers each display the payload
+   * its own assignment produced.
+   *
+   * A display's theme and answers are read once per tick however many
+   * connections it holds, and two displays holding the same devices share one
+   * poll: a poll is this PC's work, and the devices are what it reads.
+   */
   async function tick(): Promise<void> {
     if (connections.size === 0) {
       return;
     }
 
-    const keys = unionOfKeys(
-      [...connections].map((connection) => connection.semanticKeys),
-    );
-    const cycle = await registry.sample(keys, now());
-
-    // A key no provider even considers would otherwise be absent from the frame
-    // entirely, so a display cannot tell "nothing reports this" from "no data
-    // yet" (§97). An explicit gap carries the reason to the display.
-    const answered = new Set(cycle.entries.map((entry) => entry.semanticKey));
-    const timestamp = new Date(now()).toISOString();
-    const gaps = cycle.unmapped
-      .filter((key) => !answered.has(key))
-      .map((key) => ({
-        semanticKey: key,
-        sample: {
-          sensorId: "host:" + key,
-          timestamp,
-          status: "missing" as const,
-          message:
-            "no provider on this PC reports that sensor; check the device " +
-            "assignment or that its source is running",
-        },
-      }));
-
-    const payload = JSON.stringify(
-      createBatch([...cycle.entries, ...gaps], now()),
-    );
-
-    // Recorded for `/api/health` so an unsupported sensor explains itself.
-    lastUnmapped = cycle.unmapped;
+    const byDisplay = new Map<string, SseConnection[]>();
 
     for (const connection of connections) {
-      connection.offer(payload);
+      const held = byDisplay.get(connection.display);
+
+      if (held === undefined) {
+        byDisplay.set(connection.display, [connection]);
+        continue;
+      }
+
+      held.push(connection);
     }
+
+    const asks: DisplayAsk[] = [];
+
+    for (const [display, held] of byDisplay) {
+      asks.push({
+        display,
+        semanticKeys: unionOfKeys(
+          held.map((connection) => connection.semanticKeys),
+        ),
+        assignment: await currentAssignment(display),
+      });
+    }
+
+    const unmapped = new Set<string>();
+
+    for (const group of groupByAssignment(asks)) {
+      const cycle = await registry.sample(
+        group.semanticKeys,
+        now(),
+        group.assignment,
+      );
+
+      // A key no provider even considers would otherwise be absent from the frame
+      // entirely, so a display cannot tell "nothing reports this" from "no data
+      // yet" (§97). An explicit gap carries the reason to the display.
+      const answered = new Set(cycle.entries.map((entry) => entry.semanticKey));
+      const timestamp = new Date(now()).toISOString();
+      const gaps = cycle.unmapped
+        .filter((key) => !answered.has(key))
+        .map((key) => ({
+          semanticKey: key,
+          sample: {
+            sensorId: "host:" + key,
+            timestamp,
+            status: "missing" as const,
+            message:
+              "no provider on this PC reports that sensor; check the device " +
+              "assignment or that its source is running",
+          },
+        }));
+
+      const payload = JSON.stringify(
+        createBatch([...cycle.entries, ...gaps], now()),
+      );
+
+      for (const key of cycle.unmapped) unmapped.add(key);
+
+      for (const display of group.displays) {
+        for (const connection of byDisplay.get(display) ?? []) {
+          connection.offer(payload);
+        }
+      }
+    }
+
+    // Recorded for `/api/health` so an unsupported sensor explains itself. Every
+    // display's gaps, not the last group's: a sensor nothing reports is
+    // unsupported here whatever screen asked.
+    lastUnmapped = [...unmapped].sort();
   }
 
   const timer = setInterval(() => {

@@ -1,11 +1,16 @@
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
 import { describe, expect, it, vi } from "vitest";
+import type { DeviceAssignment } from "./lhm-mapping.js";
 import type {
   ProviderHealth,
   SensorDescriptor,
   SensorProvider,
 } from "./provider.js";
-import { ProviderRegistry, unionOfKeys } from "./registry.js";
+import {
+  groupByAssignment,
+  ProviderRegistry,
+  unionOfKeys,
+} from "./registry.js";
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");
 
@@ -29,14 +34,19 @@ function stubProvider(
     /** Keys this provider reports as a gap rather than answering. */
     readonly gaps?: readonly string[];
   } = {},
-): SensorProvider & { readonly calls: string[][] } {
+): SensorProvider & {
+  readonly calls: string[][];
+  readonly assignments: DeviceAssignment[];
+} {
   const calls: string[][] = [];
+  const assignments: DeviceAssignment[] = [];
   const gaps = new Set(options.gaps ?? []);
 
   return {
     id,
     label: id,
     calls,
+    assignments,
     describe(): Promise<readonly SensorDescriptor[]> {
       return Promise.resolve(
         Object.keys(answers).map((key) => ({
@@ -47,8 +57,13 @@ function stubProvider(
         })),
       );
     },
-    sample(semanticKeys: readonly string[]): Promise<readonly SampleEntry[]> {
+    sample(
+      semanticKeys: readonly string[],
+      _nowMs: number,
+      assignment: DeviceAssignment = {},
+    ): Promise<readonly SampleEntry[]> {
       calls.push([...semanticKeys]);
+      assignments.push(assignment);
 
       if (options.failWith !== undefined) {
         return Promise.reject(new Error(options.failWith));
@@ -96,6 +111,61 @@ describe("unionOfKeys", () => {
     const b = unionOfKeys([["c"], ["a", "b"]]);
 
     expect(a).toEqual(b);
+  });
+});
+
+describe("groupByAssignment", () => {
+  it("samples once per distinct assignment, not once per display", async () => {
+    // Three connections on three displays, two of which resolved the same
+    // devices: the host groups them before it samples, so this PC is polled
+    // twice — a poll is the machine's work, not a screen's.
+    const os = stubProvider("os", { "gpu.temp": 60 });
+    const registry = new ProviderRegistry([os]);
+
+    const groups = groupByAssignment([
+      {
+        display: "this-pc",
+        semanticKeys: ["gpu.temp"],
+        assignment: { gpu: "gpu-0" },
+      },
+      {
+        display: "desk",
+        semanticKeys: ["gpu.temp"],
+        assignment: { gpu: "gpu-0" },
+      },
+      {
+        display: "kitchen-tablet",
+        semanticKeys: ["gpu.temp"],
+        assignment: { gpu: "gpu-1" },
+      },
+    ]);
+
+    for (const group of groups) {
+      await registry.sample(group.semanticKeys, NOW, group.assignment);
+    }
+
+    expect(groups.map((group) => group.displays)).toEqual([
+      ["this-pc", "desk"],
+      ["kitchen-tablet"],
+    ]);
+    expect(os.calls).toHaveLength(2);
+    // Each poll was made with the assignment its own displays resolved, which
+    // is what makes the two answers differ.
+    expect(os.assignments).toEqual([{ gpu: "gpu-0" }, { gpu: "gpu-1" }]);
+  });
+
+  it("asks for the union of what the displays it grouped need", () => {
+    const groups = groupByAssignment([
+      {
+        display: "this-pc",
+        semanticKeys: ["cpu.load", "gpu.temp"],
+        assignment: {},
+      },
+      { display: "desk", semanticKeys: ["gpu.temp"], assignment: {} },
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.semanticKeys).toEqual(["cpu.load", "gpu.temp"]);
   });
 });
 
@@ -401,6 +471,6 @@ describe("ProviderRegistry", () => {
     await registry.sample(["cpu.load"], NOW);
 
     // One clock per cycle keeps every sample in a batch comparable.
-    expect(spy).toHaveBeenCalledWith(["cpu.load"], NOW);
+    expect(spy).toHaveBeenCalledWith(["cpu.load"], NOW, undefined);
   });
 });

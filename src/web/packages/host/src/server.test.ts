@@ -14,6 +14,7 @@ import { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import {
   createAssetResolver,
+  decodeBatch,
   type FabricThemeEnvelope,
   SAMPLE_STREAM_PATH,
 } from "@vigilia/renderer-core";
@@ -22,6 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHostBinding, type HostBinding } from "./cli/hosting.js";
 import { type ListenableServer, listenWithFallback } from "./cli/net.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
+import type { SensorProvider } from "./providers/provider.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import { createDisplayLauncher } from "./serve/display-launcher.js";
 import {
@@ -295,6 +297,112 @@ function streamStatus(
 
     server.emit("request", req, res);
   });
+}
+
+/**
+ * A provider that answers `gpu.temp` with the card it was told to read, so a
+ * case can read the assignment a display was served off the frame it got.
+ */
+function assignmentEcho(): SensorProvider & {
+  readonly assignments: DeviceAssignment[];
+} {
+  const assignments: DeviceAssignment[] = [];
+
+  return {
+    id: "echo",
+    label: "echo",
+    assignments,
+    describe: () =>
+      Promise.resolve([
+        {
+          sensorId: "echo:gpu.temp",
+          semanticKey: "gpu.temp",
+          label: "GPU",
+          tier: "baseline" as const,
+        },
+      ]),
+    sample(semanticKeys, nowMs, assignment = {}) {
+      assignments.push(assignment);
+
+      return Promise.resolve(
+        semanticKeys
+          .filter((key) => key === "gpu.temp")
+          .map((semanticKey) => ({
+            semanticKey,
+            sample: {
+              sensorId: "echo:gpu.temp",
+              timestamp: new Date(nowMs).toISOString(),
+              status: "ok" as const,
+              textValue: assignment.gpu ?? "no card assigned",
+            },
+          })),
+      );
+    },
+    health: () => ({ available: true }),
+  };
+}
+
+/** A display's stream, holding every frame the host has written to it so far. */
+function sampleStream(
+  server: ListenableServer,
+  urlPath: string,
+  remoteAddress = "127.0.0.1",
+): {
+  readonly frames: () => string;
+  /** Whether the host has ended this stream. */
+  readonly ended: () => boolean;
+  /** The client going away, as the socket would report it. */
+  readonly leave: () => void;
+} {
+  const chunks: string[] = [];
+  const req = new Readable({
+    read() {
+      this.push(null);
+    },
+  }) as unknown as http.IncomingMessage;
+  req.method = "GET";
+  req.url = urlPath;
+  req.headers = {};
+  (req as { socket: { remoteAddress: string } }).socket = { remoteAddress };
+
+  const res = new Writable({
+    write(chunk, _encoding, callback) {
+      chunks.push(String(chunk));
+      callback();
+    },
+  }) as unknown as http.ServerResponse;
+
+  res.writeHead = (() => res) as unknown as typeof res.writeHead;
+  server.emit("request", req, res);
+
+  return {
+    frames: () => chunks.join(""),
+    ended: () => res.writableEnded,
+    leave: () => req.emit("close"),
+  };
+}
+
+/** The newest frame's payload, or "" before the first tick reached it. */
+function lastFrame(frames: string): string {
+  const data = frames.split("\n").filter((line) => line.startsWith("data: "));
+
+  return data.at(-1)?.slice("data: ".length) ?? "";
+}
+
+/** The card a display's own frame names, once a tick has offered one. */
+async function servedCard(stream: {
+  frames: () => string;
+}): Promise<string | undefined> {
+  await vi.waitFor(() => expect(lastFrame(stream.frames())).not.toBe(""));
+
+  const decoded = decodeBatch(lastFrame(stream.frames()));
+
+  if (!decoded.ok) {
+    throw new Error(decoded.reason);
+  }
+
+  return decoded.batch.samples.find((entry) => entry.semanticKey === "gpu.temp")
+    ?.sample.textValue;
 }
 
 describe("Host theme routes", () => {
@@ -2969,7 +3077,9 @@ const assignmentKey = (group: string): string =>
 describe("A theme's own device answers", () => {
   let tmpDir: string;
   let hosted: ReturnType<typeof createHostServer>;
-  const pushed: DeviceAssignment[] = [];
+  let activeTheme: ReturnType<typeof createActiveThemeStore>;
+  let themeSettings: ReturnType<typeof createThemeSettingsStore>;
+  let echo: ReturnType<typeof assignmentEcho>;
 
   /** Writes one theme into the store the host reads. */
   async function seed(id: string, semanticKey?: string): Promise<void> {
@@ -2981,17 +3091,29 @@ describe("A theme's own device answers", () => {
     );
   }
 
+  /** Waits for a tick to serve this PC the assignment the case expects. */
+  async function serves(expected: DeviceAssignment): Promise<void> {
+    await vi.waitFor(() => expect(echo.assignments.at(-1)).toEqual(expected));
+  }
+
   beforeEach(async () => {
-    pushed.length = 0;
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-answers-"));
+    activeTheme = createActiveThemeStore(tmpDir);
+    themeSettings = createThemeSettingsStore(tmpDir);
+    echo = assignmentEcho();
     hosted = createHostServer({
-      registry: new ProviderRegistry([]),
+      registry: new ProviderRegistry([echo]),
       bundles: { player: tmpDir, editor: tmpDir },
       devices: createDeviceSettingsStore(tmpDir),
-      activeTheme: createActiveThemeStore(tmpDir),
-      themeSettings: createThemeSettingsStore(tmpDir),
-      onDeviceAssignment: (assignment) => pushed.push(assignment),
+      activeTheme,
+      themeSettings,
+      // The tick a display is served on, rather than the settled cadence: a
+      // case reads the assignment one poll was made with.
+      sampleIntervalMs: 10,
     });
+
+    // One display asking, so every tick has something to resolve for.
+    sampleStream(hosted.server, `${SAMPLE_STREAM_PATH}?keys=gpu.temp`);
 
     await seed("disk-only", "disk.total");
     await seed("disk-spare", "disk.total");
@@ -3073,70 +3195,31 @@ describe("A theme's own device answers", () => {
     ).toEqual({ "system-disk": "disk-d" });
   });
 
-  it("overrides the global choice for its theme, and tells the providers", async () => {
+  it("serves a theme's own answer only while that theme is the chosen one", async () => {
+    // The global answer describes this PC; a theme's answer describes the
+    // device that theme reads, and it applies only while the theme is chosen.
     await request(
       hosted.server,
       "PUT",
       "/api/devices",
-      json({ assigned: { "system-disk": "disk-c" } }),
+      json({ assigned: { gpu: "gpu-1", "system-disk": "disk-c" } }),
     );
-    await request(
-      hosted.server,
-      "PUT",
-      "/api/themes/active",
-      json({ id: "disk-only" }),
-    );
-    await request(
-      hosted.server,
-      "PUT",
-      "/api/themes/disk-only/answers",
-      json({ "system-disk": "disk-d" }),
-    );
+    await themeSettings.write(LOCAL_DISPLAY_ID, "disk-only", {
+      "system-disk": "disk-d",
+    });
 
-    // The answer is the difference, so the providers must be told about it:
-    // without this the dashboard keeps showing the disk the consumer replaced.
-    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-d", names: {} });
+    // Written but not chosen: the machine's own answer is the one served.
+    await serves({ gpu: "gpu-1", systemDisk: "disk-c", names: {} });
+
+    await activeTheme.write(LOCAL_DISPLAY_ID, "disk-only");
+    await serves({ gpu: "gpu-1", systemDisk: "disk-d", names: {} });
 
     // Another theme reads the machine's own answer, not this theme's.
-    await request(
-      hosted.server,
-      "PUT",
-      "/api/themes/active",
-      json({ id: "disk-spare" }),
-    );
-    expect(pushed.at(-1)).toEqual({ systemDisk: "disk-c", names: {} });
+    await activeTheme.write(LOCAL_DISPLAY_ID, "disk-spare");
+    await serves({ gpu: "gpu-1", systemDisk: "disk-c", names: {} });
   });
 
-  it("publishes the assignment a chosen theme implies", async () => {
-    await request(
-      hosted.server,
-      "PUT",
-      "/api/devices",
-      json({ assigned: { gpu: "gpu-1" } }),
-    );
-    await request(
-      hosted.server,
-      "PUT",
-      "/api/themes/disk-only/answers",
-      json({ "system-disk": "disk-d" }),
-    );
-
-    // Choosing the theme is what makes its answer apply, so the choice itself
-    // has to reach the providers.
-    await request(
-      hosted.server,
-      "PUT",
-      "/api/themes/active",
-      json({ id: "disk-only" }),
-    );
-    expect(pushed.at(-1)).toEqual({
-      gpu: "gpu-1",
-      systemDisk: "disk-d",
-      names: {},
-    });
-  });
-
-  it("publishes the consumer's chosen name, so a caption reaches the display", async () => {
+  it("serves the consumer's chosen name, so a caption reaches the display", async () => {
     // The other half of the choice: which device answers, and what it is
     // called. A name the settings page accepted has to arrive with the
     // assignment, or a caption can only ever print the machine's own string.
@@ -3150,38 +3233,149 @@ describe("A theme's own device answers", () => {
       }),
     );
 
-    expect(pushed.at(-1)).toEqual({
+    await serves({
       systemDisk: "lexar-500gb-ssd",
       names: { "lexar-500gb-ssd": "System drive" },
     });
   });
 
-  it("publishes every group the settings module declares it can assign", async () => {
+  it("serves every group the settings module declares it can assign", async () => {
     // The host derives its assignable groups from `ASSIGNABLE_GROUPS` rather
     // than re-spelling the union, so a group added to the owner must reach the
     // providers without this server changing. Driving the owner's own list is
     // what catches the drift a second copy of the union could not: a group the
-    // host stopped picking leaves its chosen id out of the publish (vg-189).
+    // host stopped picking leaves its chosen id out of the assignment (vg-189).
     //
     // Read at each group's **own key** (`system-disk` → `systemDisk`, the
     // payload's `DeviceAssignment` convention) rather than across every string
-    // value, so a payload that later carries another string field cannot fail
-    // this spuriously.
+    // value, so an assignment that later carries another string field cannot
+    // fail this spuriously.
     const assigned = Object.fromEntries(
       ASSIGNABLE_GROUPS.map((group) => [group, `id-${group}`]),
     );
     await request(hosted.server, "PUT", "/api/devices", json({ assigned }));
 
-    const published = pushed.at(-1) as Readonly<Record<string, unknown>>;
-    // Read each group's **own key** (`system-disk` → `systemDisk`, the payload's
-    // `DeviceAssignment` convention), never the whole payload's keys or values: a
-    // payload that later carries another field must not fail this spuriously.
-    for (const group of ASSIGNABLE_GROUPS) {
-      expect(
-        published[assignmentKey(group)],
-        `${group} reaches its own key`,
-      ).toBe(`id-${group}`);
-    }
+    await vi.waitFor(() => {
+      const served = echo.assignments.at(-1) as
+        | Readonly<Record<string, unknown>>
+        | undefined;
+
+      for (const group of ASSIGNABLE_GROUPS) {
+        expect(
+          served?.[assignmentKey(group)],
+          `${group} reaches its own key`,
+        ).toBe(`id-${group}`);
+      }
+    });
+  });
+});
+
+/**
+ * The devices a display is served reach it through the sample its own
+ * connection is offered: the host resolves the assignment for the display that
+ * asked and hands it to the provider, so two screens of one machine can read
+ * two different cards (ruling 43).
+ */
+describe("The assignment a display is served", () => {
+  let dir: string;
+  let displays: ReturnType<typeof createDisplayStore>;
+  let themeSettings: ReturnType<typeof createThemeSettingsStore>;
+  let activeTheme: ReturnType<typeof createActiveThemeStore>;
+  let devices: ReturnType<typeof createDeviceSettingsStore>;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const LAN = { remoteAddress: "192.168.1.50" };
+  const THEME = "gpu-readout";
+
+  /** A display off this PC, paired and holding the credential that identifies it. */
+  async function paired(): Promise<string> {
+    const token = newToken();
+    await displays.create("Kitchen tablet", token);
+    return token;
+  }
+
+  /** This PC's own stream, and the kitchen tablet's. */
+  function streams(token: string): {
+    readonly here: { frames: () => string };
+    readonly there: { frames: () => string };
+  } {
+    return {
+      here: sampleStream(hosted.server, `${SAMPLE_STREAM_PATH}?keys=gpu.temp`),
+      there: sampleStream(
+        hosted.server,
+        `${SAMPLE_STREAM_PATH}?keys=gpu.temp&session=${encodeURIComponent(token)}`,
+        LAN.remoteAddress,
+      ),
+    };
+  }
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-assignment-"));
+    displays = createDisplayStore(dir);
+    themeSettings = createThemeSettingsStore(dir);
+    activeTheme = createActiveThemeStore(dir);
+    devices = createDeviceSettingsStore(dir);
+    hosted = createHostServer({
+      registry: new ProviderRegistry([assignmentEcho()]),
+      bundles: { player: dir, editor: dir },
+      displays,
+      devices,
+      themeSettings,
+      activeTheme,
+      // The tick a display is served on, rather than the settled one-second
+      // cadence: a case reads one frame, not a stream's rhythm.
+      sampleIntervalMs: 10,
+    });
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("reads the answering display's override, not another display's", async () => {
+    // Both displays hold the same theme; only the answers differ, which is the
+    // whole reason they are keyed by display as well as by theme.
+    await themeSettings.write(LOCAL_DISPLAY_ID, THEME, { gpu: "gpu-0" });
+    await themeSettings.write("kitchen-tablet", THEME, { gpu: "gpu-1" });
+    await activeTheme.write(LOCAL_DISPLAY_ID, THEME);
+    await activeTheme.write("kitchen-tablet", THEME);
+
+    const { here, there } = streams(await paired());
+
+    expect(await servedCard(here)).toBe("gpu-0");
+    expect(await servedCard(there)).toBe("gpu-1");
+  });
+
+  it("falls back to the global device settings where a display answered nothing", async () => {
+    await devices.write({ assigned: { gpu: "gpu-9" } });
+
+    const { here, there } = streams(await paired());
+
+    expect(await servedCard(here)).toBe("gpu-9");
+    expect(await servedCard(there)).toBe("gpu-9");
+  });
+
+  it("does not leak a deleted display's answers to another display", async () => {
+    await themeSettings.write(LOCAL_DISPLAY_ID, THEME, { gpu: "gpu-0" });
+    await themeSettings.write("kitchen-tablet", THEME, { gpu: "gpu-1" });
+    await activeTheme.write(LOCAL_DISPLAY_ID, THEME);
+    await activeTheme.write("kitchen-tablet", THEME);
+
+    const { here } = streams(await paired());
+
+    expect(
+      (await request(hosted.server, "DELETE", "/api/displays/kitchen-tablet"))
+        .status,
+    ).toBe(200);
+
+    // The answers of a display that is gone go with it: the next display called
+    // "Kitchen tablet" mints the same id, and must not be handed the card its
+    // predecessor chose.
+    await paired();
+    expect(await themeSettings.read("kitchen-tablet", THEME)).toEqual({});
+    // And the display still here is served exactly what it was.
+    expect(await servedCard(here)).toBe("gpu-0");
   });
 });
 
@@ -3203,6 +3397,56 @@ it("keeps the assignable-device vocabulary in the one module that owns it", asyn
     /const pick = \(group\s*:\s*([A-Za-z][\w.]*)\)/,
   )?.[1];
   expect(annotation).toBe("AssignableGroup");
+});
+
+it("does not keep a connection whose client left while its display was resolved", async () => {
+  // Resolving the display reads the store, so a client can be gone before
+  // there is a connection to remove — and the `close` that would have removed
+  // it has already fired by then. A connection kept anyway is offered a frame
+  // on every later tick, against a socket that is gone.
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-stream-drop-"));
+  const store = createDisplayStore(dir);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let reached!: () => void;
+  const atFind = new Promise<void>((resolve) => {
+    reached = resolve;
+  });
+  const hosted = createHostServer({
+    registry: new ProviderRegistry([]),
+    bundles: { player: dir, editor: dir },
+    displays: {
+      ...store,
+      async find(id) {
+        reached();
+        await held;
+        return store.find(id);
+      },
+    },
+  });
+
+  try {
+    const stream = sampleStream(
+      hosted.server,
+      `${SAMPLE_STREAM_PATH}?keys=cpu.load&display=desk`,
+    );
+
+    // Leaving only once the resolution is in flight: before that there is no
+    // listener to hear it, which is the case this does not test.
+    await atFind;
+    stream.leave();
+    release();
+
+    // Ended is what proves the guard ran — nothing else closes a connection
+    // that was never added.
+    await vi.waitFor(() => expect(stream.ended()).toBe(true));
+    expect(hosted.connectionCount).toBe(0);
+  } finally {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
 });
 
 describe("A bundle 404 names the cause it can prove", () => {

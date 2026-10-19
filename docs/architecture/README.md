@@ -127,9 +127,10 @@ usage.
 A global setting never reads the active theme: filtering this PC's own controls
 by what is displayed makes a machine-level choice unreachable. Device assignment
 resolves in one place — theme answer → global answer → provider default — and
-every input to it (devices, the chosen theme, a theme's answers) publishes
-through `publishAssignment()` in `host/src/server.ts`, or a display keeps showing
-the device the consumer just replaced.
+resolves **per display**, for the display whose tick is asking: every input to it
+(devices, the chosen theme, a theme's answers) is read in `currentAssignment()` in
+`host/src/server.ts`, so a display is served the device it resolved on its own
+next sample.
 
 Where a preference is applied follows from what it is about. The zone is a fact
 about the machine's clock, so the **provider** applies it when it reads, and every

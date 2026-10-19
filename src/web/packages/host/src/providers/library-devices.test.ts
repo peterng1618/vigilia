@@ -142,9 +142,9 @@ describe("one device answers the GPU group", () => {
     const provider = new LibrarySensorProvider(
       fakeMachine({ controllers: [nvidia, amd] }),
     );
-    provider.setAssignment({ gpu: "amd-radeon-rx-6800" });
-
-    const entries = await provider.sample(GPU_KEYS, 0);
+    const entries = await provider.sample(GPU_KEYS, 0, {
+      gpu: "amd-radeon-rx-6800",
+    });
 
     expect(sampleOf(entries, "gpu.load")?.value).toBe(90);
     expect(sampleOf(entries, "gpu.temp")?.value).toBe(88);
@@ -158,9 +158,9 @@ describe("one device answers the GPU group", () => {
     const provider = new LibrarySensorProvider(
       fakeMachine({ controllers: [nvidia, amd] }),
     );
-    provider.setAssignment({ gpu: "nvidia-geforce-rtx-3080-ti" });
-
-    const entries = await provider.sample(GPU_KEYS, 0);
+    const entries = await provider.sample(GPU_KEYS, 0, {
+      gpu: "nvidia-geforce-rtx-3080-ti",
+    });
 
     expect(sampleOf(entries, "gpu.load")?.value).toBe(10);
     expect(sampleOf(entries, "gpu.temp")?.value).toBe(40);
@@ -172,9 +172,9 @@ describe("one device answers the GPU group", () => {
     const provider = new LibrarySensorProvider(
       fakeMachine({ controllers: [nvidia, amd] }),
     );
-    provider.setAssignment({ gpu: "a-card-this-pc-does-not-have" });
-
-    const entries = await provider.sample(GPU_KEYS, 0);
+    const entries = await provider.sample(GPU_KEYS, 0, {
+      gpu: "a-card-this-pc-does-not-have",
+    });
 
     for (const key of ["gpu.load", "gpu.temp", "gpu.power"]) {
       expect(sampleOf(entries, key), key).toMatchObject({ status: "missing" });
@@ -191,23 +191,21 @@ describe("one device answers the GPU group", () => {
       "NVIDIA GeForce RTX 3080 Ti",
     );
 
-    provider.setAssignment({ gpu: "amd-radeon-rx-6800" });
+    const entries = await provider.sample(["gpu.name"], 0, {
+      gpu: "amd-radeon-rx-6800",
+    });
 
-    expect(textOf(await provider.sample(["gpu.name"], 0), "gpu.name")).toBe(
-      "AMD Radeon RX 6800",
-    );
+    expect(textOf(entries, "gpu.name")).toBe("AMD Radeon RX 6800");
   });
 
   it("shows the consumer's chosen name for that card", async () => {
     const provider = new LibrarySensorProvider(
       fakeMachine({ controllers: [nvidia, amd] }),
     );
-    provider.setAssignment({
+    const entries = await provider.sample(["gpu.name", "gpu.temp"], 0, {
       gpu: "nvidia-geforce-rtx-3080-ti",
       names: { "nvidia-geforce-rtx-3080-ti": "Desk card" },
     });
-
-    const entries = await provider.sample(["gpu.name", "gpu.temp"], 0);
 
     expect(textOf(entries, "gpu.name")).toBe("Desk card");
     // The override renames the device; it does not change which one answers.
@@ -274,9 +272,9 @@ describe("the second disk slot", () => {
     // second slot still needs the model→volume join; the expensive read is
     // only skipped when nothing about disks is bound at all.
     const provider = new LibrarySensorProvider(fakeMachine());
-    provider.setAssignment({ dataDisk: "st4000dm004-2cv104" });
-
-    const entries = await provider.sample(["disk.data.total"], 0);
+    const entries = await provider.sample(["disk.data.total"], 0, {
+      dataDisk: "st4000dm004-2cv104",
+    });
 
     expect(sampleOf(entries, "disk.data.total")?.value).toBeCloseTo(4000, 0);
   });
@@ -327,9 +325,9 @@ describe("the CPU identity keys", () => {
 describe("the volume caption", () => {
   it("resolves the drive model back to the volume that answers for it", async () => {
     const provider = new LibrarySensorProvider(fakeMachine());
-    provider.setAssignment({ systemDisk: "lexar-500gb-ssd" });
-
-    const entries = await provider.sample(DISK_KEYS, 0);
+    const entries = await provider.sample(DISK_KEYS, 0, {
+      systemDisk: "lexar-500gb-ssd",
+    });
 
     // The assigned id is the drive's model, the same id LibreHardwareMonitor
     // lists, so a choice made with either provider reaches the same volume.
@@ -340,12 +338,10 @@ describe("the volume caption", () => {
 
   it("shows the consumer's chosen name for the drive", async () => {
     const provider = new LibrarySensorProvider(fakeMachine());
-    provider.setAssignment({
+    const entries = await provider.sample(DISK_KEYS, 0, {
       systemDisk: "st4000dm004-2cv104",
       names: { "st4000dm004-2cv104": "Games" },
     });
-
-    const entries = await provider.sample(DISK_KEYS, 0);
 
     expect(textOf(entries, "disk.name")).toBe("Games");
     expect(sampleOf(entries, "disk.total")?.value).toBeCloseTo(4000, 0);
@@ -366,9 +362,9 @@ describe("the volume caption", () => {
 
   it("is a gap when the assigned drive is gone, never another drive's figures", async () => {
     const provider = new LibrarySensorProvider(fakeMachine());
-    provider.setAssignment({ systemDisk: "a-drive-this-pc-does-not-have" });
-
-    const entries = await provider.sample(DISK_KEYS, 0);
+    const entries = await provider.sample(DISK_KEYS, 0, {
+      systemDisk: "a-drive-this-pc-does-not-have",
+    });
 
     expect(sampleOf(entries, "disk.total")).toMatchObject({
       status: "missing",
@@ -380,11 +376,11 @@ describe("the volume caption", () => {
     // `blockDevices` reports the volume label ("Data"); the drive model is the
     // identity, so the caption names the drive and not the label.
     const provider = new LibrarySensorProvider(fakeMachine());
-    provider.setAssignment({ systemDisk: "st4000dm004-2cv104" });
+    const entries = await provider.sample(["disk.name"], 0, {
+      systemDisk: "st4000dm004-2cv104",
+    });
 
-    expect(textOf(await provider.sample(["disk.name"], 0), "disk.name")).toBe(
-      "ST4000DM004-2CV104",
-    );
+    expect(textOf(entries, "disk.name")).toBe("ST4000DM004-2CV104");
   });
 });
 
@@ -445,9 +441,9 @@ describe("a volume on POSIX", () => {
         blockDevices: posixVolumes,
       }),
     );
-    provider.setAssignment({ systemDisk: "samsung-ssd-990-pro" });
-
-    const entries = await provider.sample(DISK_KEYS, 0);
+    const entries = await provider.sample(DISK_KEYS, 0, {
+      systemDisk: "samsung-ssd-990-pro",
+    });
 
     expect(sampleOf(entries, "disk.total")?.value).toBeCloseTo(500, 0);
     expect(sampleOf(entries, "disk.used")?.value).toBeCloseTo(305, 0);
@@ -469,40 +465,54 @@ describe("a volume on POSIX", () => {
   });
 });
 
-describe("an assignment published while a sample is in flight", () => {
-  it("is the one that sample uses, for the caption and the figures together", async () => {
-    // Hold the read open, publish an assignment while it is open, then let it
-    // finish: the sample that was already in flight is the one under test.
+describe("an assignment given to one sample", () => {
+  it("scopes that sample alone, while another is in flight with another one", async () => {
+    // Hold the first sample's read open, start a second with the other card,
+    // then let the first finish: neither sample may answer with the other's
+    // devices, which is what a shared mutable assignment could not promise.
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
     let reached!: () => void;
-    const atGraphics = new Promise<void>((resolve) => {
+    const atFirstGraphics = new Promise<void>((resolve) => {
       reached = resolve;
     });
+    let reads = 0;
 
     const provider = new LibrarySensorProvider(
       fakeMachine({
         controllers: [nvidia, amd],
         onGraphics: () => {
+          reads += 1;
+
+          if (reads > 1) {
+            return Promise.resolve();
+          }
+
           reached();
           return held;
         },
       }),
     );
 
-    const inFlight = provider.sample(["gpu.temp", "gpu.name"], 0);
-    await atGraphics;
-    provider.setAssignment({ gpu: "amd-radeon-rx-6800" });
+    const first = provider.sample(["gpu.temp", "gpu.name"], 0, {
+      gpu: "amd-radeon-rx-6800",
+    });
+    await atFirstGraphics;
+    const second = provider.sample(["gpu.temp", "gpu.name"], 0, {
+      gpu: "nvidia-geforce-rtx-3080-ti",
+    });
     release();
 
-    const entries = await inFlight;
+    const [theirs, mine] = await Promise.all([first, second]);
 
-    // No generation counter discards this: the assignment is read once, after
-    // the reads, so the caption and the number name the same device.
-    expect(textOf(entries, "gpu.name")).toBe("AMD Radeon RX 6800");
-    expect(sampleOf(entries, "gpu.temp")?.value).toBe(88);
+    // Each sample answers for the card it was given, figures and caption
+    // together: the caption cannot sit over another device's reading.
+    expect(textOf(theirs, "gpu.name")).toBe("AMD Radeon RX 6800");
+    expect(sampleOf(theirs, "gpu.temp")?.value).toBe(88);
+    expect(textOf(mine, "gpu.name")).toBe("NVIDIA GeForce RTX 3080 Ti");
+    expect(sampleOf(mine, "gpu.temp")?.value).toBe(40);
   });
 });
 
@@ -617,9 +627,9 @@ describe("a caption is display metadata only", () => {
     ] as unknown as readonly DriveLayoutLike[];
 
     const provider = new LibrarySensorProvider(fakeMachine({ layout }));
-    provider.setAssignment({ systemDisk: "lexar-500gb-ssd" });
-
-    const entries = await provider.sample(DISK_KEYS, 0);
+    const entries = await provider.sample(DISK_KEYS, 0, {
+      systemDisk: "lexar-500gb-ssd",
+    });
 
     expect(JSON.stringify(entries)).not.toContain("S4EWNX0R123456");
     expect(textOf(entries, "disk.name")).toBe("Lexar 500GB SSD");
@@ -678,16 +688,20 @@ describe("the expensive discovery reads", () => {
     // Assigned, because an unassigned `disk.total` answers from `fsSize`
     // alone and never needs the index — the failure only shows where the
     // index is what the key depends on.
-    provider.setAssignment({ systemDisk: "lexar-500gb-ssd" });
+    const assigned = { systemDisk: "lexar-500gb-ssd" };
 
     // First sample: the volume is a gap, and nothing else is taken down with it.
-    const first = await provider.sample(["disk.total", "gpu.load"], 0);
+    const first = await provider.sample(
+      ["disk.total", "gpu.load"],
+      0,
+      assigned,
+    );
     expect(sampleOf(first, "disk.total")).toMatchObject({ status: "missing" });
     expect(sampleOf(first, "gpu.load")?.value).toBe(10);
 
     // Second sample: the retry succeeds, so the failure was not terminal. A
     // cached rejection would leave every later sample a permanent gap.
-    const second = await provider.sample(["disk.total"], 0);
+    const second = await provider.sample(["disk.total"], 0, assigned);
     expect(attempts).toBe(2);
     expect(sampleOf(second, "disk.total")).toMatchObject({ status: "ok" });
   });

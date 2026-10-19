@@ -533,20 +533,10 @@ export class LibrarySensorProvider implements SensorProvider {
 
   private failure: string | undefined;
   /**
-   * Read once per sample, into a local, after the fetch and before the two
-   * cached discovery reads, so the caption and the figures beside it are scoped
-   * by one object. Nothing between that read and the samples it produces is
-   * awaited from the network — the two discovery reads that follow are resolved
-   * before the selection is made — so an assignment published mid-sample
-   * cannot split the pair, and no generation counter is needed.
-   */
-  private assignment: DeviceAssignment = {};
-  /**
    * `diskLayout` and `blockDevices` cost seconds and cannot change while the
    * host runs, so the model→volume join is built once and reused. Cleared when
-   * the consumer republishes an assignment or opens the settings page, and
-   * when a read fails, so a transient failure costs one retry rather than the
-   * rest of the session.
+   * the settings page opens and when a read fails, so a transient failure costs
+   * one retry rather than the rest of the session.
    * `ponytail:` a drive plugged in mid-session is not seen until one of those;
    * add a miss-triggers-rebuild check when that shows up as a real defect.
    */
@@ -556,13 +546,6 @@ export class LibrarySensorProvider implements SensorProvider {
   private cpu: Promise<CpuLike> | undefined;
 
   constructor(private readonly library?: LibraryModule) {}
-
-  /** Called when the consumer changes device assignments (§145). */
-  setAssignment(assignment: DeviceAssignment): void {
-    this.assignment = assignment;
-    this.drives = undefined;
-    this.cpu = undefined;
-  }
 
   /**
    * The GPUs and drives this machine reports, so a consumer can choose which
@@ -657,6 +640,7 @@ export class LibrarySensorProvider implements SensorProvider {
   async sample(
     semanticKeys: readonly string[],
     nowMs: number,
+    assignment: DeviceAssignment = {},
   ): Promise<readonly SampleEntry[]> {
     const owned = semanticKeys.filter((key) =>
       (LIBRARY_KEYS as readonly string[]).includes(key),
@@ -680,11 +664,11 @@ export class LibrarySensorProvider implements SensorProvider {
 
       this.failure = undefined;
 
-      // Read once, here, after the reads: one selection answers the figures and
-      // the caption, and an assignment published mid-sample is this one. The
-      // two expensive discovery reads that follow are cached, so this is the
-      // first sample that pays and not every one.
-      const { gpu, systemDisk, dataDisk, names } = this.assignment;
+      // The assignment this sample was given, read once here: one selection
+      // answers the figures and the caption, and the two expensive discovery
+      // reads that follow are cached, so this is the first sample that pays and
+      // not every one.
+      const { gpu, systemDisk, dataDisk, names } = assignment;
       // Neither is read for a theme that binds nothing needing it. Both disk
       // slots need the model→volume join, not just the unsuffixed keys:
       // `disk.data.*` answers a drive too.

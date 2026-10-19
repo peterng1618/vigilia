@@ -8,10 +8,15 @@ export class SseConnection {
   private waitingForDrain = false;
   private closed = false;
 
-  /** Keys requested by this display; the host polls their union across connections. */
+  /**
+   * Keys requested by this display, and the display itself: the host resolves
+   * each display's own device assignment and polls their union across
+   * connections.
+   */
   constructor(
     private readonly response: ServerResponse,
     readonly semanticKeys: readonly string[],
+    readonly display: string,
   ) {
     response.writeHead(200, {
       "content-type": "text/event-stream",

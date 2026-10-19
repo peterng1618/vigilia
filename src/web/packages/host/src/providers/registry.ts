@@ -1,4 +1,5 @@
 import type { SampleEntry } from "@vigilia/renderer-core";
+import type { DeviceAssignment } from "./lhm-mapping.js";
 import type { SensorDescriptor, SensorProvider } from "./provider.js";
 
 /** Scheduler: polls the requested-key union once and isolates provider failures. */
@@ -39,6 +40,65 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** One display's ask: what its connections want, and the devices it resolved to. */
+export interface DisplayAsk {
+  readonly display: string;
+  readonly semanticKeys: readonly string[];
+  readonly assignment: DeviceAssignment;
+}
+
+/** One distinct assignment, and every display that resolved to it. */
+export interface AssignmentGroup {
+  readonly assignment: DeviceAssignment;
+  readonly semanticKeys: readonly string[];
+  readonly displays: readonly string[];
+}
+
+/**
+ * One group per distinct assignment, so two displays holding the same devices
+ * cost one poll rather than two: a poll is this PC's work, and the devices are
+ * what it reads, not the screens.
+ *
+ * Keyed by the assignment's own JSON. `currentAssignment` builds the object in
+ * one shape, so two displays that resolved the same devices serialize alike.
+ * The keys are unioned, as they were across every connection before.
+ */
+export function groupByAssignment(
+  asks: readonly DisplayAsk[],
+): readonly AssignmentGroup[] {
+  const groups = new Map<
+    string,
+    {
+      assignment: DeviceAssignment;
+      keys: Set<string>;
+      displays: string[];
+    }
+  >();
+
+  for (const ask of asks) {
+    const key = JSON.stringify(ask.assignment);
+    const group = groups.get(key);
+
+    if (group === undefined) {
+      groups.set(key, {
+        assignment: ask.assignment,
+        keys: new Set(ask.semanticKeys),
+        displays: [ask.display],
+      });
+      continue;
+    }
+
+    for (const semanticKey of ask.semanticKeys) group.keys.add(semanticKey);
+    group.displays.push(ask.display);
+  }
+
+  return [...groups.values()].map((group) => ({
+    assignment: group.assignment,
+    semanticKeys: [...group.keys].sort(),
+    displays: group.displays,
+  }));
+}
+
 export class ProviderRegistry {
   /** Providers are ordered by precedence; the first provider to answer a key owns it. */
   constructor(private readonly providers: readonly SensorProvider[]) {}
@@ -60,17 +120,24 @@ export class ProviderRegistry {
     );
   }
 
-  /** Polls providers concurrently and preserves successful results when another fails. */
+  /**
+   * Polls providers concurrently and preserves successful results when another
+   * fails. `assignment` is the one resolved for the display this cycle answers,
+   * passed through to every provider.
+   */
   async sample(
     semanticKeys: readonly string[],
     nowMs: number,
+    assignment?: DeviceAssignment,
   ): Promise<SampleCycle> {
     if (semanticKeys.length === 0) {
       return { entries: [], failures: [], unmapped: [] };
     }
 
     const settled = await Promise.allSettled(
-      this.providers.map((provider) => provider.sample(semanticKeys, nowMs)),
+      this.providers.map((provider) =>
+        provider.sample(semanticKeys, nowMs, assignment),
+      ),
     );
 
     const entries: SampleEntry[] = [];

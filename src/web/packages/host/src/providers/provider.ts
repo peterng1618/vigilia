@@ -1,4 +1,5 @@
 import type { SampleEntry, SensorTier } from "@vigilia/renderer-core";
+import type { DeviceAssignment } from "./lhm-mapping.js";
 
 /** Provider boundary: providers acquire; the host schedules and owns history. */
 
@@ -71,10 +72,20 @@ export interface SensorProvider {
 
   describe(): Promise<readonly SensorDescriptor[]>;
 
-  /** Reads requested keys only. Unsupported/unavailable values are omitted or non-ok, never zero. */
+  /**
+   * Reads requested keys only. Unsupported/unavailable values are omitted or
+   * non-ok, never zero.
+   *
+   * The assignment is the one resolved for the display this sample is for, so
+   * a provider answers for the screen that asked rather than for whichever
+   * screen was served last. Omitted by a caller with no display: the machine's
+   * own global choice alone, which is what an unassigned provider answered
+   * before assignments were passed.
+   */
   sample(
     semanticKeys: readonly string[],
     nowMs: number,
+    assignment?: DeviceAssignment,
   ): Promise<readonly SampleEntry[]>;
 
   health(): ProviderHealth;

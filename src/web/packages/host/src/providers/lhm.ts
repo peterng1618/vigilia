@@ -118,8 +118,6 @@ export class LhmSensorProvider implements SensorProvider {
   readonly label = "LibreHardwareMonitor (extended)";
 
   private readonly baseUrl: string;
-  /** Which device answers each aggregate group; refreshed per sample. */
-  private assignment: DeviceAssignment = {};
   private readonly fetcher: Fetcher;
   private failure: string | undefined;
 
@@ -127,11 +125,6 @@ export class LhmSensorProvider implements SensorProvider {
     this.baseUrl = (options.baseUrl ?? DEFAULT_LHM_URL).replace(/\/$/, "");
     this.fetcher =
       options.fetcher ?? boundedFetcher(options.timeoutMs ?? LHM_TIMEOUT_MS);
-  }
-
-  /** Called when the consumer changes device assignments (§145). */
-  setAssignment(assignment: DeviceAssignment): void {
-    this.assignment = assignment;
   }
 
   async describe(): Promise<readonly SensorDescriptor[]> {
@@ -172,6 +165,7 @@ export class LhmSensorProvider implements SensorProvider {
   async sample(
     semanticKeys: readonly string[],
     nowMs: number,
+    assignment: DeviceAssignment = {},
   ): Promise<readonly SampleEntry[]> {
     // Per-device keys (disk dot id dot used) are discovered at runtime, so they
     // are accepted by shape rather than by membership in the fixed list.
@@ -216,11 +210,8 @@ export class LhmSensorProvider implements SensorProvider {
     }
 
     const sensors = flattenLhmSensors(payload);
-    // One read, here, that both the figures and the caption below are scoped
-    // by. Reading `this.assignment` at each use site would hold only by
-    // accident: there is no `await` between them today, and one added await
-    // would let the two resolve against different assignments.
-    const assignment = this.assignment;
+    // The assignment this sample was given, which scopes the figures and the
+    // captions below to one display's devices.
     const matched = new Map(
       matchLhmSensorsAssigned(sensors, owned, assignment).map((match) => [
         match.semanticKey,

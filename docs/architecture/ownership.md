@@ -208,7 +208,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Which device slots a theme needs | `host/src/settings/required-devices.ts` |
 | Which host an app folder is — the id a display re-finds it by, and the name it shows | `host/src/settings/host-record.ts` |
 | Whether a host already holds an app folder | `host/src/settings/host-lock.ts` |
-| Device-assignment resolution handed to providers | `host/src/server.ts` (`publishAssignment`) |
+| Device-assignment resolution handed to providers | `host/src/server.ts` (`currentAssignment`, resolved per display in `tick`) |
 | Clock/date provider | `host/src/providers/clock.ts` |
 | Instant reading, offsets and the zone list | `renderer-core/src/scene/datetime/instant.ts` |
 | The author's date/time format tokens | `renderer-core/src/scene/datetime/format.ts` |
