@@ -103,8 +103,10 @@ describe("readPairingCode", () => {
 
 describe("displayUrl", () => {
   it("opens the page a camera-less display would have typed at, code and all", () => {
+    // https, which is the origin the display is a secure context at — the wake
+    // lock and fullscreen are gated on it (`docs/decisions/0076`).
     expect(displayUrl({ address: "192.168.1.42", port: 5227 }, "ABC234")).toBe(
-      "http://192.168.1.42:5227/pair?code=ABC234",
+      "https://192.168.1.42:5227/pair?code=ABC234",
     );
   });
 });

@@ -19,13 +19,45 @@ const pairing: PairedHost = {
 describe("refindHost", () => {
   it("answers the last-known address without sweeping when it still matches", async () => {
     const seen: string[] = [];
-    const origin = await refindHost(pairing, async (o) => {
-      seen.push(o);
-      return { id: pairing.hostId, name: "study-pc" };
-    });
+    const origin = await refindHost(
+      pairing,
+      async (o) => {
+        seen.push(o);
+        return { id: pairing.hostId, name: "study-pc" };
+      },
+      { scheme: "http" },
+    );
 
     expect(origin).toBe("http://192.168.1.10:5227");
     expect(seen).toEqual(["http://192.168.1.10:5227"]); // no sweep happened
+  });
+
+  it("probes the page's own scheme, so an https display re-finds over https", async () => {
+    // `vg-623`: `originFor` built `http://` for every rung, so from a page served
+    // over https every probe was mixed content and the display could never
+    // re-find its host. Hard-code the scheme back to `http` and this is the case
+    // that reddens.
+    const seen: string[] = [];
+    const found = await refindHost(
+      pairing,
+      async (origin) => {
+        seen.push(origin);
+        return origin === "https://192.168.1.44:5227"
+          ? { id: pairing.hostId, name: "study-pc" }
+          : undefined;
+      },
+      { scheme: "https" },
+    );
+
+    expect(found).toBe("https://192.168.1.44:5227");
+    // Every rung carries it, not only the one that matched: the last-known
+    // address, then the host's own name, then the sweep.
+    expect(seen.slice(0, 2)).toEqual([
+      "https://192.168.1.10:5227",
+      "https://study-pc.local:5227",
+    ]);
+    expect(seen.length).toBeGreaterThan(2);
+    expect(seen.every((origin) => origin.startsWith("https://"))).toBe(true);
   });
 
   it("falls through to the sweep and finds the host at its new address", async () => {
@@ -34,7 +66,9 @@ describe("refindHost", () => {
         ? { id: pairing.hostId, name: "study-pc" }
         : undefined;
 
-    expect(await refindHost(pairing, probe)).toBe("http://192.168.1.44:5227");
+    expect(await refindHost(pairing, probe, { scheme: "http" })).toBe(
+      "http://192.168.1.44:5227",
+    );
   });
 
   it("never attaches to a different host", async () => {
@@ -42,15 +76,21 @@ describe("refindHost", () => {
     // responder. This is the whole reason an id was stored rather than an
     // address: two hosts on one network must not tangle.
     expect(
-      await refindHost(pairing, async () => ({
-        id: "somebody-else",
-        name: "other-pc",
-      })),
+      await refindHost(
+        pairing,
+        async () => ({
+          id: "somebody-else",
+          name: "other-pc",
+        }),
+        { scheme: "http" },
+      ),
     ).toBeUndefined();
   });
 
   it("answers nothing when no host answers at all", async () => {
-    expect(await refindHost(pairing, async () => undefined)).toBeUndefined();
+    expect(
+      await refindHost(pairing, async () => undefined, { scheme: "http" }),
+    ).toBeUndefined();
   });
 
   it("answers nothing when every probe rejects, as an untrusted origin does", async () => {
@@ -64,7 +104,9 @@ describe("refindHost", () => {
       throw new Error("the certificate is not trusted");
     };
 
-    await expect(refindHost(pairing, untrusted)).resolves.toBeUndefined();
+    await expect(
+      refindHost(pairing, untrusted, { scheme: "http" }),
+    ).resolves.toBeUndefined();
   });
 
   it("sweeps its own /24 and not the address it already tried", () => {
@@ -96,7 +138,7 @@ describe("refindHost", () => {
       return undefined;
     };
 
-    await refindHost(pairing, probe, { concurrency: 8 });
+    await refindHost(pairing, probe, { scheme: "http", concurrency: 8 });
 
     expect(peak).toBeLessThanOrEqual(8);
     // A sweep that never ran would also pass the bound above, so the case has
@@ -118,7 +160,7 @@ describe("refindHost", () => {
         seen.push(origin);
         return undefined;
       },
-      { concurrency: 4 },
+      { scheme: "http", concurrency: 4 },
     );
 
     expect(seen.length).toBeGreaterThan(0);

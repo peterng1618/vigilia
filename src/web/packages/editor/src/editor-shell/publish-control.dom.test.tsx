@@ -24,8 +24,9 @@ const CODE = "ABC234";
 const EXPIRES = "2026-10-08T00:00:00.000Z";
 const ADDRESS = "192.168.1.42";
 const PORT = 5227;
-/** The URL the symbol carries: the page a phone opens, with the code in it. */
-const PAIR_URL = `http://${ADDRESS}:${PORT}/pair?code=${CODE}`;
+/** The URL the symbol carries: the page a phone opens, with the code in it.
+ *  https, because that is the origin the display is a secure context at. */
+const PAIR_URL = `https://${ADDRESS}:${PORT}/pair?code=${CODE}`;
 
 // Base UI's popover needs two browser APIs jsdom has none of: floating-ui
 // observes its anchor, and the popup waits for its own open transition before
@@ -283,6 +284,9 @@ it("opens the surface without moving the host, and keeps every fact behind the p
   expect(fake.putCalls()).toBe(0);
 
   expect(hostSwitch()?.getAttribute("aria-pressed")).toBe("true");
+  expect(popupText()).toContain(`https://${ADDRESS}:${PORT}`);
+  // And the plain address beside it, because a device that has not installed
+  // the root certificate cannot open the https one (`docs/decisions/0076`).
   expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
   // The code in type beside the address, because a device with no camera has
   // nowhere else to read it, and the symbol carries the same one.
@@ -357,7 +361,7 @@ it("turns the host on from inside the surface, and shows what it is serving", as
   // made, rather than behind a second press. The address is one of them, as text
   // and as the symbol beside it.
   expect(popupOpen()).toBe(true);
-  expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
+  expect(popupText()).toContain(`https://${ADDRESS}:${PORT}`);
   expect(
     document.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label"),
   ).toBe(`QR code: ${PAIR_URL}`);
@@ -428,7 +432,7 @@ it("shows the address the host named, with a code for it", async () => {
   await openSurface(container);
 
   await vi.waitFor(() =>
-    expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`),
+    expect(popupText()).toContain(`https://${ADDRESS}:${PORT}`),
   );
   // **The symbol carries the code, not a credential**: it opens the page a
   // camera-less display would have typed at, and the code is printed beside it
@@ -445,7 +449,7 @@ it("takes the address apart again when the host answers with a new one", async (
   const container = await mount();
   await openSurface(container);
   await vi.waitFor(() =>
-    expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`),
+    expect(popupText()).toContain(`https://${ADDRESS}:${PORT}`),
   );
 
   hostServing({ lan: true, address: "192.168.1.99" });
@@ -453,8 +457,9 @@ it("takes the address apart again when the host answers with a new one", async (
   await openSurface(reloaded);
 
   await vi.waitFor(() =>
-    expect(popupText()).toContain("http://192.168.1.99:5227"),
+    expect(popupText()).toContain("https://192.168.1.99:5227"),
   );
+  expect(popupText()).not.toContain(`https://${ADDRESS}:${PORT}`);
   expect(popupText()).not.toContain(`http://${ADDRESS}:${PORT}`);
 });
 

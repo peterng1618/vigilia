@@ -352,7 +352,11 @@ async function startHostedTheme(
     lastRefindAt = now;
 
     try {
-      const found = await refindHost(pairing, probe);
+      const found = await refindHost(pairing, probe, {
+        // The page's own scheme, so an https display probes over https: the
+        // other way round is mixed content and matches nothing (`vg-623`).
+        scheme: window.location.protocol === "https:" ? "https" : "http",
+      });
 
       if (found === undefined || disposed) {
         return;

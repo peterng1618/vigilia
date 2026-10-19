@@ -345,7 +345,11 @@ export async function run(argv: readonly string[]): Promise<number> {
     initialHost === "0.0.0.0" || initialHost === "::"
       ? "localhost"
       : initialHost;
-  const url = `http://${displayHost}:${bound}`;
+  /** https first, http beside it: a display is a secure context only at the
+   *  https origin, and the plain address is what a device that has not
+   *  installed the root certificate can still open (`docs/decisions/0076`). */
+  const localSecure = `https://${displayHost}:${bound}`;
+  const localPlain = `http://${displayHost}:${bound}`;
   /** The address a display would use, whether or not the LAN is open — the
    *  certificate covers it either way, and the console names it. */
   const lan = await lanAddress();
@@ -358,8 +362,15 @@ export async function run(argv: readonly string[]): Promise<number> {
     );
   }
 
-  console.log(`  Dashboard  ${url}`);
-  console.log(`  Editor     ${url}/editor`);
+  console.log(`  Dashboard  ${localSecure}`);
+  console.log(`  Editor     ${localSecure}/editor`);
+  console.log(
+    style(
+      "2",
+      `  Same two over plain http, which needs no certificate installed:` +
+        `\n  ${localPlain}`,
+    ),
+  );
 
   // The step that has to come before any of it, printed on every run rather
   // than once: adding a second display is the common case and it is the same
@@ -412,13 +423,17 @@ export async function run(argv: readonly string[]): Promise<number> {
   }
 
   if (!isLoopbackHost(initialHost)) {
+    const hostPart = lan === undefined ? displayHost : lan;
+    const networkSecure = `https://${hostPart}:${bound}`;
+    const networkPlain = `http://${hostPart}:${bound}`;
+
     console.log(
       style(
         "33",
         `\n  LAN serving is ON (bound ${initialHost}).` +
           (lan === undefined
             ? ""
-            : ` Phones on this Wi-Fi: http://${lan}:${bound}`),
+            : ` Phones on this Wi-Fi: ${networkSecure} (fallback ${networkPlain})`),
       ),
     );
     console.log(
@@ -426,16 +441,22 @@ export async function run(argv: readonly string[]): Promise<number> {
     );
     console.log(style("2", "  The editor stays restricted to this PC."));
 
-    const hostPart = lan === undefined ? displayHost : lan;
     // The link carries a **code**, not a credential. A stored hash cannot be
     // printed again and minting a display per run leaves a record for a link
     // nobody used, so what this prints is the one secret that can be made again
     // — and it pairs nothing until somebody claims it (R9).
     const code = pairingCodes.mint();
     console.log(style("2", "\n  This host is reachable on this network at:"));
-    console.log(`  http://${hostPart}:${bound}/`);
+    console.log(`  ${networkSecure}/`);
+    console.log(
+      style(
+        "2",
+        `  ${networkPlain}/   (a device without the root certificate)`,
+      ),
+    );
     console.log(style("2", "  Pair a display that has no camera at:"));
-    console.log(`  http://${hostPart}:${bound}/pair?code=${code.code}`);
+    console.log(`  ${networkSecure}/pair?code=${code.code}`);
+    console.log(style("2", `  ${networkPlain}/pair?code=${code.code}`));
   } else {
     console.log(
       style("2", "\n  Local only. Pass --host 0.0.0.0 to let phones connect."),
@@ -445,7 +466,10 @@ export async function run(argv: readonly string[]): Promise<number> {
   console.log(style("2", "\n  Ctrl+C to stop.\n"));
 
   if (shouldOpen) {
-    openBrowser(`${url}/editor`);
+    // The plain address on purpose: this is `localhost`, which is a secure
+    // context either way, so the owner meets the editor rather than a
+    // certificate warning on the machine that issues the certificate.
+    openBrowser(`${localPlain}/editor`);
   }
 
   // Process lifetime belongs to the terminal until a tray host exists.

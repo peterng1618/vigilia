@@ -100,8 +100,25 @@ export function storePairing(storage: Storage, pairing: PairedHost): void {
   }
 }
 
-export function originFor(address: string, port: number): string {
-  return `http://${address}:${port}`;
+/** The scheme a display was served over. Both are real: the host serves https
+ *  beside http on the same port, and the http address is what a device that has
+ *  not installed the root certificate opens (`docs/decisions/0076`). */
+export type PageScheme = "http" | "https";
+
+/**
+ * One probe's origin, at the **page's own** scheme.
+ *
+ * The scheme is the caller's, from `location.protocol`, and it is not optional:
+ * a probe built as `http://` from a page served over https is mixed content the
+ * browser blocks, so every rung of the ladder fails and a display can never
+ * re-find its host (`vg-623`). A default here would reintroduce exactly that.
+ */
+export function originFor(
+  address: string,
+  port: number,
+  scheme: PageScheme,
+): string {
+  return `${scheme}://${address}:${port}`;
 }
 
 /**
@@ -194,18 +211,23 @@ async function hostAnswers(
  *
  * A probe that answers a different id is not a match and does not end the
  * search — that refusal is the whole point of having stored an id.
+ *
+ * `scheme` is the page's own (`PageScheme`), and every rung carries it: a
+ * display served over https re-finds over https, and one served over http keeps
+ * working unchanged.
  */
 export async function refindHost(
   pairing: PairedHost,
   probe: HostProbe,
-  options: { readonly concurrency?: number } = {},
+  options: { readonly scheme: PageScheme; readonly concurrency?: number },
 ): Promise<string | undefined> {
-  const known = [originFor(pairing.lastAddress, pairing.port)];
+  const scheme = options.scheme;
+  const known = [originFor(pairing.lastAddress, pairing.port, scheme)];
 
   // An empty name is a pairing that never learned one, and `.local` alone is
   // not a name any host answers to.
   if (pairing.hostName.length > 0) {
-    known.push(originFor(`${pairing.hostName}.local`, pairing.port));
+    known.push(originFor(`${pairing.hostName}.local`, pairing.port, scheme));
   }
 
   for (const origin of known) {
@@ -215,7 +237,7 @@ export async function refindHost(
   }
 
   const swept = sweepAddresses(pairing.lastAddress).map((address) =>
-    originFor(address, pairing.port),
+    originFor(address, pairing.port, scheme),
   );
   const workers = Math.max(
     1,

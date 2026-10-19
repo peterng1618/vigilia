@@ -211,7 +211,15 @@ export function PublishControl({
                 <span className="editor-shell-publish-label">
                   {uiCopy.publish.address}
                 </span>
-                <code className="editor-shell-publish-url">{`http://${shown.address}:${shown.port}`}</code>
+                <code className="editor-shell-publish-url">{`https://${shown.address}:${shown.port}`}</code>
+                {/* https is what makes the display a secure context — the wake
+                    lock and fullscreen are gated on it — so it is the address
+                    printed. The plain one is what a device that has not
+                    installed the root certificate can still open
+                    (`docs/decisions/0076`). */}
+                <span className="editor-shell-publish-note">
+                  {`Fallback http://${shown.address}:${shown.port}`}
+                </span>
                 {code === undefined ? null : (
                   <>
                     {/* The code in type, because the symbol beside it needs a

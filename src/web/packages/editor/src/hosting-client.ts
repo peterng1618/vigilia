@@ -144,10 +144,16 @@ export async function setLan(
 
 /** The URL the QR carries: the page a display with no camera opens, with the
  *  code it would otherwise have to type already in it. A code and not a
- *  credential, so the URL is worth reading over a shoulder exactly once. */
+ *  credential, so the URL is worth reading over a shoulder exactly once.
+ *
+ *  **https, because a display is a secure context only there** — that is what
+ *  the wake lock and arbitrary-element fullscreen are gated on, and the host
+ *  serves it on this same port from its own root (`docs/decisions/0076`). A
+ *  device that has not installed the root is warned and carries on; the plain
+ *  address is printed beside this one for it. */
 export function displayUrl(
   answer: { readonly address: string; readonly port: number },
   code: string,
 ): string {
-  return `http://${answer.address}:${answer.port}/pair?code=${encodeURIComponent(code)}`;
+  return `https://${answer.address}:${answer.port}/pair?code=${encodeURIComponent(code)}`;
 }

@@ -2632,9 +2632,10 @@ function setGroupCaching(page: Page, caching: boolean): Promise<boolean> {
  * a run at `http://127.0.0.1:4175` sees the wake lock present and proves
  * nothing about the phone the control is for. The host does serve https beside
  * http on that same port now, from a root it issues itself (`vg-580`,
- * `docs/decisions/0070`); the address the console prints is still the plain
- * one, so the case below still measures what a phone gets from it. The last
- * case measures the origin a phone actually uses, in this same browser.
+ * `docs/decisions/0070`), and since `docs/decisions/0076` https is the address
+ * printed first — so the cases here run at the plain origin deliberately: that
+ * is the fallback a device without the root certificate still gets, and the
+ * last case reads this browser's answer about exactly that origin.
  */
 test.describe("the display's own controls", () => {
   test("reveals three controls on a tap, and never moves the composition", async ({
@@ -2902,7 +2903,7 @@ test.describe("the display's own controls", () => {
     expect(dimmed.artboardHeight).toBeCloseTo(before.artboardHeight, 1);
   });
 
-  test("the origin a phone uses is not a secure context, and this browser says so", async ({
+  test("the plain-http fallback a phone can open is not a secure context, and this browser says so", async ({
     page,
   }, testInfo) => {
     // **The trap this case exists for.** `127.0.0.1` is a secure context, so
@@ -2910,6 +2911,16 @@ test.describe("the display's own controls", () => {
     // `http://<lan-ip>:<port>`, which is not one. The player's own bundle is
     // served here over plain http on the LAN address, so the reading is the
     // browser's answer about the origin rather than a claim about it.
+    //
+    // **Which shape this is now, since `docs/decisions/0076`.** The printed
+    // address is https and the plain one beside it is the *fallback*, for a
+    // device that has not installed the host's root certificate — so what this
+    // case reads is the fallback's answer, and it is still worth reading: the
+    // fallback is what a fresh phone gets before it installs anything, and the
+    // gating below is why the https address is the one printed first. It is not
+    // a case about the product's default origin any more, and a reading of
+    // *that* origin needs the root trusted in the browser profile, which this
+    // file does not do.
     const address = lanAddress();
     test.skip(address === undefined, "this machine has no LAN address");
 

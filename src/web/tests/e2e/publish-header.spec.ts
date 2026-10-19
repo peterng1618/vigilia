@@ -176,14 +176,16 @@ test.describe("the header's publish surface", () => {
     await expect(facts.locator("code")).toBeVisible({ timeout: 30_000 });
 
     const shown = await facts.locator("code").textContent();
-    expect(shown).toMatch(/^http:\/\/\d+\.\d+\.\d+\.\d+:\d+$/);
+    // https, the origin a display is a secure context at; the popup prints the
+    // plain address beside it as the fallback (`docs/decisions/0076`).
+    expect(shown).toMatch(/^https:\/\/\d+\.\d+\.\d+\.\d+:\d+$/);
 
     const qr = facts.locator("[data-vigilia-qr]");
     const box = await qr.boundingBox();
     // A camera needs modules, not a thumbnail: 45 modules at 3 px.
     expect(box?.width).toBeGreaterThanOrEqual(120);
     expect(
-      (await qr.getAttribute("aria-label"))?.startsWith("QR code: http://"),
+      (await qr.getAttribute("aria-label"))?.startsWith("QR code: https://"),
     ).toBe(true);
 
     // 1680 px, which is the `publish` project's own viewport.
