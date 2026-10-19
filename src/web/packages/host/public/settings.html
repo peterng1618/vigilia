@@ -88,7 +88,7 @@
       <div id="status">Loading…</div>
     </main>
     <script type="module">
-      import { deleteTheme, themeList } from "/settings/theme-list.js";
+      import { deleteTheme, shownTheme, themeList } from "/settings/theme-list.js";
 
       const status = document.querySelector("#status");
       const groups = document.querySelector("#groups");
@@ -140,11 +140,9 @@
       // Answers this theme already has, so a question is asked only once.
       let themeAnswers = {};
 
-      /** The theme the chosen display shows: its own choice, else the default's. */
-      function shownBy(display) {
-        return display === "default"
-          ? defaultTheme
-          : (displays.find((row) => row.id === display)?.theme ?? defaultTheme);
+      /** The theme the display this page is showing for holds. */
+      function shown() {
+        return shownTheme(selected, displays, defaultTheme);
       }
 
       function renderThemes() {
@@ -154,7 +152,7 @@
         // this file as-is and the display's theme is only known once the map
         // has answered — so it is pointed at the theme the page is showing.
         const editorLink = document.querySelector("#editor-link");
-        const showing = shownBy(selected);
+        const showing = shown();
         if (editorLink !== null) {
           editorLink.href =
             showing === null
@@ -201,7 +199,7 @@
         const unanswered = required.filter((group) => answers[group] === undefined);
         questionsHost.replaceChildren();
 
-        if (shownBy(selected) === null || required.length === 0 || unanswered.length === 0) {
+        if (shown() === null || required.length === 0 || unanswered.length === 0) {
           questionsSection.hidden = true;
           return;
         }
@@ -252,7 +250,7 @@
       }
 
       async function answerTheme(group, value) {
-        const theme = shownBy(selected);
+        const theme = shown();
         if (theme === null) return;
         status.textContent = "Saving…";
         try {
@@ -268,7 +266,6 @@
           if (!response.ok) throw new Error(await response.text());
           const saved = await response.json();
           themeAnswers = saved.answers ?? {};
-          requiredDevices = requiredDevices;
           renderQuestions(requiredDevices, themeAnswers);
           status.textContent = "Saved. Only this theme is affected.";
         } catch (error) {
@@ -277,7 +274,7 @@
       }
 
       async function loadQuestions() {
-        const theme = shownBy(selected);
+        const theme = shown();
         if (theme === null) {
           requiredDevices = [];
           themeAnswers = {};

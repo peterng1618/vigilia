@@ -221,6 +221,14 @@ describe("a saved theme as one row", () => {
         "This PCStudio",
         "Kitchen tabletUses the default",
       ]);
+      // The kind travels to the row, because the warning table is keyed on it
+      // and a page cannot ask a display what it is. The default row is the
+      // fallback rather than a display, so it carries none.
+      expect(rows.map((row) => row.getAttribute("data-kind"))).toEqual([
+        null,
+        "local",
+        "paired",
+      ]);
     });
 
     it("marks the display the rows are being chosen for, and no other", () => {

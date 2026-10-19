@@ -3405,6 +3405,7 @@ describe("A theme's own device answers", () => {
   let hosted: ReturnType<typeof createHostServer>;
   let activeTheme: ReturnType<typeof createActiveThemeStore>;
   let themeSettings: ReturnType<typeof createThemeSettingsStore>;
+  let displays: ReturnType<typeof createDisplayStore>;
   let echo: ReturnType<typeof assignmentEcho>;
 
   /** Writes one theme into the store the host reads. */
@@ -3426,11 +3427,13 @@ describe("A theme's own device answers", () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-answers-"));
     activeTheme = createActiveThemeStore(tmpDir);
     themeSettings = createThemeSettingsStore(tmpDir);
+    displays = createDisplayStore(tmpDir);
     echo = assignmentEcho();
     hosted = createHostServer({
       registry: new ProviderRegistry([echo]),
       bundles: { player: tmpDir, editor: tmpDir },
       devices: createDeviceSettingsStore(tmpDir),
+      displays,
       activeTheme,
       themeSettings,
       // The tick a display is served on, rather than the settled cadence: a
@@ -3514,11 +3517,87 @@ describe("A theme's own device answers", () => {
       json({ "system-disk": "disk-d" }),
     );
 
-    // The route resolves no display of its own yet, so it reads and writes the
-    // entry of whoever asked — the default display's.
+    // An unnamed read is the display a client with no identity is served as —
+    // the same default the theme map falls back to.
     expect(
       await createThemeSettingsStore(tmpDir).read(DEFAULT_DISPLAY, "disk-only"),
     ).toEqual({ "system-disk": "disk-d" });
+  });
+
+  it("reads and writes the answers of the display the page names", async () => {
+    // A paired display, because that is the one a display's own request cannot
+    // name from a query — `displayKeyFor` honours `?display=` for a local
+    // record alone, since the parameter is the one thing that could impersonate
+    // a credential-less monitor. The host's own page has to reach it all the
+    // same, so this route validates the name against the store instead.
+    await displays.create("Kitchen tablet", newToken());
+
+    const read = (
+      await request(
+        hosted.server,
+        "GET",
+        "/api/themes/disk-only/answers?display=kitchen-tablet",
+      )
+    ).json() as { answers: unknown };
+    expect(read.answers).toEqual({});
+
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/themes/disk-only/answers?display=kitchen-tablet",
+          json({ "system-disk": "disk-d" }),
+        )
+      ).status,
+    ).toBe(200);
+
+    // The named display's entry, and the default's untouched: a page that named
+    // this PC used to have its answers stored under the default.
+    expect(
+      await createThemeSettingsStore(tmpDir).read(
+        "kitchen-tablet",
+        "disk-only",
+      ),
+    ).toEqual({ "system-disk": "disk-d" });
+    expect(
+      await createThemeSettingsStore(tmpDir).read(DEFAULT_DISPLAY, "disk-only"),
+    ).toEqual({});
+  });
+
+  it("refuses a display it does not know, and keeps the default for none", async () => {
+    expect(
+      (
+        await request(
+          hosted.server,
+          "GET",
+          "/api/themes/disk-only/answers?display=nobody",
+        )
+      ).status,
+    ).toBe(404);
+
+    // A refused name writes nothing at all — not the default's entry, which is
+    // what answering it as the default would have done.
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/themes/disk-only/answers?display=nobody",
+          json({ "system-disk": "disk-d" }),
+        )
+      ).status,
+    ).toBe(404);
+
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/disk-only/answers",
+      json({ "system-disk": "disk-c" }),
+    );
+    expect(
+      await createThemeSettingsStore(tmpDir).read(DEFAULT_DISPLAY, "disk-only"),
+    ).toEqual({ "system-disk": "disk-c" });
   });
 
   it("serves a theme's own answer only while that theme is the chosen one", async () => {

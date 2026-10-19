@@ -161,6 +161,25 @@ function confirmRemoval(name, id) {
 const DEFAULT_KEY = "default";
 
 /**
+ * The theme a display shows: its own choice, else the default's.
+ *
+ * Exported because both pages ask it of the display they are showing for, and
+ * the fallback is the feature's core — a second and third copy of it are two
+ * more places to get the fallback wrong.
+ *
+ * @param {string} display
+ * @param {readonly {readonly id: string, readonly theme: string | null}[]} displays
+ * @param {string | null} defaultTheme
+ * @returns {string | null}
+ */
+export function shownTheme(display, displays, defaultTheme) {
+  if (display === DEFAULT_KEY) return defaultTheme ?? null;
+  return (
+    displays.find((row) => row.id === display)?.theme ?? defaultTheme ?? null
+  );
+}
+
+/**
  * @param {readonly {readonly id: string, readonly name?: string, readonly author?: string}[]} themes
  * @param {{
  *   readonly displays?: readonly {readonly id: string, readonly label: string, readonly kind?: string, readonly theme: string | null}[],
@@ -209,33 +228,43 @@ export function themeList(
    */
   const column = document.createElement("div");
   column.className = "theme-list";
-  column.dataset.displays = "";
 
-  const addDisplay = (id, label, theme, isDefault) => {
+  const addDisplay = ({ id, label, kind, theme, isDefault }) => {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "theme-option";
     row.dataset.display = id;
+    // The kind rides the row because the warning table is keyed on it and a page
+    // cannot ask a display what it is. The default row is the fallback rather
+    // than a display, so it has none — which is what the table reads as "warn
+    // for every cost".
+    if (kind !== undefined) row.dataset.kind = kind;
     row.setAttribute("aria-pressed", String(id === selected));
     row.append(rowText(label, heldText(theme, isDefault)));
     row.addEventListener("click", () => onSelect?.(id));
     column.append(row);
   };
 
-  addDisplay(DEFAULT_KEY, "Default", defaultTheme, true);
+  addDisplay({
+    id: DEFAULT_KEY,
+    label: "Default",
+    theme: defaultTheme,
+    isDefault: true,
+  });
   for (const display of displays) {
-    addDisplay(display.id, display.label, display.theme, false);
+    addDisplay({
+      id: display.id,
+      label: display.label,
+      kind: display.kind,
+      theme: display.theme,
+    });
   }
 
   fragment.append(groupLabel("Displays"), column);
 
   // The theme the rows below are being chosen for, so the mark on one answers
   // "what is this display showing" rather than "what did anyone choose".
-  const showing =
-    selected === DEFAULT_KEY
-      ? defaultTheme
-      : (displays.find((display) => display.id === selected)?.theme ??
-        defaultTheme);
+  const showing = shownTheme(selected, displays, defaultTheme);
 
   if (templates.length > 0) {
     fragment.append(groupLabel("Templates"));

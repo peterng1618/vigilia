@@ -37,8 +37,8 @@
     <main>
       <h1>Choose a theme</h1>
       <p class="lead">
-        This PC has several saved themes. Pick the one your displays should
-        show, or start from the template the product ships.
+        This PC has several saved themes. Pick the theme a display should show,
+        or start from the template the product ships.
       </p>
       <div id="themes"></div>
       <p class="elsewhere">
@@ -48,7 +48,7 @@
       <div id="status"></div>
     </main>
     <script type="module">
-      import { deleteTheme, themeList } from "/settings/theme-list.js";
+      import { deleteTheme, shownTheme, themeList } from "/settings/theme-list.js";
 
       const themesHost = document.querySelector("#themes");
       const status = document.querySelector("#status");
@@ -65,17 +65,10 @@
       // means until they press another row in the column.
       let selected = "default";
 
-      /** The theme a display shows: its own choice, else the default's. */
-      function shownBy(display) {
-        return display === "default"
-          ? defaultTheme
-          : (displays.find((row) => row.id === display)?.theme ?? defaultTheme);
-      }
-
       function render() {
         // A consumer who picked a theme and then goes to change it means that
         // one, so the editor link carries whichever the chosen display shows.
-        const showing = shownBy(selected);
+        const showing = shownTheme(selected, displays, defaultTheme);
         if (editorLink !== null) {
           editorLink.href =
             showing === null

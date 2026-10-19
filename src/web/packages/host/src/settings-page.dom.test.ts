@@ -2,7 +2,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as themeListModule from "../public/theme-list.js";
 
 /**
  * The prompts `/settings` puts above its device dropdowns.
@@ -28,19 +29,23 @@ const BODY_HTML = PAGE.slice(
   PAGE.indexOf("</body>"),
 ).replace(/<script[\s\S]*?<\/script>/, "");
 
-/** The page's one module, minus the import: `/settings/theme-list.js` is a URL
- *  only a host serves, and no test here reaches it, because a PC with no saved
- *  theme draws no chooser and the questions below need no theme list. */
+/** The page's one module, with its import handed the real `theme-list.js`:
+ *  `/settings/theme-list.js` is a URL only a host serves, and the page calls
+ *  the module's own resolution rule as well as drawing its rows through it. */
 const SCRIPT = (
   PAGE.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1] ?? ""
-).replace(/^\s*import\b[^\n]*$/m, "");
+).replace(
+  /^\s*import\s*\{([^}]*)\}[^\n]*$/m,
+  (_statement, names: string) => `const {${names}} = __themeList;`,
+);
 
 type Body = () => Promise<void>;
 const AsyncFunction = Object.getPrototypeOf(
   async (): Promise<void> => undefined,
 ).constructor as new (
+  parameter: string,
   source: string,
-) => Body;
+) => (themeList: unknown) => Body;
 
 interface Device {
   readonly id: string;
@@ -68,21 +73,32 @@ const json = (body: unknown): Response =>
     text: async () => JSON.stringify(body),
   }) as unknown as Response;
 
-const stubFetch = (hardware: Hardware): void => {
+/** What `/api/themes/active` answers: one saved theme, and the display column
+ *  the page draws from it. The default row opens pressed, and this PC holds no
+ *  theme of its own, so the two displays' answers are told apart by their key
+ *  rather than by their contents. */
+const THEME_MAP = {
+  themes: [{ id: "living-room", name: "Living Room" }],
+  templates: [],
+  default: "living-room",
+  displays: [{ id: "this-pc", label: "This PC", kind: "local", theme: null }],
+};
+
+/** Every URL the page asked for, in order, so a case can read which display's
+ *  answers it read and wrote. */
+let requested: string[] = [];
+
+const stubFetch = (hardware: Hardware, map: unknown = THEME_MAP): void => {
   globalThis.fetch = (async (input: string) => {
+    requested.push(input);
     switch (input) {
       case "/api/themes/active":
-        return json({
-          themes: [],
-          templates: [],
-          default: "living-room",
-          displays: [
-            { id: "this-pc", label: "This PC", kind: "local", theme: null },
-          ],
-        });
+        return json(map);
       // The display the page is showing for rides the request, because the
       // answers belong to a screen rather than to the machine.
       case "/api/themes/living-room/answers?display=default":
+        return json({ required: ["data-disk"], answers: {} });
+      case "/api/themes/living-room/answers?display=this-pc":
         return json({ required: ["data-disk"], answers: {} });
       case "/api/devices":
         return json({
@@ -101,8 +117,9 @@ const realFetch = globalThis.fetch;
 
 async function render(hardware: Hardware): Promise<void> {
   document.body.innerHTML = BODY_HTML;
+  requested = [];
   stubFetch(hardware);
-  await new AsyncFunction(SCRIPT)();
+  await new AsyncFunction("__themeList", SCRIPT)(themeListModule);
 }
 
 afterEach(() => {
@@ -190,4 +207,34 @@ describe("no two fieldsets on the page carry the same prompt", () => {
       });
     }
   }
+});
+
+/**
+ * A theme's answers belong to the display the page is showing for, so the page
+ * has to name that display in the request it makes.
+ *
+ * **The URL is the assertion**, because it is the only thing that fails when the
+ * display is dropped from it: a page that read the wrong key would still draw
+ * the same form, and the host would still store what it was sent.
+ */
+describe("the display the answers are read and written for", () => {
+  it("rides the request, and follows the row that is pressed", async () => {
+    await render(MANY);
+
+    expect(requested).toContain(
+      "/api/themes/living-room/answers?display=default",
+    );
+
+    document
+      .querySelector<HTMLButtonElement>('[data-display="this-pc"]')
+      ?.click();
+
+    // Pressing the display's row is what makes the questions this PC's, so the
+    // next read has to name it.
+    await vi.waitFor(() =>
+      expect(requested).toContain(
+        "/api/themes/living-room/answers?display=this-pc",
+      ),
+    );
+  });
 });

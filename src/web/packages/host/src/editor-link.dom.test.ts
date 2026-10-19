@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import * as themeListModule from "../public/theme-list.js";
 
 /**
  * Where the host's pages send an author who wants to change a theme.
@@ -31,38 +32,30 @@ function bodyOf(page: string): string {
     .replace(/<script[\s\S]*?<\/script>/, "");
 }
 
-/** The page's one module, with its import replaced by a stand-in.
- *  `/settings/theme-list.js` is a URL only a host serves, and what is under
- *  test here is the link beside the rows rather than the rows themselves —
- *  which are covered where they are drawn. The chooser calls it
- *  unconditionally, so it has to exist. */
+/** The page's one module, with its import handed the real `theme-list.js`.
+ *
+ *  `/settings/theme-list.js` is a URL only a host serves, so the script cannot
+ *  import it itself — but the pages now call the module's own resolution rule
+ *  (`shownTheme`) to build the link, so a stand-in would be testing the
+ *  stand-in. The module is passed in as `__themeList` and the import line
+ *  becomes a destructuring of it, which is also how a name added to a page's
+ *  import cannot arrive undefined. */
 function scriptOf(page: string): string {
   const html = readFileSync(join(PUBLIC, page), "utf8");
   return (
     html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1] ?? ""
   ).replace(
-    // EVERY imported name, not a hard-coded one. `library.html` imports
-    // `deleteTheme` as well as `themeList`, and a stand-in that named only the
-    // first left the page calling something undefined — which read as three
-    // failures in the editor-link tests and looked like a broken page.
     /^\s*import\s*\{([^}]*)\}[^\n]*$/gm,
-    (_statement, names: string) =>
-      names
-        .split(",")
-        .map((name) => name.trim())
-        .filter(Boolean)
-        .map(
-          (name) => `const ${name} = () => document.createDocumentFragment();`,
-        )
-        .join("\n"),
+    (_statement, names: string) => `const {${names}} = __themeList;`,
   );
 }
 
 const AsyncFunction = Object.getPrototypeOf(
   async (): Promise<void> => undefined,
 ).constructor as new (
+  parameter: string,
   source: string,
-) => () => Promise<void>;
+) => (themeList: unknown) => Promise<void>;
 
 const json = (body: unknown): Response =>
   ({
@@ -71,20 +64,39 @@ const json = (body: unknown): Response =>
     text: async () => JSON.stringify(body),
   }) as unknown as Response;
 
+interface Display {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: string;
+  readonly theme: string | null;
+}
+
+const THIS_PC: Display = {
+  id: "this-pc",
+  label: "This PC",
+  kind: "local",
+  theme: null,
+};
+
+/** One saved theme, because `settings.html` draws no chooser — and so no
+ *  display column to press — until the library holds something. */
+const THEMES = [{ id: "living-room", name: "Living Room" }];
+
 /** The answers both pages ask for. `active` is the theme the default display
  *  holds — the row both pages open on — and it is the only thing under test
  *  that varies. */
-function stub(active: string | null): void {
+function stub(
+  active: string | null,
+  displays: readonly Display[] = [THIS_PC],
+): void {
   globalThis.fetch = (async (input: string) => {
     switch (input) {
       case "/api/themes/active":
         return json({
-          themes: [],
+          themes: THEMES,
           templates: [],
           default: active,
-          displays: [
-            { id: "this-pc", label: "This PC", kind: "local", theme: null },
-          ],
+          displays,
         });
       case "/api/devices":
         return json({
@@ -101,10 +113,14 @@ function stub(active: string | null): void {
 
 const realFetch = globalThis.fetch;
 
-async function open(page: string, active: string | null): Promise<void> {
+async function open(
+  page: string,
+  active: string | null,
+  displays: readonly Display[] = [THIS_PC],
+): Promise<void> {
   document.body.innerHTML = bodyOf(page);
-  stub(active);
-  await new AsyncFunction(scriptOf(page))();
+  stub(active, displays);
+  await new AsyncFunction("__themeList", scriptOf(page))(themeListModule);
 }
 
 afterEach(() => {
@@ -127,7 +143,6 @@ for (const page of ["settings.html", "library.html"]) {
 
     it("stays a plain link when no theme is active, because there is none to carry", async () => {
       await open(page, null);
-
       expect(document.querySelector("#editor-link")?.getAttribute("href")).toBe(
         "/editor/",
       );
@@ -138,6 +153,26 @@ for (const page of ["settings.html", "library.html"]) {
 
       expect(document.querySelector("#editor-link")?.textContent).toBe(
         "Open the editor",
+      );
+    });
+
+    it("carries the theme of the display whose row is pressed", async () => {
+      // The default row opens pressed, so every case above is about the
+      // fallback. A display holding a theme of its own is the case the column
+      // exists for: pressing its row has to move the link to what that display
+      // shows, not to what the default holds.
+      await open(page, "living-room", [{ ...THIS_PC, theme: "kitchen-strip" }]);
+
+      expect(document.querySelector("#editor-link")?.getAttribute("href")).toBe(
+        "/editor/?theme=living-room",
+      );
+
+      document
+        .querySelector<HTMLButtonElement>('[data-display="this-pc"]')
+        ?.click();
+
+      expect(document.querySelector("#editor-link")?.getAttribute("href")).toBe(
+        "/editor/?theme=kitchen-strip",
       );
     });
   });

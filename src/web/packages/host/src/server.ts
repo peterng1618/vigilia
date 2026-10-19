@@ -371,6 +371,30 @@ export async function displayKeyFor(
   return (await displayFor(request, url, displays))?.id ?? DEFAULT_DISPLAY;
 }
 
+/**
+ * Whether a key a loopback request named is one this host can hold a theme or a
+ * set of answers for.
+ *
+ * The two reserved words are keys in their own right — `default` is what a
+ * display with no choice of its own falls to, `this-pc` is the machine — so
+ * neither is a record and neither is refused for the lack of one. Everything
+ * else must be a display this host holds, so a typo is a 404 rather than a key
+ * nothing will ever read.
+ *
+ * **Not `displayKeyFor`.** That answers the request a display makes about
+ * itself, where `?display=` may name a local record and nothing else, because
+ * the parameter is the one thing that could impersonate a credential-less
+ * monitor. The routes that call this one are loopback-only admin, and the
+ * host's own page has to reach a paired display.
+ */
+async function knownDisplayKey(
+  key: string,
+  displays: DisplayStore | undefined,
+): Promise<boolean> {
+  if (key === DEFAULT_DISPLAY || key === LOCAL_DISPLAY_ID) return true;
+  return ((await displays?.list()) ?? []).some((record) => record.id === key);
+}
+
 /** Bounded JSON body for admin writes; a runaway body must not be buffered. */
 async function readBody(
   request: http.IncomingMessage,
@@ -1858,12 +1882,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
         // Only a display this host holds can be given a theme, so a typo is a
         // 404 rather than a new key in the file that no display would read.
-        if (
-          loopback &&
-          key !== DEFAULT_DISPLAY &&
-          key !== LOCAL_DISPLAY_ID &&
-          !((await displays?.list()) ?? []).some((record) => record.id === key)
-        ) {
+        if (loopback && !(await knownDisplayKey(key, displays))) {
           sendText(response, 404, "No such display.");
           return;
         }
@@ -1948,12 +1967,25 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      // This route resolves no display yet, so both branches read and write the
-      // answers of whoever asked: the default display's entry.
+      // Which display's answers. The page names the one it is showing for, and
+      // a display with no choice of its own is what an unnamed read means — the
+      // same default the theme map falls back to.
+      //
+      // The name is validated against the store rather than resolved the way a
+      // display's own request resolves itself (`displayKeyFor`): this route is
+      // loopback-only admin, and the page has to reach a paired display, which
+      // that resolver refuses to name from a query.
+      const named = url.searchParams.get("display") ?? DEFAULT_DISPLAY;
+
+      if (!(await knownDisplayKey(named, displays))) {
+        sendText(response, 404, "No such display.");
+        return;
+      }
+
       if (request.method === "GET") {
         const record = await readThemeOrAbsent(rawId);
         sendJson(response, 200, {
-          answers: await themeSettings.read(DEFAULT_DISPLAY, rawId),
+          answers: await themeSettings.read(named, rawId),
           required: requiredDeviceGroups(record?.envelope),
         });
         return;
@@ -1962,7 +1994,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (request.method === "PUT") {
         try {
           const body = JSON.parse(await readBody(request)) as unknown;
-          const saved = await themeSettings.write(DEFAULT_DISPLAY, rawId, body);
+          const saved = await themeSettings.write(named, rawId, body);
           sendJson(response, 200, { ok: true, answers: saved });
         } catch (error) {
           sendText(
