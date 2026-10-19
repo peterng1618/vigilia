@@ -3,7 +3,7 @@
 import { type Artboard, type ScenePlan } from "@vigilia/renderer-core";
 import { Group, Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { mountFabricScene } from "./scene.js";
+import { type FabricSceneHandle, mountFabricScene } from "./scene.js";
 
 function plan(): ScenePlan {
   return {
@@ -70,6 +70,113 @@ describe("mountFabricScene updateArtboard", () => {
 
     scene.dispose();
     element.remove();
+  });
+});
+
+describe("mountFabricScene's video repaint", () => {
+  /** A video background, with or without a glass panel over it.
+   *
+   *  `requestVideoFrameCallback` is the platform call `background-media.ts`
+   *  makes, so the callbacks collected here are the frames the scene is
+   *  following. jsdom has no such method, so it is patched on the prototype for
+   *  the duration of the case. */
+  function mountVideo(options: { readonly glass: boolean }): {
+    readonly scene: FabricSceneHandle;
+    readonly frames: readonly (() => void)[];
+  } {
+    const element = host();
+    const frames: (() => void)[] = [];
+    const proto = HTMLVideoElement.prototype as unknown as {
+      requestVideoFrameCallback: (cb: () => void) => number;
+      cancelVideoFrameCallback: (handle: number) => void;
+    };
+    proto.requestVideoFrameCallback = (cb) => {
+      frames.push(cb);
+      return frames.length;
+    };
+    proto.cancelVideoFrameCallback = () => undefined;
+
+    const scene = mountFabricScene({
+      host: element,
+      plan: plan(),
+      artboard: { width: 400, height: 300 },
+      assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    scene.updateArtboard({
+      width: 400,
+      height: 300,
+      backgroundMedia: { assetId: "loop", fit: "cover" },
+    });
+
+    if (options.glass) {
+      scene.canvas.add(
+        new Rect({
+          left: 40,
+          top: 40,
+          width: 60,
+          height: 40,
+          originX: "left",
+          originY: "top",
+          fill: "rgba(255, 255, 255, 0.2)",
+          vigiliaGlass: { blurRadius: 8 },
+        }),
+      );
+      // The panel's scratch surface is allocated during a render, which is why
+      // the gate cannot be a decision taken at mount.
+      scene.canvas.renderAll();
+    }
+
+    return { scene, frames };
+  }
+
+  /** The repaints one decoded frame asks for. A frame callback re-arms itself,
+   *  so the snapshot is taken before any of them runs. */
+  function repaintsOnFrame(
+    scene: FabricSceneHandle,
+    frames: readonly (() => void)[],
+  ): number {
+    let repaints = 0;
+    const original = scene.canvas.requestRenderAll.bind(scene.canvas);
+    scene.canvas.requestRenderAll = (): void => {
+      repaints += 1;
+      original();
+    };
+    try {
+      for (const frame of [...frames]) frame();
+    } finally {
+      scene.canvas.requestRenderAll = original;
+    }
+    return repaints;
+  }
+
+  it("asks for no repaint per decoded frame when nothing samples the backdrop", () => {
+    // The video is still followed — that is `background-media.ts`'s own
+    // decision, unchanged — and every frame it delivers asks for nothing,
+    // because a canvas repaint per decoded frame is what a video background
+    // used to cost with no reader at all.
+    const { scene, frames } = mountVideo({ glass: false });
+
+    expect(frames, "the video is being followed").toHaveLength(1);
+    expect(
+      repaintsOnFrame(scene, frames),
+      "a decoded frame nothing samples asks for no repaint",
+    ).toBe(0);
+
+    scene.dispose();
+  });
+
+  it("still repaints per frame when a glass panel samples the backdrop", () => {
+    // A frozen frame behind a blur is the bug the loop exists to prevent, so
+    // the gate is exactly "is anything reading the backdrop".
+    const { scene, frames } = mountVideo({ glass: true });
+
+    expect(
+      repaintsOnFrame(scene, frames),
+      "the panel is sampling a moving backdrop",
+    ).toBe(1);
+
+    scene.dispose();
   });
 });
 
@@ -152,6 +259,12 @@ describe("mountFabricScene disposal", () => {
     // The counterpart to the video case, and the one that reaches a repaint:
     // a decode landing after teardown would ask the host to repaint a canvas
     // that has already been released.
+    //
+    // **The panel is what makes the decode a repaint at all.** A still image
+    // announces its decode for the same reason a video announces a frame —
+    // something has to sample the layer once the bytes are there — so with
+    // nothing sampling it the notification is not a repaint, and this case
+    // would be counting the gate instead of the teardown.
     const element = host();
     const scene = mountFabricScene({
       host: element,
@@ -165,6 +278,19 @@ describe("mountFabricScene disposal", () => {
       height: 300,
       backgroundMedia: { assetId: "hero", fit: "cover" },
     });
+    scene.canvas.add(
+      new Rect({
+        left: 40,
+        top: 40,
+        width: 60,
+        height: 40,
+        originX: "left",
+        originY: "top",
+        fill: "rgba(255, 255, 255, 0.2)",
+        vigiliaGlass: { blurRadius: 8 },
+      }),
+    );
+    scene.canvas.renderAll();
     const image = element.querySelector<HTMLImageElement>(
       "[data-vigilia-background-media] img",
     );

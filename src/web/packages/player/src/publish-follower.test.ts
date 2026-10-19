@@ -229,6 +229,74 @@ describe("followPublished", () => {
   });
 });
 
+describe("followPublished's rate report", () => {
+  it("reports a rate it can honour, and ignores one it cannot", async () => {
+    // The narrowing lives where the value is read, because it arrives as JSON
+    // and `setRate` stores the number raw and divides by it: a 0 makes the
+    // cadence comparison `< Infinity` — true for ever — and the display stops
+    // refreshing with nothing logged (R64). Refused rather than coerced.
+    const onRateChange = vi.fn();
+    const stop = followPublished(
+      {
+        pageUrl: MAP_PAGE,
+        fetch: answer({ revision: 1, display: { chartFps: 30 } }),
+      },
+      vi.fn(),
+      { intervalMs: 5, onRateChange },
+    );
+
+    await settle(20);
+    stop();
+    expect(onRateChange).toHaveBeenLastCalledWith(30);
+
+    for (const bad of [0, 7, "30", null, undefined]) {
+      const next = vi.fn();
+      const s = followPublished(
+        {
+          pageUrl: MAP_PAGE,
+          fetch: answer({ revision: 1, display: { chartFps: bad } }),
+        },
+        vi.fn(),
+        { intervalMs: 5, onRateChange: next },
+      );
+      await settle(20);
+      s();
+      expect(
+        next,
+        `chartFps ${String(bad)} is not a rate`,
+      ).not.toHaveBeenCalled();
+    }
+  });
+
+  it("reports a later rate without waiting for the revision to move", async () => {
+    // The loop is re-rated in place, so the follower has to carry a rate that
+    // moves on its own — a display whose person changed it is not a new publish.
+    let rate: unknown = 1;
+    const onRateChange = vi.fn();
+    const stop = followPublished(
+      {
+        pageUrl: MAP_PAGE,
+        fetch: vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({ revision: 0, display: { chartFps: rate } }),
+            ),
+        ),
+      },
+      vi.fn(),
+      { intervalMs: 5, onRateChange },
+    );
+
+    await settle(20);
+    rate = 30;
+    await settle(40);
+    stop();
+
+    expect(onRateChange).toHaveBeenLastCalledWith(30);
+    expect(onRateChange).toHaveBeenCalledWith(1);
+  });
+});
+
 describe("followPublished's unreachable report", () => {
   it("reports an unreachable host rather than swallowing it", async () => {
     // Today this error is discarded (`publish-follower.ts`'s `catch`), which is

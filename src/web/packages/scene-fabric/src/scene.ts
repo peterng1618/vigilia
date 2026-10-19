@@ -14,6 +14,7 @@ import {
 } from "./adapter.js";
 import { cssArtboardPaint } from "./artboard-paint.js";
 import {
+  type BackgroundMediaHandle,
   type BackgroundMediaSource,
   mountBackgroundMedia,
 } from "./background-media.js";
@@ -85,30 +86,45 @@ export function mountFabricScene(
   });
   let currentArtboard = options.artboard;
   let disposed = false;
-  const media =
-    options.resolveAsset === undefined || currentArtboard === undefined
-      ? undefined
-      : mountBackgroundMedia({
-          host,
-          artboard: currentArtboard,
-          assets: options.assets,
-          resolveAsset: options.resolveAsset,
-          // The video is not a Fabric object, so nothing else would repaint.
-          onFrame: () => canvas.requestRenderAll(),
-          ...(options.onMediaError === undefined
-            ? {}
-            : { onMediaError: options.onMediaError }),
-        });
+  // **Each reaches the other through a closure, and neither can be passed by
+  // value.** The handle is built first with a `backdrop` that reads this, and
+  // the media layer is assigned after it so its `onFrame` can read the handle
+  // (R64).
+  let media: BackgroundMediaHandle | undefined;
 
   // Glass is not a plan feature: it is a property on revived Fabric objects, so
   // the owner re-resolves them from the canvas rather than from `update()`.
   const glass = createGlass({
     canvas,
-    ...(media === undefined ? {} : { backdrop: () => media.backdrop() }),
+    ...(options.resolveAsset === undefined || currentArtboard === undefined
+      ? {}
+      : { backdrop: () => media?.backdrop() }),
     ...(options.onGlassError === undefined
       ? {}
       : { onGlassError: options.onGlassError }),
   });
+
+  if (options.resolveAsset !== undefined && currentArtboard !== undefined) {
+    media = mountBackgroundMedia({
+      host,
+      artboard: currentArtboard,
+      assets: options.assets,
+      resolveAsset: options.resolveAsset,
+      // The video is not a Fabric object, so nothing else would repaint — but
+      // only a glass panel reads the backdrop, so a video nothing blurs must
+      // not repaint the whole canvas per decoded frame. Asked per frame rather
+      // than decided here: a panel's surface is allocated *during a render*, and
+      // the player revives its objects after the mount, so a decision taken at
+      // mount time would be taken before any panel exists. The mount's own
+      // render below stays unconditional, or this gate would stall at zero.
+      onFrame: () => {
+        if (glass.liveSurfaces() > 0) canvas.requestRenderAll();
+      },
+      ...(options.onMediaError === undefined
+        ? {}
+        : { onMediaError: options.onMediaError }),
+    });
+  }
 
   let currentTransform = fit();
 

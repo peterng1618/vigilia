@@ -274,6 +274,176 @@ describe("the player's re-find", () => {
   });
 });
 
+/**
+ * The rate this display's own charts repaint at, driven through the real
+ * `main.ts`.
+ *
+ * The host answers it on `/api/published`, which the follower already polls, so
+ * the loop is re-rated in place rather than restarted. What is observed is the
+ * loop's own repaint cadence, not the argument it was started with: the driver
+ * `startChartRefresh` defaults to is `window.requestAnimationFrame`, so the spy
+ * below *is* the loop's clock (R75).
+ *
+ * It runs before the cases that follow because a jsdom file shares one window
+ * and each of those imports `main.ts` for the first time — an already-evaluated
+ * module would not run its start sequence again (R75).
+ */
+describe("the rate the display repaints at", () => {
+  let chartFps: unknown = 1;
+  let pending = new Map<number, FrameRequestCallback>();
+  let nextHandle = 0;
+  let clock = 0;
+
+  beforeEach(() => {
+    vi.resetModules();
+    chartFps = 1;
+    pending = new Map();
+    nextHandle = 0;
+    clock = 0;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  /** One frame of the loop's own clock. The clock is monotonic across calls
+   *  because the loop's own `lastRefreshMs` is: rewinding it would make every
+   *  frame look too early to repaint. */
+  function driveFrame(): void {
+    clock += 1;
+    const due = [...pending.values()];
+    pending.clear();
+    for (const callback of due) callback(clock);
+  }
+
+  /** The gap, on that clock, between the loop's next two repaints. It repaints
+   *  on the first frame at or past `1000 / rate`, so the gap is that interval
+   *  rounded up to a frame. */
+  function refreshCadenceMs(repaints: () => number): number {
+    let seen = repaints();
+    let first: number | undefined;
+
+    for (let frame = 0; frame < 5_000; frame += 1) {
+      driveFrame();
+      const total = repaints();
+      if (total === seen) continue;
+      seen = total;
+      if (first === undefined) first = clock;
+      else return clock - first;
+    }
+
+    throw new Error("the loop repainted fewer than twice in 5000 frames");
+  }
+
+  /** How many frame loops the page keeps alive: one re-armed callback per frame
+   *  is one loop, so a `setRate` that restarted the loop instead of re-setting
+   *  it would leave two. */
+  function refreshLoopsStarted(): number {
+    driveFrame();
+    return pending.size;
+  }
+
+  /** Mounts the player and hands back a count of the canvas's repaints. */
+  async function mountAt(
+    search: string,
+  ): Promise<{ readonly repaints: () => number }> {
+    skeleton();
+    history.replaceState({}, "", `/${search}`);
+    vi.stubGlobal("EventSource", SilentEventSource);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+    // `window`'s own pair, because the chart loop binds those rather than the
+    // globals `vi.stubGlobal` replaces — and stubbing the globals alone left a
+    // case at 17 s of a 20 s budget (R75).
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      nextHandle += 1;
+      pending.set(nextHandle, callback);
+      return nextHandle;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((handle) => {
+      pending.delete(handle);
+    });
+    Object.defineProperty(window, "fetch", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/published")) {
+          // A revision and a theme that never move, so the rate is the only
+          // thing the host answers differently between one poll and the next.
+          return json({
+            id: null,
+            revision: 0,
+            display: { id: "d1", theme: "living-room", chartFps },
+          });
+        }
+        if (url.endsWith("/document")) return json(mountedEnvelope());
+        return json({});
+      }),
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await import("./main.js");
+    await vi.waitFor(() => {
+      expect(
+        document.querySelector("[data-vigilia-load-failure]"),
+        "the display mounted",
+      ).toBeNull();
+      expect(
+        document.querySelector("[data-vigilia-controls]"),
+        "and reached its chrome",
+      ).not.toBeNull();
+    });
+
+    const diagnostics = window as unknown as {
+      readonly vigilia: {
+        readonly handle: {
+          readonly canvas: { requestRenderAll: () => void };
+        };
+      };
+    };
+    const render = vi.spyOn(
+      diagnostics.vigilia.handle.canvas,
+      "requestRenderAll",
+    );
+
+    return { repaints: () => render.mock.calls.length };
+  }
+
+  it("runs at the rate the host answered, not the 30 it used to hardcode", async () => {
+    const { repaints } = await mountAt(
+      "?theme=living-room&display=d1&theme-source=map&session=paired-token",
+    );
+
+    await vi.waitFor(() => expect(refreshCadenceMs(repaints)).toBe(1_000));
+  });
+
+  it("follows a rate change without a reload and without a second loop", async () => {
+    const { repaints } = await mountAt(
+      "?theme=living-room&display=d1&theme-source=map&session=paired-token",
+    );
+    await vi.waitFor(() => expect(refreshCadenceMs(repaints)).toBe(1_000));
+
+    chartFps = 30;
+    // The follower polls every two seconds, so the wait is for a poll rather
+    // than for a frame.
+    await vi.waitFor(
+      () => expect(refreshCadenceMs(repaints)).toBe(Math.ceil(1_000 / 30)),
+      { timeout: 5_000 },
+    );
+
+    expect(refreshLoopsStarted()).toBe(1);
+  });
+});
+
 describe("a rejection that arrives after the scene mounted", () => {
   it("replaces the display that was already drawn", async () => {
     const host = skeleton();

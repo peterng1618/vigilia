@@ -2379,6 +2379,9 @@ describe("A local monitor is specified rather than paired", () => {
       expect((poll.json() as { display: unknown }).display).toEqual({
         id: "left-screen",
         theme: null,
+        // A local display, so the poll also carries the rate its charts repaint
+        // at: this monitor is in front of the person using it.
+        chartFps: 1,
       });
 
       const seen = await store.find("left-screen");
@@ -4773,7 +4776,9 @@ describe("The published overlay", () => {
       expect(here.json()).toEqual({
         id: null,
         revision: 0,
-        display: { id: LOCAL_DISPLAY_ID, theme: null },
+        // `this-pc` is this machine's own monitor, so it repaints at the rate a
+        // local display defaults to rather than the paired 30.
+        display: { id: LOCAL_DISPLAY_ID, theme: null, chartFps: 1 },
       });
     } finally {
       await hosted.close();
@@ -4817,6 +4822,7 @@ describe("The published overlay", () => {
       expect((own.json() as { display: unknown }).display).toEqual({
         id: "kitchen-tablet",
         theme: "studio",
+        chartFps: 30,
       });
 
       // A display nobody assigned a theme of its own is an unpaired client, and
@@ -4837,7 +4843,45 @@ describe("The published overlay", () => {
       expect((fallback.json() as { display: unknown }).display).toEqual({
         id: "hallway-phone",
         theme: "living-room",
+        chartFps: 30,
       });
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("carries the display's own rate on the poll the player already makes", async () => {
+    // The rate the player runs its refresh loop at, answered on the poll it
+    // already makes rather than on a route of its own. A local display is in
+    // front of the person using it and repaints every second; the record's own
+    // rate wins once a person sets one.
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const displays = createDisplayStore(dir);
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+      displays,
+    });
+
+    try {
+      const local = await displays.createLocal("Desk monitor", {
+        deviceName: "DELL U2720Q",
+      });
+      const publishedFor = async (
+        id: string,
+      ): Promise<{ display: { chartFps: unknown } }> =>
+        (
+          await request(hosted.server, "GET", `/api/published?display=${id}`)
+        ).json() as { display: { chartFps: unknown } };
+
+      const before = await publishedFor(local.id);
+      expect(before.display.chartFps).toBe(1);
+
+      await displays.update(local.id, { chartFps: 30 });
+      const after = await publishedFor(local.id);
+      expect(after.display.chartFps).toBe(30);
     } finally {
       await hosted.close();
       await fs.rm(dir, { recursive: true, force: true });
@@ -4882,6 +4926,7 @@ describe("The published overlay", () => {
       expect((linked.json() as { display: unknown }).display).toEqual({
         id: "kitchen-tablet",
         theme: null,
+        chartFps: 30,
       });
 
       // The same display without one is answered its assignment, so the null
@@ -4899,6 +4944,7 @@ describe("The published overlay", () => {
       expect((assigned.json() as { display: unknown }).display).toEqual({
         id: "kitchen-tablet",
         theme: "studio",
+        chartFps: 30,
       });
     } finally {
       await hosted.close();

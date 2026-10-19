@@ -381,6 +381,12 @@ async function startHostedTheme(
           onError: (message) => showConnectionState("refused", 0, message),
         })
       : undefined;
+  // The display's own rate arrives on the poll below, so the loop starts on the
+  // paired default and is re-rated in place the moment an answer lands: a rate
+  // change is a `setRate` on the loop that exists, not a second loop.
+  const chartRefresh = startChartRefresh(refresh, 30, undefined, {
+    onError: reportRepaintError,
+  });
   const stopFollowing = followPublished(session, reResolve, {
     onRefused: (reason) => showConnectionState("refused", 0, reason),
     onThemeChange: reResolve,
@@ -389,9 +395,7 @@ async function startHostedTheme(
     // `refind` decides whether this display has an identity to match and
     // whether the last sweep is far enough behind it to run another.
     onUnreachable: () => void refind(),
-  });
-  const chartRefresh = startChartRefresh(refresh, 30, undefined, {
-    onError: reportRepaintError,
+    onRateChange: (rate) => chartRefresh.setRate(rate),
   });
   const observer = new ResizeObserver(() => handle.resize());
   observer.observe(host);

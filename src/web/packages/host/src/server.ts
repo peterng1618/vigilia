@@ -9,6 +9,7 @@ import {
   SAMPLE_STREAM_PATH,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
+import type { ChartRefreshRate } from "@vigilia/scene-fabric";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
@@ -51,6 +52,7 @@ import type {
   DisplayStore,
 } from "./settings/displays.js";
 import {
+  chartFpsFor,
   DEFAULT_DISPLAY,
   LOCAL_DISPLAY_ID,
   MonitorAlreadyHeldError,
@@ -369,6 +371,28 @@ export async function displayKeyFor(
   }
 
   return (await displayFor(request, url, displays))?.id ?? DEFAULT_DISPLAY;
+}
+
+/**
+ * The rate the display behind a key repaints its charts at.
+ *
+ * The key is not always a record. `this-pc` is this machine's own monitor and
+ * `default` is an unpaired client, and neither is ever minted — so each answers
+ * the default its own kind would carry, which is the one thing `chartFpsFor` is
+ * for. Everything else is a record id, and the record's own rate wins.
+ */
+async function chartFpsForDisplay(
+  key: string,
+  displays: DisplayStore | undefined,
+): Promise<ChartRefreshRate> {
+  const record =
+    key === LOCAL_DISPLAY_ID || key === DEFAULT_DISPLAY
+      ? undefined
+      : await displays?.find(key);
+
+  return chartFpsFor(
+    record ?? { kind: key === DEFAULT_DISPLAY ? "paired" : "local" },
+  );
 }
 
 /**
@@ -1550,6 +1574,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       const live = published.read();
       const display = await displayKeyFor(request, url, displays);
+      // The player reads its refresh rate from this poll rather than from a
+      // route of its own: it is the request a display already makes.
+      const chartFps = await chartFpsForDisplay(display, displays);
       let theme: string | null = null;
 
       // A request that named a theme is on a link, and the link is the person's
@@ -1568,7 +1595,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       sendJson(response, 200, {
         id: live?.id ?? null,
         revision: published.revision(),
-        display: { id: display, theme },
+        display: { id: display, theme, chartFps },
       });
       return;
     }
