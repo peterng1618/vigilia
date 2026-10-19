@@ -24,9 +24,10 @@ plan implements its **phase A** only. Register row: `vg-388`.
 ## Global Constraints
 
 - Run every command from `src/web/`. Scripts are `package.json`'s.
-- **One plan is active at a time.** This plan is **queued** behind
-  `2026-10-18-per-display-themes.md`, which lands first and supplies Task A.9's
-  assign action.
+- **One plan is active at a time.** This plan was queued behind
+  `2026-10-18-per-display-themes.md`, which landed on 2026-10-19
+  ([archived](archive/2026-10-18-per-display-themes.md))
+  and supplies Task A.9's assign action.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled.
 - **Fabric stays imperative behind the editor boundary.** Never mirror a Fabric
   object in React. The store mode renders no canvas at all.

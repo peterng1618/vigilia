@@ -1,6 +1,6 @@
 # Per-display themes — design
 
-- **Status:** draft 2026-10-18, revised the same day for acceptance; no plan yet
+- **Status:** implemented 2026-10-19. Plan: [`archive/2026-10-18-per-display-themes.md`](../plans/archive/2026-10-18-per-display-themes.md). Two named exceptions, neither of them a claim that the model is wrong: the broad gate is red at `design:check` because the player's chrome has never consumed the design language (`vg-626`, issue 36), and the surface that turns a local display's sign-in registration on is not built (`vg-628`, issue 38) — §"The host's own monitors" hands that surface to the store spec, and this is the record that the handoff target has not picked it up yet.
 - **Register:** `vg-574` — *Each display client holds its own theme and its own
   theme-specific settings*
 - **Lands before:** `2026-10-12-theme-store-design.md`'s phase A, which consumes
