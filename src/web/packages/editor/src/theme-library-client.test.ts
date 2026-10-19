@@ -441,6 +441,26 @@ describe("ThemeLibraryClient", () => {
     });
   });
 
+  it("refuses a display map whose fields are the wrong type", async () => {
+    // Present but wrong is not the same as absent: a `default` that is not a
+    // theme id and a `displays` that is not a list are refused rather than
+    // coerced, which is what a `??` would quietly stop doing.
+    const mockFetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ default: 5, displays: "nope" }), {
+          status: 200,
+        }),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    await expect(client.listDisplays()).resolves.toEqual({
+      default: null,
+      displays: [],
+    });
+  });
+
   it("reports the host's own answer when the display map cannot be read", async () => {
     const mockFetch = vi.fn(
       async () =>
