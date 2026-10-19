@@ -2221,8 +2221,25 @@ identity, so the re-find is a match rather than a guess.
 - Test: `src/web/packages/player/src/session.test.ts`
 - Modify: `src/web/packages/player/src/main.ts`
 
+**Where the pairing is stored, and what this task may not claim** (R60). `localStorage` is
+per-origin, so a record written on `192.168.1.10` is invisible to the page at
+`192.168.1.11`. The player therefore **stores the pairing on every load** — from
+`GET /api/host` on its own origin plus the session token and the location it is already at
+— so every origin it visits holds the identity; storing once at pairing time would make
+the first move work and the second lose the host again. That puts the call in `main.ts`,
+which is already in this file list, rather than in `pair.html`.
+
+**And the ladder only runs from a live page.** A display that reloads while the host is
+elsewhere is served the browser's error page, so a routine in the page cannot run — that
+is the spec's "A reload is the hard case", and it needs the app shell (`vg-577`), which on
+a phone over plain http is not available at all. **This task must not claim the reload
+case**, in code, comment or report: the honest sentence is that the ladder runs from a live
+page and that a display whose host moved while it was closed is back to the one-time code.
+
 **Interfaces:**
-- Consumes: `GET /api/host` (Task 1.6).
+- Consumes: `GET /api/host` (Task 1.6) — verified: `{ id, name, port }` and nothing else,
+  with `Access-Control-Allow-Origin: *` set on that response alone (`server.ts:1005-1026`),
+  registered only when the host has an identity.
 - Produces:
 
 ```ts
