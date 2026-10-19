@@ -28,7 +28,11 @@ plan argues from the spec, so read both. Register row: `vg-574`.
   default.
 - One owner per concept. A theme id, a display id and a device id are three
   different things and none may be validated by a second hand-rolled pattern.
-- Stage explicit paths. Never `git add -A`, never `git commit -a`.
+- Stage explicit paths. Never `git add -A`, never `git commit -a`. **A task's Step 5
+  `git add` line is illustrative, not exhaustive** (R56): stage what the change actually
+  touched. A required interface member can move files no one predicted — Task 4.4's two
+  broke four fake-client literals — and the controller verifies the commit's contents
+  rather than the recipe, which is why a wrong recipe is not a plan defect to patch.
 - 500 lines is a signal and 800 is a stop for a normal source file.
 - Conventional Commit titles. Comments explain **why**, are 1–3 lines, and never
   narrate the change.
