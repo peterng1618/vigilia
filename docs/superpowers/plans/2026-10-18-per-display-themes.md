@@ -2550,6 +2550,8 @@ task hiding it.
 - Test: `src/web/packages/host/src/server.test.ts`
 - Modify: `src/web/packages/player/src/main.ts`
 - Test: `src/web/packages/player/src/main.dom.test.ts`
+- Modify: `src/web/packages/player/src/publish-follower.ts` (`onRateChange`, R77)
+- Test: `src/web/packages/player/src/publish-follower.test.ts`
 - Modify: `src/web/packages/scene-fabric/src/scene.ts`
 - Test: `src/web/packages/scene-fabric/src/scene.dom.test.ts`
 
@@ -2565,6 +2567,23 @@ task hiding it.
     glass treatment is (`glass.ts:281-284`), so a caller-answered flag would be a second
     owner of that question and would need the "re-evaluate on `update()`" rule to compensate
     for state `sync()` already maintains.
+
+**No decision note is owed here, and that was checked rather than assumed (R71).** Both
+`scene-fabric/src/scene.ts` and `host/src/server.ts` **are** on the reuse gate's watchlist — it
+has grown since it was first recorded — but each is already claimed by an existing note
+(`0001`/`0007` for `scene.ts`; `0004`, `0009`, `0010`, `0017`–`0019`, `0021`, `0043`, `0064` for
+`server.ts`), and the gate compares whole paths, so a note covering one does not cover the other.
+Ask it rather than reasoning about it: `printf '{"tool_input":{"file_path":"<path>"}}' | node
+scripts/reuse-gate.mjs` from the repo root, exit 0 allowed and 2 refused.
+
+**Rulings carried into this task (R77).** The player learns nothing from `/api/published` except
+through `followPublished`, whose body type reads `theme` and nothing else
+(`publish-follower.ts:131`) — so `chartFps` would arrive at a property nothing declares. The
+follower's body type widens and it gains `readonly onRateChange?: (rate: ChartRefreshRate) => void`,
+called on the same poll the theme callback rides, and **the narrowing from R64 lives here**: the
+value is JSON, so `publish-follower.ts` refuses anything that is not `1 | 30` and `main.ts`
+receives a `ChartRefreshRate` it can hand straight to `setRate`. A malformed rate is not a rate
+change — it is ignored and the loop keeps the rate it has.
 
 **Rulings carried into this task (R64).** The gate is the scene's own, not the caller's.
 Both `media` and `glass` must be lazy in both directions, because `media` is created first:
@@ -2609,14 +2628,33 @@ it("follows a rate change without a reload", async () => {
   expect(refreshLoopsStarted()).toBe(1);
 });
 
-it("keeps its rate when the host sends one it cannot honour", async () => {
-  // setRate stores the number raw and divides by it, so a 0 makes the cadence
-  // comparison `< Infinity` — true forever — and the display stops refreshing
-  // with nothing logged. Refuse the value rather than coercing it.
-  await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
-  answerChartFps(0);
-  expect(setRateCalls()).not.toContain(0);
-  expect(refreshCadenceMs()).toBe(1_000);
+// publish-follower.test.ts — the narrowing lives where the value is read, not in
+// `main.ts` (R77). `setRate` stores the number raw and divides by it, so a 0 makes
+// the cadence comparison `< Infinity` — true forever — and the display stops
+// refreshing with nothing logged. Refuse the value rather than coercing it.
+it("reports a rate it can honour, and ignores one it cannot", async () => {
+  const onRateChange = vi.fn();
+  const stop = followPublished(
+    { pageUrl: MAP_PAGE, fetch: answer({ revision: 1, display: { chartFps: 30 } }) },
+    vi.fn(),
+    { intervalMs: 5, onRateChange },
+  );
+  await settle(20);
+  expect(onRateChange).toHaveBeenLastCalledWith(30);
+
+  // 0, 7, "30", null and undefined all leave the loop at its current rate.
+  for (const bad of [0, 7, "30", null, undefined]) {
+    stop();
+    const next = vi.fn();
+    const s = followPublished(
+      { pageUrl: MAP_PAGE, fetch: answer({ revision: 1, display: { chartFps: bad } }) },
+      vi.fn(),
+      { intervalMs: 5, onRateChange: next },
+    );
+    await settle(20);
+    s();
+    expect(next).not.toHaveBeenCalled();
+  }
 });
 
 // scene.dom.test.ts — the callback itself is what is observed: "zero repaints"
@@ -2652,7 +2690,7 @@ module.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run packages/player/src/main.dom.test.ts packages/scene-fabric/src/scene.dom.test.ts`
+Run: `npx vitest run packages/player/src/main.dom.test.ts packages/player/src/publish-follower.test.ts packages/scene-fabric/src/scene.dom.test.ts`
 Expected: FAIL — `chartFps` is undefined; the frame callback is registered either way.
 
 - [ ] **Step 3: Implement**
@@ -2678,13 +2716,13 @@ media and an `onFrame` was given, which is the same reasoning one level up.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/player/src/main.dom.test.ts packages/scene-fabric/src/scene.dom.test.ts packages/scene-fabric/src/background-media.dom.test.ts packages/host/src/server.test.ts`
+Run: `npx vitest run packages/player/src/main.dom.test.ts packages/player/src/publish-follower.test.ts packages/scene-fabric/src/scene.dom.test.ts packages/scene-fabric/src/background-media.dom.test.ts packages/host/src/server.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/player/src/main.ts src/web/packages/player/src/main.dom.test.ts src/web/packages/scene-fabric/src/scene.ts src/web/packages/scene-fabric/src/scene.dom.test.ts
+git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/player/src/main.ts src/web/packages/player/src/main.dom.test.ts src/web/packages/player/src/publish-follower.ts src/web/packages/player/src/publish-follower.test.ts src/web/packages/scene-fabric/src/scene.ts src/web/packages/scene-fabric/src/scene.dom.test.ts
 git commit -m "feat(player): refresh at the display's own rate, and stop repainting for a video nobody samples"
 ```
 
