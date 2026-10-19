@@ -639,18 +639,34 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
    * the one instrument that can offer **Save**. A `cancel` returns before the
    * mode moves; a `save` waits for the save to finish, so a failed one leaves the
    * author in the editor rather than past a guard that did not complete.
+   *
+   * **A failed save is read off the document, not off a return value.**
+   * `savePackage()` resolves whether or not the save landed — the editor reports
+   * its own failures — so the dirty mark is asked again after it. Still dirty
+   * means the save did not happen, and the author stays where their work is.
+   *
+   * The question and the save are a promise the switch cannot hand back: its
+   * handler returns `void`, so the promise is settled where it is created rather
+   * than left floating for the runtime to report.
    */
   function ShellRoot(): React.JSX.Element {
     const [mode, setMode] = useState<ShellMode>("editor");
-    const requestMode = async (next: ShellMode): Promise<void> => {
+    const requestMode = (next: ShellMode): void => {
       if (next === mode) return;
-      const session = store.bridge?.session;
-      if (mode === "editor" && session?.isDirty() === true) {
+      const session = mode === "editor" ? store.bridge?.session : undefined;
+      if (session === undefined || session.isDirty() !== true) {
+        setMode(next);
+        return;
+      }
+      void (async () => {
         const choice = await confirmDocumentReplacement(uiCopy.modes.unsaved);
         if (choice === "cancel") return;
-        if (choice === "save") await session.savePackage();
-      }
-      setMode(next);
+        if (choice === "save") {
+          await session.savePackage();
+          if (session.isDirty()) return;
+        }
+        setMode(next);
+      })().catch(() => undefined);
     };
     return <Shell mode={mode} onModeChange={requestMode} />;
   }

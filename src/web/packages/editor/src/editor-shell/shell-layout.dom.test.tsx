@@ -1586,9 +1586,15 @@ it("asks the editor's own replacement prompt before it leaves a dirty document",
   window.PointerEvent ??= MouseEvent as never;
   const root = document.createElement("div");
   const layout = createShellLayout(root);
-  const savePackage = vi.fn(async () => undefined);
+  // A save that lands clears the dirty mark, which is the only thing the shell
+  // reads back — so the stub has to move it, or the successful path is
+  // indistinguishable from the failed one.
+  let dirty = true;
+  const savePackage = vi.fn(async () => {
+    dirty = false;
+  });
   layout.setBridge(
-    bridgeStub({ session: { ...facade(), isDirty: () => true, savePackage } }),
+    bridgeStub({ session: { ...facade(), isDirty: () => dirty, savePackage } }),
     undefined,
   );
   await Promise.resolve();
@@ -1635,6 +1641,43 @@ it("asks the editor's own replacement prompt before it leaves a dirty document",
     "false",
   ]);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
+
+  layout.destroy();
+});
+
+/**
+ * A save that does not land keeps the author in the editor.
+ *
+ * `savePackage()` resolves either way — `EditorDocument.save()` reports its own
+ * failure through the editor's error channel — so "the save was awaited" is not
+ * "the save happened". The only thing that tells the two apart is the document's
+ * own dirty mark, read after the await.
+ *
+ * The save is made to fail by leaving the mark where it was: `isDirty()` keeps
+ * answering `true` and `savePackage()` resolves without clearing it, which is
+ * exactly the shape a refused or failed write has.
+ */
+it("stays in the editor when the save does not land", async () => {
+  window.PointerEvent ??= MouseEvent as never;
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const savePackage = vi.fn(async () => undefined);
+  layout.setBridge(
+    bridgeStub({ session: { ...facade(), isDirty: () => true, savePackage } }),
+    undefined,
+  );
+  await Promise.resolve();
+
+  await act(async () => modeSegments(root)[1]?.click());
+  await answerPrompt(uiCopy.replaceDocument.save);
+  await act(async () => {});
+
+  expect(savePackage, "the save answer did not save").toHaveBeenCalledTimes(1);
+  expect(chosen(root), "the mode moved past a save that did not land").toEqual([
+    "true",
+    "false",
+    "false",
+  ]);
 
   layout.destroy();
 });

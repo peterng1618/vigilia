@@ -18,11 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The header's right-hand region is per-mode** (§7.1): the three menus and the publish chord render in editor mode only, so Themes and Host show the switch and nothing beside it until A.2 and A.8 bring their own actions.
-- **The dirty guard is the editor's own replacement prompt**, `confirmDocumentReplacement()` with a question parameter and the switch's own words, so leaving a dirty document offers **Save** — a `window.confirm` cannot — and `cancel` returns without moving the mode.
-- **The third label is `Host`, not `This PC`**: `f0fceed4` shipped the drawings' word and attributed it to the user, against R100; corrected in `ui-copy.ts`, `DESIGN.md` and the e2e case, which now reads all three from `uiCopy.modes`.
-- **`MODE_NAMES` is a total `Record<ShellMode, string>`** (so a new mode without a name fails to compile), the switch and each segment carry ids, and the browser case reads the resolved `--accent` and the canvas's painted coverage after the round trip.
-- **Evidence**: focused vitest 387 passed, `npm run typecheck` and `biome check ..` (706 files) exit 0, the rail browser spec 16 expected / 0 unexpected; `npm run gate` is still red at `design:check` (`vg-626`, pre-existing, ceiling not raised).
+- **The mode switch's save path reads the document, not the promise**: `savePackage()` resolves even when the save failed, so a still-dirty `isDirty()` after the await keeps the author in the editor rather than moving past a guard that did not complete.
+- **The guard's promise is settled where it is created**: `requestMode` returns `void` — the switch's handler has no return to give — and the question/save chain is caught there, so a rejection cannot surface as an unhandled rejection.
+- **Evidence**: focused vitest 383 passed, `shell-layout.dom.test.tsx` 32 passed, `npm run typecheck` and `biome check ..` (706 files) exit 0; the failed-save case reddens when its condition is removed.
 
 ## Next
 
