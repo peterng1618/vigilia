@@ -255,16 +255,20 @@ describe("mountFabricScene disposal", () => {
     }
   });
 
-  it("releases a still image's decode listener on dispose", () => {
-    // The counterpart to the video case, and the one that reaches a repaint:
-    // a decode landing after teardown would ask the host to repaint a canvas
-    // that has already been released.
-    //
+  it("repaints once for a live decode when a panel samples the layer", () => {
     // **The panel is what makes the decode a repaint at all.** A still image
     // announces its decode for the same reason a video announces a frame —
     // something has to sample the layer once the bytes are there — so with
     // nothing sampling it the notification is not a repaint, and this case
-    // would be counting the gate instead of the teardown.
+    // would be counting the gate instead of the decode.
+    //
+    // **What the listener does after teardown is not observable from here**, and
+    // the assertion that claimed to watch it could not fail: the gate is
+    // downstream of the listener, so a leaked `load` handler would still call
+    // `onFrame` and the repaint count would still not move. That half is counted
+    // where the listener's owner lives, in `background-media.dom.test.ts`'s
+    // "stops asking for a repaint once the media is torn down", which counts
+    // `onFrame` invocations rather than repaints.
     const element = host();
     const scene = mountFabricScene({
       host: element,
@@ -306,8 +310,6 @@ describe("mountFabricScene disposal", () => {
     expect(repaints, "a live decode asks for a repaint").toBe(1);
 
     scene.dispose();
-    image?.dispatchEvent(new Event("load"));
-    expect(repaints, "and a decode after teardown asks for nothing").toBe(1);
     element.remove();
   });
 
