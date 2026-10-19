@@ -136,6 +136,36 @@ describe("createDisplayStore", () => {
     );
   });
 
+  it("declines the write for a sighting that has barely moved", async () => {
+    const record = await store.create("Kitchen tablet", "tok");
+    await store.touch(record.id, "2026-10-18T00:00:00.000Z");
+    await store.touch(record.id, "2026-10-18T00:00:02.000Z");
+
+    // A display polls every two seconds and every poll is a sighting, so a
+    // write per poll is a whole-file rewrite for a value nothing reads that
+    // finely. The stamp is what the skip shows: a write is the only thing that
+    // could have moved it.
+    expect((await store.find(record.id))?.lastSeenAt).toBe(
+      "2026-10-18T00:00:00.000Z",
+    );
+  });
+
+  it("moves a sighting past the window, in either direction", async () => {
+    const record = await store.create("Kitchen tablet", "tok");
+    await store.touch(record.id, "2026-10-18T00:00:00.000Z");
+    await store.touch(record.id, "2026-10-18T00:00:06.000Z");
+    expect((await store.find(record.id))?.lastSeenAt).toBe(
+      "2026-10-18T00:00:06.000Z",
+    );
+
+    // A clock that ran backwards is not a window this store protects: the value
+    // it was given is the one it keeps, as it always did.
+    await store.touch(record.id, "2026-10-18T00:00:00.000Z");
+    expect((await store.find(record.id))?.lastSeenAt).toBe(
+      "2026-10-18T00:00:00.000Z",
+    );
+  });
+
   it("keeps a display removed when a removal and a touch overlap", async () => {
     // Both are read-modify-write over the whole file, so without serialization
     // the touch writes back the snapshot it read — the record, with its

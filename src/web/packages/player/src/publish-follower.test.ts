@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { followPublished } from "./publish-follower.js";
+import { followPublished, reResolveUrl } from "./publish-follower.js";
 
 const answer = (body: unknown, status = 200) =>
   vi.fn(async () => new Response(JSON.stringify(body), { status }));
@@ -105,6 +105,37 @@ describe("followPublished", () => {
 
     expect(onThemeChange).toHaveBeenCalledTimes(1);
     expect(onThemeChange).toHaveBeenCalledWith("living-room");
+    // The callback *is* the reload: a caller that answered it has already
+    // navigated, and reloading the URL that navigation just left would undo it.
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("reloads itself when the caller has no theme callback", async () => {
+    let theme = "studio";
+    const reload = vi.fn();
+    const stop = followPublished(
+      {
+        pageUrl: MAP_PAGE,
+        fetch: vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                id: null,
+                revision: 0,
+                display: { id: "left-screen", theme },
+              }),
+            ),
+        ),
+      },
+      reload,
+      { intervalMs: 5 },
+    );
+
+    await settle(20);
+    theme = "living-room";
+    await settle(40);
+    stop();
+
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
@@ -173,7 +204,7 @@ describe("followPublished", () => {
 
     const map = await follow(MAP_PAGE);
     expect(map.themes).toEqual(["living-room"]);
-    expect(map.reloads).toBe(1);
+    expect(map.reloads).toBe(0);
     // The display names itself — that is the sighting its window makes — and
     // names no theme: a theme the host resolved itself is answered by the map,
     // and a page that echoed its own back would be answered `null` for ever.
@@ -195,5 +226,39 @@ describe("followPublished", () => {
     expect(published.themes).toEqual([]);
     expect(published.reloads).toBe(0);
     expect(published.asked).toBe("/api/published?theme-source=published");
+  });
+});
+
+describe("reResolveUrl", () => {
+  const page = "http://127.0.0.1:5227/";
+
+  it("re-resolves on a map page and leaves a link page's id alone", () => {
+    // `data` is what makes the host skip its resolution, so it always goes: a
+    // reload that keeps it re-serves the theme id already in the URL, and a
+    // reassignment changes exactly that id.
+    expect(
+      reResolveUrl(
+        `${page}?display=left-screen&theme=studio&data=live&theme-source=map`,
+      ),
+    ).toBe(`${page}?display=left-screen&theme-source=map`);
+
+    // The id a map page holds is the host's own answer, so it is the one that
+    // has to go; a link page's id is the person's instruction and stays.
+    expect(
+      reResolveUrl(`${page}?theme=studio&data=live&theme-source=link`),
+    ).toBe(`${page}?theme=studio&theme-source=link`);
+
+    // A published page keeps its id, exactly as it behaves today.
+    expect(
+      reResolveUrl(`${page}?theme=studio&data=live&theme-source=published`),
+    ).toBe(`${page}?theme=studio&theme-source=published`);
+  });
+
+  it("keeps the display the page names, so the sighting survives the reload", () => {
+    expect(
+      reResolveUrl(
+        `${page}?display=left-screen&session=abc123&theme=studio&data=live&theme-source=map`,
+      ),
+    ).toBe(`${page}?display=left-screen&session=abc123&theme-source=map`);
   });
 });

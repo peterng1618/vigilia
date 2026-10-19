@@ -39,6 +39,32 @@ const DEFAULT_INTERVAL_MS = 2_000;
 const PAGE_BASE = "http://vigilia.invalid";
 
 /**
+ * The page's own URL, with the resolution made to run again (R51).
+ *
+ * `GET /` skips its resolution entirely when the URL carries `data`, and its own
+ * 302 sets `data=live` — so `location.reload()` re-requests the same URL and
+ * re-serves **the same theme id**. A publish survives that, because it keeps the
+ * id and changes the document; an assignment changes the id, which is the one
+ * thing a reload cannot deliver. So `data` always goes.
+ *
+ * `theme` goes too, but **only for a page the host resolved itself**: that id is
+ * the host's own answer and is the one that has to be re-asked, while a link
+ * page's id is the person's instruction and a published page's id is what it is
+ * showing. `display` and `session` are never touched, so the display still names
+ * itself and the sighting survives the reload.
+ */
+export function reResolveUrl(href: string): string {
+  const page = new URL(href, PAGE_BASE);
+  page.searchParams.delete("data");
+
+  if (page.searchParams.get("theme-source") === "map") {
+    page.searchParams.delete("theme");
+  }
+
+  return page.href;
+}
+
+/**
  * The poll this page's own display answers.
  *
  * The page names the display it was resolved for and where its theme came from.
@@ -121,8 +147,14 @@ export function followPublished(
           const moved = lastTheme !== undefined && theme !== lastTheme;
           lastTheme = theme;
           if (moved && followsMap) {
-            options.onThemeChange?.(theme);
-            reload();
+            // The callback is the reload when there is one — it is what
+            // navigates to `reResolveUrl`, and reloading after it would
+            // re-request the URL that navigation just left.
+            if (options.onThemeChange) {
+              options.onThemeChange(theme);
+            } else {
+              reload();
+            }
             return;
           }
         }

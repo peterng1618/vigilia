@@ -27,7 +27,7 @@ import { showAvailabilityNotice, showConnectionState } from "./chrome.js";
 import { mountDisplayControls } from "./display-controls.js";
 import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
-import { followPublished } from "./publish-follower.js";
+import { followPublished, reResolveUrl } from "./publish-follower.js";
 import { registerServiceWorker } from "./service-worker.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
@@ -185,13 +185,21 @@ async function startHostedTheme(
   const controls = mountDisplayControls();
   // Only a host-served display follows a publish: a fixture theme is not
   // something an author is editing.
-  const stopFollowing = followPublished(
-    session,
-    () => window.location.reload(),
-    {
-      onRefused: (reason) => showConnectionState("refused", 0, reason),
-    },
-  );
+  //
+  // Every move this display has to follow goes back through `/`. The URL it is
+  // on names the theme the host resolved for it, and `reResolveUrl` drops what
+  // would stop that resolution running again — a plain reload would re-serve
+  // the id already in the URL, and an assignment changes exactly that id (R51).
+  // Both hooks answer the same navigation, because both mean "ask the host
+  // again": a publish change re-reads the document, a theme change re-asks the
+  // id.
+  const reResolve = (): void => {
+    window.location.href = reResolveUrl(window.location.href);
+  };
+  const stopFollowing = followPublished(session, reResolve, {
+    onRefused: (reason) => showConnectionState("refused", 0, reason),
+    onThemeChange: reResolve,
+  });
   const chartRefresh = startChartRefresh(refresh, 30, undefined, {
     onError: reportRepaintError,
   });

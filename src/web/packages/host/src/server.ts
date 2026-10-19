@@ -1525,16 +1525,21 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       const live = published.read();
-      const available = await themeStore.list();
       const display = await displayKeyFor(request, url, displays);
+      let theme: string | null = null;
+
       // A request that named a theme is on a link, and the link is the person's
       // own instruction for that page: an assignment must not move it, so the
-      // host answers none rather than one the follower would act on.
-      const theme = url.searchParams.has("theme")
-        ? null
-        : ((await assignedThemeFor(display, async (id) =>
+      // host answers none rather than one the follower would act on — and pays
+      // no listing for an answer it discards.
+      if (!url.searchParams.has("theme")) {
+        const available = await themeStore.list();
+
+        theme =
+          (await assignedThemeFor(display, async (id) =>
             available.some((entry) => entry.id === id),
-          )) ?? null);
+          )) ?? null;
+      }
 
       sendJson(response, 200, {
         id: live?.id ?? null,

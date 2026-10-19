@@ -384,6 +384,29 @@ export function normalizePatch(patch: DisplayPatch): DisplayPatch {
   };
 }
 
+/**
+ * How close two sightings have to be for the second to be the same one.
+ *
+ * The store's own number, because the store owns the file and the cost of
+ * rewriting it. It is chosen against the launcher's fifteen-second liveness
+ * window, sampled every fifteen seconds: the oldest stamp the file can hold
+ * while a poll is skipped is this plus the player's two-second interval, which
+ * is inside that window, so a sighting cannot go missing because a write was
+ * skipped.
+ *
+ * **The comparison is absolute, not forward.** A stamp *older* than the stored
+ * one is still written: the launcher tells a window that is up from one a
+ * killed host left behind by `lastSeenAt !== createdAt`, so dropping a sighting
+ * for being out of order would report a live window as absent.
+ */
+const TOUCH_INTERVAL_MS = 5_000;
+
+function withinTouchInterval(stored: string, offered: string): boolean {
+  // An unparseable stamp is not a window — `NaN` fails every comparison — so
+  // the caller's write happens, which is what this store did before the window.
+  return Math.abs(Date.parse(offered) - Date.parse(stored)) < TOUCH_INTERVAL_MS;
+}
+
 export function createDisplayStore(
   directory: string,
   options: {
@@ -597,6 +620,12 @@ export function createDisplayStore(
         const found = displays[index];
 
         if (found === undefined) return;
+        // A sighting that has barely moved is the same sighting. A display
+        // polls every two seconds, and a `touch` per poll is a whole-file
+        // rewrite for a value nothing reads that finely — the launcher reads it
+        // against a fifteen-second window sampled every fifteen seconds, so a
+        // stamp up to `TOUCH_INTERVAL_MS` old cannot change its answer.
+        if (withinTouchInterval(found.lastSeenAt, at)) return;
 
         displays[index] = { ...found, lastSeenAt: at };
         await save(displays);

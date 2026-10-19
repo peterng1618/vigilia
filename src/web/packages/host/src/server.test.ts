@@ -4827,6 +4827,57 @@ describe("The published overlay", () => {
     }
   });
 
+  it("does not list the library for a poll that named a theme", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const store = createThemeStore(dir);
+    const list = vi.fn(() => store.list());
+    const displays = createDisplayStore(dir);
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: { ...store, list },
+      displays,
+    });
+
+    try {
+      const token = newToken();
+      await displays.create("Kitchen tablet", token);
+      const asked = {
+        remoteAddress: "192.168.1.50",
+        headers: { "x-vigilia-session": token },
+      };
+
+      const linked = await request(
+        hosted.server,
+        "GET",
+        "/api/published?theme=other",
+        undefined,
+        asked,
+      );
+      expect(linked.status).toBe(200);
+
+      // The listing is only what the map's answer is read against, and a link
+      // is answered none: a directory read plus one `theme.json` per theme, on
+      // every poll of every link page, is a cost with nothing in it.
+      expect(list).not.toHaveBeenCalled();
+
+      // The same display without one is answered its assignment, so the skip
+      // above is the link rather than a route that never resolves.
+      const assigned = await request(
+        hosted.server,
+        "GET",
+        "/api/published",
+        undefined,
+        asked,
+      );
+      expect(assigned.status).toBe(200);
+      expect(list).toHaveBeenCalledTimes(1);
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("resolves the root through the published theme first, then the stored choice", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
     const store = createThemeStore(dir);
