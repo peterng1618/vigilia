@@ -5,12 +5,12 @@ Branch: `develop`
 
 ## Current objective
 
-Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Phases 1, 2 and 3 are complete and gated**; Phase 4 (the routes, the display's own write and its chooser, the reassignment read, the re-find ladder and the two host pages) is **five of eight tasks in**. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
+Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Phases 1, 2 and 3 are complete and gated**; Phase 4 (the routes, the display's own write and its chooser, the reassignment read, the re-find ladder and the two host pages) is **six of eight tasks in**. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
 - **Active plan:** `2026-10-18-per-display-themes.md` — [plan](docs/superpowers/plans/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md); execution ledger `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`.
-- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); **Phase 4's Tasks 4.1–4.5 are complete**; the pre-flight scans and the review loops have ruled R1–R68 into the ledger and no seat is running.
+- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); **Phase 4's Tasks 4.1–4.6 are complete**; the pre-flight scans and the review loops have ruled R1–R81 into the ledger and no seat is running.
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
 - Plan queue after this: `2026-10-18-theme-store.md` (its phase A only — B–G each need their own plan, G before C), then the panel work; the colour/gradient spec is unreviewed and unplanned.
 - Recorded objectives rather than queued plans: a **native player app**, the only path to real device brightness (`vg-583`), and a **TURZX panel display** ([rough capture](docs/superpowers/specs/2026-10-18-turzx-panel-displays-design.md)), both sequenced after the theme store.
@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 4.5 (`73790533` + two fix rounds to `31682fab`): a host-resolved display gains a chooser that writes its own assignment and re-resolves through `/`, mounted **only** on a `map` page.
-- **Round 1 found the regression that would have shipped silently**: mounted on any page, the control writes the map while `reResolveUrl` keeps `theme=`, so the display reloads onto the link's theme and the control appears to do nothing (R61).
-- **Round 2 found that round 1's own `link` case could not fail on its own** — a bare non-awaited assertion resting on an unstated no-await invariant, the phase's fifth occurrence of that shape (R62).
-- **The seat corrected two of my red-proof recipes, both reusable (R67)**: a microtask is not a deferral (`await Promise.resolve()` drains during the module import, so the break could not fail any implementation), and `vi.resetModules()` does not clear jsdom's `window`.
-- Proving the next three tasks before dispatch found six more plan defects — a 254-entry sweep that cannot exist, a `main.test.ts` no task can run, `samplesBackdrop` in the wrong owner, `0069` already taken (R63–R68).
+- Task 4.6 (`c190f8ad` + two fix rounds to `bbc8fafa`): a display whose host moved finds it again — a ladder of last-known address, host name, then the /24, where a probe answering a foreign `hostId` is not a match.
+- **The implementer's own two concerns were real, and one was my ruling's fault**: a record with `hostId: ""` read back as a valid pairing and matched no probe, and R69's per-episode latch **stranded** the display — the one sweep misses while the host boots, no tick can succeed at the old address, so nothing was ever tried again (R72).
+- **The review found the case that could not fail, and a fix of mine had disarmed it**: the one-writer case read through `isPairedHost`, which the blank-`hostId` check now made refuse the only record a second writer produces (R76). Sixth of that shape, first one *created* by a fix.
+- **Both red-proof recipes were wrong again and the seat corrected both** (R79) — and round 1's report was corrected by measurement, its R1 row having been run against the pre-fix tree (R81).
+- Filed `vg-623`: the ladder always builds `http://`, so from an `https://` page every probe is mixed content and it can never match — a decision, not a line, because the scheme also decides what the display navigates to (R76).
 
 ## Next
 
-1. **Phase 4 continues at Task 4.6** (a display re-finds its host after the address changes); its brief is re-extracted and R63 corrects it.
+1. **Phase 4 continues at Task 4.7** (the player's own refresh rate, and the unconditional repaint); its brief carries R64, R71 and R77.
 2. `vg-620` is the open one to weigh first: a client disconnecting mid-stream kills the host, which makes every browser proof in this repo unreliable and takes every other display's stream with it.
 3. Resume the drain at Task 23.4 when this plan stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.

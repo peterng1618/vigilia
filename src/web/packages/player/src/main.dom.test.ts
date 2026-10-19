@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 // @vitest-environment-options {"url": "http://192.168.1.10:5227/"}
 // The re-find cases below need this LAN origin: `sweepAddresses("localhost")` is
-// empty, so on the default jsdom origin the sweep is a no-op and both cases pass
-// vacuously.
+// empty, so on the default jsdom origin there is no sweep to assert and both
+// cases go red on their own counts. Measured, not reasoned: dropping this line
+// fails them (`expected +0 to be 253`), and the credential case's own
+// `swept.length > 0` guard is what turns the missing origin into red rather
+// than into a silent green.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PAIRING_STORAGE_KEY, readStoredPairing } from "./host-refind.js";
