@@ -347,6 +347,8 @@ function sampleStream(
   server: ListenableServer,
   urlPath: string,
   remoteAddress = "127.0.0.1",
+  /** Called as each write lands, which is the moment a tick reached this stream. */
+  onFrame: () => void = () => undefined,
 ): {
   readonly frames: () => string;
   /** Whether the host has ended this stream. */
@@ -368,6 +370,7 @@ function sampleStream(
   const res = new Writable({
     write(chunk, _encoding, callback) {
       chunks.push(String(chunk));
+      onFrame();
       callback();
     },
   }) as unknown as http.ServerResponse;
@@ -3283,6 +3286,7 @@ describe("The assignment a display is served", () => {
   let activeTheme: ReturnType<typeof createActiveThemeStore>;
   let devices: ReturnType<typeof createDeviceSettingsStore>;
   let hosted: ReturnType<typeof createHostServer>;
+  let echo: ReturnType<typeof assignmentEcho>;
 
   const LAN = { remoteAddress: "192.168.1.50" };
   const THEME = "gpu-readout";
@@ -3315,8 +3319,9 @@ describe("The assignment a display is served", () => {
     themeSettings = createThemeSettingsStore(dir);
     activeTheme = createActiveThemeStore(dir);
     devices = createDeviceSettingsStore(dir);
+    echo = assignmentEcho();
     hosted = createHostServer({
-      registry: new ProviderRegistry([assignmentEcho()]),
+      registry: new ProviderRegistry([echo]),
       bundles: { player: dir, editor: dir },
       displays,
       devices,
@@ -3369,13 +3374,86 @@ describe("The assignment a display is served", () => {
         .status,
     ).toBe(200);
 
-    // The answers of a display that is gone go with it: the next display called
-    // "Kitchen tablet" mints the same id, and must not be handed the card its
-    // predecessor chose.
+    // The answers and the theme of a display that is gone go with it: the next
+    // display called "Kitchen tablet" mints the same id, and must not be handed
+    // the card its predecessor chose, or the theme it was showing.
     await paired();
     expect(await themeSettings.read("kitchen-tablet", THEME)).toEqual({});
+    expect(
+      await activeTheme.read("kitchen-tablet", async () => true),
+    ).toBeUndefined();
     // And the display still here is served exactly what it was.
     expect(await servedCard(here)).toBe("gpu-0");
+  });
+
+  it("serves the answer the default display holds for the theme being shown", async () => {
+    // The host page still writes a theme's answers under `default` (ruling 38),
+    // and a display showing that theme has to be served them: the fallback is
+    // what makes a per-theme answer set on this PC reach the screen showing it.
+    await themeSettings.write(DEFAULT_DISPLAY, THEME, { gpu: "gpu-7" });
+    await activeTheme.write(DEFAULT_DISPLAY, THEME);
+
+    const { here, there } = streams(await paired());
+
+    expect(await servedCard(here)).toBe("gpu-7");
+    expect(await servedCard(there)).toBe("gpu-7");
+  });
+
+  it("samples once per distinct assignment, not once per connection", async () => {
+    // Three connections on two displays, two of them on this PC: the machine is
+    // polled twice per tick, not three times — a poll is its work, and the
+    // devices are what it reads, not the screens.
+    await themeSettings.write(LOCAL_DISPLAY_ID, THEME, { gpu: "gpu-0" });
+    await themeSettings.write("kitchen-tablet", THEME, { gpu: "gpu-1" });
+    await activeTheme.write(LOCAL_DISPLAY_ID, THEME);
+    await activeTheme.write("kitchen-tablet", THEME);
+
+    const token = await paired();
+    // Frames land one per tick per connection, so the polls between two frames
+    // of one stream are one tick's.
+    const polls: number[] = [];
+    const notePoll = (): void => {
+      polls.push(echo.assignments.length);
+    };
+    const one = sampleStream(
+      hosted.server,
+      `${SAMPLE_STREAM_PATH}?keys=gpu.temp`,
+      "127.0.0.1",
+      notePoll,
+    );
+    const two = sampleStream(
+      hosted.server,
+      `${SAMPLE_STREAM_PATH}?keys=gpu.temp`,
+    );
+    const three = sampleStream(
+      hosted.server,
+      `${SAMPLE_STREAM_PATH}?keys=gpu.temp&session=${encodeURIComponent(token)}`,
+      LAN.remoteAddress,
+    );
+
+    // Every display served before any gap is read: a tick that has not yet seen
+    // the third connection polls one group instead of two, and its gap is the
+    // ramp-up rather than the property. Counting starts once all three are in.
+    await vi.waitFor(() => {
+      expect(one.frames().length).toBeGreaterThan(0);
+      expect(two.frames().length).toBeGreaterThan(0);
+      expect(three.frames().length).toBeGreaterThan(0);
+    });
+    polls.length = 0;
+    await vi.waitFor(() => expect(polls.length).toBeGreaterThanOrEqual(6));
+    const perTick = polls
+      .slice(1)
+      .map((count, index) => count - (polls[index] ?? count));
+
+    // Two polls a tick, whatever the connection count. A poll per connection
+    // makes the gaps 1 and 2 alternating where the payload is still offered per
+    // display, and 3 where it is offered per connection — never three 2s.
+    expect(perTick.slice(-3)).toEqual([2, 2, 2]);
+
+    // And each connection is offered the payload its own assignment produced.
+    expect(await servedCard(one)).toBe("gpu-0");
+    expect(await servedCard(two)).toBe("gpu-0");
+    expect(await servedCard(three)).toBe("gpu-1");
   });
 });
 

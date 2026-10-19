@@ -674,26 +674,41 @@ export function createHostServer(options: HostServerOptions): HostServer {
     const stored =
       devices === undefined ? EMPTY_DEVICE_SETTINGS : await devices.read();
 
-    // Global answers describe this PC; a theme may override one for itself.
-    // Only where a theme differs is an answer stored, so a consumer who set the
-    // system disk once is not asked again by every theme that reads a disk.
+    // The theme this display holds, else the default's — the same fallback
+    // `assignedThemeFor` makes, and what keeps a theme chosen through
+    // `/api/themes/active` (which still writes `default`, ruling 38) applying
+    // to a display that holds none of its own (ruling 44).
     const chosen =
       activeTheme === undefined
         ? undefined
-        : await activeTheme.read(display, async () => true);
-    // The chosen theme is the display's own, so the answers read are the ones
-    // this display gave for the theme it is showing.
+        : ((await activeTheme.read(display, async () => true)) ??
+          (display === DEFAULT_DISPLAY
+            ? undefined
+            : await activeTheme.read(DEFAULT_DISPLAY, async () => true)));
+    // Global answers describe this PC; a theme may override one for itself.
+    // Only where a theme differs is an answer stored, so a consumer who set the
+    // system disk once is not asked again by every theme that reads a disk.
     const perTheme =
       chosen === undefined || themeSettings === undefined
         ? {}
         : await themeSettings.read(display, chosen);
+    // The default's answers stand in where the display gave none of its own, for
+    // the reason its theme does: the settings page still writes them under
+    // `default`, and a theme answer set there is an answer for every display
+    // showing that theme (ruling 44).
+    const shared =
+      chosen === undefined ||
+      themeSettings === undefined ||
+      display === DEFAULT_DISPLAY
+        ? {}
+        : await themeSettings.read(DEFAULT_DISPLAY, chosen);
 
     // The group is the settings module's `AssignableGroup`, not a union
     // re-spelled here: the owner is `ASSIGNABLE_GROUPS` (`settings/devices.ts`),
     // and a fourth group added there must reach this path rather than needing a
     // second edit nobody would make (vg-189).
     const pick = (group: AssignableGroup): string | undefined =>
-      perTheme[group] ?? stored.assigned[group];
+      perTheme[group] ?? shared[group] ?? stored.assigned[group];
 
     const gpu = pick("gpu");
     const systemDisk = pick("system-disk");
@@ -1257,11 +1272,12 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
-        // The answers the display gave go with it: an id is minted again by the
-        // next display of that name, and it must not inherit a device its
-        // predecessor chose. Nothing is swept when the store is absent, because
-        // no answers were ever written.
+        // The answers and the theme the display gave go with it: an id is minted
+        // again by the next display of that name, and it must not inherit a
+        // device or a theme its predecessor chose. Nothing is swept when a store
+        // is absent, because nothing was ever written to it.
         await themeSettings?.removeDisplay(id);
+        await activeTheme?.clear(id);
 
         // The window goes with the record, and only a window this host opened
         // is the host's to close.
@@ -2363,11 +2379,14 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
 
     const unmapped = new Set<string>();
+    // One clock for the whole cycle: two displays sampled in the same tick are
+    // comparable, which is what a batch's `sentAt` and its samples promise.
+    const at = now();
 
     for (const group of groupByAssignment(asks)) {
       const cycle = await registry.sample(
         group.semanticKeys,
-        now(),
+        at,
         group.assignment,
       );
 
@@ -2375,7 +2394,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       // entirely, so a display cannot tell "nothing reports this" from "no data
       // yet" (§97). An explicit gap carries the reason to the display.
       const answered = new Set(cycle.entries.map((entry) => entry.semanticKey));
-      const timestamp = new Date(now()).toISOString();
+      const timestamp = new Date(at).toISOString();
       const gaps = cycle.unmapped
         .filter((key) => !answered.has(key))
         .map((key) => ({
@@ -2391,7 +2410,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         }));
 
       const payload = JSON.stringify(
-        createBatch([...cycle.entries, ...gaps], now()),
+        createBatch([...cycle.entries, ...gaps], at),
       );
 
       for (const key of cycle.unmapped) unmapped.add(key);
