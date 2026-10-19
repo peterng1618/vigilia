@@ -91,7 +91,9 @@ gets its test in the task named beside it.
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/shell-layout.tsx`
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
-- Create: `docs/decisions/0070-the-header-owns-the-mode-switch.md`
+- Modify: `src/web/tests/e2e/editor-rail.spec.ts` (the rail's own browser proof)
+- Modify: `DESIGN.md` (§5's control, added rather than exempted)
+- Create: `docs/decisions/0074-the-header-owns-the-mode-switch.md`
 - Test: `src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx`,
   `src/web/tests/e2e/editor-rail.spec.ts` (the existing shell spec)
 
@@ -147,7 +149,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/editor/src/editor-shell/shell-layout.tsx src/web/packages/editor/src/editor-shell/editor-shell.css src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx src/web/tests/e2e/editor-rail.spec.ts docs/decisions/0070-the-header-owns-the-mode-switch.md DESIGN.md
+git add src/web/packages/editor/src/editor-shell/shell-layout.tsx src/web/packages/editor/src/editor-shell/editor-shell.css src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx src/web/tests/e2e/editor-rail.spec.ts docs/decisions/0074-the-header-owns-the-mode-switch.md DESIGN.md
 git commit -m "feat(shell): switch between the editor, the themes mode and this PC"
 ```
 
@@ -155,7 +157,9 @@ git commit -m "feat(shell): switch between the editor, the themes mode and this 
 
 **Files:**
 - Create: `src/web/packages/editor/src/store-mode/region.tsx`
+- Create: `src/web/packages/editor/src/store-mode/facet-row.tsx` (this task's own case tests it)
 - Modify: `src/web/packages/editor/src/editor-shell/shell-layout.tsx`
+- Modify: `DESIGN.md` (§5's checkbox choice row, added rather than exempted)
 - Test: `src/web/packages/editor/src/store-mode/region.dom.test.tsx`
 
 **Interfaces:**
@@ -201,7 +205,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/editor/src/store-mode/region.tsx src/web/packages/editor/src/store-mode/region.dom.test.tsx src/web/packages/editor/src/editor-shell/shell-layout.tsx DESIGN.md
+git add src/web/packages/editor/src/store-mode/region.tsx src/web/packages/editor/src/store-mode/facet-row.tsx src/web/packages/editor/src/store-mode/region.dom.test.tsx src/web/packages/editor/src/editor-shell/shell-layout.tsx DESIGN.md
 git commit -m "feat(store): add the store mode's region, its halves and its facet row"
 ```
 
@@ -210,7 +214,7 @@ git commit -m "feat(store): add the store mode's region, its halves and its face
 **Files:**
 - Create: `src/web/packages/renderer-core/src/theme/facet-record.ts`
 - Create: `src/web/packages/renderer-core/src/theme/facet-record.test.ts`
-- Create: `docs/decisions/0070-the-facet-record-lives-in-renderer-core.md`
+- Create: `docs/decisions/0075-the-facet-record-lives-in-renderer-core.md`
 - Modify: `src/web/packages/renderer-core/src/theme/index.ts` (or the package's
   public barrel — check which file re-exports `document.ts`)
 
@@ -293,7 +297,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/renderer-core/src/theme/facet-record.ts src/web/packages/renderer-core/src/theme/facet-record.test.ts src/web/packages/renderer-core/src/theme/index.ts docs/decisions/0070-the-facet-record-lives-in-renderer-core.md
+git add src/web/packages/renderer-core/src/theme/facet-record.ts src/web/packages/renderer-core/src/theme/facet-record.test.ts src/web/packages/renderer-core/src/theme/index.ts docs/decisions/0075-the-facet-record-lives-in-renderer-core.md
 git commit -m "feat(renderer-core): derive a theme's facets from its envelope"
 ```
 
@@ -384,6 +388,7 @@ git commit -m "feat(store): list this PC's themes as a gallery, through a kind's
 **Files:**
 - Create: `src/web/packages/editor/src/editor-shell/page-size.ts`
 - Create: `src/web/packages/editor/src/store-mode/pager.tsx`
+- Test: `src/web/packages/editor/src/store-mode/pager.dom.test.tsx`
 - Test: `src/web/packages/editor/src/editor-shell/page-size.test.ts`,
   `src/web/packages/editor/src/store-mode/pager.dom.test.tsx`
 
@@ -606,7 +611,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/editor/src/host-settings-mode/region.tsx src/web/packages/editor/src/host-settings-mode/region.dom.test.tsx src/web/packages/editor/src/editor-shell/shell-layout.tsx
+git add src/web/packages/editor/src/host-settings-mode/region.tsx src/web/packages/editor/src/host-settings-mode/region.dom.test.tsx src/web/packages/editor/src/editor-shell/shell-layout.tsx src/web/packages/host/src/server.ts
 git commit -m "feat(shell): show this PC as a mode of its own"
 ```
 
