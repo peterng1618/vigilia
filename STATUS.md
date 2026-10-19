@@ -1,16 +1,16 @@
 # Vigilia status
 
-Updated: 2026-10-18
+Updated: 2026-10-19
 Branch: `develop`
 
 ## Current objective
 
-Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Its Phase 1 is complete and gated**, so what runs next is the user's call: the plan's Phase 2 (the per-display map) or the backlog drain at Task 23.4. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
+Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Phase 1 is complete and gated and the user ruled Phase 2 runs next**: Task 2.1 is closed and Task 2.2 is running. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
 - **Active plan:** `2026-10-18-per-display-themes.md` — [plan](docs/superpowers/plans/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md); execution ledger `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`.
-- **Phase 1 is complete and gated** (Tasks 1.1–1.8: the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), made active by the user's 2026-10-18 ruling to run Phase 1; every task was reviewed, the pre-flight scan and the review loops ruled R1–R36 into the ledger, and no task is running.
+- **Phase 1 is complete and gated** (Tasks 1.1–1.8: the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), and **Phase 2 is active** on the user's 2026-10-19 ruling: Task 2.1 closed, Task 2.2 running; the pre-flight scan and the review loops have ruled R1–R40 into the ledger.
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
 - Plan queue after this: `2026-10-18-theme-store.md` (its phase A only — B–G each need their own plan, G before C), then the panel work; the colour/gradient spec is unreviewed and unplanned.
 - Recorded objectives rather than queued plans: a **native player app**, the only path to real device brightness (`vg-583`), and a **TURZX panel display** ([rough capture](docs/superpowers/specs/2026-10-18-turzx-panel-displays-design.md)), both sequenced after the theme store.
@@ -18,16 +18,16 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 1.8 landed (commit `89420b4b`, fix rounds `6e014b33` and `88496593`): the launcher spawns one window per local display, reconciles on an interval, and registers the host at sign-in; `stop()` closes what it opened and a pass parked in an await cannot launch after it.
-- The Phase 1 gate ran with its evidence named: `npm run gate` exit 0 (271 files, 3627 tests), and a real host on a temp app dir answering `GET /api/host` → `{id,name,port}` — which closes Task 1.6's unverified `main.ts` wiring.
-- Its browser half is real too: the pair page rendered, took the live code, and paired (`/?session=…`, zero console messages), and creating a local display started Chrome with exactly `browserCommand`'s argv at the monitor's geometry, which `DELETE` then killed.
-- Rulings R32–R36 and `vg-617`: the `createLocal` refusal, the argv's one owner, the 405's residual, and R35 — the liveness check has no producer, so `stop()` closes what it opened and the killed-host orphan stays unverified.
-- The gate found its own inputs wrong twice (item 2's 200-character example, item 7's filename) and one real gap it then closed: the reader's duplicate-id dedupe and a clear-token record had no test.
+- Task 2.1 landed (commit `38f08c3a`, fix round `94113cb0`): `ActiveThemeStore` is one map keyed by display with `default` an ordinary key, so the screen across the room can hold a theme of its own.
+- Its review found an Important this task introduced: `write` and `clear` did read-modify-write unserialized, so two overlapping writers dropped an entry — impossible under the old whole-file write; both now take the same `writeExclusively` chain the display store already uses.
+- The migration trigger narrowed to an object whose only key is `id`, so a file holding `{"id":…,"this-pc":…}` reads as the map it is instead of being rewritten and losing the entry on the next write.
+- Four red proofs (the chain, the migration trigger, `clear`'s refusal, the no-fall-back read) each failed only their target case; restores verified with `cmp`.
+- Rulings R37–R39: `readAll` leaves 2.1 for Phase 4, which is where a surface reads the whole map; the map's display keys stay unvalidated because the theme-id regex is the wrong rule for them; and the seat corrected my own count — four production call sites, not three.
 
 ## Next
 
-1. **Decide what runs next**: the plan's Phase 2 (the per-display map, Task 2.1 onward) or the drain at Task 23.4 — the user's ruling was to run Phase 1, and Phase 1 is done and gated, so this is theirs to settle before any seat is dispatched.
-2. Phase 2 inherits R35's second half: a local display's window must name itself on a repeating request and the host must record the sighting, or the killed-host orphan cannot be told from a display with no window; Review Focus 9's "loses nothing to the other" is owed to Phases 2 and 3.
+1. **Task 2.2 is running** (`GET /` resolves the asking display, producing `displayKeyFor`); its review closes Phase 2, whose next step is Phase 3 — the answers file gains a display level.
+2. Phase 2 produces the resolution and **no sighting** (R40): a `touch` there would fire on the page load a person can see and never again, so the pair lands in Task 4.2, the only task holding `server.ts` and `publish-follower.ts` together; until then the killed-host orphan cannot be told from a display with no window.
 3. Resume the drain at Task 23.4 when per-display Phase 1 stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
 5. Revisit redesign's final acceptance item after carrying rows land; propagate ruled acceptance text before closing `vg-390`.
