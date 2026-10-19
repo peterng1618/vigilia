@@ -137,10 +137,11 @@ Each gets its test in the task named beside it.1. **A display whose assigned the
     orphan behind**, and it must not close the first. This is the case a naive
     launcher gets wrong in both directions, and the reason the liveness check is
     `lastSeenAt` rather than a process scan. (Task 1.8, and the producer of that
-    check is Task 2.2's — see ruling 35: the clean-restart half is Task 1.8's and
-    closes with `stop()` killing what it opened, the killed-host half cannot be
-    verified until a window names itself on a repeating request, and the Phase 1
-    gate records it as unverified rather than verified.)
+    check is Task 4.2's — see rulings 35 and 40: the clean-restart half is Task
+    1.8's and closes with `stop()` killing what it opened, the killed-host half
+    cannot be verified until a window names itself on a repeating request, which
+    lands with Task 4.2's poll, and the Phase 1 gate records it as unverified
+    rather than verified.)
 12. **Removing a local display, and a browser the owner started themselves** —
     removal must close the window the host opened, and must never kill a browser it
     did not launch. Getting this backwards closes someone's own browsing session.
@@ -1440,18 +1441,21 @@ a paired display through the parameter, because a paired display is reached by t
 credential it was given and by nothing else. Write the reason in a comment: a
 future reader who loosens either rule has removed the reason the credential exists.
 
-**And this is where a local display's window becomes visible to the host** (ruling
-35's second half, carried here from Task 1.8). Task 1.8's launcher decides whether a
-local display already has a window by asking whether its `lastSeenAt` is inside
-`LIVE_WINDOW_MS`, and nothing produces that fact: `displayFor` answers `undefined`
-for a loopback remote by design, so a local display is never `touch`ed and its
-`lastSeenAt` stays at `createdAt` for ever. Resolving the key is what makes a
-sighting possible — a request that resolves to a **local** display must record one
-(`touch`), and the display's own page must send `?display=` on its *repeating*
-requests rather than only on load, or a window that has been up for an hour still
-reads as no window at all. Whichever half lands here, the pair has to land together:
-a touch with no repeating request changes nothing, and a repeating request with no
-touch is a request nobody records.
+**And this is where a local display becomes *nameable*** (ruling 35, carried here
+from Task 1.8). Task 1.8's launcher decides whether a local display already has a
+window by asking whether its `lastSeenAt` is inside `LIVE_WINDOW_MS`, and nothing
+produces that fact: `displayFor` answers `undefined` for a loopback remote by
+design, so a local display is never `touch`ed and its `lastSeenAt` stays at
+`createdAt` for ever.
+
+**This task produces the resolution and no sighting** (ruling 40). A `touch` here
+would fire on the page load a person can see and never again — a mechanism with no
+producer, which is the shape ruling 35 was raised about and the shape that cost this
+plan R7 and R8. The sighting needs the display's own page to name itself on its
+*repeating* requests, and that is the player's poll, which Task 4.2 already changes
+on both sides: its file list holds `server.ts` and `publish-follower.ts` together, so
+the pair lands in one task or not at all. `displayKeyFor` is the interface that makes
+it possible, and Task 4.2 is what makes it true.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1730,6 +1734,19 @@ The follower gains one more comparison beside the published-id one it already
 makes, over the same interval, and the player reloads on the callback — the
 existing reaction to a published change, reached the same way. No new poll is
 added.
+
+**This task also carries the sighting pair that closes ruling 35** (ruling 40), and
+it is here rather than in Task 2.2 because this is the only task whose file list
+holds both sides. The poll the follower already makes is the *repeating* request a
+local display's window has been missing: it must name itself with `?display=<id>`,
+and the host must record a sighting (`touch`) for a request that resolves to a
+**local** display. Both halves or neither — a touch with no repeating request
+changes nothing, and a repeating request nobody records is not a sighting — which is
+why the pair could not be split across phases. **What it fixes:** Task 1.8's
+launcher currently answers "no window" for every local display, so a host restarted
+after being killed opens a second window on a monitor that already has one. Add the
+case that pins it — a local display's poll moves its `lastSeenAt`, and the launcher
+then declines to launch — and red-prove it by removing the touch.
 
 - [ ] **Step 4: Run test to verify it passes**
 
