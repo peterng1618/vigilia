@@ -1570,7 +1570,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/settings/theme-settings.ts src/web/packages/host/src/settings/theme-settings.test.ts
+git add src/web/packages/host/src/settings/theme-settings.ts src/web/packages/host/src/settings/theme-settings.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
 git commit -m "feat(host): key a theme's answers by the display that answered"
 ```
 
