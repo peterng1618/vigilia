@@ -3246,10 +3246,15 @@ test.describe("a paired display and the theme it is given", () => {
     /**
      * The ladder's own probes, counted **inside the handler**: every `/api/host`
      * the route refused because the address it was asked at is not the one the
-     * host answers on. Only the sweep asks at those addresses, so the post-hop
-     * page's own `rememberPairing` — a request to the address it has just landed
-     * on — can never be counted here. That is what makes this an assertion about
-     * the route rather than about a URL that happened to compare equal.
+     * host answers on. Once the host has moved only the ladder asks there — the
+     * display's poll goes to `/api/published`, which the route below refuses — so
+     * the post-hop page's own `rememberPairing`, a request to the address it has
+     * just landed on, can never be counted here. That is what makes this an
+     * assertion about the route rather than about a URL that happened to compare
+     * equal. **Both of the ladder's phases land in this count** — the last-known
+     * address and the name, before the sweep (`host-refind.ts:203-209`) — because
+     * what the assertion turns on is that the ladder ran through the route, not
+     * which of its phases a probe came from.
      */
     let ladderProbesRefused = 0;
     /**
@@ -3330,13 +3335,14 @@ test.describe("a paired display and the theme it is given", () => {
       await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
       // **The route really intercepted**, so the hop came from the ladder and not
       // from a URL that happened to compare equal. Both counts are the handler's
-      // own: the one below is only ever a swept address, which nothing but the
-      // sweep asks at, and the one under it is the same second address asked
-      // again by the page that landed there — so what is asserted is a count the
-      // handler discriminated, not the only request of its kind it ever saw.
+      // own: the one below is only ever an address the host has stopped answering
+      // at, which nothing but the ladder asks, and the one under it is the same
+      // second address asked again by the page that landed there — so what is
+      // asserted is a count the handler discriminated, not the only request of
+      // its kind it ever saw.
       expect(
         ladderProbesRefused,
-        "the route never refused a swept address, so the sweep did not run through it",
+        "the route never refused one of the ladder's probes, so the ladder did not run through it",
       ).toBeGreaterThan(0);
       expect(
         answeredForTheLadder,
