@@ -5,12 +5,12 @@ Branch: `develop`
 
 ## Current objective
 
-Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Phases 1, 2 and 3 are complete and gated**; Phase 4 (the routes, the display's own write and its chooser, the reassignment read, the re-find ladder and the two host pages) is **seven of eight tasks in**. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
+Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Phases 1, 2 and 3 are complete and gated**; Phase 4 (the routes, the display's own write and its chooser, the reassignment read, the re-find ladder and the two host pages) is **eight of eight tasks in, with its gate next**. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
 - **Active plan:** `2026-10-18-per-display-themes.md` — [plan](docs/superpowers/plans/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md); execution ledger `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`.
-- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); **Phase 4's Tasks 4.1–4.7 are complete**; the pre-flight scans and the review loops have ruled R1–R89 into the ledger and no seat is running.
+- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); **Phase 4's Tasks 4.1–4.8 are complete**; the pre-flight scans and the review loops have ruled R1–R91 into the ledger and no seat is running.
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
 - Plan queue after this: `2026-10-18-theme-store.md` (its phase A only — B–G each need their own plan, G before C), then the panel work; the colour/gradient spec is unreviewed and unplanned.
 - Recorded objectives rather than queued plans: a **native player app**, the only path to real device brightness (`vg-583`), and a **TURZX panel display** ([rough capture](docs/superpowers/specs/2026-10-18-turzx-panel-displays-design.md)), both sequenced after the theme store.
@@ -18,14 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 4.7 (`15870f4f` + a fix round to `be2d45ec`): the player repaints at the display's own rate — `/api/published` answers `chartFpsFor(record)`, and `followPublished` narrows it to `1 | 30` before `setRate`, so a malformed rate cannot divide a cadence into a silent freeze (R64, R77).
-- **The unconditional repaint is gone**: `onFrame` asks `glass.liveSurfaces()`, so a video nobody samples repaints the canvas zero times — and the same gate covers a still image's decode, the other caller of that callback.
-- **The review found a seventh check that could not fail, and this commit created it**: making the gate correct disarmed the assertion guarding the listener's release, so the post-teardown half was deleted rather than propped up — `background-media.dom.test.ts` counts `onFrame` invocations and is the case that can actually go red (R87).
-- Task 4.8's brief was patched three times before dispatch: the walker is `scene-fabric/src/glass.ts`, not `renderer-core`'s same-named 90-line file (R85); Step 1 wrote a case with an empty body (R88); and its browser proof has neither a video theme nor a remote display row to run against (R89).
+- Task 4.8 (`f18bd158` + a fix round to `626c8256`): the host's assignment surface says what a theme will cost the display — `performanceCostsOf` reads the envelope alone and answers `glass-over-video` or `video-background`, and `costWarning` in `theme-list.js` holds the policy: glass over a video warns on every display, a video alone only on a host monitor and on the default (R89).
+- **The note is drawn while the rows are, not when one is pressed** — the only shape that survives the write, because `library.html` reloads on it and `settings.html` re-renders its rows on it (R86).
+- **The review's four items all landed with red proofs**: the ninth check that could not fail (the `?? "default"` fallback, asserted nowhere) and a `toBeHidden()` that passed on a zero-match locator, so it could not tell "hidden" from "absent" (R90).
+- **The seat corrected my instruction, the second time this phase**: only the `?? "paired"` mutation is catchable, because `costWarning` treats `"local"` and `"default"` identically — I had claimed both were, from the plan rather than the source (R91).
+- Note `0073`'s rung-6 claim that the probe exercised the walk was false — `performance-cost.ts:92` returns before `hasGlass` unless the background is a video — and its "ten theme folders" was eleven; both corrected, the count dropped rather than re-derived (R90).
 
 ## Next
 
-1. **Phase 4 continues at Task 4.8** (the assignment says what the theme will cost, and it warns that a video behind glass still repaints per frame); it is the phase's last task.
+1. **Phase 4's eight tasks are done; its gate is next** — `npm run gate` with its exit code read from a file, plus the four browser claims no unit test can hold (R66/R68/R74), which have no cases today.
 2. `vg-620` is the open one to weigh first: a client disconnecting mid-stream kills the host, which makes every browser proof in this repo unreliable and takes every other display's stream with it.
 3. Resume the drain at Task 23.4 when this plan stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
