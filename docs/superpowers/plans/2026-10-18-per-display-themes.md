@@ -2070,7 +2070,10 @@ git commit -m "feat(editor): assign a theme to a named display"
 **Interfaces:**
 - Consumes: `session.ts`'s existing session object, which already carries `fetch`
   (`publish-follower.ts` uses it); `chrome.ts`'s `chromeBand(side)`; Task 4.1's
-  paired `PUT`.
+  paired `PUT`; **Task 4.2's re-resolving navigation** (R51) — a display that has just
+  chosen a theme is in exactly the position a reassigned one is in, holding a `theme=`
+  id in its URL that no longer matches the map, so it shows the new theme the same way
+  rather than by a second mechanism.
 - Produces:
   - `export interface ThemeChoice { readonly id: string; readonly name: string }`
   - `export function createThemeChooser(input: { readonly session: PlayerSession; readonly side: ChromeSide; readonly current: string; readonly onChosen: (id: string) => void }): { readonly dispose: () => void }`
