@@ -2910,9 +2910,18 @@ is chosen for a display and before the write lands**, and it is the row's, so it
 on screen after the page settles — `library.html` reloads on a successful choice today,
 and a warning wiped by that reload is a warning nobody read.
 
-**What this task must check rather than assume.** The reload above: whether the note
-survives it, or whether the reload has to wait for the reader, is decided by the browser
-test and not by reading `library.html`. **Report which it turned out to be.**
+**The reload above, answered by reading rather than by the browser test (R86).** The two
+pages that call `themeList` are not alike, and the brief had been written as if they were.
+`settings.html` — **the page this task's proof runs on** — has no reload in its choose path
+at all (`onChoose: chooseTheme`, `settings.html:188`; its only "reload" strings are about a
+*display* reloading), so the note stays on screen and this task needs no change there.
+`library.html` reloads the moment the write succeeds (`:102`, commented as landing the
+consumer on the dashboard they asked for), which erases the note before it can be read —
+so on that page the warning does not appear at all. **That page is out of this task's
+scope and is filed rather than fixed here:** deferring its reload until the reader
+acknowledges is a decision about that page's flow, not a line, and the brief's Files list
+deliberately names neither page. The browser test therefore proves the note on
+`settings.html` only, and must not be written to claim otherwise.
 
 - [ ] **Step 4: Run test to verify it passes**
 
