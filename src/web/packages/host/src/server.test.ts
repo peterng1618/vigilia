@@ -40,6 +40,7 @@ import {
 import { createDisplaySettingsStore } from "./settings/display.js";
 import {
   createDisplayStore,
+  DEFAULT_DISPLAY,
   hashToken,
   LOCAL_DISPLAY_ID,
 } from "./settings/displays.js";
@@ -4053,7 +4054,7 @@ describe("The published overlay", () => {
       // The consumer chose `studio`, so a `/` with nothing else to go on shows
       // that — and the published document taking precedence over the choice is
       // the whole point of the overlay.
-      await activeTheme.write("studio");
+      await activeTheme.write(DEFAULT_DISPLAY, "studio");
 
       const before = await request(hosted.server, "GET", "/");
       expect(before.headers.location).toBe("/?theme=studio&data=live");

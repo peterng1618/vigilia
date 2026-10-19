@@ -45,6 +45,7 @@ import type {
   DisplayStore,
 } from "./settings/displays.js";
 import {
+  DEFAULT_DISPLAY,
   LOCAL_DISPLAY_ID,
   MonitorAlreadyHeldError,
   mintedDisplayId,
@@ -649,7 +650,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
     const chosen =
       activeTheme === undefined
         ? undefined
-        : await activeTheme.read(async () => true);
+        : await activeTheme.read(DEFAULT_DISPLAY, async () => true);
     const perTheme =
       chosen === undefined || themeSettings === undefined
         ? {}
@@ -1593,8 +1594,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       if (request.method === "GET") {
         const available = await themeStore.list();
+        // The default display is what an unpaired client is served as, and this
+        // route has no display to write for yet.
         const chosen =
-          (await activeTheme.read(async (id: string) =>
+          (await activeTheme.read(DEFAULT_DISPLAY, async (id: string) =>
             available.some((entry) => entry.id === id),
           )) ?? null;
 
@@ -1629,7 +1632,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
             return;
           }
 
-          await activeTheme.write(id);
+          await activeTheme.write(DEFAULT_DISPLAY, id);
           // The chosen theme may answer a device question for itself, so the
           // choice is part of what the providers read.
           await publishAssignment();
@@ -2153,7 +2156,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
       const requested = url.searchParams.get("theme");
       const stored =
         requested === null && activeTheme !== undefined
-          ? await activeTheme.read(async (id: string) =>
+          ? // A request that has not identified itself is an unpaired client,
+            // which the default display is.
+            await activeTheme.read(DEFAULT_DISPLAY, async (id: string) =>
               available.some((entry) => entry.id === id),
             )
           : undefined;
