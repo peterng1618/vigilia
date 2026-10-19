@@ -85,3 +85,21 @@ path exists to break.
 
 **What this does not change:** the host still serves both on the same port, the pairing code is still
 the only secret printed, and no display is forced onto https.
+
+## Superseded statements left in place
+
+`docs/superpowers/specs/2026-10-18-per-display-themes-design.md` says a paired display reaches the
+host over plain http in four places (`:453`, `:467`, `:560`, `:1050`). Those lines are a dated record
+of a completed plan and are **not** edited: they describe the shape as it was when that plan closed,
+and this note is what says it moved. A reader who finds one of them should read it as history.
+
+`docs/superpowers/specs/2026-10-18-per-display-themes-design.md:1050` also rests on
+"`http.createServer` with no TLS", which was already not the whole truth when it was written — the
+host has issued its own certificate since decision 0070.
+
+`docs/decisions/0070` is the note this one supersedes in part. Its last section records that the link
+surfaces were **left alone deliberately** and that a display reaches the secure origin by typing
+`https` in front of the address the host prints. That was a decision to leave the surfaces as they
+were, not a claim that typing it is a good path, and this note is what replaces it: the printed
+address is https, and the http one is the fallback rather than the thing a reader has to edit.
+
