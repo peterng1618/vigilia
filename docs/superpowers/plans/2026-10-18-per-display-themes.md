@@ -1701,11 +1701,18 @@ git commit -m "feat(host): resolve device assignments for the asking display"
 
 **Files:**
 - Modify: `src/web/packages/host/src/server.ts`
+- Modify: `src/web/packages/host/src/settings/active-theme.ts`
 - Test: `src/web/packages/host/src/server.test.ts`
+- Test: `src/web/packages/host/src/settings/active-theme.test.ts`
 
 **Interfaces:**
-- Consumes: `ActiveThemeStore.readAll` (Task 2.1), `DisplayStore.list` (Task 1.1),
-  `SessionStore.find` (Task 1.2).
+- Consumes: `ActiveThemeStore.readAll` — **added by this task** (R45): R37 removed it
+  from Task 2.1 and deferred it here, because this route is the surface that reads the
+  whole map and so the surface that says what it wants from it.
+- Consumes: `DisplayStore.list` and `DisplayStore.authenticate` (Task 1.1). **There is
+  no `SessionStore`** (R46): ruling 12 deleted sessions and moved the credential onto
+  the display record, so a paired request is resolved by `displayFor` →
+  `displays.authenticate(token)` (`server.ts:289`).
 - Produces: `GET` answers
   `{ default: string | null, displays: readonly { id: string; label: string; kind: DisplayKind; theme: string | null }[], themes, templates }`;
   **`kind` is carried because the host page's warning table is keyed on it** (Task 4.8)
@@ -1719,6 +1726,16 @@ git commit -m "feat(host): resolve device assignments for the asking display"
   loopback-only.**
 
 - [ ] **Step 1: Write the failing test**
+
+`settings/active-theme.test.ts` — the store method this task adds (R45):
+
+```ts
+it("reads every display's entry at once", async () => {
+  // Two displays and a default written; readAll returns all three by key.
+});
+```
+
+`server.test.ts`:
 
 ```ts
 it("lists every display with the theme it holds", async () => {
@@ -1752,15 +1769,16 @@ it("ignores a display named in the body by a session", async () => {
   // and the session's own entry is what changed.
 });
 
-it("refuses a session that has expired", async () => {
-  // An expired token -> 403, and no entry changes.
+it("refuses a token that matches no display", async () => {
+  // An unknown token -> 403, and no entry changes. Nothing expires (R48): the
+  // credential is a hash on the display record and `authenticate` is a lookup.
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run packages/host/src/server.test.ts -t "themes/active"`
-Expected: FAIL.
+Run: `npx vitest run packages/host/src/settings/active-theme.test.ts packages/host/src/server.test.ts`
+Expected: FAIL — the store method does not exist and the route is not the map yet.
 
 - [ ] **Step 3: Implement**
 
@@ -1768,24 +1786,31 @@ Expected: FAIL.
 this PC and never from the display store; a stored record with that id is not
 possible because Task 1.1 refuses to mint it.
 
+`readAll` returns the whole map keyed by display, and `GET` joins it against
+`displays.list()` — an entry with no theme is `theme: null` rather than absent, so the
+page can tell "no theme" from "no display".
+
 **The write's authority is derived, never claimed.** Loopback is the admin path and
-reads `display` from the body. A paired session takes the display key from
-`sessions.find(token).displayId` and **ignores `display` entirely if the body
-carries one** — ignoring rather than refusing, so a client that sends both gets the
-safe answer instead of a distinction it could probe. The two keys a session can
-never reach are `default` and `this-pc`, and they are unreachable by construction:
-a session's `displayId` is its own record's id, and Task 1.1 refuses to mint either
-reserved word.
+reads `display` from the body. A paired request takes the display key from the
+**authenticated record's id** — `displayFor(request, url, displays)` already resolves it
+and returns the record, so the route reuses that rather than looking a session up
+(R46) — and **ignores `display` entirely if the body carries one** — ignoring rather
+than refusing, so a client that sends both gets the safe answer instead of a
+distinction it could probe. The two keys a paired request can never reach are `default`
+and `this-pc`, and they are unreachable by construction: the resolved id is the
+request's own record's id, and Task 1.1 refuses to mint either reserved word.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/host/src/server.test.ts`
+Run: `npx vitest run packages/host/src/settings/active-theme.test.ts packages/host/src/server.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
+git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts \
+  src/web/packages/host/src/settings/active-theme.ts \
+  src/web/packages/host/src/settings/active-theme.test.ts
 git commit -m "feat(host): read and write the display map over one route"
 ```
 
@@ -2298,6 +2323,13 @@ this theme"*. The cost warning is that pattern rather than a second one.
 - Test: `src/web/packages/host/src/themes/store.test.ts`
 - Test: `src/web/packages/host/src/theme-list.dom.test.ts`
 - Test: `src/web/tests/e2e/host-settings.spec.ts` (the browser proof)
+
+**The decision note lands before the first write to `renderer-core/src/theme/`** (R47):
+that directory is on the reuse gate's watchlist and the gate matches a claim by path, so
+notes 0003 and 0015 — which claim `document.ts` and `glass.ts` — do not cover a new
+`performance-cost.ts` and the hook refuses the write until 0069 exists and claims it.
+The seven rungs are worked and recorded in the note; the gate's own rule is that the
+searches are the evidence.
 
 **Interfaces:**
 - Consumes: `glassTreatment`, `VIGILIA_GLASS_PROPERTY` (`renderer-core/src/theme/glass.ts`);
