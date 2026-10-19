@@ -3116,6 +3116,15 @@ test.describe("a paired display and the theme it is given", () => {
     const display = await pairDisplay(request, "E2E reassignment");
 
     try {
+      // Every committed navigation of this page, so "the display moved because
+      // the host's answer changed" can be told from "the display re-serves
+      // whatever it is on" — which is the whole of R50/R51 and the one thing a
+      // URL or a node id cannot distinguish.
+      const navigations: string[] = [];
+      page.on("framenavigated", (frame) => {
+        if (frame === page.mainFrame()) navigations.push(frame.url());
+      });
+
       // One theme, on a map page: the host resolved this id for this display.
       await assign(request, display.id, HOST_CHART_THEME_ID);
       await page.goto(`${origin}/?session=${display.token}`);
@@ -3125,6 +3134,20 @@ test.describe("a paired display and the theme it is given", () => {
         HOST_CHART_THEME_ID,
       );
       await expect.poll(() => rootNodeIds(page)).toContain(CHART_NODE_ID);
+
+      // **The answer has not moved, so the display must not re-serve.** Three
+      // poll intervals of silence is what a follower that reloads on every tick
+      // cannot produce, and the count is cleared first so the load above — its
+      // own navigation and the host's 302 — is not what is being read.
+      navigations.length = 0;
+      await page.waitForTimeout(6_500);
+      expect(
+        navigations,
+        "the display re-served with the host's answer unchanged",
+      ).toEqual([]);
+      expect(new URL(page.url()).searchParams.get("theme")).toBe(
+        HOST_CHART_THEME_ID,
+      );
 
       // The host assigns another.
       await assign(request, display.id, HOST_THEME_ID);
@@ -3141,6 +3164,12 @@ test.describe("a paired display and the theme it is given", () => {
       await expect
         .poll(() => rootNodeIds(page), { timeout: 20_000 })
         .toContain(CLOCK_NODE_ID);
+      // ...and the move was a navigation, which is what makes the silence above
+      // a reading rather than a follower that never moves at all.
+      expect(
+        navigations.length,
+        "the assignment did not reach the display as a navigation",
+      ).toBeGreaterThan(0);
     } finally {
       await request.delete(`${admin}/api/displays/${display.id}`);
     }
@@ -3178,7 +3207,10 @@ test.describe("a paired display and the theme it is given", () => {
 
       // The same control is absent on a link page — **carrying the same
       // credential**, so what is read is the source and not a missing session.
-      // A token-less page would be absent for the other reason.
+      // A token-less page would be absent for the other reason. The locator is
+      // the one `toBeVisible` above matched a real chooser with, which is what
+      // keeps this absence from being satisfied by a selector that matches
+      // nothing anywhere.
       await page.goto(
         `${origin}/?theme=${HOST_CHART_THEME_ID}&session=${display.token}`,
       );
@@ -3199,10 +3231,43 @@ test.describe("a paired display and the theme it is given", () => {
     // at: **the same port**, which is what a re-find match is
     // (`originFor(address, pairing.port)`). Both are this machine, because the
     // host is bound to `0.0.0.0` and so answers across the loopback block.
+    //
+    // **What this case is, and is not.** The display it loads is `this-pc`: a
+    // loopback request resolves as this PC whatever credential its URL carries,
+    // so the token here is what `rememberPairing` needs to write an identity and
+    // not a credential the host ever checks. What is proven is the ladder and
+    // the hop; the credential-authorised path — a paired display resolving as
+    // its own record — is not what runs here. The second address answering at
+    // all rests on the source address of a connection to `127.0.0.2` being
+    // loopback too, which is why the host serves it as `this-pc` and not as the
+    // display the token names.
     const known = `http://127.0.0.1:${port}`;
     const elsewhereAddress = new URL(secondAddress).hostname;
-    /** How many of the sweep's probes the route itself answered. */
-    let probesAnswered = 0;
+    /**
+     * The ladder's own probes, counted **inside the handler**: every `/api/host`
+     * the route refused because the address it was asked at is not the one the
+     * host answers on. Only the sweep asks at those addresses, so the post-hop
+     * page's own `rememberPairing` — a request to the address it has just landed
+     * on — can never be counted here. That is what makes this an assertion about
+     * the route rather than about a URL that happened to compare equal.
+     */
+    let ladderProbesRefused = 0;
+    /**
+     * The second address's `/api/host`, answered by the route **while the page
+     * was still at the address it knew**. The hop has committed by the time the
+     * new document writes its own pairing, so that write cannot be counted here
+     * either.
+     */
+    let answeredForTheLadder = 0;
+    /**
+     * The complement of the count above, and the reason it means anything: a
+     * request to the second address made by a page that is **no longer at the
+     * address it knew**. The page that lands there writes its own pairing on
+     * every load, so this request is real and arrives at the same handler; the
+     * assertion on it is what shows the count above excludes it rather than
+     * happening not to have seen it.
+     */
+    let answeredAfterHop = 0;
     /**
      * Flipped once the load has stored its pairing. Before that the display's own
      * `/api/host` is the one the route must let through — it is what writes the
@@ -3218,12 +3283,14 @@ test.describe("a paired display and the theme it is given", () => {
 
         if (target.pathname === "/api/host") {
           if (target.hostname === elsewhereAddress) {
-            probesAnswered += 1;
+            if (page.url().startsWith(known)) answeredForTheLadder += 1;
+            else answeredAfterHop += 1;
             await route.fulfill({ json: { id: hostId, name: hostName, port } });
             return;
           }
 
           if (moved) {
+            ladderProbesRefused += 1;
             await route.abort();
             return;
           }
@@ -3262,9 +3329,31 @@ test.describe("a paired display and the theme it is given", () => {
         .toContain(`${secondAddress}/`);
       await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
       // **The route really intercepted**, so the hop came from the ladder and not
-      // from a URL that happened to compare equal: the second address's own
-      // `/api/host` is answered here rather than by any host on this machine.
-      expect(probesAnswered).toBeGreaterThan(0);
+      // from a URL that happened to compare equal. Both counts are the handler's
+      // own: the one below is only ever a swept address, which nothing but the
+      // sweep asks at, and the one under it is the same second address asked
+      // again by the page that landed there — so what is asserted is a count the
+      // handler discriminated, not the only request of its kind it ever saw.
+      expect(
+        ladderProbesRefused,
+        "the route never refused a swept address, so the sweep did not run through it",
+      ).toBeGreaterThan(0);
+      expect(
+        answeredForTheLadder,
+        "the second address was never answered for the ladder, only for the page that landed there",
+      ).toBeGreaterThan(0);
+      // ...and the same address *is* asked again by the page that landed on it,
+      // so the count above is one the handler had to discriminate rather than
+      // the only request of its kind. Polled: this write is fired and not
+      // awaited by the load it belongs to, so it may land after the hop's own
+      // assertion does.
+      await expect
+        .poll(() => answeredAfterHop, {
+          message:
+            "the post-hop page's own /api/host never reached the route, so the count above is not shown to exclude it",
+          timeout: 10_000,
+        })
+        .toBeGreaterThan(0);
     } finally {
       await request.delete(`${admin}/api/displays/${display.id}`);
     }
