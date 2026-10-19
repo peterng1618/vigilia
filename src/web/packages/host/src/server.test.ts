@@ -4280,6 +4280,16 @@ describe("The root page resolves the display that asked", () => {
         displays,
       ),
     ).toBe(DEFAULT_DISPLAY);
+
+    // The parameter and the off-PC caller together: the local display is in the
+    // store, so a reader that took `?display=` from anywhere would answer it.
+    expect(
+      await displayKeyFor(
+        message("192.168.1.50"),
+        new URL("http://host/?display=left-screen"),
+        displays,
+      ),
+    ).toBe(DEFAULT_DISPLAY);
   });
 });
 

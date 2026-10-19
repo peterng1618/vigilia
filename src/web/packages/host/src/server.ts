@@ -289,9 +289,11 @@ export async function displayFor(
     return undefined;
   }
 
-  // One write per authenticated request is what `lastSeenAt` costs, which is why
-  // it is recorded here rather than by a second polling loop. Bookkeeping must
-  // not fail the request it rode in on, so a write that refuses is dropped.
+  // `lastSeenAt` costs a write here rather than a second polling loop. A request
+  // that resolves its display twice — the pairing guard, then the root route —
+  // pays it twice, which a page load can afford; a memo would be request-scoped
+  // state this function does not otherwise hold. A refused write is dropped:
+  // bookkeeping must not fail the request it rode in on.
   await displays
     .touch(record.id, new Date().toISOString())
     .catch(() => undefined);
