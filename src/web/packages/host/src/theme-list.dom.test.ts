@@ -636,4 +636,16 @@ describe("what a theme costs the display it is given to", () => {
     // how a warning stops being read.
     expect(noteFor(host, "loop")?.hidden).toBe(true);
   });
+
+  it("warns for every cost when the chosen row is one the list does not name", () => {
+    // `selected` opens on the default, which is not a display in the list, so
+    // this is the page's own first state rather than a contrived one. Reading
+    // that fallback as "paired" would silence the warning on the one row that
+    // cannot be asked which display it is — and a default may land on a host
+    // monitor.
+    const host = mount(themeList(COSTED, { displays: DISPLAYS, onChoose }));
+
+    expect(noteFor(host, "loop")?.hidden).toBe(false);
+    expect(noteFor(host, "loop")?.textContent).toMatch(/idle/i);
+  });
 });

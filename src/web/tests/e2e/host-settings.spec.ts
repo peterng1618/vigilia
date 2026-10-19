@@ -453,9 +453,14 @@ test.describe("the settings page a consumer configures", () => {
 
       // A paired display across the room pays nothing for the same theme, and
       // is told nothing: a phone showing video is doing what a phone does.
+      //
+      // **Present, and then hidden** — in that order, because `toBeHidden()`
+      // alone passes on a locator that matches nothing, so it would be
+      // satisfied by the note never being drawn for this row at all.
       await page
         .locator(`#themes [data-display="${PAIRED_DISPLAY_ID}"]`)
         .click();
+      await expect(note).toHaveCount(1);
       await expect(note).toBeHidden();
     } finally {
       restoreDisplays(previous);

@@ -124,24 +124,35 @@ worth a dependency: the whole reader is two declared facts and a recursive walk.
 
 Measured, not asserted:
 
-1. **The seeded e2e library, through the real function.** `seedHostTheme` writes
-   ten theme folders under `src/web/.e2e-host-app/themes/`; the walk's answer for
-   each is the number recorded in this task's report. `e2e-grouped-glass` carries
-   glass nested inside a `Group` (the recursion case), `e2e-media` carries an
-   `svg` background (the "an image background is not a video one" case), and the
-   new `e2e-video` fixture is the only one that answers `["video-background"]`.
+1. **The seeded e2e library, through the real route.** A host was started over
+   `src/web/.e2e-host-app` and `/api/themes/active` was read: every fixture
+   answered `[]` except the new `e2e-video`, which answered
+   `["video-background"]`. `seedHostTheme` writes one folder per theme in its own
+   array — the clock, disk, temperature, two-language and missing-sensor
+   fixtures, the grouped-glass and packaged-media compositions, the chart, the
+   overhang composition, and the video fixture this task added — so the probe
+   covers the listing carrying costs for a whole real library, and an `svg`
+   background (`e2e-media`) not being read as a video one.
+   **It does not cover the glass walk**, and the first draft of this note claimed
+   it did: `performanceCostsOf` returns before `hasGlass` unless the background
+   is a video, and no seeded fixture has both. `e2e-grouped-glass` never reaches
+   the walk at all. The recursion is covered by the unit case that nests a panel
+   inside a `Group` under a video background ("finds glass inside a group, where
+   the editor puts a card"), which is the only place a nested treatment is
+   exercised.
 2. **The listing pays no new I/O.** `ThemeStore.list()` already reads each
    theme's `theme.json` through `readEnvelope` and hands the parsed envelope to
    `entryFor`; the costs are computed from that same object, so no file is opened
    that was not opened before. The observable half of this is the browser proof
    in step 4 of the task: the host's `/api/themes/active` answers `costs` for
    every theme with no route change at all.
-3. **The declaration, not the path, decides.** The unit case built by
-   `withAssetKind(videoWithGlass, "image")` changes one field — the asset's
-   declared `kind` — while its `path` still names the video file, and the answer
-   is `[]`. An implementation that sniffed the extension answers
-   `["video-background"]` there; that case fails against such an implementation
-   before this one is trusted.
+3. **The declaration, not the path, decides — measured by breaking it.** The unit
+   case built by `withAssetKind(videoWithGlass, "image")` changes one field — the
+   asset's declared `kind` — while its `path` still names the video file, and the
+   answer is `[]`. Replacing the kind read with a `.webm` path sniff was run: it
+   reddened two cases, "does not call an image background a video one" and "finds
+   neither for a plain theme, and neither for glass over an image", and the file
+   was restored byte-identically afterwards.
 
 ## Rung 7 — build
 

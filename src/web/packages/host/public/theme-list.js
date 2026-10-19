@@ -274,10 +274,10 @@ export function themeList(
     row.type = "button";
     row.className = "theme-option";
     row.dataset.display = id;
-    // The kind rides the row because the warning table is keyed on it and a page
-    // cannot ask a display what it is. The default row is the fallback rather
-    // than a display, so it has none — which is what the table reads as "warn
-    // for every cost".
+    // The kind is published on the row for a page that wants it, and is not read
+    // back by the warning below: that asks the `displays` array for the row
+    // `selected` names, which is the one fact the two would have to share. The
+    // default row is the fallback rather than a display, so it carries none.
     if (kind !== undefined) row.dataset.kind = kind;
     row.setAttribute("aria-pressed", String(id === selected));
     row.append(rowText(label, heldText(theme, isDefault)));
@@ -306,10 +306,12 @@ export function themeList(
   // "what is this display showing" rather than "what did anyone choose".
   const showing = shownTheme(selected, displays, defaultTheme);
 
-  // The kind of the display those rows are being chosen for. A cost note is
-  // about the pair a press would commit, so it depends on this as much as on
-  // the theme it sits under. A row with no kind is the default, which any
-  // display may fall to.
+  // The kind of the display those rows are being chosen for, asked of the
+  // `displays` array rather than read back off a row. A cost note is about the
+  // pair a press would commit, so it depends on this as much as on the theme it
+  // sits under. A `selected` the list does not name — the default, which is what
+  // the page opens on — has no kind and may land on a host monitor, so it reads
+  // as "default" and is warned for every cost.
   const assignedKind =
     displays.find((display) => display.id === selected)?.kind ?? "default";
 
