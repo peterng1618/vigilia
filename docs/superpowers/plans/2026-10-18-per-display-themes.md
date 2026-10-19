@@ -1956,8 +1956,15 @@ git commit -m "feat(player): follow the theme this display was assigned"
 - Modify: `src/web/packages/host/public/theme-list.js` — **the rows are drawn there**, so
   a display column cannot be added to a page without it. It gains the `displays` option
   the column offers and reports `(display, id)` on choose.
+- Modify: `src/web/packages/host/src/server.ts` (R53 — the answers route must resolve the
+  display the page names; it reads and writes `DEFAULT_DISPLAY` unconditionally today,
+  `server.ts:1951-1956`, so the answers the page offers to edit are not the ones it is
+  showing)
 - Modify: `src/web/packages/host/src/editor-link.dom.test.ts`
 - Modify: `src/web/packages/host/src/settings-page.dom.test.ts`
+- Modify: `src/web/packages/host/src/theme-list.dom.test.ts` (R54 — it mounts the module
+  this task changes, and the brief named only the other two)
+- Test: `src/web/packages/host/src/server.test.ts`
 - Test: `src/web/tests/e2e/host-settings.spec.ts` (the existing spec covering the
   host's own pages)
 
@@ -1979,6 +1986,20 @@ Browser proof, because the visible behaviour is what changed: a display row per
 display with the theme each holds, a default row above them, and choosing a theme
 for one row leaving the others as they were.
 
+Plus the unit cases for the answers route (R53), which the browser proof cannot
+pin on its own — it would show the form working while writing the wrong key:
+
+```ts
+it("reads and writes the answers of the display the page names", async () => {
+  // GET /api/themes/x/answers?display=this-pc -> this-pc's entry, not default's;
+  // PUT to the same URL lands under this-pc.
+});
+
+it("refuses a display it does not know, and keeps the default for none", async () => {
+  // ?display=nobody -> 404; no ?display= -> the default's entry, unchanged.
+});
+```
+
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `npx playwright test tests/e2e/host-settings.spec.ts --workers=1` against
@@ -1990,6 +2011,18 @@ Both pages keep their existing rows and gain a display column: the default row
 first, then one row per display from the route's `displays`. A write sends
 `{ display, id }`. `settings.html`'s answers form sends the display it is showing
 for, and reads the answers for that display's use of the active theme.
+
+**And the answers route must resolve that display, or the form edits the wrong one**
+(R53). `/api/themes/:id/answers` reads and writes `DEFAULT_DISPLAY` unconditionally
+(`server.ts:1951-1956`), so a page naming `this-pc` has its answers stored under
+`default` — the display-keyed file with a reader that hardcodes one key. The route is
+loopback-only admin (`server.ts:1942-1946`), so `?display=` may name **any** display and
+is validated against the store, which is the authority Task 4.1 gave the loopback `PUT`
+— **not `displayKeyFor`**, which on loopback honours `?display=` only for a **local**
+record, because that parameter is the one thing that could impersonate a
+credential-less monitor, and the host's page has to reach a paired display's answers
+too. An absent `?display=` keeps `DEFAULT_DISPLAY`; an id the store does not know is
+refused rather than answered as the default.
 
 **The column is drawn by `theme-list.js`**, so that module gains the option and the
 pages only pass it. The display's `kind` travels with it and is read by Task 4.8's
@@ -2008,8 +2041,10 @@ in this task.
 ```bash
 git add src/web/packages/host/public/library.html src/web/packages/host/public/settings.html \
   src/web/packages/host/public/theme-list.js \
+  src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts \
   src/web/packages/host/src/editor-link.dom.test.ts \
   src/web/packages/host/src/settings-page.dom.test.ts \
+  src/web/packages/host/src/theme-list.dom.test.ts \
   src/web/tests/e2e/host-settings.spec.ts
 git commit -m "feat(host): choose a theme per display from the host's own pages"
 ```
