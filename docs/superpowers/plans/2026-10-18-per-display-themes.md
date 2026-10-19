@@ -185,8 +185,8 @@ Each gets its test in the task named beside it.
 | `packages/host/src/settings/devices.ts` (modify) | Exports `DEVICE_ID_PATTERN`, the one id shape the host accepts |
 | `packages/host/src/settings/theme-settings.ts` (modify) | Answers gain a display level above their theme level |
 | `packages/host/src/settings/active-theme.ts` (modify) | One map from display key to theme id, `default` reserved |
-| `packages/host/src/settings/monitors.ts` (create) | What `systeminformation` reports is attached, and the hint and command line a local display needs |
-| `packages/host/src/serve/display-launcher.ts` (create) | Launches, reconciles and closes the browser for each local display, and registers the host at sign-in |
+| `packages/host/src/settings/monitors.ts` (create) | What `systeminformation` reports is attached, and the hint that identifies a local display's own monitor, with the URL and the geometry it is launched at |
+| `packages/host/src/serve/display-launcher.ts` (create) | Launches, reconciles and closes the browser for each local display — the one owner of the command line and its flags — and registers the host at sign-in |
 | `packages/host/src/session/pairing.ts` (modify) | The CSPRNG mint and the constant-time compare, and nothing that expires |
 | `packages/host/src/session/pairing-code.ts` (create) | The one-time code: its alphabet, its expiry, and the claim that consumes it |
 | `packages/host/public/pair.html` (create) | The page a camera-less display types the code into |
@@ -196,6 +196,7 @@ Each gets its test in the task named beside it.
 | `packages/player/src/publish-follower.ts` (modify) | A display follows its own reassignment |
 | `packages/player/src/theme-chooser.ts` (create) | The display's own chooser: a chrome control that lists this host's themes and writes the one chosen |
 | `packages/player/src/host-refind.ts` (create) | The ladder that finds this display's own host again after its address changes |
+| `packages/renderer-core/src/theme/performance-cost.ts` (create) | What displaying a theme costs, read from the `kind` each asset declares rather than from its path: the per-frame repaints a background needs, and the costs a display of each kind carries |
 | `packages/host/src/themes/store.ts` (modify) | A listed theme carries what displaying it costs, read from the envelope `list()` already reads |
 | `packages/host/public/theme-list.js` (modify) | The theme row itself: the display column it offers (Task 4.3), and which costs matter for a display of each kind, the sentence each shows and the row note that says it (Task 4.8) |
 | `packages/host/public/library.html`, `settings.html` (modify) | The two host pages write the display they name, and hand the row the kind of the display it is assigning to |

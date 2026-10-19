@@ -53,6 +53,20 @@ describe("refindHost", () => {
     expect(await refindHost(pairing, async () => undefined)).toBeUndefined();
   });
 
+  it("answers nothing when every probe rejects, as an untrusted origin does", async () => {
+    // Review Focus 17: a display whose host moved and whose certificate it does
+    // not trust. A fetch to that origin rejects rather than answering, so every
+    // rung of the ladder fails that way — and the ladder answers nothing rather
+    // than throwing, which leaves the one-time code as the way back.
+    const untrusted = async (): Promise<
+      { readonly id: string; readonly name: string } | undefined
+    > => {
+      throw new Error("the certificate is not trusted");
+    };
+
+    await expect(refindHost(pairing, untrusted)).resolves.toBeUndefined();
+  });
+
   it("sweeps its own /24 and not the address it already tried", () => {
     const addresses = sweepAddresses("192.168.1.10");
     // 254 usable hosts, less the one the ladder already tried. `.0` and `.255`

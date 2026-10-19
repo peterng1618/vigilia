@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import type { ChartRefreshRate } from "@vigilia/scene-fabric";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createActiveThemeStore } from "./active-theme.js";
 import {
   chartFpsFor,
   createDisplayStore,
@@ -12,6 +13,7 @@ import {
   normalizeLabel,
   normalizeMonitor,
 } from "./displays.js";
+import { createThemeSettingsStore } from "./theme-settings.js";
 
 const FILE = "display-clients.json";
 
@@ -365,6 +367,38 @@ describe("createDisplayStore", () => {
     expect(
       (await store.list()).filter((d) => d.label === "Kitchen"),
     ).toHaveLength(2);
+  });
+
+  // Item 9's second clause: the list disambiguates, and neither display may
+  // lose its theme or its answers to the other. Both are keyed by the id, so a
+  // rename onto a label already in the list has to leave each one's own
+  // resolution standing — a resolution keyed on the label would hand the second
+  // display's theme and answers to the first.
+  it("keeps each colliding label's own theme and answers on its own id", async () => {
+    const activeTheme = createActiveThemeStore(directory);
+    const answers = createThemeSettingsStore(directory);
+    const first = await store.create("Kitchen", "t1");
+    const second = await store.create("Kitchen", "t2");
+
+    await activeTheme.write(first.id, "living-room");
+    await activeTheme.write(second.id, "studio");
+    // One theme, answered differently: the two Kitchens are showing the same
+    // dashboard and reading a different GPU.
+    await answers.write(first.id, "living-room", { gpu: "gpu-0" });
+    await answers.write(second.id, "living-room", { gpu: "gpu-1" });
+
+    expect(first.label).toBe(second.label);
+    expect(await activeTheme.read(first.id, async () => true)).toBe(
+      "living-room",
+    );
+    expect(await activeTheme.read(second.id, async () => true)).toBe("studio");
+    expect(await answers.read(first.id, "living-room")).toEqual({
+      gpu: "gpu-0",
+    });
+    expect(await answers.read(second.id, "living-room")).toEqual({
+      gpu: "gpu-1",
+    });
+    expect(first.id).not.toBe(second.id);
   });
 
   // A local monitor is a display with no credential.

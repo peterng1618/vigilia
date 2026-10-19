@@ -78,9 +78,19 @@ describe("theme answers", () => {
 
     // Each of the three keys is held to its own pattern, so only the last
     // answer survives.
-    expect(await store.read("../x", "wall")).toEqual({});
     expect(await store.read("this-pc", "bad id")).toEqual({});
     expect(await store.read("this-pc", "wall")).toEqual({ gpu: "gpu-0" });
+
+    // `read` refuses the *requested* display before it opens the map, so a read
+    // of `../x` answering `{}` cannot tell a stored key that was dropped from a
+    // read that was refused — and the unknown display key is the whole of what
+    // this case is about. The write below goes through the same normalisation
+    // and lands on disk, where a key that was carried rather than dropped shows.
+    await store.write("this-pc", "office", { gpu: "gpu-2" });
+
+    expect(JSON.parse(await readFile(answersFile(dir), "utf8"))).toEqual({
+      "this-pc": { wall: { gpu: "gpu-0" }, office: { gpu: "gpu-2" } },
+    });
   });
 
   it("removes one theme across every display, and one display across every theme", async () => {

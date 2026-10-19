@@ -3,7 +3,6 @@ import {
   type SpawnOptions,
   spawn,
 } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -30,6 +29,10 @@ import {
 const NOW = Date.parse("2026-10-18T12:00:00.000Z");
 const STALE = new Date(NOW - LIVE_WINDOW_MS - 1000).toISOString();
 const RECENT = new Date(NOW - 1000).toISOString();
+
+/** The family `findBrowser` opens a window with, by the name it lands on: the
+ *  contract, rather than a copy of each platform's install list. */
+const BROWSER_NAME = /chrome|chromium|edge/i;
 
 const ATTACHED: readonly Monitor[] = [
   {
@@ -353,9 +356,13 @@ describe("findBrowser", () => {
     // exactly the case that is not this one.)
     expect(findBrowser("aix")).toBeUndefined();
 
-    // Whatever this machine does answer is a path that exists.
+    // Whatever this machine answers has to be a browser this host would open a
+    // window with. `existsSync` alone is satisfied by any file that is there,
+    // which is what a guessed path is.
     const found = findBrowser();
-    expect(found === undefined || existsSync(found)).toBe(true);
+    expect(found === undefined || BROWSER_NAME.test(path.basename(found))).toBe(
+      true,
+    );
   });
 });
 
