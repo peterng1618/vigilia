@@ -35,8 +35,12 @@ const THEME_ID = /^[A-Za-z0-9_-]{1,64}$/;
  * The single-theme file this replaced, `{ "id": "<theme>" }`, is read as the
  * default display's entry. That is one person's own choice rather than
  * compatibility glue for a superseded internal design: losing it would leave a
- * working dashboard blank. The next write persists the map and the `id` key is
- * not written again.
+ * working dashboard blank. The next write persists the map, so `id` is not
+ * written again.
+ *
+ * Only a file holding nothing else is that old shape. `id` is a legal display
+ * id, so a file carrying it beside real entries is a map, and reading it as the
+ * old shape would eat the displays it holds.
  */
 function asMap(parsed: unknown): Record<string, unknown> | undefined {
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
@@ -45,7 +49,7 @@ function asMap(parsed: unknown): Record<string, unknown> | undefined {
 
   const map = parsed as Record<string, unknown>;
 
-  return !Object.hasOwn(map, DEFAULT_DISPLAY) && typeof map["id"] === "string"
+  return Object.keys(map).length === 1 && typeof map["id"] === "string"
     ? { [DEFAULT_DISPLAY]: map["id"] }
     : map;
 }
@@ -116,6 +120,24 @@ export function createActiveThemeStore(directory: string): ActiveThemeStore {
     return stored.map;
   };
 
+  /**
+   * One write at a time.
+   *
+   * Every mutator is read-modify-write over the whole map, so two overlapping
+   * ones lose the earlier: the second reads a map the first has not saved yet
+   * and writes it back without the first display's entry. A link that rejects
+   * must not break the ones behind it.
+   */
+  let writing: Promise<unknown> = Promise.resolve();
+  const writeExclusively = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = writing.then(work, work);
+    writing = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  };
+
   return {
     async read(display, exists) {
       const stored = await readMap(file);
@@ -139,14 +161,18 @@ export function createActiveThemeStore(directory: string): ActiveThemeStore {
 
       // The map is read first: the other displays' choices are not this write's
       // to drop.
-      const map = await editable();
-      await save({ ...map, [display]: id });
+      await writeExclusively(async () => {
+        const map = await editable();
+        await save({ ...map, [display]: id });
+      });
     },
 
     async clear(display) {
-      const map = await editable();
-      delete map[display];
-      await save(map);
+      await writeExclusively(async () => {
+        const map = await editable();
+        delete map[display];
+        await save(map);
+      });
     },
   };
 }

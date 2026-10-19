@@ -48,6 +48,24 @@ describe("the active theme", () => {
     expect(await store.read("kitchen-tablet", yes)).toBe("living-room");
   });
 
+  it("keeps both when two displays are written at once", async () => {
+    await Promise.all([
+      store.write("this-pc", "attic-wall"),
+      store.write("kitchen-tablet", "living-room"),
+    ]);
+
+    // Each write is a read-modify-write of the whole map, so an unserialized
+    // pair reads the same map and the later save drops the earlier entry.
+    expect(await store.read("this-pc", yes)).toBe("attic-wall");
+    expect(await store.read("kitchen-tablet", yes)).toBe("living-room");
+  });
+
+  it("does not serve the default's theme to a display with no entry", async () => {
+    await store.write(DEFAULT_DISPLAY, "living-room");
+
+    expect(await store.read("this-pc", yes)).toBeUndefined();
+  });
+
   it("treats a theme that is gone as no choice", async () => {
     await store.write("this-pc", "deleted-theme");
 
@@ -58,6 +76,24 @@ describe("the active theme", () => {
     await writeFile(settingsFile(dir), '{"id":"living-room"}', "utf8");
 
     expect(await store.read(DEFAULT_DISPLAY, yes)).toBe("living-room");
+  });
+
+  it("reads a file holding a display beside `id` as the map it is", async () => {
+    await writeFile(
+      settingsFile(dir),
+      '{"id":"living-room","this-pc":"attic-wall"}',
+      "utf8",
+    );
+
+    // `id` is a legal display id, so a second key makes this a map rather than
+    // the old single-theme shape — and reading it as the old shape would take
+    // `this-pc`'s theme with it.
+    expect(await store.read(DEFAULT_DISPLAY, yes)).toBeUndefined();
+    expect(await store.read("this-pc", yes)).toBe("attic-wall");
+
+    await store.write("kitchen-tablet", "living-room");
+
+    expect(await store.read("this-pc", yes)).toBe("attic-wall");
   });
 
   it("writes the map once it writes, so the old key is not written again", async () => {
@@ -90,6 +126,13 @@ describe("the active theme", () => {
     await expect(store.write("this-pc", "attic-wall")).rejects.toThrow(
       "could not be read",
     );
+    expect(await readFile(settingsFile(dir), "utf8")).toBe("{ not json");
+  });
+
+  it("refuses to clear over a file it could not read", async () => {
+    await writeFile(settingsFile(dir), "{ not json", "utf8");
+
+    await expect(store.clear("this-pc")).rejects.toThrow("could not be read");
     expect(await readFile(settingsFile(dir), "utf8")).toBe("{ not json");
   });
 
