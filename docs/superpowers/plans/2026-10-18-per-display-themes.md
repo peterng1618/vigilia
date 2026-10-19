@@ -1819,8 +1819,28 @@ git commit -m "feat(host): read and write the display map over one route"
 **Files:**
 - Modify: `src/web/packages/host/src/server.ts`
 - Modify: `src/web/packages/player/src/publish-follower.ts`
+- Modify: `src/web/packages/player/src/session.ts`
 - Test: `src/web/packages/host/src/server.test.ts`,
-  `src/web/packages/player/src/publish-follower.test.ts`
+  `src/web/packages/player/src/publish-follower.test.ts`,
+  `src/web/packages/player/src/session.test.ts`
+
+**The root route must say where a theme came from, or this task does nothing** (R50).
+`GET /` 302-redirects every display to a URL that names a theme — `url.searchParams.set(
+"theme", theme)` then `location: /?theme=<resolved>&data=live` (`server.ts:2399-2403`) —
+so a launcher-opened local display and a paired one both arrive carrying
+`theme=<assigned>`, and the person's link is indistinguishable from the host's own
+resolution. A follower that forwarded its page's `theme` would be answered `null` on
+every poll and no reassignment would ever land. So `GET /`'s redirect also sets
+**`theme-source`**, one of `link` (the request named it), `published` (the publish won),
+or `map` (the display's entry or the default). `DisplaySessionToken` gains
+`readonly pageUrl: string` — `displaySession(pageUrl, fetcher)` already receives it and
+keeps only the token (`session.ts:20`) — so the follower reads the page it is on and
+**`main.ts` does not change.** The follower forwards `theme-source`, forwards `theme`
+only when the source is `link`, and **acts on `display.theme` only when the source is
+`map`**: with a publish live the page shows the published theme, and acting there would
+reload, re-resolve to the published theme, and see the map's entry again on the next
+poll — a reload loop. Suppressing costs nothing, because the revision comparison already
+reloads a display when the publish changes or stops.
 
 **Interfaces:**
 - Consumes: `displayKeyFor` (Task 2.2), the resolution order (Task 2.2).
@@ -1851,11 +1871,16 @@ it("calls onThemeChange when the host's answer moves", async () => {
 });
 
 it("does not call onThemeChange when the answer is unchanged", async () => { /* ... */ });
+
+it("follows the map only for a page the host resolved itself", async () => {
+  // theme-source=map -> acts; =link and =published -> the callback is not called,
+  //   and the poll carries no `theme` for the first and one for the second.
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run packages/host/src/server.test.ts -t published packages/player/src/publish-follower.test.ts`
+Run: `npx vitest run packages/host/src/server.test.ts -t published packages/player/src/publish-follower.test.ts packages/player/src/session.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement**
@@ -1880,13 +1905,16 @@ then declines to launch — and red-prove it by removing the touch.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/host/src/server.test.ts packages/player/src/publish-follower.test.ts`
+Run: `npx vitest run packages/host/src/server.test.ts packages/player/src/publish-follower.test.ts packages/player/src/session.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/player/src/publish-follower.ts src/web/packages/player/src/publish-follower.test.ts
+git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts \
+  src/web/packages/player/src/publish-follower.ts \
+  src/web/packages/player/src/publish-follower.test.ts \
+  src/web/packages/player/src/session.ts src/web/packages/player/src/session.test.ts
 git commit -m "feat(player): follow the theme this display was assigned"
 ```
 
