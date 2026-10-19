@@ -2446,11 +2446,13 @@ it("reports every unreachable tick, and leaves the pacing to its caller", async 
 });
 
 // main.dom.test.ts — the player's own pacing, which is where the retry lives.
-// `mountAt` already installs a `fetch` stub, so the case counts the requests
-// that are not the page's own origin: one sweep is 253 of them, and four failed
-// ticks inside one cooldown must not be four sweeps.
+// The case counts requests to another **address on the /24**, which is the sweep
+// and is exactly 253. "Requests that are not the page's own origin" would be 254:
+// the ladder's `.local` name candidate is a different origin too (R75). It also
+// needs `@vitest-environment-options` to set an origin with a /24, because
+// `sweepAddresses("localhost")` is empty and the sweep would be a no-op.
 it("sweeps once per cooldown, not once per failed tick", async () => {
-  const swept = crossOriginRequests();   // defined by the case
+  const swept = sweptAddresses();        // defined by the case
   await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
   await vi.waitFor(() => expect(swept()).toBeGreaterThan(0));
   expect(swept()).toBe(253);
@@ -2622,6 +2624,15 @@ cases observe the cadence through `startChartRefresh`'s third positional paramet
 `FrameDriver` — which is what a fake frame clock is for; do not add a production accessor to
 observe it. The scene cases observe `requestVideoFrameCallback` registration, which is the
 platform call `background-media.ts` makes.
+
+**Two harness facts Task 4.6 paid for, and this task is about the same loop (R75).**
+`vi.stubGlobal("requestAnimationFrame", …)` does **not** reach the chart refresh — the loop
+binds `window.requestAnimationFrame` — so the stub has to be `vi.spyOn(window, …)`; with the
+global stub a case sat at 17 s of a 20 s budget and 2.9 s with the spy. And a
+`main.dom.test.ts` case that needs a fresh module must run **first** and call
+`vi.resetModules()` in its `afterEach`: a jsdom file shares one window, and without both the
+case after it fails on a 10 s `waitFor`, because its import returns an already-evaluated
+module.
 
 - [ ] **Step 2: Run test to verify it fails**
 
