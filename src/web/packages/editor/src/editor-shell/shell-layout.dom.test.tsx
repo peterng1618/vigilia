@@ -1411,6 +1411,16 @@ it("offers the three modes and marks the active one", async () => {
     "the header does not offer the three modes, in order",
   ).toEqual([uiCopy.modes.editor, uiCopy.modes.themes, uiCopy.modes.thisPc]);
   expect(chosen(root)).toEqual(["true", "false", "false"]);
+  // §5 rule 5: every control carries an id, the group's and each segment's.
+  expect(
+    root.querySelector(".editor-shell-mode-switch")?.id,
+    "the switch carries no id",
+  ).toBe("vigilia-shell-modes");
+  expect(modeSegments(root).map((segment) => segment.id)).toEqual([
+    "vigilia-shell-modes-editor",
+    "vigilia-shell-modes-themes",
+    "vigilia-shell-modes-this-pc",
+  ]);
   expect(root.querySelector<HTMLElement>(".editor-shell-body")?.hidden).toBe(
     false,
   );
@@ -1474,43 +1484,157 @@ it("does not render a second horizontal bar", () => {
 });
 
 /**
+ * §7.1's per-mode action region, read in all three modes.
+ *
+ * The menus and the publish chord act on the open document, so a mode with no
+ * document of its own draws neither: the switch is the whole of what the header
+ * offers until A.2 and A.8 bring their own actions. Both halves are asserted in
+ * every mode, because the editor half fails if the condition is inverted while
+ * the other two fail if it is removed.
+ */
+it("draws the editor's own header actions only in editor mode", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            lan: false,
+            address: null,
+            port: null,
+            refusal: null,
+          }),
+          { status: 200 },
+        ),
+    ),
+  );
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  // Drawn only once the host has answered, so a read taken before that would
+  // pass this test against a header that never renders the control at all.
+  await vi.waitFor(() =>
+    expect(root.querySelector("[data-vigilia-publish]")).not.toBeNull(),
+  );
+
+  const actions = (): { menus: number; publish: boolean } => ({
+    menus: root.querySelectorAll(".editor-shell-menubar button").length,
+    publish: root.querySelector("[data-vigilia-publish]") !== null,
+  });
+  const editorActions = { menus: 3, publish: true };
+
+  expect(actions(), "the editor draws no actions of its own").toEqual(
+    editorActions,
+  );
+
+  await act(async () => modeSegments(root)[1]?.click());
+  expect(actions(), "themes mode still draws the editor's actions").toEqual({
+    menus: 0,
+    publish: false,
+  });
+
+  await act(async () => modeSegments(root)[2]?.click());
+  expect(actions(), "host mode still draws the editor's actions").toEqual({
+    menus: 0,
+    publish: false,
+  });
+
+  await act(async () => modeSegments(root)[0]?.click());
+  expect(actions(), "the editor's actions did not come back").toEqual(
+    editorActions,
+  );
+
+  layout.destroy();
+  vi.unstubAllGlobals();
+});
+
+/** The prompt the switch asks, or a failure saying it asked nothing. */
+function openedPrompt(): HTMLElement {
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+  if (dialog === null) throw new Error("the mode switch asked no question");
+  return dialog;
+}
+
+async function answerPrompt(word: string): Promise<void> {
+  const button = [...openedPrompt().querySelectorAll("button")].find(
+    (candidate) => candidate.textContent === word,
+  );
+  if (button === undefined) throw new Error(`the prompt offers no "${word}"`);
+  await act(async () => {
+    button.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }),
+    );
+  });
+}
+
+/**
  * The plan's one invariant, driven directly: a mode switch never loses an
  * unsaved document.
  *
  * A dirty document is the case that separates a guard from a no-op, so the
- * bridge is told the document differs from its last save and the browser's own
- * dialog is answered both ways. **The negative half is the load-bearing one**:
- * a refusal must leave the chosen segment where it was, which is what "the mode
- * does not change until it answers" means, and a test that only read the accept
- * path would pass on a switch that never asked.
+ * bridge is told the document differs from its last save and the question is
+ * answered all three ways. **The refusal is the load-bearing half**: a `cancel`
+ * must leave the chosen segment where it was, which is what "the mode does not
+ * change until it answers" means, and a test that only read the accept path
+ * would pass on a switch that never asked.
+ *
+ * It is the editor's **existing** replacement prompt, asked with the switch's
+ * own words — so the instrument is read for what it offers (Save among the
+ * three answers) and for the question it was given, not merely for appearing.
  */
-it("asks the dirty guard before it leaves a dirty document", async () => {
+it("asks the editor's own replacement prompt before it leaves a dirty document", async () => {
+  // Base UI's dialog dispatches through a pointer event, which jsdom lacks.
+  window.PointerEvent ??= MouseEvent as never;
   const root = document.createElement("div");
   const layout = createShellLayout(root);
+  const savePackage = vi.fn(async () => undefined);
   layout.setBridge(
-    bridgeStub({ session: { ...facade(), isDirty: () => true } }),
+    bridgeStub({ session: { ...facade(), isDirty: () => true, savePackage } }),
     undefined,
   );
   await Promise.resolve();
 
-  const guard = vi.spyOn(window, "confirm").mockReturnValue(false);
   await act(async () => modeSegments(root)[1]?.click());
+  const dialog = openedPrompt();
+  expect(dialog.getAttribute("aria-label")).toBe(uiCopy.modes.unsaved);
+  expect(dialog.querySelector(".editor-shell-dialog-lead")?.textContent).toBe(
+    uiCopy.modes.unsaved,
+  );
 
-  expect(guard, "the dirty guard was not asked").toHaveBeenCalledTimes(1);
+  await answerPrompt(uiCopy.replaceDocument.cancel);
   expect(chosen(root), "the mode moved while the guard was refusing").toEqual([
     "true",
     "false",
     "false",
   ]);
+  expect(savePackage, "a refusal saved the document").not.toHaveBeenCalled();
 
-  guard.mockReturnValue(true);
   await act(async () => modeSegments(root)[1]?.click());
-  expect(chosen(root), "the guard's yes did not move the mode").toEqual([
+  await answerPrompt(uiCopy.replaceDocument.save);
+  await act(async () => {});
+  expect(savePackage, "the save answer did not save").toHaveBeenCalledTimes(1);
+  expect(chosen(root), "the guard's save did not move the mode").toEqual([
     "false",
     "true",
     "false",
   ]);
+  expect(
+    document.querySelector('[role="dialog"]'),
+    "the prompt outlived its answer",
+  ).toBeNull();
 
-  guard.mockRestore();
+  // And the other half of the guard: a clean document is not asked at all.
+  layout.setBridge(
+    bridgeStub({ session: { ...facade(), isDirty: () => false } }),
+    undefined,
+  );
+  await act(async () => modeSegments(root)[0]?.click());
+  await act(async () => modeSegments(root)[1]?.click());
+  expect(chosen(root), "a clean document was not switched").toEqual([
+    "false",
+    "true",
+    "false",
+  ]);
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+
   layout.destroy();
 });

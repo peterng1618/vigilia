@@ -207,9 +207,9 @@ header has no Insert menu.
   per-document readout. Both are on the canvas (§7.5).
 
 **The header carries the shell's mode switch, and there is no bar under it.** The
-shell has three modes — the editor, the theme store and this PC — and the switch
+shell has three modes — the editor, the theme store and the host — and the switch
 between them is the header's own control, a §5 `Segmented` with the labels
-`Editor`, `Themes` and `This PC`. A strip under the header would be the second
+`Editor`, `Themes` and `Host`. A strip under the header would be the second
 horizontal bar §7.2 forbids, so the header owns the choice and its **right-hand
 region is per-mode**: `File`/`Edit`/`View` and the publish control are the
 editor's, a mode with actions of its own carries them there, and a mode with none
@@ -483,11 +483,13 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 switch is the well this table describes — `--panel-2` inside a 1px `--edge` at
 `--radius-md`, the chosen name lifted to `--stage` with `--text` — and it carries
 no row label, because the three names inside the well are the whole control and
-the header drawing draws no label beside them. It is composed from the same
-primitive the labelled row is (`components/ui/control-segmented.tsx` is that
-row), so it is this control rather than a second one; the label the rule below
-requires is the group's own name, not a column
-(`docs/decisions/0074`).
+the header drawing draws no label beside them. It shares the labelled row's
+primitive but not its component: `components/ui/control-segmented.tsx` is a
+labelled **row**, whose `ControlRow` requires a visible label, so this is the same
+primitive with header-local paint rather than a fourth row shape grown for one
+caller. Rule 5 below is met by the group's own name rather than by a label column,
+and by the group's and each segment's id, derived from the mode the way
+`useControlIds` derives one (`docs/decisions/0074`).
 
 **The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
 carries an editable field now, so the 24×24 target below binds it: the control pads its wells with

@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { CARD_LIBRARY } from "../card-library.js";
 import { hitTargetClasses } from "../components/ui/control-well.js";
 import { CompositionPane } from "../panes/composition/composition-pane.js";
+import { confirmDocumentReplacement } from "../persistence-manager/index.js";
 import type { PublishSwitch } from "../publish-client.js";
 import {
   readShortcutOverrides,
@@ -74,17 +75,30 @@ export interface ShellLayoutProps {
   readonly onModeChange: (mode: ShellMode) => void;
 }
 
-/** The three modes, in the order the header draws them. `satisfies` rather than
- *  a bare array, so a `ShellMode` added without a label fails to compile here
- *  rather than rendering a segment with no name. */
-const SHELL_MODES = [
-  { id: "editor", name: uiCopy.modes.editor },
-  { id: "themes", name: uiCopy.modes.themes },
-  { id: "this-pc", name: uiCopy.modes.thisPc },
-] as const satisfies readonly {
-  readonly id: ShellMode;
-  readonly name: string;
-}[];
+/** Each mode's name, as a **total** lookup: a `ShellMode` added to the union
+ *  without a label fails to compile here, rather than rendering a segment with
+ *  no name. `satisfies` could not make that claim — it validated the entries
+ *  that existed, not that they covered the union. */
+const MODE_NAMES: Record<ShellMode, string> = {
+  editor: uiCopy.modes.editor,
+  themes: uiCopy.modes.themes,
+  "this-pc": uiCopy.modes.thisPc,
+};
+
+/** The order the header draws them in, which is a separate decision from what
+ *  each is called. */
+const MODE_ORDER = [
+  "editor",
+  "themes",
+  "this-pc",
+] as const satisfies readonly ShellMode[];
+
+/** The switch's id, and the stem of each segment's. §5 rule 5 wants every
+ *  control to carry an id; the segment's is derived from the mode the way
+ *  `useControlIds` derives one from the control it names. */
+const MODE_SWITCH_ID = "vigilia-shell-modes";
+
+const modeSegmentId = (mode: ShellMode): string => `${MODE_SWITCH_ID}-${mode}`;
 
 /**
  * DESIGN.md §5's Segmented, in the header's **bare** form (see 0074).
@@ -103,6 +117,7 @@ const SHELL_MODES = [
 function ModeSwitch(props: ShellLayoutProps): React.JSX.Element {
   return (
     <ToggleGroup
+      id={MODE_SWITCH_ID}
       className="editor-shell-mode-switch"
       value={[props.mode]}
       aria-label={uiCopy.modes.label}
@@ -111,9 +126,14 @@ function ModeSwitch(props: ShellLayoutProps): React.JSX.Element {
         if (chosen !== undefined) props.onModeChange(chosen as ShellMode);
       }}
     >
-      {SHELL_MODES.map((mode) => (
-        <Toggle key={mode.id} value={mode.id} className={hitTargetClasses}>
-          {mode.name}
+      {MODE_ORDER.map((mode) => (
+        <Toggle
+          key={mode}
+          id={modeSegmentId(mode)}
+          value={mode}
+          className={hitTargetClasses}
+        >
+          {MODE_NAMES[mode]}
         </Toggle>
       ))}
     </ToggleGroup>
@@ -380,13 +400,23 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               §7.2 forbids a second horizontal bar, and two stacked rows of
               navigation make the first read as chrome rather than a choice. */}
           <ModeSwitch mode={mode} onModeChange={onModeChange} />
-          <ShellMenuBar store={store} getView={getView} />
-          <PublishControl
-            session={store.bridge?.session}
-            publish={publish}
-            hosting={hosting}
-            surface={publishSurface}
-          />
+          {/* §7.1: the right-hand region is **per-mode**. The menus and the
+              publish chord are the editor's own actions — they act on the open
+              document, and neither of the other two modes has one — so a mode
+              that has brought no actions of its own shows the switch and
+              nothing beside it, rather than the editor's controls over a
+              surface that cannot answer them. */}
+          {mode === "editor" && (
+            <>
+              <ShellMenuBar store={store} getView={getView} />
+              <PublishControl
+                session={store.bridge?.session}
+                publish={publish}
+                hosting={hosting}
+                surface={publishSurface}
+              />
+            </>
+          )}
         </header>
         {/* The editor's body is **hidden, never unmounted**, while another mode
             shows. The canvas host lives inside it, so taking it off the tree
@@ -601,22 +631,24 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
    *
    * **The guard fires on the way out of the editor and nowhere else.** Leaving
    * the editor is the only transition that can cost an unsaved document, so
-   * moving between the other two modes asks nothing; and it is the browser's own
-   * dialog, the instrument `beforeunload` already uses for this same fact in
-   * `editor-main.ts`, because the shell's facade exposes `isDirty()` and no
-   * prompt. A refusal returns before the mode moves, so the switch stays where
-   * the author left it.
+   * moving between the other two modes asks nothing.
+   *
+   * It is the editor's **existing** replacement prompt with the switch's own
+   * question, not a second guard: the prompt's copy is the only thing that makes
+   * it read as a document replacement, so one instrument answers both, and it is
+   * the one instrument that can offer **Save**. A `cancel` returns before the
+   * mode moves; a `save` waits for the save to finish, so a failed one leaves the
+   * author in the editor rather than past a guard that did not complete.
    */
   function ShellRoot(): React.JSX.Element {
     const [mode, setMode] = useState<ShellMode>("editor");
-    const requestMode = (next: ShellMode): void => {
+    const requestMode = async (next: ShellMode): Promise<void> => {
       if (next === mode) return;
-      if (
-        mode === "editor" &&
-        store.bridge?.session.isDirty() === true &&
-        !window.confirm(uiCopy.modes.unsaved)
-      ) {
-        return;
+      const session = store.bridge?.session;
+      if (mode === "editor" && session?.isDirty() === true) {
+        const choice = await confirmDocumentReplacement(uiCopy.modes.unsaved);
+        if (choice === "cancel") return;
+        if (choice === "save") await session.savePackage();
       }
       setMode(next);
     };

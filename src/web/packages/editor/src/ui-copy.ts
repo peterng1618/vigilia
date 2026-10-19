@@ -353,11 +353,14 @@ export const uiCopy = {
   },
   /**
    * The shell's three modes, as the header's switch names them (DESIGN.md
-   * §7.1). Each names the *surface* rather than the mechanism behind it, and
-   * two of the three are words the product already uses: `Themes` is what the
-   * store lists, and `This PC` is the host's own page title. The user chose
-   * these three on 2026-10-19 over the draft's *theme store*, *theme editor*
-   * and *host settings*.
+   * §7.1). Each names the *surface* rather than the mechanism behind it.
+   *
+   * **The user chose `Editor · Themes · Host` on 2026-10-19** (SDD ruling R100),
+   * over the spec's draft names — *theme store*, *theme editor*, *host
+   * settings* — and over the drawings' `This PC`, which named the machine
+   * rather than a peer of `Themes`. The key `thisPc` and the mode id `"this-pc"`
+   * are unchanged: an id is never shown to anyone, so renaming one buys a
+   * reader nothing and costs every call site.
    */
   modes: {
     /** The switch's own name. The three labels inside are the options, so a
@@ -366,11 +369,12 @@ export const uiCopy = {
     label: "Shell modes",
     editor: "Editor",
     themes: "Themes",
-    thisPc: "This PC",
-    /** Asked before the editor is left with unsaved work. The browser's own
-     *  dialog, so the two answers are its own OK and Cancel — the instrument
-     *  `beforeunload` already uses for the same fact. */
-    unsaved: "This theme has unsaved changes. Leave the editor?",
+    thisPc: "Host",
+    /** Asked before the editor is left with unsaved work. It is the question
+     *  the editor's own replacement prompt is given, so it offers the same
+     *  three answers — Save, Discard, Cancel — and the author can save rather
+     *  than choose between losing the work and staying put. */
+    unsaved: "Save changes before leaving the editor?",
   },
   /**
    * How a chord reads. What a key *prints* is deliberately not here: the caps

@@ -2,6 +2,7 @@ import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { createElement } from "react";
 import { openModal } from "../components/ui/modal-host.js";
 import { fileNameFor, serializeThemePackage } from "../persist.js";
+import { uiCopy } from "../ui-copy.js";
 import {
   ReplaceDocumentPrompt,
   type ReplacementAnswer,
@@ -85,10 +86,18 @@ export class PersistenceManager {
  *  opened from, asking its question in the corner of the screen.
  *
  *  A dismissal resolves `cancel`, which is what an empty `returnValue` already
- *  meant: Escape must not be read as consent to lose the work. */
-export async function confirmDocumentReplacement(): Promise<ReplacementAnswer> {
+ *  meant: Escape must not be read as consent to lose the work.
+ *
+ *  **The question is the caller's**, defaulting to the replacement one. What the
+ *  prompt asks is the only thing that makes it a *replacement* rather than a
+ *  guard about unsaved work, so the shell's mode switch — which leaves the same
+ *  document with the same unsaved state — reuses this instrument and supplies
+ *  its own words rather than carrying a second guard that could not offer Save. */
+export async function confirmDocumentReplacement(
+  question: string = uiCopy.replaceDocument.question,
+): Promise<ReplacementAnswer> {
   const answer = await openModal<ReplacementAnswer>((settle) =>
-    createElement(ReplaceDocumentPrompt, { settle }),
+    createElement(ReplaceDocumentPrompt, { question, settle }),
   );
   return answer ?? "cancel";
 }

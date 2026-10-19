@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The artboard has one colour: `barColor` is deleted and `background` is both the board's fill and the letterbox** (`document.ts`, `envelope-keys.ts`, `envelope-semantics.ts`, `plan.ts`, `schema/theme-document.schema.json`), so the Document pane draws one "Background color" control (0075).
-- **`backgroundMedia.fit` becomes `theme | display`** — both `object-fit: cover`, the layer sized to the artboard's screen rect or the display's — and `contain` has no successor: the schema refuses it.
-- **`BackdropMedia` carries the covered `rect` in artboard units** so a display-filled layer's glass backdrop maps the pixels it actually painted; the editor passes both boxes and the starters keep `palette.none`, which is what leaves the backdrop visible.
-- **Both regression proofs run red when the change is disabled**: swapping the two boxes reddens the media-box/rect test, and painting the host from a second colour reddens the scene's host-paint test.
-- **Browser proof (desktop-chromium, `--workers=1`)**: the default dashboard shows the backdrop over the artboard, a 4:3 display lens with `display` moves the layer to the display box (measured equal to `[data-vigilia-display-screen]`), and the panel offers one "Background color" plus "Fill theme"/"Fill display"; `host-media.spec.ts`'s video-repaint case is red at HEAD too (3 vs 87 renders), so it is not this change.
+- **The header's right-hand region is per-mode** (§7.1): the three menus and the publish chord render in editor mode only, so Themes and Host show the switch and nothing beside it until A.2 and A.8 bring their own actions.
+- **The dirty guard is the editor's own replacement prompt**, `confirmDocumentReplacement()` with a question parameter and the switch's own words, so leaving a dirty document offers **Save** — a `window.confirm` cannot — and `cancel` returns without moving the mode.
+- **The third label is `Host`, not `This PC`**: `f0fceed4` shipped the drawings' word and attributed it to the user, against R100; corrected in `ui-copy.ts`, `DESIGN.md` and the e2e case, which now reads all three from `uiCopy.modes`.
+- **`MODE_NAMES` is a total `Record<ShellMode, string>`** (so a new mode without a name fails to compile), the switch and each segment carry ids, and the browser case reads the resolved `--accent` and the canvas's painted coverage after the round trip.
+- **Evidence**: focused vitest 387 passed, `npm run typecheck` and `biome check ..` (706 files) exit 0, the rail browser spec 16 expected / 0 unexpected; `npm run gate` is still red at `design:check` (`vg-626`, pre-existing, ceiling not raised).
 
 ## Next
 

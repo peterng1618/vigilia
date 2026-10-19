@@ -7,7 +7,7 @@
 ## The problem
 
 The editor shell grows two surfaces that are not the document — the theme store
-and this PC — and something has to say which one is showing. The obvious shape
+and the host — and something has to say which one is showing. The obvious shape
 ("a row of tabs under the header") is already forbidden: DESIGN.md §7.2 and §10
 say a second horizontal bar under the header is a don't, because two stacked
 rows of navigation make the first read as chrome rather than as a choice.
@@ -71,20 +71,32 @@ which is where the work is.
 
 ## Rung 4 — ecosystem
 
-Searched (queries issued 2026-10-20, recorded as issued):
-`"aria-pressed segmented control button group pattern roving tabindex"`,
-`"radix toggle group single segmented control css"`,
-`"shadcn tabs segmented control chosen background"`, plus the candidate names
-that came up (`Material SegmentedButton`, `WAI-ARIA toolbar pattern`,
-`RadioGroup vs ToggleGroup`).
+Two queries, both run 2026-10-20 through Exa's web search.
 
-Found: every established implementation (Radix `ToggleGroup type="single"`,
-shadcn's `Tabs` used as a segmented control, Material's `SegmentedButton`,
-APG's toolbar) is the same shape — a button group with one item marked chosen,
-a roving tab stop, and CSS for the lift. **None of them answers what this note
-is about**: the mode is shell state, not a component's, and none of them can
-guard a transition against an unsaved document. The prior art settles the markup
-(which §5 and Base UI already settle) and says nothing about ownership.
+1. *segmented control / toggle group with `aria-pressed` and roving tabindex.*
+   Returned `ariaui.dev/docs/components/toggle-group`, joshuawootonn.com's
+   *React toggle group component* (2023), the Radix Toggle Group docs, a Canopy
+   spec (`docs/specs/0049-toggle-group.md`) and `substrateui.dev`'s Toggle Group
+   — the last built on **Base UI's** `ToggleGroup`/`Toggle`, documenting the same
+   array-valued `value`/`onValueChange` this code uses. Every one is the same
+   shape: one tab stop, arrows moving inside it, `aria-pressed` per item, and
+   paint. None of them guards a transition.
+2. *guarding a navigation or mode switch when a document has unsaved changes,
+   offering Save / Discard / Cancel.* Returned Cloudscape's *Communicating
+   unsaved changes* pattern, LlamaPress's *Unsaved Changes Guard*,
+   `ui.urbicon.de`'s *Unsaved Changes Guard Recipe*, and a StyleGallery pattern
+   note. These do answer the interception half — three exits, not two, because
+   "a two-button dialog forces people to choose between losing work and being
+   stuck" — and all four reach the same conclusion: **it is app state, not a
+   component.** Urbicon says it outright: "the guard is app state end to end …
+   a library would wrap five lines of setup in coupling to all four, so the
+   pattern ships as this page plus the hook."
+
+Found: the markup half is settled prior art, and it is what §5 and Base UI
+already give us. The guard half is settled *policy* with nothing to import — the
+ecosystem's answer is "call your own dialog" — and none of it owns the thing this
+note is about: that the shell's mode is a mode, and that leaving it asks the
+editor's own guard rather than a second one.
 
 ## Rung 5 — comparison
 
@@ -97,18 +109,25 @@ guard a transition against an unsaved document. The prior art settles the markup
 
 ## Rung 6 — probe
 
-The cost the chosen shape carries is the header's height budget: the strip is a
-fixed `42px` (`--header-height`). Measured in the rendered shell
-(browser, 1280×720, the run that proves the switch in
-`tests/e2e/editor-rail.spec.ts`): the well is **32px** tall — 4px padding, a
-22px label and the 1px border each side — so it clears the 42px strip, and the
-header does not grow. The chosen item's computed background is the `--stage`
-ground (`rgba(0,0,0,0) linear-gradient(145deg, …)` in the light palette — a
-gradient, which is why the reading is the whole `background` and not
-`backgroundColor`) and its ink is `--text`; an unchosen item paints no
-background and its ink is `--muted`. The probe also read the two absences the
-plan cares about: the switch is inside `.editor-shell-header`, and no element
-sits between the header and the content region.
+Two instruments, and each number below comes from one of them.
+
+**The rendered browser** — `tests/e2e/editor-rail.spec.ts`, the run that proves
+the switch, 1280×720 against the built bundle. The cost the chosen shape carries
+is the header's height budget, the strip being a fixed `42px`
+(`--header-height`):
+
+- the well is **32px** tall — 4px padding, a 22px label and the 1px border each
+  side — so it clears the 42px strip and the header does not grow;
+- the chosen item's computed background is the `--stage` ground
+  (`rgba(0, 0, 0, 0) linear-gradient(145deg, …)` in the light palette — a
+  gradient, which is why the reading is the whole `background` and not
+  `backgroundColor`) and its ink is `--text`; an unchosen item paints no
+  background and its ink is `--muted`.
+
+**The jsdom DOM read** — the shell's own dom test — is not a probe. It measures
+nothing: it asserts structure, that the switch is inside `.editor-shell-header`
+and that nothing sits between the header and the content region, and it is
+recorded here as a structural assertion rather than as a measurement.
 
 ## Rung 7 — build
 
@@ -120,13 +139,18 @@ never persisted) and hands the header and the regions a `ShellLayoutProps`:
 (`[data-vigilia-mode-region]`), so Task A.2 and Task A.8 add a region rather than
 restructure the shell.
 
-**The guard is `window.confirm`,** the browser's own dialog, which is the
-instrument `beforeunload` already uses in `editor-main.ts` and `window.prompt`
-already uses for the release bump in `editor-document.ts`. It fires only on the
-transition *out of* the editor mode with a dirty document, and the mode does not
-move until it answers. The edit is not a document replacement, so nothing is
-unmounted: the editor body is `hidden`, not removed, and the document survives
-the switch — which is the invariant the plan states.
+**The guard is the editor's existing replacement prompt** —
+`confirmDocumentReplacement()` in `persistence-manager/`, asked with the switch's
+own question (`uiCopy.modes.unsaved`) through the parameter that prompt now
+takes. The spec names "the editor's existing dirty guard" as the instrument and
+the plan requires it to fire "exactly as it does for any other document
+replacement", so there is one guard rather than two; and it is the one that can
+offer **Save**, which a browser dialog cannot. It fires only on the transition
+*out of* the editor mode with a dirty document: `cancel` returns without moving,
+`save` waits for the save before moving, `discard` moves. The edit is not a
+document replacement, so nothing is unmounted: the editor body is `hidden`, not
+removed, and the document survives the switch — which is the invariant the plan
+states.
 
 ## Decision
 
@@ -135,5 +159,6 @@ the mode in the shell.** The row vocabulary and the rail are rejected because
 each would make the switch read as a control it is not; `Tabs` is rejected
 because a tab is a region's view control and the shell already forbids a tab
 strip. The mode is shell state because nothing persists it and no document owns
-it; the guard is the browser's own because that is the instrument already in the
-tree for an unsaved document.
+it; the guard is the editor's existing replacement prompt because the same
+question about the same unsaved work gets one instrument, and it is the one that
+can offer Save.

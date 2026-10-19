@@ -1013,11 +1013,16 @@ test("Tab and Shift+Tab stay inside the settings modal, and Escape returns focus
  * Two facts live only in a browser. The first is the switch's geometry: it is
  * the header's own control, so it has to fit the 42px strip rather than grow it,
  * and the chosen segment's *paint* — the shared chosen treatment, a lifted
- * ground and `--text`, never the accent — is a resolved cascade, which jsdom
- * does not apply. The second is the dirty guard: it is the browser's own dialog,
- * so the case drives a real document dirty through the product's own route
- * (duplicate a layer), dismisses the dialog and reads that the mode did not
- * move, then accepts it and reads that it did.
+ * ground and `--text`, **never the accent** — is a resolved cascade, which jsdom
+ * does not apply. The accent is read as a resolved colour rather than compared
+ * with the token, because the token is a `var()` chain and a comparison of two
+ * unresolved strings passes a segment painted any colour at all.
+ *
+ * The second is the round trip: the case drives a real document dirty through
+ * the product's own route (duplicate a layer), answers the guard both ways, and
+ * reads that the canvas is still **painted** after the editor comes back. The
+ * body is `display:none` while another mode shows, so an assertion on the
+ * element alone would pass over a surface that never painted again.
  *
  * The header measurement is the report's evidence as well as an assertion, so a
  * run that changes the strip's height says so rather than failing obscurely.
@@ -1039,9 +1044,20 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     group.getByRole("button", { name, exact: true });
 
   await expect(group.getByRole("button")).toHaveCount(3);
-  await expect(segment("Editor")).toHaveAttribute("aria-pressed", "true");
-  await expect(segment("Themes")).toHaveAttribute("aria-pressed", "false");
-  await expect(segment("This PC")).toHaveAttribute("aria-pressed", "false");
+  // The words come from `uiCopy`, which is what the header draws them from: a
+  // literal here is how a label the user did not choose gets frozen into a test.
+  await expect(segment(uiCopy.modes.editor)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(segment(uiCopy.modes.themes)).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(segment(uiCopy.modes.thisPc)).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
 
   const paint = await group.evaluate((node) => {
     const segments = [...node.querySelectorAll("button")];
@@ -1063,6 +1079,14 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
       const style = getComputedStyle(element);
       return `${style.backgroundColor} ${style.backgroundImage}`;
     };
+    // The accent as the browser resolved it. A probe element inside the strip
+    // reads the same cascade the segment does, and reports `rgb(...)` — the form
+    // the segment's own computed colour is in, so the two are comparable.
+    const probe = document.createElement("span");
+    probe.style.color = "var(--accent)";
+    strip.append(probe);
+    const accent = getComputedStyle(probe).color;
+    probe.remove();
     return {
       well: Math.round(node.getBoundingClientRect().height),
       header: Math.round(strip.getBoundingClientRect().height),
@@ -1070,6 +1094,7 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
       restFill: paintOf(rest),
       chosenInk: getComputedStyle(chosen).color,
       restInk: getComputedStyle(rest).color,
+      accent,
     };
   });
   const report = JSON.stringify(paint);
@@ -1085,8 +1110,9 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     `the switch overflows the header (${report})`,
   ).toBeLessThan(paint.header);
   // The chosen treatment, measured rather than assumed: a lifted ground and
-  // `--text`, and neither is the region's accent — §4 spends the header's one
-  // accent-filled control on the publish button.
+  // `--text` that differ from an unchosen segment's — and neither is the
+  // region's accent, because §4 spends the header's one accent-filled control
+  // on the publish button.
   expect(
     paint.chosenFill,
     `the chosen segment paints the same ground as an unchosen one (${report})`,
@@ -1095,6 +1121,14 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     paint.chosenInk,
     `the chosen segment paints the same ink as an unchosen one (${report})`,
   ).not.toBe(paint.restInk);
+  expect(
+    paint.chosenFill.includes(paint.accent),
+    `the chosen segment is filled with the accent (${report})`,
+  ).toBe(false);
+  expect(
+    paint.chosenInk,
+    `the chosen segment is inked with the accent (${report})`,
+  ).not.toBe(paint.accent);
 
   // ── The guard, on a document the product dirtied ──────────────────────────
   const identity = page.locator(".editor-shell-identity");
@@ -1108,26 +1142,68 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     "the product did not mark the document dirty, so the guard is untested",
   ).toHaveAttribute("data-dirty", "true");
 
-  // One handler for both answers: the question is asked twice, refused once and
-  // accepted once, and a handler swapped between the two would also be a second
-  // subscription silently answering.
-  let asked = 0;
-  let accept = false;
-  page.on("dialog", async (dialog) => {
-    asked += 1;
-    if (accept) await dialog.accept();
-    else await dialog.dismiss();
-  });
-  await segment("Themes").click();
+  // What the document is painted as, before it is hidden: the count of painted
+  // pixels on the canvas Fabric draws objects on (`lower-canvas`; the upper one
+  // carries only the selection layer). Read as coverage rather than as an exact
+  // image because the starter's bindings tick — a live pass repaints a little of
+  // the surface while the shell is elsewhere, and an exact match would call a
+  // perfectly healthy document a failure.
+  const coverage = async (): Promise<number> =>
+    page.evaluate(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        "#vigilia-fabric-editor canvas.lower-canvas",
+      );
+      const pixels = canvas
+        ?.getContext("2d")
+        ?.getImageData(0, 0, canvas.width, canvas.height).data;
+      if (pixels === undefined) throw new Error("no lower canvas to read");
+      let painted = 0;
+      for (let index = 3; index < pixels.length; index += 4) {
+        if (pixels[index] !== 0) painted += 1;
+      }
+      return painted;
+    });
+
+  const drawnBefore = await coverage();
+  expect(
+    drawnBefore,
+    "the editor painted nothing before the switch, so the round trip is untested",
+  ).toBeGreaterThan(0);
+
+  // The question, refused. The instrument is the editor's own replacement
+  // prompt, so it is answered in the DOM rather than through `page.on("dialog")`.
+  const prompt = page.getByRole("dialog");
+  await segment(uiCopy.modes.themes).click();
+  await expect(prompt, "leaving a dirty document asked nothing").toBeVisible();
+  await expect(prompt).toHaveAttribute("aria-label", uiCopy.modes.unsaved);
+  // Save is offered, which is the whole reason the instrument is the editor's
+  // own prompt and not a browser dialog. It is not *pressed* here: a real save
+  // downloads a package, and the dom case covers that path instead.
   await expect(
-    segment("Editor"),
+    prompt.getByRole("button", {
+      name: uiCopy.replaceDocument.save,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await prompt
+    .getByRole("button", { name: uiCopy.replaceDocument.cancel, exact: true })
+    .click();
+  await expect(prompt).toHaveCount(0);
+  await expect(
+    segment(uiCopy.modes.editor),
     "the mode moved while the guard was refused",
   ).toHaveAttribute("aria-pressed", "true");
-  expect(asked, "leaving a dirty document asked nothing").toBe(1);
 
-  accept = true;
-  await segment("Themes").click();
-  await expect(segment("Themes")).toHaveAttribute("aria-pressed", "true");
+  // The question, discarded: the mode moves, and the editor's own header actions
+  // do not follow it — §7.1's right-hand region is per-mode.
+  await segment(uiCopy.modes.themes).click();
+  await prompt
+    .getByRole("button", { name: uiCopy.replaceDocument.discard, exact: true })
+    .click();
+  await expect(segment(uiCopy.modes.themes)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(
     page.locator(".editor-shell-body"),
     "the editor's body was unmounted rather than hidden",
@@ -1137,15 +1213,46 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     "the themes mode renders no region",
   ).toHaveAttribute("data-vigilia-mode-region", "themes");
   await expect(group, "the switch left the header").toBeVisible();
+  await expect(
+    header.locator(".editor-shell-menubar"),
+    "themes mode still draws the editor's menus",
+  ).toHaveCount(0);
+
+  await segment(uiCopy.modes.thisPc).click();
+  await expect(
+    page.locator("[data-vigilia-mode-region]"),
+    "the host mode renders no region",
+  ).toHaveAttribute("data-vigilia-mode-region", "this-pc");
+  await expect(
+    header.locator(".editor-shell-menubar"),
+    "host mode still draws the editor's menus",
+  ).toHaveCount(0);
 
   // And back: the editor is the document's surface, and the switch returns it
   // without a reload and without a second question.
-  await segment("Editor").click();
-  await expect(segment("Editor")).toHaveAttribute("aria-pressed", "true");
+  await segment(uiCopy.modes.editor).click();
+  await expect(segment(uiCopy.modes.editor)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.locator(".editor-shell-body")).toBeVisible();
   await expect(page.locator("[data-vigilia-mode-region]")).toHaveCount(0);
+  await expect(
+    header.locator(".editor-shell-menubar"),
+    "the editor's menus did not come back",
+  ).toHaveCount(1);
   await expect(
     identity,
     "the document did not survive the round trip",
   ).toHaveAttribute("data-dirty", "true");
+
+  const drawnAfter = await coverage();
+  expect(
+    drawnAfter,
+    `the canvas came back blank (painted ${drawnBefore} before, ${drawnAfter} after)`,
+  ).toBeGreaterThan(0);
+  expect(
+    Math.abs(drawnAfter - drawnBefore) / drawnBefore,
+    `the canvas came back painted as something else (${drawnBefore} before, ${drawnAfter} after)`,
+  ).toBeLessThan(0.1);
 });
