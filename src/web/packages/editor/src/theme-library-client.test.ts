@@ -422,6 +422,25 @@ describe("ThemeLibraryClient", () => {
     expect(mockFetch).toHaveBeenCalledWith("/api/themes/active");
   });
 
+  it("answers an empty map when the host names neither field", async () => {
+    // A body with no display map is not a crash: the caller hears "nothing is
+    // chosen and nothing is paired", which is what an absent field means.
+    const mockFetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ themes: [], templates: [] }), {
+          status: 200,
+        }),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    await expect(client.listDisplays()).resolves.toEqual({
+      default: null,
+      displays: [],
+    });
+  });
+
   it("reports the host's own answer when the display map cannot be read", async () => {
     const mockFetch = vi.fn(
       async () =>

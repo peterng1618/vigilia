@@ -93,6 +93,19 @@ function harness(options: {
   const onNewFromStarter = vi.fn(async () => {});
   const onOpenTheme = vi.fn(async () => {});
   const errors: ErrorManager = { error: vi.fn(), warn };
+  // Built before the manager so the harness can hand back the very client it
+  // wired: the defaults above are not what the manager received once an
+  // override lands, and asserting on one of them would pass for the wrong
+  // reason.
+  const client: ThemeLibraryClient = {
+    list: async () => [],
+    open,
+    save,
+    saveThumbnail,
+    assign,
+    listDisplays,
+    ...options.client,
+  };
   const manager = new ThemeLibraryManager({
     snapshot: () => envelope,
     assets: options.assets ?? assetsWith([], {}),
@@ -103,25 +116,16 @@ function harness(options: {
     confirmReplacement: async () => true,
     onSaved,
     onNewFromStarter,
-    client: {
-      list: async () => [],
-      open,
-      save,
-      saveThumbnail,
-      assign,
-      listDisplays,
-      ...options.client,
-    },
+    client,
     onError,
     onOpenTheme,
     ...(options.base === undefined ? {} : { base: options.base }),
   });
   return {
     manager,
+    client,
     save,
     saveThumbnail,
-    assign,
-    listDisplays,
     markSaved,
     announceChange,
     warn,
@@ -337,5 +341,16 @@ describe("ThemeLibraryManager", () => {
     // not the theme.
     expect(test.onSaved).toHaveBeenCalledWith("Saved to library");
     expect(test.onError).not.toHaveBeenCalled();
+  });
+
+  it("hands back the client it wired, overrides included", () => {
+    // The handle a case asserts on has to be the one the manager received. A
+    // default spy returned beside an overridden client would let
+    // `expect(result.assign).not.toHaveBeenCalled()` pass while the manager held
+    // a different function entirely.
+    const custom = vi.fn(async () => undefined);
+    const { client } = harness({ client: { assign: custom } });
+
+    expect(client.assign).toBe(custom);
   });
 });
