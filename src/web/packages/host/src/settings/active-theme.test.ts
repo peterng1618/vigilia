@@ -48,6 +48,31 @@ describe("the active theme", () => {
     expect(await store.read("kitchen-tablet", yes)).toBe("living-room");
   });
 
+  it("reads every display's entry at once", async () => {
+    await store.write("this-pc", "attic-wall");
+    await store.write("kitchen-tablet", "living-room");
+    await store.write(DEFAULT_DISPLAY, "kitchen-strip");
+
+    // One read of the file rather than one per display: this is the whole map a
+    // list of every display is drawn from.
+    expect(await store.readAll(yes)).toEqual({
+      "this-pc": "attic-wall",
+      "kitchen-tablet": "living-room",
+      [DEFAULT_DISPLAY]: "kitchen-strip",
+    });
+  });
+
+  it("leaves out of that map a theme that is gone", async () => {
+    await store.write("this-pc", "deleted-theme");
+    await store.write("kitchen-tablet", "living-room");
+
+    // The same rule a single read makes: an entry naming a theme the library no
+    // longer holds is no choice, and a list must not show one.
+    expect(await store.readAll(async (id) => id !== "deleted-theme")).toEqual({
+      "kitchen-tablet": "living-room",
+    });
+  });
+
   it("keeps both when two displays are written at once", async () => {
     await Promise.all([
       store.write("this-pc", "attic-wall"),

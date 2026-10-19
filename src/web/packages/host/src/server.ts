@@ -45,6 +45,7 @@ import type {
   DisplaySettingsStore,
 } from "./settings/display.js";
 import type {
+  DisplayKind,
   DisplayPatch,
   DisplayRecord,
   DisplayStore,
@@ -92,6 +93,29 @@ const NO_PAIRING_CODE =
 /** What a theme read answers: the stored record, or undefined for a theme the
  *  store will not serve. */
 type ThemeRecord = Awaited<ReturnType<ThemeStore["read"]>>;
+
+/**
+ * One row of the display map `/api/themes/active` answers: a display and the
+ * theme it holds.
+ *
+ * `kind` travels because the host page's warning table is keyed on it, and a
+ * page cannot ask a display what it is.
+ */
+interface ActiveDisplay {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: DisplayKind;
+  readonly theme: string | null;
+}
+
+/**
+ * What the map calls `this-pc`, the machine itself.
+ *
+ * Never read from the display store: `this-pc` is the machine rather than a
+ * client anyone paired, so it has no record whose label could be taken. The
+ * word matches the heading the host's own pages already use (`public/settings.html`).
+ */
+const LOCAL_DISPLAY_LABEL = "This PC";
 
 export interface BundleRoots {
   readonly player: string;
@@ -802,6 +826,45 @@ export function createHostServer(options: HostServerOptions): HostServer {
         ? undefined
         : await activeTheme.read(DEFAULT_DISPLAY, exists))
     );
+  }
+
+  /**
+   * The map `/api/themes/active` reads and writes: every display with the theme
+   * it holds, and the default a display with no entry of its own falls to.
+   *
+   * This PC is always present and always first, because it is the display the
+   * person reading the page is looking at. A stored record with that id is not
+   * possible — the store refuses to mint it — so it is added rather than found.
+   */
+  async function activeThemeMap(
+    store: ActiveThemeStore,
+    available: readonly { readonly id: string }[],
+  ): Promise<{
+    readonly default: string | null;
+    readonly displays: readonly ActiveDisplay[];
+  }> {
+    const holds = await store.readAll(async (id) =>
+      available.some((entry) => entry.id === id),
+    );
+    const records = (await displays?.list()) ?? [];
+
+    return {
+      default: holds[DEFAULT_DISPLAY] ?? null,
+      displays: [
+        {
+          id: LOCAL_DISPLAY_ID,
+          label: LOCAL_DISPLAY_LABEL,
+          kind: "local",
+          theme: holds[LOCAL_DISPLAY_ID] ?? null,
+        },
+        ...records.map((record) => ({
+          id: record.id,
+          label: record.label,
+          kind: record.kind,
+          theme: holds[record.id] ?? null,
+        })),
+      ],
+    };
   }
 
   /**
@@ -1658,68 +1721,129 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    // Choosing the displayed theme is a consumer action, so it is loopback
-    // only like the other settings: it changes what every display shows.
+    // Which theme each display shows: one map, read by the host's pages and
+    // written one entry at a time.
+    //
+    // **The read is this PC's and the write is not**, because they are different
+    // acts: reading every display's theme is the admin view, while a display
+    // choosing a theme for itself is the consumer action this route also serves.
+    // The write's authority is derived from the caller and never claimed in the
+    // body — loopback names a display because loopback is trusted admin, and a
+    // paired session's key is its own authenticated record's id.
     if (url.pathname === "/api/themes/active") {
-      if (!isLoopbackRemote(request.socket.remoteAddress)) {
-        sendText(response, 403, "Settings are available on this PC only.");
-        return;
-      }
-
       if (activeTheme === undefined) {
         sendText(response, 404, "This host keeps no active theme.");
         return;
       }
 
+      const loopback = isLoopbackRemote(request.socket.remoteAddress);
+
       if (request.method === "GET") {
+        if (!loopback) {
+          sendText(response, 403, "Settings are available on this PC only.");
+          return;
+        }
+
         const available = await themeStore.list();
-        // The default display is what an unpaired client is served as, and this
-        // route has no display to write for yet.
-        const chosen =
-          (await activeTheme.read(DEFAULT_DISPLAY, async (id: string) =>
-            available.some((entry) => entry.id === id),
-          )) ?? null;
-
-        // Which device slots the choice needs, so the settings page asks only
-        // the questions that theme raises.
-        const record =
-          chosen === null ? undefined : await readThemeOrAbsent(chosen);
-
         sendJson(response, 200, {
-          active: chosen,
+          ...(await activeThemeMap(activeTheme, available)),
           themes: available,
           templates: SHIPPED_TEMPLATES,
-          requiredDevices: requiredDeviceGroups(record?.envelope),
         });
         return;
       }
 
       if (request.method === "PUT") {
+        let body: { readonly display?: unknown; readonly id?: unknown };
+
         try {
-          const body = JSON.parse(await readBody(request)) as { id?: unknown };
-          const id = body.id;
-
-          if (typeof id !== "string") {
-            sendText(response, 400, "An id is required.");
-            return;
+          const parsed: unknown = JSON.parse(await readBody(request));
+          // A body that is not an object holds no choice, and reading a field
+          // off one would be a TypeError rather than a refusal.
+          if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            Array.isArray(parsed)
+          ) {
+            throw new Error("That is not a theme choice.");
           }
-
-          // Only a theme that exists can be chosen.
-          const available = await themeStore.list();
-          if (!available.some((entry) => entry.id === id)) {
-            sendText(response, 404, "No such theme.");
-            return;
-          }
-
-          await activeTheme.write(DEFAULT_DISPLAY, id);
-          sendJson(response, 200, { ok: true, active: id });
+          body = parsed as {
+            readonly display?: unknown;
+            readonly id?: unknown;
+          };
         } catch (error) {
           sendText(
             response,
             400,
             error instanceof Error ? error.message : String(error),
           );
+          return;
         }
+
+        const id = body.id;
+
+        if (typeof id !== "string") {
+          sendText(response, 400, "An id is required.");
+          return;
+        }
+
+        // The key this write reaches. A paired session names no display: its own
+        // record is the one it may write, so a `display` in the body is ignored
+        // rather than refused — a client sending both gets the safe answer
+        // instead of a distinction it could probe. `default` and `this-pc` are
+        // unreachable from a session by construction, not by a check: the key is
+        // the request's own id, and the store refuses to mint either word.
+        let key: string;
+
+        if (loopback) {
+          const named = body.display;
+
+          if (typeof named !== "string") {
+            sendText(response, 400, "A display is required.");
+            return;
+          }
+
+          key = named;
+        } else {
+          const record = await displayFor(request, url, displays);
+
+          if (record === undefined) {
+            sendText(
+              response,
+              403,
+              "This display is not paired with the host.",
+            );
+            return;
+          }
+
+          key = record.id;
+        }
+
+        // Only a display this host holds can be given a theme, so a typo is a
+        // 404 rather than a new key in the file that no display would read.
+        if (
+          loopback &&
+          key !== DEFAULT_DISPLAY &&
+          key !== LOCAL_DISPLAY_ID &&
+          !((await displays?.list()) ?? []).some((record) => record.id === key)
+        ) {
+          sendText(response, 404, "No such display.");
+          return;
+        }
+
+        const available = await themeStore.list();
+
+        // Only a theme that exists can be chosen.
+        if (!available.some((entry) => entry.id === id)) {
+          sendText(response, 404, "No such theme.");
+          return;
+        }
+
+        await activeTheme.write(key, id);
+        sendJson(response, 200, {
+          ok: true,
+          ...(await activeThemeMap(activeTheme, available)),
+        });
         return;
       }
 

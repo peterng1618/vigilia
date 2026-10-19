@@ -2751,12 +2751,276 @@ describe("The templates the host serves", () => {
       hosted.server,
       "PUT",
       "/api/themes/active",
-      json({ id: "vigilia-starter-template" }),
+      // The display the write is for is named now that the route writes one
+      // entry of a map rather than an implicit default.
+      json({ display: "default", id: "vigilia-starter-template" }),
     );
 
     // Only a theme with a file can be displayed. Accepting the id here would
     // point every display at a package that does not exist.
     expect(res.status).toBe(404);
+  });
+});
+
+/**
+ * The display map: which theme each display holds, and the default a display
+ * with no entry of its own falls to.
+ *
+ * One route reads the map and writes one entry of it, and the write's authority
+ * is derived from the caller rather than claimed in the body (spec § "A display
+ * may change its own theme").
+ */
+describe("The display map", () => {
+  let dir: string;
+  let displays: ReturnType<typeof createDisplayStore>;
+  let activeTheme: ReturnType<typeof createActiveThemeStore>;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const LAN = { remoteAddress: "192.168.1.50" };
+
+  /** A display off this PC, paired, holding the credential that identifies it. */
+  async function paired(label: string): Promise<string> {
+    const token = newToken();
+    await displays.create(label, token);
+    return token;
+  }
+
+  /** A request off the LAN carrying a display's own credential. */
+  function as(token: string): {
+    remoteAddress: string;
+    headers: Record<string, string>;
+  } {
+    return { ...LAN, headers: { "x-vigilia-session": token } };
+  }
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-theme-map-"));
+    const store = createThemeStore(dir);
+    await store.write(
+      "living-room",
+      createValidPackage("living-room", "Living Room"),
+    );
+    await store.write(
+      "kitchen-strip",
+      createValidPackage("kitchen-strip", "Kitchen Strip"),
+    );
+    await store.write(
+      "attic-wall",
+      createValidPackage("attic-wall", "Attic Wall"),
+    );
+    displays = createDisplayStore(dir);
+    activeTheme = createActiveThemeStore(dir);
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: store,
+      displays,
+      activeTheme,
+    });
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("lists every display with the theme it holds", async () => {
+    await displays.create("Kitchen tablet", newToken());
+    await activeTheme.write("kitchen-tablet", "kitchen-strip");
+
+    const res = await request(hosted.server, "GET", "/api/themes/active");
+    const body = res.json() as {
+      default: string | null;
+      displays: readonly {
+        id: string;
+        label: string;
+        kind: string;
+        theme: string | null;
+      }[];
+    };
+
+    // An entry with no theme is `theme: null` rather than absent, so the page
+    // can tell "no theme" from "no display". This PC is always present and is
+    // never asked of the store: it has no record to take a label from.
+    expect(res.status).toBe(200);
+    expect(body.displays).toEqual([
+      { id: "this-pc", label: "This PC", kind: "local", theme: null },
+      {
+        id: "kitchen-tablet",
+        label: "Kitchen tablet",
+        kind: "paired",
+        theme: "kitchen-strip",
+      },
+    ]);
+    expect(body.default).toBeNull();
+  });
+
+  it("writes one display and leaves the others alone", async () => {
+    await displays.create("Kitchen tablet", newToken());
+    await displays.create("Hall TV", newToken());
+
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ display: "kitchen-tablet", id: "kitchen-strip" }),
+    );
+    const body = res.json() as {
+      ok: boolean;
+      default: string | null;
+      displays: readonly {
+        id: string;
+        label: string;
+        kind: string;
+        theme: string | null;
+      }[];
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.displays).toContainEqual({
+      id: "kitchen-tablet",
+      label: "Kitchen tablet",
+      kind: "paired",
+      theme: "kitchen-strip",
+    });
+    expect(await activeTheme.read("kitchen-tablet", async () => true)).toBe(
+      "kitchen-strip",
+    );
+    expect(await activeTheme.read("hall-tv", async () => true)).toBeUndefined();
+    expect(
+      await activeTheme.read(DEFAULT_DISPLAY, async () => true),
+    ).toBeUndefined();
+  });
+
+  it("writes the default through the same route", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ display: "default", id: "living-room" }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await activeTheme.read(DEFAULT_DISPLAY, async () => true)).toBe(
+      "living-room",
+    );
+    // The default is a key of the map rather than a second setting, so the
+    // answer says which one it now holds.
+    expect((res.json() as { default: string | null }).default).toBe(
+      "living-room",
+    );
+  });
+
+  it("refuses a display it does not know, and a theme it does not have", async () => {
+    const unknownDisplay = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ display: "nobody", id: "living-room" }),
+    );
+    expect(unknownDisplay.status).toBe(404);
+
+    const unknownTheme = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ display: LOCAL_DISPLAY_ID, id: "nope" }),
+    );
+    expect(unknownTheme.status).toBe(404);
+
+    // Neither refusal wrote anything: a display the host does not hold is not a
+    // key to invent, and a theme with no file cannot be displayed.
+    expect(await activeTheme.readAll(async () => true)).toEqual({});
+  });
+
+  it("stays loopback only for the admin read", async () => {
+    const session = as(await paired("Kitchen tablet"));
+
+    const read = await request(
+      hosted.server,
+      "GET",
+      "/api/themes/active",
+      undefined,
+      session,
+    );
+    expect(read.status).toBe(403);
+    expect(read.text()).toBe("Settings are available on this PC only.");
+
+    // The write is the one thing a paired display reaches here, and the
+    // difference is the point: reading every display's theme is this PC's.
+    const write = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ id: "kitchen-strip" }),
+      session,
+    );
+    expect(write.status).toBe(200);
+  });
+
+  it("lets a paired session set its own entry, and only its own", async () => {
+    const session = as(await paired("Kitchen tablet"));
+    await paired("Hall TV");
+
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ id: "kitchen-strip" }),
+      session,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await activeTheme.read("kitchen-tablet", async () => true)).toBe(
+      "kitchen-strip",
+    );
+    expect(await activeTheme.read("hall-tv", async () => true)).toBeUndefined();
+    expect(
+      await activeTheme.read(DEFAULT_DISPLAY, async () => true),
+    ).toBeUndefined();
+  });
+
+  it("ignores a display named in the body by a session", async () => {
+    const session = as(await paired("Kitchen tablet"));
+
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ display: LOCAL_DISPLAY_ID, id: "attic-wall" }),
+      session,
+    );
+
+    // Ignored rather than refused, so a client that sends both gets the safe
+    // answer instead of a distinction it could probe.
+    expect(res.status).toBe(200);
+    expect(await activeTheme.read("kitchen-tablet", async () => true)).toBe(
+      "attic-wall",
+    );
+    expect(
+      await activeTheme.read(LOCAL_DISPLAY_ID, async () => true),
+    ).toBeUndefined();
+    expect(
+      await activeTheme.read(DEFAULT_DISPLAY, async () => true),
+    ).toBeUndefined();
+  });
+
+  it("refuses a token that matches no display", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/active",
+      json({ id: "kitchen-strip" }),
+      as("z".repeat(43)),
+    );
+
+    // Nothing expires (R48): the credential is a hash on the display record and
+    // `authenticate` is a lookup, so a token that matches nothing is the same
+    // refusal a missing one gets, and no entry changes.
+    expect(res.status).toBe(403);
+    expect(res.text()).toBe("This display is not paired with the host.");
+    expect(await activeTheme.readAll(async () => true)).toEqual({});
   });
 });
 

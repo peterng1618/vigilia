@@ -21,6 +21,17 @@ export interface ActiveThemeStore {
     display: string,
     exists: (id: string) => Promise<boolean>,
   ): Promise<string | undefined>;
+  /**
+   * Every display's chosen theme, keyed by display, holding only the choices
+   * that still name a theme the library has — the same rule `read` applies to
+   * one display, because a list must not show a theme that is gone.
+   *
+   * One read of the file rather than one per display: this is the whole map, and
+   * a caller drawing a list of every display is what asks for it.
+   */
+  readAll(
+    exists: (id: string) => Promise<boolean>,
+  ): Promise<Record<string, string>>;
   write(display: string, id: string): Promise<void>;
   /** Forgets one display's choice; every other display keeps its own. */
   clear(display: string): Promise<void>;
@@ -152,6 +163,21 @@ export function createActiveThemeStore(directory: string): ActiveThemeStore {
       // A theme deleted since it was chosen must not keep winning; the caller
       // decides what to show instead.
       return (await exists(id)) ? id : undefined;
+    },
+
+    async readAll(exists) {
+      const stored = await readMap(file);
+      if ("failure" in stored) return {};
+
+      const chosen: Record<string, string> = {};
+
+      for (const [display, id] of Object.entries(stored.map)) {
+        if (typeof id === "string" && THEME_ID.test(id) && (await exists(id))) {
+          chosen[display] = id;
+        }
+      }
+
+      return chosen;
     },
 
     async write(display, id) {
