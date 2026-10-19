@@ -1315,23 +1315,37 @@ Expected: FAIL — `read` takes one argument.
 
 - [ ] **Step 3: Implement**
 
-Every key is validated against `THEME_ID` on write and dropped on read when it
-does not match. **The old shape is read as the default** — an object whose `id` is
+The **theme id** is validated against `THEME_ID` on write and its entry dropped on
+read when it does not match. The **display key** is not validated here: its shape is
+`displays.ts`'s rule (`DEVICE_ID_PATTERN`, "the host's one id shape"), and a key no
+reader can ask for is inert, so re-spelling that pattern in this file would be the
+second owner the plan's constraints forbid. **The old shape is read as the default** — an object whose `id` is
 a string and which holds no `default` key is read as `{ default: id }`. That is a
 migration of a person's own choice rather than compatibility glue for a superseded
 internal design: losing it would leave a working dashboard blank. The next write
 persists the new shape and the old key is not written again.
 
-**The three existing call sites move to `DEFAULT_DISPLAY` in this task** (ruling
+**The four existing call sites move to `DEFAULT_DISPLAY` in this task** (ruling
 38). Changing the signature breaks `server.ts`'s callers — the assignment's
-effective theme, the active-theme route's read and its write — and `server.test.ts`
-constructs the store four times, so a task that changed the interface alone would
-leave the tree failing typecheck until Task 2.2 landed. They pass `DEFAULT_DISPLAY`
-because that is exactly what today's global store *is*: one theme for every client,
-which is the default display's entry. Task 2.2 replaces the `GET /` site with
-`displayKeyFor`; the active-theme route keeps reading and writing the default until
-Phase 4 gives that route a display to write for, which is why it is not a defect
-for it to still name `DEFAULT_DISPLAY` after Phase 2.
+effective theme, the active-theme route's read, its write, and the `GET /` stored
+read — and `server.test.ts` constructs the store four times, so a task that changed
+the interface alone would leave the tree failing typecheck until Task 2.2 landed.
+They pass `DEFAULT_DISPLAY` because that is exactly what today's global store *is*:
+one theme for every client, which is the default display's entry. Task 2.2 replaces
+the `GET /` site with `displayKeyFor`; the active-theme route keeps reading and
+writing the default until Phase 4 gives that route a display to write for, which is
+why it is not a defect for it to still name `DEFAULT_DISPLAY` after Phase 2. **The
+count in the first sentence is four, not three** — the pre-flight scan missed the
+`GET /` site when it wrote this ruling, and the seat found it, which is the
+correction rather than the seat's error.
+
+**A present-but-unreadable file refuses mutation** rather than being overwritten
+with one display's entry. `write` and `clear` are read-modify-write over a map that
+now holds other displays' choices, so writing over a file the store could not read
+would persist that failure as the loss of everyone else's — which is
+`createDisplayStore`'s `readOrThrow` rule, spelled the same way here for the same
+reason. A file that is simply *absent* still means an empty map: not-yet-chosen and
+unreadable are different facts.
 
 - [ ] **Step 4: Run test to verify it passes**
 
