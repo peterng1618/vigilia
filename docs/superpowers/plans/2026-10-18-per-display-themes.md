@@ -2269,14 +2269,27 @@ export function sweepAddresses(address: string): readonly string[];  // the 254 
 `followPublished`'s `catch` (`publish-follower.ts:162`) **deliberately discards** an
 unreachable host, so `publish-follower.ts` gains `readonly onUnreachable?: () => void`, called
 from that existing `catch`, and `main.ts` supplies the ladder — the file list is not a contract
-(R56). The ladder runs **once per unreachable episode**, latched and cleared by the next tick
-that reaches the host, because the follower ticks on an interval and a sleeping host would
-otherwise make every display sweep 253 addresses forever. And after a match the page navigates
+(R56). The follower reports **each** unreachable tick — a fact, not a policy — and the player
+paces: `refind` runs at most once per 60 s cooldown. A latch in the follower was the first
+shape ruled and it strands the display (R72): the host moves, the one sweep misses because the
+host is still booting, and no tick can succeed while the host is at its old address, so the
+latch never clears and nothing is ever tried again. The cooldown is fixed rather than backing
+off — if a real display shows the traffic matters, the next step is a growing interval. And
+after a match the page navigates
 to `originFor(found, pairing.port)` at path `/` carrying **`?session=<token>` and nothing
 else** — omitted when there is no token, which is the loopback display. No `theme` and no
 `theme-source`: the host's root route resolves for the asking display and answers
 `theme-source=map` itself (R50). The token goes only to an origin that answered the stored
 `hostId`; the ladder's refusal of a first responder is what makes that safe.
+
+**Rulings carried into this task (R72).** **`displaySession` reads storage and never writes
+it; `rememberPairing` is the single writer.** `isPairedHost` checks types only
+(`host-refind.ts:43-57`), so a record with `hostId: ""` reads back as a valid pairing and
+matches no probe — and the URL never carries an identity to fill it, because `pair.html:178`
+navigates to `/?session=<token>` and nothing in the repo emits `host=`, `name=` or `port=`.
+Written every load, a load whose `GET /api/host` then fails would leave that blank record in
+place of a good one, and the ladder could never find that host again. One writer also removes
+the race between the two.
 
 **Rulings carried into this task (R63).** `sweepAddresses` yields the /24's **usable** hosts
 `.1`–`.254` with the address itself removed — **253** entries, not 254; `.0` and `.255` are
@@ -2345,25 +2358,30 @@ it("stores the credential it was handed and stops reading it from the URL", () =
   expect(later.token).toBe("abc");
 });
 
-it("keeps the host identity beside the credential", () => {
+it("writes no pairing of its own", () => {
+  // The identity comes from `GET /api/host` and nowhere else: `pair.html`
+  // navigates to `/?session=<token>` and nothing in the repo emits `host=`,
+  // `name=` or `port=` (R72). A second writer here could only produce a record
+  // with an empty `hostId` — which reads back as a valid pairing, matches no
+  // probe, and would overwrite a good one on any load where `/api/host` failed.
   const storage = memoryStorage();
-  displaySession(
-    "http://192.168.1.10:5227/?session=abc&host=h1&name=study-pc&port=5227",
+  displaySession("http://192.168.1.10:5227/?session=abc", fetch, storage);
+  expect(readStoredPairing(storage)).toBeUndefined();
+});
+
+it("lets a fresh pairing link replace a stored credential", () => {
+  // Otherwise a display re-paired to a second host keeps the first one's token.
+  const storage = memoryStorage();
+  storePairing(storage, {
+    hostId: "h1", hostName: "a", port: 5227, token: "first",
+    lastAddress: "192.168.1.10",
+  });
+  const fresh = displaySession(
+    "http://192.168.1.10:5227/?session=second",
     fetch,
     storage,
   );
-  expect(readStoredPairing(storage)).toEqual({
-    hostId: "h1", hostName: "study-pc", port: 5227, token: "abc",
-    lastAddress: "192.168.1.10",
-  });
-});
-
-it("lets a fresh pairing link replace a stored one", () => {
-  // Otherwise a display re-paired to a second host keeps the first one's token.
-  const storage = memoryStorage();
-  displaySession("http://192.168.1.10:5227/?session=first&host=h1&name=a&port=5227", fetch, storage);
-  displaySession("http://192.168.1.10:5227/?session=second&host=h2&name=b&port=5227", fetch, storage);
-  expect(readStoredPairing(storage)?.token).toBe("second");
+  expect(fresh.token).toBe("second");
 });
 
 it("hands the probe a bare origin, with nothing appended to it", async () => {
@@ -2410,30 +2428,35 @@ it("reports an unreachable host rather than swallowing it", async () => {
   expect(onUnreachable).toHaveBeenCalled();
 });
 
-it("reports one unreachable episode once, and a later one again", async () => {
-  let reachable = false;
+it("reports every unreachable tick, and leaves the pacing to its caller", async () => {
+  // A latch here was the first shape ruled and it strands the display: the one
+  // sweep misses while the host is still booting, no tick can succeed while the
+  // host is at its old address, so the latch never clears and nothing is tried
+  // again (R72). The follower reports a fact; the player owns the cooldown.
   const onUnreachable = vi.fn();
   const stop = followPublished(
-    {
-      pageUrl: MAP_PAGE,
-      fetch: vi.fn(async () =>
-        reachable
-          ? new Response(JSON.stringify({ revision: 1 }))
-          : Promise.reject(new Error("down")),
-      ),
-    },
+    { pageUrl: MAP_PAGE, fetch: vi.fn(async () => Promise.reject(new Error("down"))) },
     vi.fn(),
     { intervalMs: 5, onUnreachable },
   );
 
   await settle(40);
-  expect(onUnreachable).toHaveBeenCalledTimes(1); // not once per failed tick
-  reachable = true;
-  await settle(20);
-  reachable = false;
-  await settle(40);
   stop();
-  expect(onUnreachable).toHaveBeenCalledTimes(2); // a new episode reports
+  expect(onUnreachable.mock.calls.length).toBeGreaterThan(1);
+});
+
+// main.dom.test.ts — the player's own pacing, which is where the retry lives.
+// `mountAt` already installs a `fetch` stub, so the case counts the requests
+// that are not the page's own origin: one sweep is 253 of them, and four failed
+// ticks inside one cooldown must not be four sweeps.
+it("sweeps once per cooldown, not once per failed tick", async () => {
+  const swept = crossOriginRequests();   // defined by the case
+  await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
+  await vi.waitFor(() => expect(swept()).toBeGreaterThan(0));
+  expect(swept()).toBe(253);
+
+  await advancePastCooldown();           // the follower keeps failing throughout
+  await vi.waitFor(() => expect(swept()).toBe(506));
 });
 ```
 
@@ -2454,13 +2477,15 @@ first-responder rule is exactly how it would. The sweep runs
 `options.concurrency ?? 8` probes at a time with a short per-probe timeout, because
 254 sockets at once is how a display becomes a problem for its own network.
 
-`session.ts` reads `?session=` and the identity parameters **once**, stores them
-with `storePairing`, and resolves every later request from storage — so the
-credential stops living in the URL, which is what a durable credential requires
-(spec § "Identity"). A URL that carries no session and no stored pairing is
-unpaired, exactly as it is today. `main.ts` supplies `followPublished`'s
-`onUnreachable` (R69), runs `refindHost` behind a latch that one episode cannot
-re-enter, and on a match navigates to the origin it found and re-stores the address.
+`session.ts` reads `?session=` when the URL carries one and the stored pairing
+when it does not, and **writes neither** (R72) — so the credential stops living
+in the URL, which is what a durable credential requires (spec § "Identity"), and
+there is one writer rather than two. A URL that carries no session and no stored
+pairing is unpaired, exactly as it is today. `rememberPairing` is that one
+writer: `GET /api/host` on this origin plus the token plus the address the page
+is already at, written on **every** load. `main.ts` supplies `followPublished`'s
+`onUnreachable` (R69), runs `refindHost` behind a 60 s cooldown, and on a match
+navigates to the origin it found.
 
 **What this task cannot fix, and must not pretend to.** A display that *reloads*
 while the host is elsewhere is served the browser's error page, not ours, so this
@@ -2850,7 +2875,7 @@ the player's reassignment — with bundles rebuilt after any source change, one
 worker, and each run's own JSON report. Report the gate's exit code and the
 browser results as two separate facts.
 
-**The browser run carries three claims no unit test can hold (R66), and each is
+**The browser run carries four claims no unit test can hold (R66, R72), and each is
 reported on its own:**
 
 1. **A reassignment lands (Task 4.2, R50/R51).** A display on a `map` page is served one
@@ -2861,11 +2886,16 @@ reported on its own:**
    not `default` writes and reads *that* display's answers.
 3. **A chosen theme navigates and lands (Task 4.5, R62).** Operating the chooser on a `map`
    page shows the chosen theme; the same control does not appear on a `link` page.
+4. **A re-found host is reached (Task 4.6, R72).** With the host answering at a second
+   origin, the display ends up serving from it — `main.ts:339` assigns
+   `window.location.href`, and jsdom does not navigate, so this hop is asserted nowhere else.
 
-**None of the three has a case today** (R68), so each is written at this boundary, before
-the gate runs rather than after it goes green: claims 1 and 3 go in
+**None of the four has a case today** (R68), so each is written at this boundary, before
+the gate runs rather than after it goes green: claims 1, 3 and 4 go in
 `src/web/tests/e2e/host-player.spec.ts`, claim 2 in
 `src/web/tests/e2e/host-settings.spec.ts`. They are evidence cases, not features.
+Claim 4 needs a second origin to move to, which is a second host process or a
+second port on one — decide that when writing it, and say which was used.
 
 A LAN origin is plain http and **not** a secure context, so no `wakeLock` or
 `serviceWorker` claim may rest on it, and the proof names the origin it ran on.
