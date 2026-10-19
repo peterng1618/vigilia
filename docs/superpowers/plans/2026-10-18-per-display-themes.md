@@ -1660,6 +1660,27 @@ global with the thing it was standing in for:
 reassignment reaches a display on that display's next tick. Removing them is part
 of this task; leaving them would be a second, unused path to the same fact.
 
+**The assignment falls back to the default display's, exactly as the theme
+resolution does** (ruling 44, found by this task's review). The answers route and
+the active-theme route keep writing `DEFAULT_DISPLAY` until Task 4.1 and 4.3 give
+them a display, so without the fallback an answer a person sets on the host page
+reaches **no display at all**: no connection resolves as `default` — the stream
+route sits behind the pairing guard, which refuses an unpaired LAN client before
+`openStream` — and before this task `currentAssignment()` read `DEFAULT_DISPLAY`
+and applied that answer to every display. The asymmetry was visible in the diff:
+`assignedThemeFor` keeps the fallback, which is what makes ruling 38's "the route
+keeps naming the default until Phase 4" survive, and `currentAssignment` had none.
+The fallback covers **the chosen theme as well as the answers**, or there is no
+theme to look answers up under:
+
+    const own = await activeTheme.read(display, async () => true);
+    const chosen = own ?? (display === DEFAULT_DISPLAY ? undefined : await activeTheme.read(DEFAULT_DISPLAY, async () => true));
+
+and the pick becomes `perTheme[group] ?? defaultAnswers[group] ?? stored.assigned[group]`.
+**Cost if wrong:** after Task 4.3 writes a display's own answers, the fallback is
+dead for displays that have them and still correct for those that do not; it costs
+one extra file read on the miss path.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run packages/host/src/server.test.ts`
