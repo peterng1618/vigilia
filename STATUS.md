@@ -10,7 +10,7 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 ## Active work
 
 - **Active plan:** `2026-10-18-per-display-themes.md` — [plan](docs/superpowers/plans/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md); execution ledger `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`.
-- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); **Phase 4's Tasks 4.1–4.7 are complete**; the pre-flight scans and the review loops have ruled R1–R81 into the ledger and no seat is running.
+- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); **Phase 4's Tasks 4.1–4.7 are complete**; the pre-flight scans and the review loops have ruled R1–R89 into the ledger and no seat is running.
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
 - Plan queue after this: `2026-10-18-theme-store.md` (its phase A only — B–G each need their own plan, G before C), then the panel work; the colour/gradient spec is unreviewed and unplanned.
 - Recorded objectives rather than queued plans: a **native player app**, the only path to real device brightness (`vg-583`), and a **TURZX panel display** ([rough capture](docs/superpowers/specs/2026-10-18-turzx-panel-displays-design.md)), both sequenced after the theme store.
@@ -18,9 +18,10 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 4.7: the player repaints at the display's own rate — `/api/published` now answers `chartFpsFor(record)`, and `followPublished` narrows it to `1 | 30` before `setRate`, so a malformed rate cannot divide a cadence into a silent freeze (R64, R77).
-- **The unconditional repaint is gone**: `onFrame` asks `glass.liveSurfaces()`, so a video nobody samples repaints the canvas zero times — and the same gate covers a still image's decode, which was the other caller of that callback.
-- `scene.ts` builds the media layer after the glass handle so each reaches the other through a closure, and adds no `FabricSceneOptions` field: `createGlass` stays the one owner of what a glass treatment is (R64).
+- Task 4.7 (`15870f4f` + a fix round to `be2d45ec`): the player repaints at the display's own rate — `/api/published` answers `chartFpsFor(record)`, and `followPublished` narrows it to `1 | 30` before `setRate`, so a malformed rate cannot divide a cadence into a silent freeze (R64, R77).
+- **The unconditional repaint is gone**: `onFrame` asks `glass.liveSurfaces()`, so a video nobody samples repaints the canvas zero times — and the same gate covers a still image's decode, the other caller of that callback.
+- **The review found a seventh check that could not fail, and this commit created it**: making the gate correct disarmed the assertion guarding the listener's release, so the post-teardown half was deleted rather than propped up — `background-media.dom.test.ts` counts `onFrame` invocations and is the case that can actually go red (R87).
+- Task 4.8's brief was patched three times before dispatch: the walker is `scene-fabric/src/glass.ts`, not `renderer-core`'s same-named 90-line file (R85); Step 1 wrote a case with an empty body (R88); and its browser proof has neither a video theme nor a remote display row to run against (R89).
 
 ## Next
 
