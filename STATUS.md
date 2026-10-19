@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 4.2 (`03ff819f`, fix `a300573d`): a reassignment reaches a display already showing — `/api/published` answers `display.theme`, the follower compares it beside the revision, and a local display's poll now names itself so the host records the sighting (R40's pair).
-- **The feature would have shipped dead**: `location.reload()` re-serves the theme id already in the URL, because `GET /` skips its resolution when `data` is present and its own 302 sets `data=live`. The publish flow hides this — a publish keeps the id and changes the document. R51's `reResolveUrl` fixes it.
-- Fix round 1 also stopped the follower reloading after its own callback, made `DisplayStore.touch` decline a write inside 5 s, and moved `themeStore.list()` inside the link check.
-- Red proofs 4 player / 1 store / 1 listing cases; `npm run test` 271 files and **3689 tests** exit 0, typecheck exit 0.
-- **No browser has seen a reassignment land** — `publish-loop.spec.ts` would show it, and it is red at `:402` (`vg-604`) while a Playwright run's stream closes are the shape that killed the host in `vg-620`.
+- Task 4.3 (`c9729ff3`, fix `80ba6991`): both host pages read the display map and write `{ display, id }`, the display column is drawn by `theme-list.js` with `data-kind` per row, and the fallback rule is one exported `shownTheme` rather than three copies.
+- **R53: `/api/themes/:id/answers` now resolves the display it is asked for.** It read and wrote `DEFAULT_DISPLAY` unconditionally, under a comment claiming it read "the answers of whoever asked" — which its own code did not do. Proven on a real host: answering for `This PC` wrote `this-pc.system-disk`, left `default` empty, and `?display=nobody` answered 404.
+- The fix round's shape is the lesson: the first implementation was not wrong but **undiscriminated** — the moved stub passed whether or not the page sent the display, and `kind` reached the module and was dropped one function later.
+- `npm run test` 271 files and **3697 tests** exit 0, `host-settings.spec.ts` 7 expected / 0 unexpected exit 0, typecheck exit 0.
+- **The browser suite does not tie the two halves together**: `host-settings.spec.ts:73`'s `answersFor` sends no `?display=`, so it stays green if the page stops sending one. Named for the Phase 4 gate.
 
 ## Next
 
-1. **Phase 4 continues at Task 4.3** (the two host pages write the display they name); the scan and the two tasks so far have ruled R45–R52.
+1. **Phase 4 continues at Task 4.4** (the assign action the store consumes); the scan and the three tasks so far have ruled R45–R55.
 2. `vg-620` is the open one to weigh first: a client disconnecting mid-stream kills the host, which makes every browser proof in this repo unreliable and takes every other display's stream with it.
 3. Resume the drain at Task 23.4 when this plan stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
