@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { readStoredPairing, storePairing } from "./host-refind.js";
+import { PAIRING_STORAGE_KEY, storePairing } from "./host-refind.js";
 import { displaySession } from "./session.js";
 
 /** The browser's own `Storage`, without a browser. */
@@ -122,14 +122,18 @@ describe("what a load reads, and what it writes", () => {
     // The identity comes from `GET /api/host` and nowhere else: `pair.html`
     // navigates to `/?session=<token>` and nothing in the repo emits `host=`,
     // `name=` or `port=` (R72). A second writer here could only produce a record
-    // with an empty `hostId` — which reads back as a valid pairing, matches no
-    // probe, and would overwrite a good one on any load where `/api/host`
-    // failed.
+    // with an empty `hostId`, which would overwrite a good one on any load where
+    // `/api/host` failed.
+    //
+    // Asserted on the **raw key**, not through `readStoredPairing`: that reads
+    // through `isPairedHost`, which refuses a blank `hostId`, so a reintroduced
+    // writer would satisfy the case by being rejected later (R76). The case is
+    // about whether a write happened, and only the key can answer that.
     const storage = memoryStorage();
 
     displaySession("http://192.168.1.10:5227/?session=abc", fetch, storage);
 
-    expect(readStoredPairing(storage)).toBeUndefined();
+    expect(storage.getItem(PAIRING_STORAGE_KEY)).toBeNull();
   });
 
   it("lets a fresh pairing link replace a stored credential", () => {

@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 // @vitest-environment-options {"url": "http://192.168.1.10:5227/"}
+// The re-find cases below need this LAN origin: `sweepAddresses("localhost")` is
+// empty, so on the default jsdom origin the sweep is a no-op and both cases pass
+// vacuously.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { readStoredPairing } from "./host-refind.js";
+import { PAIRING_STORAGE_KEY, readStoredPairing } from "./host-refind.js";
 
 /**
  * `vg-190`: a rejection arriving after the scene mounted calls
@@ -86,7 +89,7 @@ class SilentEventSource {
 }
 
 /**
- * The player's own pacing, which is where the retry lives (R72).
+ * The player's re-find, which is where the retry and the probe both live (R72).
  *
  * The follower reports every failed tick — a fact, not a policy — so four failed
  * ticks inside one cooldown must be one sweep rather than four, and a failed
@@ -96,11 +99,16 @@ class SilentEventSource {
  * the second 253. Timers are faked because a cooldown of real seconds is a test
  * nobody would wait for.
  *
+ * The credential case shares this harness, and has to live here rather than in
+ * `host-refind.test.ts`: that file can only catch a mutation *inside* the
+ * ladder, while the real risk is `main.ts` building its probe from
+ * `session.fetch`/`withToken`, which the ladder's own tests never see (R63).
+ *
  * It runs before the cases below because a jsdom file shares one window: a
  * display another case mounted is still holding real timers, and this case's
  * clock is what is under test.
  */
-describe("the player's re-find pacing", () => {
+describe("the player's re-find", () => {
   beforeEach(() => {
     vi.resetModules();
     window.localStorage.clear();
@@ -124,7 +132,30 @@ describe("the player's re-find pacing", () => {
     }
   }
 
-  it("sweeps once per cooldown, not once per failed tick", async () => {
+  /** One request the player made, and the `init` it made it with: a credential
+   *  rides in a header, so a case about the credential needs both halves. */
+  interface Asked {
+    readonly url: string;
+    readonly init: RequestInit | undefined;
+  }
+
+  /** A request to another *address* on this /24, which is what the sweep is. The
+   *  ladder's two known candidates are this page's own address and the host's
+   *  name, so neither is counted, and one ladder run makes exactly 253 of these
+   *  — the number `sweepAddresses` gives. The page is at a LAN address rather
+   *  than a name because a name has no /24 to sweep, and the display this task
+   *  is for is the one whose URL is one. */
+  function isSweptAddress(url: string): boolean {
+    const target = new URL(url, window.location.href);
+    return (
+      target.origin !== window.location.origin &&
+      /^\d+\.\d+\.\d+\.\d+$/.test(target.hostname)
+    );
+  }
+
+  /** Mounts a paired display whose host has moved: every poll fails, so every
+   *  tick reports it and the ladder runs. */
+  async function mountWithTheHostGone(): Promise<{ readonly asked: Asked[] }> {
     // The display this case mounts gets no frames: a minute of fake time is
     // ~1900 repaints at the chart loop's rate, and every one of them is work
     // this case is not about. `window`'s own pair, because the chart loop binds
@@ -151,28 +182,14 @@ describe("the player's re-find pacing", () => {
       },
     );
 
-    const asked: string[] = [];
-    /** Requests to a swept address: another *address* on this /24, which is what
-     *  the sweep is. The ladder's two known candidates are this page's own
-     *  address and the host's name, so neither is counted, and one ladder run
-     *  makes exactly 253 of these — the number `sweepAddresses` gives. The page
-     *  is at a LAN address rather than a name because a name has no /24 to
-     *  sweep, and the display this task is for is the one whose URL is one. */
-    const swept = (): number =>
-      asked.filter((url) => {
-        const target = new URL(url, window.location.href);
-        return (
-          target.origin !== window.location.origin &&
-          /^\d+\.\d+\.\d+\.\d+$/.test(target.hostname)
-        );
-      }).length;
+    const asked: Asked[] = [];
 
     Object.defineProperty(window, "fetch", {
       configurable: true,
       writable: true,
-      value: vi.fn(async (input: RequestInfo | URL) => {
+      value: vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
-        asked.push(url);
+        asked.push({ url, init });
 
         if (url === "/api/host") {
           return json({ id: "h1", name: "study-pc", port: 5227 });
@@ -189,17 +206,25 @@ describe("the player's re-find pacing", () => {
     });
     vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    /** One failed tick, and the microtasks its report sets off: the sweep is 253
-     *  promises deep, so the clock cannot be advanced in one block without
-     *  starving it — and a sweep still in flight is a sweep the next tick is
-     *  meant to leave alone. */
-    const failedTick = async (): Promise<void> => {
-      await vi.advanceTimersByTimeAsync(2_000);
-      await flush();
-    };
-
     await import("./main.js");
     await flush();
+
+    return { asked };
+  }
+
+  /** One failed tick, and the microtasks its report sets off: the sweep is 253
+   *  promises deep, so the clock cannot be advanced in one block without
+   *  starving it — and a sweep still in flight is a sweep the next tick is
+   *  meant to leave alone. */
+  async function failedTick(): Promise<void> {
+    await vi.advanceTimersByTimeAsync(2_000);
+    await flush();
+  }
+
+  it("sweeps once per cooldown, not once per failed tick", async () => {
+    const { asked } = await mountWithTheHostGone();
+    const swept = (): number =>
+      asked.filter(({ url }) => isSweptAddress(url)).length;
 
     expect(swept()).toBe(253);
 
@@ -218,6 +243,31 @@ describe("the player's re-find pacing", () => {
     await flush();
 
     expect(swept()).toBe(506);
+  });
+
+  it("sends no credential to a swept address", async () => {
+    const { asked } = await mountWithTheHostGone();
+
+    // The sweep has to have happened, or the case below is vacuous. It has by
+    // the time the mount returns: the follower polls once on start, that tick
+    // fails, and `onUnreachable` runs the ladder.
+    const swept = asked.filter(({ url }) => isSweptAddress(url));
+
+    expect(swept.length).toBeGreaterThan(0);
+
+    // `/api/host` is unauthenticated and CORS `*`, so the probe needs no
+    // credential — and a probe built from `session.fetch`/`withToken` would
+    // offer this display's token to every address that answers, which is the
+    // opposite of what the stored `hostId` is for (R63).
+    const offenders = swept
+      .filter(
+        ({ url, init }) =>
+          url.includes("session") ||
+          new Headers(init?.headers).has("x-vigilia-session"),
+      )
+      .map(({ url }) => url);
+
+    expect(offenders).toEqual([]);
   });
 });
 
@@ -439,6 +489,12 @@ describe("the pairing a load remembers", () => {
       }),
     });
     vi.spyOn(console, "warn").mockImplementation(() => {});
+    // **Whether a write happened is a question only the key can answer, and here
+    // it has to be counted rather than read.** `rememberPairing` writes the good
+    // record over whatever is there, so the value below is the same whether or
+    // not `displaySession` wrote an empty one first — a second writer leaves a
+    // second write and no other trace (R72, R76).
+    const writes = vi.spyOn(Storage.prototype, "setItem");
 
     await import("./main.js");
     await vi.waitFor(() =>
@@ -452,5 +508,9 @@ describe("the pairing a load remembers", () => {
       token: "paired-token",
       lastAddress: window.location.hostname,
     });
+
+    expect(writes.mock.calls.map(([key]) => key)).toEqual([
+      PAIRING_STORAGE_KEY,
+    ]);
   });
 });
