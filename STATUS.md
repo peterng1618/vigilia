@@ -18,9 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The mode switch's save path reads the document, not the promise**: `savePackage()` resolves even when the save failed, so a still-dirty `isDirty()` after the await keeps the author in the editor rather than moving past a guard that did not complete.
-- **The guard's promise is settled where it is created**: `requestMode` returns `void` — the switch's handler has no return to give — and the question/save chain is caught there, so a rejection cannot surface as an unhandled rejection.
-- **Evidence**: focused vitest 383 passed, `shell-layout.dom.test.tsx` 32 passed, `npm run typecheck` and `biome check ..` (706 files) exit 0; the failed-save case reddens when its condition is removed.
+- **The display's dim slider runs the right way** (found by the user testing the player): its track is the light level now, so the far end is no overlay and the near end is the dimmest, where pushing it right used to darken the screen.
+- **Two direction assertions pin it**: the resting position reads `100`, the near end reaches the overlay's ceiling and the far end reaches zero; reverting the mapping reddens the case.
+- **Evidence**: `display-controls.dom.test.ts` 12 passed exit 0, red with the old mapping at the "near end is the dimmest" assertion, restored with `cp` + `cmp`.
 
 ## Next
 

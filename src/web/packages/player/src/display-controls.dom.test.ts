@@ -329,9 +329,26 @@ describe("the dimmer", () => {
 
     expect(shade.style.opacity).toBe("0");
 
+    // The track is the light level, so the resting position is the bright end
+    // and dragging towards the near end is what shades the picture. The mapping
+    // used to run the other way, and a reader who pushed the slider right got a
+    // darker screen.
+    expect(slider.value, "the resting position is full light").toBe("100");
+
     slider.value = "50";
     slider.dispatchEvent(new Event("input"));
     expect(Number(shade.style.opacity)).toBeCloseTo(0.425, 3);
+
+    slider.value = "0";
+    slider.dispatchEvent(new Event("input"));
+    expect(
+      Number(shade.style.opacity),
+      "the near end is the dimmest",
+    ).toBeCloseTo(0.85, 3);
+
+    slider.value = "100";
+    slider.dispatchEvent(new Event("input"));
+    expect(Number(shade.style.opacity), "the far end is no overlay").toBe(0);
 
     // Never the device's own brightness: a browser cannot set that, and the
     // label says which one this is.

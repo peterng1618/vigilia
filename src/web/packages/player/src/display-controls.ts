@@ -92,11 +92,14 @@ export function mountDisplayControls(): DisplayControls {
   dim.min = "0";
   dim.max = "100";
   dim.step = "5";
-  dim.value = "0";
+  // The track is the light level, not the overlay: right is brighter, which is
+  // what a dimmer's own knob does and what a slider beside a picture is read as.
+  // The overlay is the inverse of it, so the resting position is full light.
+  dim.value = "100";
   dim.dataset["vigiliaDim"] = "";
   dim.setAttribute("aria-label", uiCopy.controls.dim.label);
   dim.addEventListener("input", () => {
-    shade.style.opacity = String((Number(dim.value) / 100) * MAX_DIM);
+    shade.style.opacity = String((1 - Number(dim.value) / 100) * MAX_DIM);
   });
 
   row.append(fullscreen, awake, dim);
