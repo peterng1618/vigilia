@@ -2257,8 +2257,18 @@ export function storePairing(storage: Storage, pairing: PairedHost): void;
 /** The ladder: last address, then the name, then the last address's /24. */
 export async function refindHost(pairing: PairedHost, probe: HostProbe, options?: { readonly concurrency?: number }): Promise<string | undefined>;
 export function originFor(address: string, port: number): string;
-export function sweepAddresses(address: string): readonly string[];  // the /24, minus the host itself
+export function sweepAddresses(address: string): readonly string[];  // the 254 usable hosts, minus the host itself (253)
 ```
+
+**Rulings carried into this task (R63).** `sweepAddresses` yields the /24's **usable** hosts
+`.1`–`.254` with the address itself removed — **253** entries, not 254; `.0` and `.255` are
+never probed, and that is the reason for the number rather than the number being the reason.
+`session.ts` gains an **optional third `storage` parameter**, and the URL wins when it carries
+a token, so a fresh pairing link can replace a stale stored one. **The probe never carries the
+display's credential**: `GET /api/host` is unauthenticated and CORS `*`, so it needs none, and
+attaching `x-vigilia-session` would offer this display's token to every address that answers —
+the opposite of what the stored `hostId` exists to prevent. Step 4 runs `main.dom.test.ts`;
+there is no `main.test.ts` in the player.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2287,9 +2297,14 @@ it("answers nothing when no host answers at all", async () => {
 
 it("sweeps its own /24 and not the address it already tried", () => {
   const addresses = sweepAddresses("192.168.1.10");
-  expect(addresses).toHaveLength(254);
+  // 254 usable hosts, less the one the ladder already tried. `.0` and `.255`
+  // are asserted absent because they are why it is 253 and not 255.
+  expect(addresses).toHaveLength(253);
   expect(addresses).not.toContain("192.168.1.10");
+  expect(addresses).not.toContain("192.168.1.0");
+  expect(addresses).not.toContain("192.168.1.255");
   expect(addresses).toContain("192.168.1.1");
+  expect(addresses).toContain("192.168.1.254");
 });
 
 it("keeps a bound on how many probes are in flight", async () => {
@@ -2299,13 +2314,52 @@ it("keeps a bound on how many probes are in flight", async () => {
   expect(peak).toBeLessThanOrEqual(8);
 });
 
-// session.test.ts
+// session.test.ts — real cases, not sketches. Both halves of the first sentence
+// are asserted: storing the token, and resolving it from storage on a later load
+// whose URL carries none, which is the only reason storing it is worth anything.
 it("stores the credential it was handed and stops reading it from the URL", () => {
-  // ?session=<token> once -> storePairing called with it; the same page reloaded
-  //   with no query still resolves the session from storage.
+  const storage = memoryStorage();
+  displaySession("http://192.168.1.10:5227/?session=abc", fetch, storage);
+  expect(readStoredPairing(storage)?.token).toBe("abc");
+
+  // A later load with no query resolves the session from storage.
+  const later = displaySession("http://192.168.1.10:5227/", fetch, storage);
+  expect(later.token).toBe("abc");
 });
+
 it("keeps the host identity beside the credential", () => {
-  // ?session=<token>&host=<id>&name=<name>&port=5227 -> stored as PairedHost.
+  const storage = memoryStorage();
+  displaySession(
+    "http://192.168.1.10:5227/?session=abc&host=h1&name=study-pc&port=5227",
+    fetch,
+    storage,
+  );
+  expect(readStoredPairing(storage)).toEqual({
+    hostId: "h1", hostName: "study-pc", port: 5227, token: "abc",
+    lastAddress: "192.168.1.10",
+  });
+});
+
+it("lets a fresh pairing link replace a stored one", () => {
+  // Otherwise a display re-paired to a second host keeps the first one's token.
+  const storage = memoryStorage();
+  displaySession("http://192.168.1.10:5227/?session=first&host=h1&name=a&port=5227", fetch, storage);
+  displaySession("http://192.168.1.10:5227/?session=second&host=h2&name=b&port=5227", fetch, storage);
+  expect(readStoredPairing(storage)?.token).toBe("second");
+});
+
+it("hands the probe a bare origin, with nothing appended to it", async () => {
+  // The probe is the only thing that fetches, so a credential can reach a swept
+  // address in exactly one way: if the sweep is routed through
+  // `session.withToken`/`session.fetch`, the origin arrives carrying `?session=`.
+  // `/api/host` needs none, and a swept address has no business seeing one.
+  const seen: string[] = [];
+  await refindHost(pairing, async (origin) => {
+    seen.push(origin);
+    return undefined;
+  }, { concurrency: 4 });
+  expect(seen.length).toBeGreaterThan(0);
+  expect(seen.every((o) => !o.includes("session"))).toBe(true);
 });
 ```
 
@@ -2349,8 +2403,8 @@ localhost result as a phone result.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/player/src/host-refind.test.ts packages/player/src/session.test.ts packages/player/src/main.test.ts`
-Expected: PASS.
+Run: `npx vitest run packages/player/src/host-refind.test.ts packages/player/src/session.test.ts packages/player/src/main.dom.test.ts`
+Expected: PASS. (`main.dom.test.ts` — the player has no `main.test.ts`.)
 
 - [ ] **Step 5: Commit**
 
