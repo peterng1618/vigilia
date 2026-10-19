@@ -98,6 +98,11 @@ export function stage(options: {
   readonly size?: number;
   readonly texture?: boolean;
   readonly artboard?: { readonly width: number; readonly height: number };
+  /** The rect the media layer covers, in artboard units, when it is not the
+   *  artboard itself — a `fit: "display"` layer is larger than the board and
+   *  starts outside it, which is the only way the rect's own left/top are
+   *  non-zero. */
+  readonly backdropRect?: DeviceRect;
   readonly backdrop?: () => {
     paint(ctx: CanvasRenderingContext2D, region: DeviceRect): boolean;
   };
@@ -169,13 +174,15 @@ export function stage(options: {
   const glass = createGlass({
     canvas,
     // Omitted entirely unless asked for, so the "no media" cases really have none.
-    ...(options.backdrop === undefined && options.artboard === undefined
+    ...(options.backdrop === undefined &&
+    options.artboard === undefined &&
+    options.backdropRect === undefined
       ? {}
       : {
           backdrop: () => {
             const artboard = options.artboard ?? { width: size, height: size };
             return {
-              rect: { left: 0, top: 0, ...artboard },
+              rect: options.backdropRect ?? { left: 0, top: 0, ...artboard },
               paint: (ctx, region, device) => {
                 regions.push({ ...region });
                 paints.push({ region: { ...region }, device: { ...device } });

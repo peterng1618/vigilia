@@ -55,6 +55,41 @@ describe("mountFabricScene updateArtboard", () => {
     element.remove();
   });
 
+  it("re-fits the media layer when the artboard's own size changes", () => {
+    // The host is 400x300, so the 400x300 board mounts at 1:1 and the 200x300
+    // one that follows fits at 1:1 too, centred — the layer's box halves.
+    // `media.update` re-places against the bounds the last `fit()` set, so
+    // without a re-fit the layer keeps the old box and `fit: "theme"` means the
+    // box the board no longer has.
+    const element = host();
+    const scene = mountFabricScene({
+      host: element,
+      plan: plan(),
+      artboard: { width: 400, height: 300 },
+      assets: [{ id: "b", kind: "image", path: "assets/b.png" }],
+      resolveAsset: (assetId) => ({ url: `blob:${assetId}` }),
+    });
+    const layer = element.querySelector<HTMLElement>(
+      "[data-vigilia-background-media]",
+    );
+
+    scene.updateArtboard({
+      width: 200,
+      height: 300,
+      backgroundMedia: { assetId: "b", fit: "theme" },
+    });
+
+    expect([
+      layer?.style.left,
+      layer?.style.top,
+      layer?.style.width,
+      layer?.style.height,
+    ]).toEqual(["100px", "0px", "200px", "300px"]);
+
+    scene.dispose();
+    element.remove();
+  });
+
   it("is inert when scene mounted without asset resolver", () => {
     const element = host();
     const scene = mountFabricScene({ host: element, plan: plan() });

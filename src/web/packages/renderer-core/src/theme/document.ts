@@ -119,11 +119,16 @@ export interface Artboard {
   readonly contentFit?: "contain" | "cover";
   readonly backgroundMedia?: BackgroundMedia;
 }
+/** The two boxes a background media layer can be sized to. Exported because the
+ *  validator and the published schema both name this set, and the schema test
+ *  holds them to this list rather than to a copy of it. */
+export const BACKGROUND_MEDIA_FITS = ["theme", "display"] as const;
+
 export interface BackgroundMedia {
   readonly assetId: string;
   /** The box the media fills, both with `object-fit: cover`: the theme's own
    *  artboard ratio, or the display's. */
-  readonly fit: "theme" | "display";
+  readonly fit: (typeof BACKGROUND_MEDIA_FITS)[number];
 }
 
 /** Themes bind semantic keys, never provider-instance IDs. */

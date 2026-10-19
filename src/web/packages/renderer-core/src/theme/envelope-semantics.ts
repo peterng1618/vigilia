@@ -1,5 +1,6 @@
 import {
   ASSET_PATH_PATTERN,
+  BACKGROUND_MEDIA_FITS,
   GLOBAL_GROUPS,
   MAX_ARTBOARD_DIMENSION,
   STABLE_ID_PATTERN,
@@ -334,7 +335,7 @@ function validateBackgroundMedia(
       );
   issues.enumValue(
     value["fit"],
-    ["theme", "display"] as const,
+    BACKGROUND_MEDIA_FITS,
     "/artboard/backgroundMedia/fit",
     "fit",
   );

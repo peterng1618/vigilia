@@ -60,8 +60,8 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
       height: 941,
       // Transparent, because the backdrop is a media layer mounted *below* the
       // canvas: an opaque artboard paint is exactly what would hide it. The
-      // letterbox is painted by this same `background` now that `barColor` is
-      // gone, so this starter's bars are the stage colour (transparent) too.
+      // letterbox is this same paint, so the bars are not painted either and the
+      // stage shows through them.
       background: { ref: "palette.none" },
       backgroundMedia: { assetId: starterBackdrop.id, fit: "theme" },
     },

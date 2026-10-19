@@ -339,6 +339,33 @@ describe("glass composition", () => {
     expect(s.regions[0]?.top).toBeGreaterThanOrEqual(0);
   });
 
+  it("maps a display-filled backdrop's own rect, not the artboard, onto the surface", () => {
+    // 0075's case, and the one nothing else here reaches: under `fit: "display"`
+    // the layer covers the display box, which is larger than the artboard and
+    // starts outside it, so `media.rect.left`/`top` are non-zero. Every other
+    // case on this stage builds a theme rect (`{0, 0, artboard}`), which
+    // exercises those two terms at zero and would not notice them dropped.
+    const s = stage({
+      // Big enough for the panel once the viewport transform has moved it.
+      size: 400,
+      artboard: { width: 400, height: 200 },
+      backdropRect: { left: -5, top: -10, width: 600, height: 250 },
+    });
+    s.canvas.setViewportTransform([2, 0, 0, 2, 40, 60]);
+    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.renderAll();
+
+    // The same plane the artboard goes through: 40 + (-5 * 2) = 30, 60 + (-10 *
+    // 2) = 40, 600 * 2 = 1200, 250 * 2 = 500. The theme rect would give
+    // {40, 60, 800, 400} — the board, not the layer.
+    expect(s.paints[0]?.device).toEqual({
+      left: 30,
+      top: 40,
+      width: 1200,
+      height: 500,
+    });
+  });
+
   it("keeps the media rect through a capture multiplier at a zoom", () => {
     // Zoom 2, multiplier 3: the plane scale is 6. The old derivation multiplied
     // the already-fit CSS bounds by the plane scale, which at zoom 1 happens to

@@ -735,5 +735,5 @@ export async function importBackdrop(page: Page, file: string): Promise<void> {
   // Both are plan 1's selects — a button opening a listbox, not a `select` — so
   // they are driven the way an author drives them.
   await chooseIn(page, "[data-vigilia-background-asset]", assetId ?? "");
-  await chooseIn(page, "[data-vigilia-background-media-fit]", "cover");
+  await chooseIn(page, "[data-vigilia-background-media-fit]", "theme");
 }

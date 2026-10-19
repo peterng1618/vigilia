@@ -129,10 +129,16 @@ export function mountFabricScene(
   let currentTransform = fit();
 
   function fit(): ArtboardTransform {
+    // The document's artboard when there is one, because it is the only source
+    // that moves: `ScenePlan` cannot carry a document-level change, and
+    // `updateArtboard` is how one arrives. Its paint is not read from here — a
+    // document artboard's `background` may still be a palette reference, which
+    // only the plan builder can resolve.
+    const geometry = currentArtboard ?? plan.artboard;
     const transform = computeArtboardTransform({
-      artboard: { width: plan.artboard.width, height: plan.artboard.height },
+      artboard: { width: geometry.width, height: geometry.height },
       viewport: { width: host.clientWidth, height: host.clientHeight },
-      contentFit: plan.artboard.contentFit,
+      contentFit: geometry.contentFit ?? "contain",
     });
 
     // The one artboard paint is the board's fill and the bars behind it (§53).
@@ -144,8 +150,8 @@ export function mountFabricScene(
         artboard: {
           left: transform.offsetX,
           top: transform.offsetY,
-          width: plan.artboard.width * transform.scale,
-          height: plan.artboard.height * transform.scale,
+          width: geometry.width * transform.scale,
+          height: geometry.height * transform.scale,
         },
         display: {
           left: 0,
@@ -202,12 +208,18 @@ export function mountFabricScene(
     updateArtboard(artboard: Artboard): void {
       if (disposed) return;
       currentArtboard = artboard;
-      if (media === undefined || options.resolveAsset === undefined) return;
-      media.update({
-        artboard,
-        assets: options.assets,
-        resolveAsset: options.resolveAsset,
-      });
+      if (media !== undefined && options.resolveAsset !== undefined)
+        media.update({
+          artboard,
+          assets: options.assets,
+          resolveAsset: options.resolveAsset,
+        });
+      // `media.update` re-places the layer against the bounds the last `fit()`
+      // set, so an artboard whose size changed would keep the old box — and
+      // which box the layer is on is what `fit: "theme"` means. Re-fit before
+      // returning, and repaint because the viewport transform moved with it.
+      currentTransform = fit();
+      canvas.requestRenderAll();
     },
 
     resize(): void {
