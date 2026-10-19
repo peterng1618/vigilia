@@ -1265,6 +1265,8 @@ git commit -m "feat(host): launch a local monitor's browser, and come back after
 **Files:**
 - Modify: `src/web/packages/host/src/settings/active-theme.ts`
 - Test: `src/web/packages/host/src/settings/active-theme.test.ts`
+- Modify: `src/web/packages/host/src/server.ts`
+- Test: `src/web/packages/host/src/server.test.ts`
 
 **Interfaces:**
 - Consumes: `DEFAULT_DISPLAY` (Task 1.1).
@@ -1272,10 +1274,14 @@ git commit -m "feat(host): launch a local monitor's browser, and come back after
   - `read(display: string, exists: (id: string) => Promise<boolean>): Promise<string | undefined>`
   - `write(display: string, id: string): Promise<void>`
   - `clear(display: string): Promise<void>`
-  - `readAll(): Promise<Readonly<Record<string, string>>>`
 
   The file is `{ "<display>": "<theme id>" }`, flat, with `default` an ordinary
-  key — so there is no second shape for a reader to get wrong.
+  key — so there is no second shape for a reader to get wrong. **There is no
+  `readAll` here** (ruling 37): its only consumer is Phase 4's theme-list, which
+  shows a display column, and nothing in Phase 2 reads the whole map — so it would
+  be a method with no caller and no test, which is the shape that cost this plan
+  R7 and R8. Phase 4 adds it with the surface that needs it, and lets that surface
+  say whether it wants the raw map or the displays joined to it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1316,6 +1322,17 @@ migration of a person's own choice rather than compatibility glue for a supersed
 internal design: losing it would leave a working dashboard blank. The next write
 persists the new shape and the old key is not written again.
 
+**The three existing call sites move to `DEFAULT_DISPLAY` in this task** (ruling
+38). Changing the signature breaks `server.ts`'s callers — the assignment's
+effective theme, the active-theme route's read and its write — and `server.test.ts`
+constructs the store four times, so a task that changed the interface alone would
+leave the tree failing typecheck until Task 2.2 landed. They pass `DEFAULT_DISPLAY`
+because that is exactly what today's global store *is*: one theme for every client,
+which is the default display's entry. Task 2.2 replaces the `GET /` site with
+`displayKeyFor`; the active-theme route keeps reading and writing the default until
+Phase 4 gives that route a display to write for, which is why it is not a defect
+for it to still name `DEFAULT_DISPLAY` after Phase 2.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run packages/host/src/settings/active-theme.test.ts`
@@ -1324,7 +1341,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/settings/active-theme.ts src/web/packages/host/src/settings/active-theme.test.ts
+git add src/web/packages/host/src/settings/active-theme.ts src/web/packages/host/src/settings/active-theme.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
 git commit -m "feat(host): hold a theme per display, with a default"
 ```
 
