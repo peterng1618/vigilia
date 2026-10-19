@@ -75,7 +75,14 @@ async function answersFor(
   return body.answers;
 }
 
-async function chooseTheme(page: Page, id: string): Promise<void> {
+/** Chooses a theme for one display: the row is pressed first, because a theme
+ *  is given *to* a display and the page writes whichever row is showing. */
+async function chooseTheme(
+  page: Page,
+  id: string,
+  display = "default",
+): Promise<void> {
+  await page.locator(`#themes [data-display="${display}"]`).click();
   await page.locator(`button.theme-option[data-theme="${id}"]`).click();
   await expect(
     page.locator(`button.theme-option[data-theme="${id}"]`),
@@ -114,6 +121,53 @@ test.describe("the settings page a consumer configures", () => {
 
     await chooseTheme(page, HOST_THEME_ID);
     expect(await legends.allTextContents()).toEqual(before);
+  });
+
+  test("gives every display its own row, and writes the one that was pressed", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass owns the shared host state",
+    );
+
+    resetStores();
+    await page.goto(`${HOST}/settings`);
+
+    const map = (await (
+      await request.get(`${HOST}/api/themes/active`)
+    ).json()) as { displays: { id: string }[] };
+
+    // The column: the default first, then one row per display this host holds.
+    // The default leads because it is what a display with no choice of its own
+    // already gets, so it is the row the page opens on.
+    const rows = page.locator("#themes [data-display]");
+    await expect(rows).toHaveCount(1 + map.displays.length);
+    await expect(rows.first()).toHaveAttribute("data-display", "default");
+    await expect(rows.first()).toHaveAttribute("aria-pressed", "true");
+    await expect(rows.first()).toContainText("Nothing chosen");
+    await expect(rows.nth(1)).toHaveAttribute("data-display", "this-pc");
+    await expect(rows.nth(1)).toContainText("This PC");
+    await expect(rows.nth(1)).toContainText("Uses the default");
+
+    // One display's theme is not another's: choosing for this PC leaves the
+    // default where it was, and the row says which theme it now holds.
+    await chooseTheme(page, HOST_THEME_ID, "this-pc");
+
+    await expect(rows.nth(1)).toContainText("E2E hosted");
+    await expect(rows.first()).toContainText("Nothing chosen");
+
+    const after = (await (
+      await request.get(`${HOST}/api/themes/active`)
+    ).json()) as {
+      default: string | null;
+      displays: { id: string; theme: string | null }[];
+    };
+    expect(after.default).toBeNull();
+    expect(after.displays.find((row) => row.id === "this-pc")?.theme).toBe(
+      HOST_THEME_ID,
+    );
   });
 
   test("saves this PC's device choice with no theme chosen", async ({

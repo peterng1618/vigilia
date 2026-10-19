@@ -1,12 +1,14 @@
 /**
- * A saved theme as one row in a list.
+ * A saved theme as one row in a list, above the column of displays it can be
+ * given to.
  *
  * The owner of that row. Two pages list themes — the chooser the host serves
  * at `/` and the settings page — so the picture, the hatched stand-in for a
  * theme saved before pictures existed, and the id that tells two same-named
  * themes apart are drawn once here. A chooser with its own rows would be the
  * second copy of all three, and the copy that arrives second is the one
- * without the picture.
+ * without the picture. The display column is here for the same reason: a page
+ * that drew its own would be the copy that drifts.
  *
  * A template is the same row with a different truth behind it: the product
  * offers it, the PC has not saved it, and it cannot be chosen as what the
@@ -152,15 +154,88 @@ function confirmRemoval(name, id) {
 }
 
 /**
+ * The key the route gives the default a display with no choice of its own falls
+ * to. Spelled here rather than imported: this module is served as-is by the
+ * host, and the route's own constant is TypeScript it cannot reach.
+ */
+const DEFAULT_KEY = "default";
+
+/**
  * @param {readonly {readonly id: string, readonly name?: string, readonly author?: string}[]} themes
- * @param {{readonly active?: string | null, readonly onChoose: (id: string) => void, readonly onDelete?: (id: string) => Promise<void>, readonly templates?: readonly {readonly id: string, readonly name: string}[]}} options
+ * @param {{
+ *   readonly displays?: readonly {readonly id: string, readonly label: string, readonly kind?: string, readonly theme: string | null}[],
+ *   readonly default?: string | null,
+ *   readonly selected?: string,
+ *   readonly onSelect?: (display: string) => void,
+ *   readonly onChoose: (display: string, id: string) => void,
+ *   readonly onDelete?: (id: string) => Promise<void>,
+ *   readonly templates?: readonly {readonly id: string, readonly name: string}[],
+ * }} options
  * @returns {DocumentFragment}
  */
 export function themeList(
   themes,
-  { active = null, onChoose, onDelete, templates = [] },
+  {
+    displays = [],
+    default: defaultTheme = null,
+    selected = DEFAULT_KEY,
+    onSelect,
+    onChoose,
+    onDelete,
+    templates = [],
+  },
 ) {
   const fragment = document.createDocumentFragment();
+
+  const nameOf = (id) => themes.find((theme) => theme.id === id)?.name ?? id;
+
+  /** What a display row says it holds. A display with no entry of its own is
+   *  served the default, so "nothing" would be a lie about the screen; the
+   *  default row is the fallback itself and is the one that holds nothing. */
+  const heldText = (theme, isDefault) =>
+    theme === null || theme === undefined
+      ? isDefault
+        ? "Nothing chosen"
+        : "Uses the default"
+      : nameOf(theme);
+
+  /**
+   * One row per display, the default first.
+   *
+   * A theme row is a choice and a choice needs its subject: the page gives a
+   * theme *to a display*, so the display is stated above the rows that offer
+   * one. The default leads because it is what every display with no choice of
+   * its own already gets, so it is the one meant until another row is pressed.
+   */
+  const column = document.createElement("div");
+  column.className = "theme-list";
+  column.dataset.displays = "";
+
+  const addDisplay = (id, label, theme, isDefault) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "theme-option";
+    row.dataset.display = id;
+    row.setAttribute("aria-pressed", String(id === selected));
+    row.append(rowText(label, heldText(theme, isDefault)));
+    row.addEventListener("click", () => onSelect?.(id));
+    column.append(row);
+  };
+
+  addDisplay(DEFAULT_KEY, "Default", defaultTheme, true);
+  for (const display of displays) {
+    addDisplay(display.id, display.label, display.theme, false);
+  }
+
+  fragment.append(groupLabel("Displays"), column);
+
+  // The theme the rows below are being chosen for, so the mark on one answers
+  // "what is this display showing" rather than "what did anyone choose".
+  const showing =
+    selected === DEFAULT_KEY
+      ? defaultTheme
+      : (displays.find((display) => display.id === selected)?.theme ??
+        defaultTheme);
 
   if (templates.length > 0) {
     fragment.append(groupLabel("Templates"));
@@ -178,8 +253,9 @@ export function themeList(
     fragment.append(row);
   }
 
-  // With nothing saved, the empty group would be a heading over no rows.
-  if (templates.length > 0 && themes.length > 0) {
+  // The label separates the choices from the display column above them, and
+  // with nothing saved the empty group would be a heading over no rows.
+  if (themes.length > 0) {
     fragment.append(groupLabel("Your themes"));
   }
 
@@ -188,7 +264,7 @@ export function themeList(
     row.type = "button";
     row.className = "theme-option";
     row.dataset.theme = theme.id;
-    row.setAttribute("aria-pressed", String(theme.id === active));
+    row.setAttribute("aria-pressed", String(theme.id === showing));
 
     const shot = document.createElement("img");
     shot.className = "theme-shot";
@@ -216,14 +292,14 @@ export function themeList(
 
     // The chosen theme is stated in words too, so the state does not rest on
     // a border weight alone.
-    if (theme.id === active) {
+    if (theme.id === showing) {
       const current = document.createElement("span");
       current.className = "current";
       current.textContent = "Showing";
       row.append(current);
     }
 
-    row.addEventListener("click", () => onChoose(theme.id));
+    row.addEventListener("click", () => onChoose(selected, theme.id));
 
     // Showing a theme and changing it are different acts, so they are different
     // controls: the button above is the consumer choosing, and this is the

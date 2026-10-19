@@ -71,13 +71,21 @@ const json = (body: unknown): Response =>
     text: async () => JSON.stringify(body),
   }) as unknown as Response;
 
-/** The answers both pages ask for. `active` is what the page should put on
- *  the link, and it is the only thing under test that varies. */
+/** The answers both pages ask for. `active` is the theme the default display
+ *  holds — the row both pages open on — and it is the only thing under test
+ *  that varies. */
 function stub(active: string | null): void {
   globalThis.fetch = (async (input: string) => {
     switch (input) {
       case "/api/themes/active":
-        return json({ themes: [], templates: [], active });
+        return json({
+          themes: [],
+          templates: [],
+          default: active,
+          displays: [
+            { id: "this-pc", label: "This PC", kind: "local", theme: null },
+          ],
+        });
       case "/api/devices":
         return json({
           available: { gpus: [], disks: [] },

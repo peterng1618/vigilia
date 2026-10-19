@@ -129,31 +129,44 @@
       // The product's templates, which are not saved on this PC and so are
       // never chosen here — only listed, beside the author's own.
       let templates = [];
-      let activeTheme = null;
+      let displays = [];
+      let defaultTheme = null;
+      // The display this page is showing settings for. The default is what
+      // every display with no choice of its own already gets, so it is what the
+      // page means until another row in the column is pressed.
+      let selected = "default";
       // The device slots the chosen theme reads; empty means "ask about none".
       let requiredDevices = [];
       // Answers this theme already has, so a question is asked only once.
       let themeAnswers = {};
 
+      /** The theme the chosen display shows: its own choice, else the default's. */
+      function shownBy(display) {
+        return display === "default"
+          ? defaultTheme
+          : (displays.find((row) => row.id === display)?.theme ?? defaultTheme);
+      }
+
       function renderThemes() {
         themesHost.replaceChildren();
         // An author who is looking at a theme and then goes to change it means
         // that one. The link cannot carry it in the markup — the host serves
-        // this file as-is and the active theme is only known once the library
-        // has answered — so it is pointed at the theme this page is showing.
+        // this file as-is and the display's theme is only known once the map
+        // has answered — so it is pointed at the theme the page is showing.
         const editorLink = document.querySelector("#editor-link");
+        const showing = shownBy(selected);
         if (editorLink !== null) {
           editorLink.href =
-            activeTheme === null
+            showing === null
               ? "/editor/"
-              : `/editor/?theme=${encodeURIComponent(activeTheme)}`;
+              : `/editor/?theme=${encodeURIComponent(showing)}`;
         }
         themesHint.textContent =
           themes.length === 0
             ? "No themes are saved on this PC yet. Build one in the editor, then save it here."
             : themes.length === 1
               ? "The only saved theme is shown on every display."
-              : "Pick the theme your displays should show.";
+              : "Pick the theme the chosen display should show.";
 
         // A template is worth listing even with nothing saved, so the empty
         // state still shows what the product offers.
@@ -163,13 +176,22 @@
         list.className = "theme-list";
         list.append(
           themeList(themes, {
-            active: activeTheme,
+            displays,
+            default: defaultTheme,
+            selected,
+            templates,
+            onSelect: (display) => {
+              selected = display;
+              renderThemes();
+              // The questions belong to the display the page is now showing
+              // for, so they are read again rather than left from the last one.
+              loadQuestions();
+            },
             onChoose: chooseTheme,
             // This page lists the library too, so a Delete that worked on `/`
             // and was missing here would be the same finding on the next
             // screen: an author who cannot remove what they made.
             onDelete: deleteTheme,
-            templates,
           }),
         );
         themesHost.append(list);
@@ -179,7 +201,7 @@
         const unanswered = required.filter((group) => answers[group] === undefined);
         questionsHost.replaceChildren();
 
-        if (activeTheme === null || required.length === 0 || unanswered.length === 0) {
+        if (shownBy(selected) === null || required.length === 0 || unanswered.length === 0) {
           questionsSection.hidden = true;
           return;
         }
@@ -219,22 +241,30 @@
         }
       }
 
+      /** A theme's answers for one display: which devices a dashboard reads is
+       *  a fact about a screen, not about the machine, so the display the page
+       *  is showing for rides the request. */
+      function answersUrl(theme) {
+        return (
+          `/api/themes/${encodeURIComponent(theme)}/answers` +
+          `?display=${encodeURIComponent(selected)}`
+        );
+      }
+
       async function answerTheme(group, value) {
-        if (activeTheme === null) return;
+        const theme = shownBy(selected);
+        if (theme === null) return;
         status.textContent = "Saving…";
         try {
           const answers = { ...themeAnswers };
           if (value === "") delete answers[group];
           else answers[group] = value;
 
-          const response = await fetch(
-            `/api/themes/${encodeURIComponent(activeTheme)}/answers`,
-            {
-              method: "PUT",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify(answers),
-            },
-          );
+          const response = await fetch(answersUrl(theme), {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(answers),
+          });
           if (!response.ok) throw new Error(await response.text());
           const saved = await response.json();
           themeAnswers = saved.answers ?? {};
@@ -247,35 +277,45 @@
       }
 
       async function loadQuestions() {
-        if (activeTheme === null) {
+        const theme = shownBy(selected);
+        if (theme === null) {
           requiredDevices = [];
           themeAnswers = {};
           renderQuestions([], {});
           return;
         }
-        const response = await fetch(
-          `/api/themes/${encodeURIComponent(activeTheme)}/answers`,
-        );
-        if (!response.ok) {
+        // Never rejects: a row press reads these without awaiting them, and an
+        // unhandled rejection here would leave the questions from the last
+        // display on screen as though they were this one's.
+        try {
+          const response = await fetch(answersUrl(theme));
+          if (!response.ok) {
+            renderQuestions([], {});
+            return;
+          }
+          const body = await response.json();
+          requiredDevices = body.required ?? [];
+          themeAnswers = body.answers ?? {};
+          renderQuestions(requiredDevices, themeAnswers);
+        } catch {
           renderQuestions([], {});
-          return;
         }
-        const body = await response.json();
-        requiredDevices = body.required ?? [];
-        themeAnswers = body.answers ?? {};
-        renderQuestions(requiredDevices, themeAnswers);
       }
 
-      async function chooseTheme(id) {
+      async function chooseTheme(display, id) {
         status.textContent = "Saving…";
         try {
           const response = await fetch("/api/themes/active", {
             method: "PUT",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ id }),
+            body: JSON.stringify({ display, id }),
           });
           if (!response.ok) throw new Error(await response.text());
-          activeTheme = id;
+          // The route answers the whole map, so the page reads back what the
+          // write did rather than assuming it landed on one display.
+          const saved = await response.json();
+          defaultTheme = saved.default ?? null;
+          displays = saved.displays ?? displays;
           renderThemes();
           await loadQuestions();
           status.textContent = "Saved. Displays show it on their next load.";
@@ -290,7 +330,8 @@
         const body = await response.json();
         themes = body.themes ?? [];
         templates = body.templates ?? [];
-        activeTheme = body.active ?? null;
+        displays = body.displays ?? [];
+        defaultTheme = body.default ?? null;
         renderThemes();
         await loadQuestions();
       }

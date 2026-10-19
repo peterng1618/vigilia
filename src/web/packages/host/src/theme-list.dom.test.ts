@@ -96,7 +96,9 @@ describe("a saved theme as one row", () => {
         { onChoose },
       ),
     );
-    const names = [...host.querySelectorAll(".theme-text")].map(
+    // Scoped to the theme rows: the display column is drawn from the same
+    // name-and-note element, so an unscoped read would collect its rows too.
+    const names = [...host.querySelectorAll("[data-theme] .theme-text")].map(
       (text) => text.textContent,
     );
 
@@ -104,7 +106,7 @@ describe("a saved theme as one row", () => {
   });
 
   it("states the chosen theme in words, not by a border alone", () => {
-    const host = mount(themeList(THEMES, { active: "studio", onChoose }));
+    const host = mount(themeList(THEMES, { default: "studio", onChoose }));
     const rows = [...host.querySelectorAll("button[data-theme]")];
 
     expect(rows.map((row) => row.getAttribute("aria-pressed"))).toEqual([
@@ -180,7 +182,86 @@ describe("a saved theme as one row", () => {
         .querySelector<HTMLButtonElement>("[data-theme='studio']")
         ?.dispatchEvent(new Event("click"));
 
-      expect(chosen).toHaveBeenCalledWith("studio");
+      // The display comes first: a theme is given *to* a display, and the
+      // default is what the page opens on.
+      expect(chosen).toHaveBeenCalledWith("default", "studio");
+    });
+  });
+
+  describe("the display column above the rows", () => {
+    const DISPLAYS = [
+      { id: "this-pc", label: "This PC", kind: "local", theme: "studio" },
+      {
+        id: "kitchen-tablet",
+        label: "Kitchen tablet",
+        kind: "paired",
+        theme: null,
+      },
+    ];
+
+    const column = (): HTMLElement =>
+      mount(
+        themeList(THEMES, {
+          displays: DISPLAYS,
+          default: "living-room",
+          onChoose,
+        }),
+      );
+
+    it("leads with the default, then one row per display", () => {
+      const rows = [...column().querySelectorAll("[data-display]")];
+
+      expect(rows.map((row) => row.getAttribute("data-display"))).toEqual([
+        "default",
+        "this-pc",
+        "kitchen-tablet",
+      ]);
+      expect(rows.map((row) => row.textContent)).toEqual([
+        "DefaultLiving Room",
+        "This PCStudio",
+        "Kitchen tabletUses the default",
+      ]);
+    });
+
+    it("marks the display the rows are being chosen for, and no other", () => {
+      const host = mount(
+        themeList(THEMES, {
+          displays: DISPLAYS,
+          default: "living-room",
+          selected: "this-pc",
+          onChoose,
+        }),
+      );
+
+      // A display with no entry of its own is served the default, so the theme
+      // rows are marked for what the chosen display actually shows.
+      expect(
+        [...host.querySelectorAll<HTMLElement>("[data-display]")].map((row) =>
+          row.getAttribute("aria-pressed"),
+        ),
+      ).toEqual(["false", "true", "false"]);
+      expect(
+        host
+          .querySelector("[data-theme='studio']")
+          ?.getAttribute("aria-pressed"),
+      ).toBe("true");
+    });
+
+    it("reports the row that was pressed, so the page can re-render for it", () => {
+      const pressed = vi.fn();
+      const host = mount(
+        themeList(THEMES, {
+          displays: DISPLAYS,
+          default: "living-room",
+          onSelect: pressed,
+          onChoose,
+        }),
+      );
+      host
+        .querySelector<HTMLButtonElement>("[data-display='kitchen-tablet']")
+        ?.dispatchEvent(new Event("click"));
+
+      expect(pressed).toHaveBeenCalledWith("kitchen-tablet");
     });
   });
 });
@@ -201,7 +282,7 @@ describe("a template the product ships, beside the saved themes", () => {
       (label) => label.textContent,
     );
 
-    expect(groups).toEqual(["Templates", "Your themes"]);
+    expect(groups).toEqual(["Displays", "Templates", "Your themes"]);
     // Two kinds of thing in one list, so the row says which it is rather than
     // letting a template read as a theme the author saved.
     expect(host.querySelector("[data-template]")?.textContent).toContain(
@@ -235,10 +316,15 @@ describe("a template the product ships, beside the saved themes", () => {
     ).not.toBeNull();
   });
 
-  it("draws exactly as it did before, when the product ships no template", () => {
+  it("draws no template group when the product ships none", () => {
     const host = mount(themeList(THEMES, { onChoose }));
+    const groups = [...host.querySelectorAll(".theme-group-label")].map(
+      (label) => label.textContent,
+    );
 
-    expect(host.querySelector(".theme-group-label")).toBeNull();
+    // The column's own heading stays: it separates the displays from the
+    // choices below them whatever the product ships.
+    expect(groups).toEqual(["Displays", "Your themes"]);
     expect(host.querySelector("[data-template]")).toBeNull();
   });
 

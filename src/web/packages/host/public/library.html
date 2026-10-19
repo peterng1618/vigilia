@@ -52,6 +52,69 @@
 
       const themesHost = document.querySelector("#themes");
       const status = document.querySelector("#status");
+      const editorLink = document.querySelector("#editor-link");
+
+      let themes = [];
+      // The product's templates, which are not saved on this PC and so are
+      // never chosen here — only listed, beside the author's own.
+      let templates = [];
+      let displays = [];
+      let defaultTheme = null;
+      // The display the rows below are choosing for. The default is what every
+      // display with no choice of its own already gets, so it is what a visitor
+      // means until they press another row in the column.
+      let selected = "default";
+
+      /** The theme a display shows: its own choice, else the default's. */
+      function shownBy(display) {
+        return display === "default"
+          ? defaultTheme
+          : (displays.find((row) => row.id === display)?.theme ?? defaultTheme);
+      }
+
+      function render() {
+        // A consumer who picked a theme and then goes to change it means that
+        // one, so the editor link carries whichever the chosen display shows.
+        const showing = shownBy(selected);
+        if (editorLink !== null) {
+          editorLink.href =
+            showing === null
+              ? "/editor/"
+              : `/editor/?theme=${encodeURIComponent(showing)}`;
+        }
+
+        themesHost.replaceChildren(
+          themeList(themes, {
+            displays,
+            default: defaultTheme,
+            selected,
+            templates,
+            onSelect: (display) => {
+              selected = display;
+              render();
+            },
+            onChoose: async (display, id) => {
+              status.textContent = "Saving…";
+              const saved = await fetch("/api/themes/active", {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ display, id }),
+              });
+              if (!saved.ok) {
+                status.textContent = `Could not save: ${await saved.text()}`;
+                return;
+              }
+              // The host now resolves this display to the theme just chosen, so
+              // the reload lands on the dashboard the consumer asked for.
+              location.reload();
+            },
+            // This is the surface that lists the library, so it is where an
+            // author looks to clear an experiment away. The host moves the
+            // folder to the recycle bin, and says so before they confirm.
+            onDelete: deleteTheme,
+          }),
+        );
+      }
 
       async function load() {
         const response = await fetch("/api/themes/active");
@@ -62,44 +125,11 @@
           return;
         }
         const body = await response.json();
-        render(body.themes ?? [], body.templates ?? [], body.active ?? null);
-      }
-
-      function render(themes, templates, active) {
-        // A consumer who picked a theme and then goes to change it means that
-        // one, so the editor link carries whichever this page is showing. The
-        // active theme is in the same response the rows came from.
-        const editorLink = document.querySelector("#editor-link");
-        if (editorLink !== null) {
-          editorLink.href =
-            active === null || active === undefined
-              ? "/editor/"
-              : `/editor/?theme=${encodeURIComponent(active)}`;
-        }
-        themesHost.replaceChildren(
-          themeList(themes, {
-            templates,
-            onChoose: async (id) => {
-              status.textContent = "Saving…";
-              const saved = await fetch("/api/themes/active", {
-                method: "PUT",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ id }),
-              });
-              if (!saved.ok) {
-                status.textContent = `Could not save: ${await saved.text()}`;
-                return;
-              }
-              // The host now resolves `/` to this theme, so the reload lands
-              // on the dashboard the consumer just chose.
-              location.reload();
-            },
-            // This is the surface that lists the library, so it is where an
-            // author looks to clear an experiment away. The host moves the
-            // folder to the recycle bin, and says so before they confirm.
-            onDelete: deleteTheme,
-          }),
-        );
+        themes = body.themes ?? [];
+        templates = body.templates ?? [];
+        displays = body.displays ?? [];
+        defaultTheme = body.default ?? null;
+        render();
       }
 
       await load();

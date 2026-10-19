@@ -72,8 +72,17 @@ const stubFetch = (hardware: Hardware): void => {
   globalThis.fetch = (async (input: string) => {
     switch (input) {
       case "/api/themes/active":
-        return json({ themes: [], templates: [], active: "living-room" });
-      case "/api/themes/living-room/answers":
+        return json({
+          themes: [],
+          templates: [],
+          default: "living-room",
+          displays: [
+            { id: "this-pc", label: "This PC", kind: "local", theme: null },
+          ],
+        });
+      // The display the page is showing for rides the request, because the
+      // answers belong to a screen rather than to the machine.
+      case "/api/themes/living-room/answers?display=default":
         return json({ required: ["data-disk"], answers: {} });
       case "/api/devices":
         return json({
