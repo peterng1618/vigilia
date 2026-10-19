@@ -2129,6 +2129,11 @@ git commit -m "feat(editor): assign a theme to a named display"
 - Modify: `src/web/packages/player/src/chrome.ts`
 - Modify: `src/web/packages/player/src/main.ts`
 
+`player/src/` **is not** on the reuse gate's watchlist (`scripts/reuse-gate.mjs:39-41`
+lists `renderer-core/src/theme/`, `renderer-core/src/charts/`,
+`renderer-core/src/data/protocol.ts` and `scripts/`), so the new file needs no decision
+note — unlike Task 4.8's.
+
 **Interfaces:**
 - Consumes: `session.ts`'s existing session object, which already carries `fetch`
   (`publish-follower.ts` uses it); `chrome.ts`'s `chromeBand(side)`; Task 4.1's
@@ -2138,9 +2143,21 @@ git commit -m "feat(editor): assign a theme to a named display"
   rather than by a second mechanism.
 - Produces:
   - `export interface ThemeChoice { readonly id: string; readonly name: string }`
-  - `export function createThemeChooser(input: { readonly session: PlayerSession; readonly side: ChromeSide; readonly current: string; readonly onChosen: (id: string) => void }): { readonly dispose: () => void }`
-  - `export async function listLocalThemes(session: PlayerSession): Promise<readonly ThemeChoice[]>`
-  - `export async function chooseOwnTheme(session: PlayerSession, id: string): Promise<void>`
+  - `export function createThemeChooser(input: { readonly session: DisplaySessionToken; readonly side: ChromeSide; readonly current: string; readonly onChosen: (id: string) => void; readonly onError?: (message: string) => void }): { readonly dispose: () => void }`
+  - `export async function listLocalThemes(session: DisplaySessionToken): Promise<readonly ThemeChoice[]>`
+  - `export async function chooseOwnTheme(session: DisplaySessionToken, id: string): Promise<void>`
+
+  **Three of those names did not exist when this task was written** (R59): there is no
+  `PlayerSession` — the type `displaySession` returns is `DisplaySessionToken`
+  (`session.ts:4`), and narrowing it the way `publish-follower.ts` does is fine.
+
+  **`chrome.ts` must export `ChromeSide`** (R59): it is declared at `chrome.ts:34` with no
+  `export`, so a signature carrying it cannot be written from outside.
+
+  **The input gains `onError`** (R59): the Step 1 case below names it and the original
+  signature had nowhere to put it. It matches how the rest of the player reports a
+  refusal — `main.ts:192` answers one with `showConnectionState("refused", 0, reason)` —
+  so the chooser hands the message up and the player decides where it is shown.
 
 - [ ] **Step 1: Write the failing test**
 
