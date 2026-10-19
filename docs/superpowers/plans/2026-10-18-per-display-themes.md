@@ -2362,11 +2362,16 @@ it("writes no pairing of its own", () => {
   // The identity comes from `GET /api/host` and nowhere else: `pair.html`
   // navigates to `/?session=<token>` and nothing in the repo emits `host=`,
   // `name=` or `port=` (R72). A second writer here could only produce a record
-  // with an empty `hostId` — which reads back as a valid pairing, matches no
-  // probe, and would overwrite a good one on any load where `/api/host` failed.
+  // with an empty `hostId`, which would overwrite a good one on any load where
+  // `/api/host` failed.
+  //
+  // Asserted on the **raw key**, not through `readStoredPairing`: that reads
+  // through `isPairedHost`, which refuses a blank `hostId`, so a reintroduced
+  // writer would satisfy the case by being rejected later (R76). The case is
+  // about whether a write happened, and only the key can answer that.
   const storage = memoryStorage();
   displaySession("http://192.168.1.10:5227/?session=abc", fetch, storage);
-  expect(readStoredPairing(storage)).toBeUndefined();
+  expect(storage.getItem(PAIRING_STORAGE_KEY)).toBeNull();
 });
 
 it("lets a fresh pairing link replace a stored credential", () => {
@@ -2451,6 +2456,17 @@ it("reports every unreachable tick, and leaves the pacing to its caller", async 
 // the ladder's `.local` name candidate is a different origin too (R75). It also
 // needs `@vitest-environment-options` to set an origin with a /24, because
 // `sweepAddresses("localhost")` is empty and the sweep would be a no-op.
+// The credential case has to live here, not in `host-refind.test.ts`: that file
+// can only catch a mutation *inside* the ladder, while the real risk is `main.ts`
+// building its probe from `session.fetch`/`withToken` — which the ladder's own
+// tests would never see (R76). The stub is handed the `init`, so it can read the
+// headers of every request it answers.
+it("sends no credential to a swept address", async () => {
+  await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
+  await vi.waitFor(() => expect(sweptAddresses()).toBeGreaterThan(0));
+  expect(credentialedRequests()).toBe(0);   // defined by the case, off the stub's init
+});
+
 it("sweeps once per cooldown, not once per failed tick", async () => {
   const swept = sweptAddresses();        // defined by the case
   await mountAt("?theme=living-room&display=d1&theme-source=map&session=paired-token");
