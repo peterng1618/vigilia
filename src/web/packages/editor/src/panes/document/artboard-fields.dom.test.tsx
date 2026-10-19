@@ -19,10 +19,11 @@
  * `editor-session.ts` keeps — so a hook asserted here is a hook the editor's own
  * wiring really reaches.
  */
-import type {
-  Artboard,
-  AssetReference,
-  ThemeMetadata,
+import {
+  type Artboard,
+  type AssetReference,
+  BACKGROUND_MEDIA_FITS,
+  type ThemeMetadata,
 } from "@vigilia/renderer-core";
 import { outsideCount, type SceneBox } from "@vigilia/scene-fabric";
 import { act } from "react";
@@ -253,6 +254,31 @@ it("renders every field the panel rendered, including the branch that needs a ba
       backgroundMedia: { assetId: "clip", fit: "display" },
     }),
   );
+});
+
+it("offers exactly the fits the model publishes", async () => {
+  // The panel is the third end of the set, and the one a quoted-string search
+  // cannot see: `fitOptions` maps the model's own list, so a mode added there is
+  // offered here and one removed there stops being offered. With a second copy
+  // in this file the panel would go on offering two while the validator and the
+  // published schema accepted three, and nothing else would be red.
+  const { host } = await mount();
+  await draw({ width: 1280, height: 720 });
+
+  // No asset is chosen, so this control is the only popup the document holds and
+  // the options read below are its own.
+  const trigger = host.querySelector<HTMLElement>(
+    "[data-vigilia-background-media-fit]",
+  );
+  if (trigger === null) throw new Error("the fit control is missing");
+  await click(trigger);
+  await flush();
+
+  const offered = Array.from(
+    document.querySelectorAll('[role="option"][data-vigilia-option]'),
+  ).map((option) => option.getAttribute("data-vigilia-option"));
+
+  expect(offered).toEqual([...BACKGROUND_MEDIA_FITS]);
 });
 
 it("derives the size note rather than printing a stored figure", async () => {

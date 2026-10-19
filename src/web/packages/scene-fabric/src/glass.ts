@@ -29,6 +29,16 @@ export interface DeviceRect {
   readonly height: number;
 }
 
+/** A rectangle in **artboard units** — the space the document is authored in,
+ *  which the plane matrix maps onto a surface. Named because the shape is
+ *  identical to `DeviceRect` and the two are not interchangeable. */
+export interface ArtboardRect {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 /**
  * The artboard background media. It is a DOM sibling below the canvas, so the
  * canvas never contains it and a panel has to be handed it separately.
@@ -42,12 +52,7 @@ export interface DeviceRect {
  */
 export interface BackdropMedia {
   /** The media layer's rect, in artboard units. */
-  readonly rect: {
-    readonly left: number;
-    readonly top: number;
-    readonly width: number;
-    readonly height: number;
-  };
+  readonly rect: ArtboardRect;
   /** Paints the media over `region` of `ctx`, with `device` its rect in `ctx`'s
    *  own pixels. False when the source has decoded no pixels yet. */
   paint(

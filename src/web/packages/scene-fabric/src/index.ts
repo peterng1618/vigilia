@@ -96,6 +96,10 @@ export {
   MAX_BACKING_PIXELS,
   MAX_RENDER_SCALE,
 } from "./render-scale.js";
-export type { FabricSceneHandle, FabricSceneOptions } from "./scene.js";
+export type {
+  FabricSceneHandle,
+  FabricSceneOptions,
+  SceneArtboard,
+} from "./scene.js";
 export { mountFabricScene } from "./scene.js";
 export { Arc, Wedge } from "./sector-object.js";

@@ -257,6 +257,7 @@ export type {
   WidgetProvenance,
 } from "./theme/document.js";
 export {
+  BACKGROUND_MEDIA_FITS,
   bumpSemanticVersion,
   CHART_FAMILIES,
   GLOBAL_GROUPS,

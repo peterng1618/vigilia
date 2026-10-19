@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
+import { mountBackgroundMedia } from "./background-media.js";
 import {
   bars,
   Group,
@@ -364,6 +365,69 @@ describe("glass composition", () => {
       width: 1200,
       height: 500,
     });
+  });
+
+  it("walks a display-filled layer from its own box to the device rect", () => {
+    // 0075's three numbers in one place: the box the layer sits on, the rect the
+    // media reports for it in artboard units, and the device rect the sampler
+    // computes from that rect. Each half is asserted elsewhere — the box and the
+    // rect in `background-media.dom.test.ts`, rect→device above with a hand-made
+    // rect — and neither of those would notice the two disagreeing. This is the
+    // join, and it is what makes a wrong rect visible rather than plausible.
+    const host = document.createElement("div");
+    const media = mountBackgroundMedia({
+      host,
+      artboard: {
+        width: 400,
+        height: 200,
+        backgroundMedia: { assetId: "hero", fit: "display" },
+      },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+    // The plane the scene sets for this artboard: 2x at (40, 60), so the board's
+    // own box is 800x400 and the display's is the host's 1200x500.
+    media.setBounds({
+      artboard: { left: 40, top: 60, width: 800, height: 400 },
+      display: { left: 0, top: 0, width: 1200, height: 500 },
+    });
+    const layer = host.querySelector<HTMLElement>(
+      "[data-vigilia-background-media]",
+    );
+
+    expect([
+      layer?.style.left,
+      layer?.style.top,
+      layer?.style.width,
+      layer?.style.height,
+    ]).toEqual(["0px", "0px", "1200px", "500px"]);
+
+    // Artboard units: the display box pulled back through the plane's scale and
+    // origin — (0 - 40)/2, (0 - 60)/2, 1200/2, 500/2.
+    const backdrop = media.backdrop();
+    expect(backdrop?.rect).toEqual({
+      left: -20,
+      top: -30,
+      width: 600,
+      height: 250,
+    });
+
+    // And the sampler maps that rect forward through the same plane, landing on
+    // the layer's own box.
+    const s = stage({ size: 400, backdrop: () => backdrop });
+    s.canvas.setViewportTransform([2, 0, 0, 2, 40, 60]);
+    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.renderAll();
+
+    expect(s.paints[0]?.device).toEqual({
+      left: 0,
+      top: 0,
+      width: 1200,
+      height: 500,
+    });
+
+    media.destroy();
+    host.remove();
   });
 
   it("keeps the media rect through a capture multiplier at a zoom", () => {

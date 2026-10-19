@@ -26,11 +26,26 @@ import { clampRenderScale } from "./render-scale.js";
  * reconciliation. Detached charts receive artboard scale × Fabric retina scale.
  */
 
+/**
+ * The part of a document artboard this scene applies: its geometry and the media
+ * layer under it.
+ *
+ * **Never its `background`.** A document artboard's paint is a palette reference
+ * (`schema/theme-document.schema.json` publishes it as one) and only
+ * `planArtboard` can resolve it through `globals`, so the scene takes the
+ * resolved paint from the plan. The narrower type is what stops a caller handing
+ * this handle a paint it would silently ignore.
+ */
+export type SceneArtboard = Pick<
+  Artboard,
+  "width" | "height" | "contentFit" | "backgroundMedia"
+>;
+
 export interface FabricSceneOptions
   extends Omit<SceneAdapterOptions, "canvas"> {
   readonly host: HTMLElement;
   readonly plan: ScenePlan;
-  readonly artboard?: Artboard;
+  readonly artboard?: SceneArtboard;
   readonly assets?: readonly AssetReference[];
   readonly resolveAsset?: (
     assetId: string,
@@ -49,8 +64,15 @@ export interface FabricSceneHandle extends SceneHandle {
   /**
    * `ScenePlan` never carries `backgroundMedia`, so a document-level artboard
    * change cannot travel through `update()`.
+   *
+   * **A geometry change, so everything geometry drives follows it.** The
+   * viewport is re-fitted and the render scale re-derived, not only the media
+   * layer; `contentFit` comes from the artboard passed in rather than from the
+   * plan's; and it is no longer a no-op on a scene mounted without an asset
+   * resolver. The one field it does not apply is `background` — see
+   * `SceneArtboard`.
    */
-  updateArtboard(artboard: Artboard): void;
+  updateArtboard(artboard: SceneArtboard): void;
 }
 
 export function mountFabricScene(
@@ -205,7 +227,7 @@ export function mountFabricScene(
       adapter.apply(next);
     },
 
-    updateArtboard(artboard: Artboard): void {
+    updateArtboard(artboard: SceneArtboard): void {
       if (disposed) return;
       currentArtboard = artboard;
       if (media !== undefined && options.resolveAsset !== undefined)

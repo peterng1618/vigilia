@@ -1026,11 +1026,12 @@ function captureOf(page: Page): Promise<{
  * export multiplier, so the artboard's corners are mapped the way the capture
  * actually drew them rather than assumed to be its corners.
  *
- * `core` is the same measure over the middle half of the artboard. The
- * fixture's media is a 16:9 image the theme fits `contain` into a 4:3
- * artboard, so a quarter of the artboard is **correctly** empty: the
- * whole-board number cannot separate "no media" from "letterboxed media", and
- * the core can, because no fit leaves the middle of the board uncovered.
+ * `core` is the same measure over the middle half of the artboard. Since 0075
+ * the media layer is `object-fit: cover` on the theme's own box, so it covers
+ * the board whole and no fit can leave a letterbox inside it: the middle half
+ * is covered exactly when the media reached the capture, which is what makes
+ * the core reading the one that can say so. (The split was the letterbox's
+ * doing, back when a `contain` fit left a quarter of the board empty.)
  */
 function artboardTransparencyOfCapture(
   page: Page,
@@ -1457,10 +1458,10 @@ test.describe("the reference composition, captured", () => {
     // whole-canvas fraction is too blunt: the panels already cover most of the
     // ink, so a threshold loose enough to be about the media also passes
     // without it. This counts only the pixels *inside the artboard*, and then
-    // only its middle half, which is where a `contain`-fitted backdrop has to
-    // be. Measured: 0.81 of the artboard empty before the capture composited
-    // the media, and 0.24 after — the remaining quarter is the letterbox
-    // `contain` is supposed to leave.
+    // only its middle half, which the backdrop covers whenever it reached the
+    // capture — `object-fit: cover` on the theme's own box covers the board
+    // whole, so nothing here is a letterbox. Measured: 0.81 of the artboard
+    // empty before the capture composited the media, and 0.24 after.
     const inside = await artboardTransparencyOfCapture(page, [
       GLASS_ENVELOPE.artboard.width,
       GLASS_ENVELOPE.artboard.height,

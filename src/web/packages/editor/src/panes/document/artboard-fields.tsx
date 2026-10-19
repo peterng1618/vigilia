@@ -1,6 +1,7 @@
 import {
   type Artboard,
   type AssetReference,
+  BACKGROUND_MEDIA_FITS,
   type FabricPalette,
   type Globals,
   MAX_ARTBOARD_DIMENSION,
@@ -122,15 +123,14 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
     });
   };
 
+  /** A mode this control did not offer is refused rather than clamped: the
+   *  options come from the same list the model publishes, so a string that is
+   *  not in it is a stale control and not a third mode. */
   const commitFit = (fit: string): void => {
     const assetId = artboard.backgroundMedia?.assetId;
-    if (assetId === undefined) return;
-    commit({
-      backgroundMedia: {
-        assetId,
-        fit: fit === "display" ? "display" : "theme",
-      },
-    });
+    const next = BACKGROUND_MEDIA_FITS.find((mode) => mode === fit);
+    if (assetId === undefined || next === undefined) return;
+    commit({ backgroundMedia: { assetId, fit: next } });
   };
 
   return (
@@ -277,9 +277,13 @@ function resolutionOptions(): readonly ControlOption[] {
 
 /** The two boxes the media can fill, both with `cover`. The artboard's own
  *  content fit is a guarantee of the model and not a choice, so this is the only
- *  fit control the panel has. */
+ *  fit control the panel has.
+ *
+ *  The list is the model's own, so a mode added there is offered here and a mode
+ *  removed there stops being offered — the panel is the third end of the set,
+ *  not a copy of it. */
 function fitOptions(): readonly ControlOption[] {
-  return (["theme", "display"] as const).map((fit) => ({
+  return BACKGROUND_MEDIA_FITS.map((fit) => ({
     id: fit,
     name: uiCopy.fitModes[fit],
   }));

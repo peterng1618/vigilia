@@ -11,7 +11,13 @@
 
 import { Group, Point, Rect, StaticCanvas } from "fabric/es";
 import { afterEach } from "vitest";
-import { createGlass, type DeviceRect, type GlassHandle } from "./glass.js";
+import {
+  type ArtboardRect,
+  type BackdropMedia,
+  createGlass,
+  type DeviceRect,
+  type GlassHandle,
+} from "./glass.js";
 
 /**
  * What these tests can and cannot prove.
@@ -102,10 +108,14 @@ export function stage(options: {
    *  artboard itself — a `fit: "display"` layer is larger than the board and
    *  starts outside it, which is the only way the rect's own left/top are
    *  non-zero. */
-  readonly backdropRect?: DeviceRect;
-  readonly backdrop?: () => {
-    paint(ctx: CanvasRenderingContext2D, region: DeviceRect): boolean;
-  };
+  readonly backdropRect?: ArtboardRect;
+  /** The media, as the glass sees it. A case that walks the whole wire hands in
+   *  a real handle's own `backdrop()`, rect and all; a case about the panel
+   *  rather than the media gives only a paint, and the stage synthesises the
+   *  rect from `backdropRect`/`artboard`. */
+  readonly backdrop?: () =>
+    | { readonly rect?: ArtboardRect; readonly paint: BackdropMedia["paint"] }
+    | undefined;
 }): Stage {
   const size = options.size ?? 200;
   const canvas = new StaticCanvas(undefined, { width: size, height: size });
@@ -179,14 +189,16 @@ export function stage(options: {
     options.backdropRect === undefined
       ? {}
       : {
-          backdrop: () => {
+          backdrop: (): BackdropMedia => {
+            const stub = options.backdrop?.();
             const artboard = options.artboard ?? { width: size, height: size };
             return {
-              rect: options.backdropRect ?? { left: 0, top: 0, ...artboard },
+              rect: stub?.rect ??
+                options.backdropRect ?? { left: 0, top: 0, ...artboard },
               paint: (ctx, region, device) => {
                 regions.push({ ...region });
                 paints.push({ region: { ...region }, device: { ...device } });
-                return options.backdrop?.().paint(ctx, region) ?? true;
+                return stub?.paint(ctx, region, device) ?? true;
               },
             };
           },
