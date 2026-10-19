@@ -2072,10 +2072,17 @@ git commit -m "feat(host): choose a theme per display from the host's own pages"
 - Consumes: Task 4.1's `PUT`.
 - Produces: `ThemeLibraryClient` gains
   `assign(display: string, id: string): Promise<void>` and
-  `listDisplays(): Promise<readonly { id: string; label: string; theme: string | null }[]>`.
+  `listDisplays(): Promise<{ default: string | null, displays: readonly ThemedDisplay[] }>`
+  where `ThemedDisplay` is `{ id: string; label: string; theme: string | null }`.
   **This is the seam `2026-10-18-theme-store.md` consumes; it must not be
   re-implemented there.** It carries no cost warning: the warning is the host page's
   (Task 4.8), and the editor raises nothing.
+  **The default travels as its own field, not as a row** (R57). The route answers
+  `{ default, displays }` with the default in a separate top-level field and **no
+  `"default"` row** in `displays` (`server.ts:894-908`), and the theme store's Task A.9
+  must offer the default while being forbidden from keeping a list of its own. Returning
+  the route's shape verbatim is what lets it: a pseudo-row would collapse a theme id
+  ("what an unassigned display shows") into a display id, which are different things.
 
 - [ ] **Step 1: Write the failing test**
 

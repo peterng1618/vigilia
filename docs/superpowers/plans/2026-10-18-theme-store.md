@@ -648,6 +648,14 @@ The choice is §5's control for a small exclusive set, and it is populated from
 answer is not offered, because an assignment to a display that does not exist is a
 404 the person would read as a bug in the gallery.
 
+**`listDisplays` answers `{ default, displays }`, and the default is its own field
+rather than a row** — the route puts it there (`server.ts:894-908`), and the choice
+offers it alongside the displays. **And the editor is a loopback surface:** for a
+non-loopback caller the route ignores the body's `display` and writes the caller's own
+key (`server.ts:1868-1881`), so `assign("kitchen-tablet", …)` from a remote editor would
+silently target the caller's own display. Nothing in this plan runs the editor off
+loopback; if that changes, the choice must not be offered there.
+
 **The cost warning is not here.** The user narrowed it to the host's own pages on
 2026-10-18 (*"the warning only needs to appear on the host, when the user assign a theme
 to a device"*), so the per-display plan's Task 4.8 owns it and this surface raises
