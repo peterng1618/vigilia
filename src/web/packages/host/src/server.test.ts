@@ -5444,11 +5444,14 @@ describe("The host's secure origin", () => {
   });
 
   it("still answers plain http on the same port, so the pairing link keeps working", async () => {
-    // **The case that fails if the listener is made https-only.** The link the
-    // host prints and the QR carries is `http://<lan-ip>:<port>`, and it
-    // belongs to the spec that owns pairing — so this task may not leave it
-    // pointing at a protocol the port no longer answers. Both protocols on one
-    // port is what makes that true, and nothing else does.
+    // **The case that fails if the listener is made https-only.** The host
+    // prints its display addresses https-first, with the plain address beside
+    // each one as the fallback a device that has not installed the root
+    // certificate opens (`docs/decisions/0076`) — so a port that stopped
+    // answering http would leave that device with no way in at all, the pairing
+    // link and the certificate fetch both being http until the root is on it.
+    // Both protocols on one port is what makes the fallback true, and nothing
+    // else does.
     const hosted = host();
     await new Promise<void>((resolve) =>
       hosted.server.listen(0, "127.0.0.1", resolve),

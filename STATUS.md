@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-19
+Updated: 2026-10-20
 Branch: `develop`
 
 ## Current objective
@@ -18,9 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **https is printed first and http is kept beside it** (decision 0076): the console banner, the LAN block and the editor's pairing link all name `https://…` as the address, with the plain one beside it for a device that has not installed the root — and the root certificate's own URL stays http, because a device cannot be asked to trust the host before it can fetch the thing that makes the host trustworthy.
-- **The re-find ladder probes the page's own scheme** (`vg-623`): `originFor` takes a `PageScheme` from `location.protocol`, so an https display's probes are no longer mixed content; hard-coding `http` back reddens the case "probes the page's own scheme, so an https display re-finds over https".
-- **Evidence**: `npx vitest run` over the five touched test files 49 passed exit 0; `npm run typecheck` exit 0; `npx biome check ..` exit 0 (709 files); `publish-header.spec.ts` on the `own-host` project 3 passed exit 0 against rebuilt bundles; the host's banner quoted from a real run with the LAN on.
+- **The half that reads the page is covered now, not only the ladder's parameter** (review finding 1 on `9fc0adaf`): `main-https.dom.test.ts` runs the player at an `https://` URL and asserts the probes the ladder builds are https — hard-coding `http` in `main.ts` reddens that one file and leaves the rest green, which is `vg-623` restored.
+- **Two stale citations and one stale framing corrected**: `server.test.ts` said "the link the host prints and the QR carries is `http://<lan-ip>:<port>`" (false since 0076, and its case is more load-bearing now), `host-player.spec.ts` cited the retired two-argument `originFor`, and the plain-origin e2e case now opens by naming the fallback's shape rather than the pre-0076 one.
+- **Evidence**: `npx vitest run` over host-refind, `main.dom`, `main-https.dom`, boundaries, hosting-client and publish-control.dom — 6 files, 50 passed, exit 0; red proof `1 failed | 21 passed` with `main.ts` hard-coded to `http`; `npm run typecheck` exit 0; `npx biome check` on the touched paths exit 0; the banner, curl probes and `publish-header` browser run are the first commit's.
 
 ## Next
 

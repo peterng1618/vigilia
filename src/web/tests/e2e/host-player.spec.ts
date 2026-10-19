@@ -2907,20 +2907,19 @@ test.describe("the display's own controls", () => {
     page,
   }, testInfo) => {
     // **The trap this case exists for.** `127.0.0.1` is a secure context, so
-    // every reading above it shows the wake lock present; a phone opens
-    // `http://<lan-ip>:<port>`, which is not one. The player's own bundle is
-    // served here over plain http on the LAN address, so the reading is the
-    // browser's answer about the origin rather than a claim about it.
+    // every reading above it shows the wake lock present; the plain address the
+    // host prints is a LAN one, and it is not a secure context. The player's own
+    // bundle is served here over plain http on the LAN address, so the reading is
+    // the browser's answer about the origin rather than a claim about it.
     //
-    // **Which shape this is now, since `docs/decisions/0076`.** The printed
-    // address is https and the plain one beside it is the *fallback*, for a
-    // device that has not installed the host's root certificate — so what this
-    // case reads is the fallback's answer, and it is still worth reading: the
-    // fallback is what a fresh phone gets before it installs anything, and the
-    // gating below is why the https address is the one printed first. It is not
-    // a case about the product's default origin any more, and a reading of
-    // *that* origin needs the root trusted in the browser profile, which this
-    // file does not do.
+    // **Which shape that is, since `docs/decisions/0076`.** The printed address
+    // is https and the plain one beside it is the *fallback*, for a device that
+    // has not installed the host's root certificate — so what this case reads is
+    // the fallback's answer, and it is still worth reading: the fallback is what
+    // a fresh phone gets before it installs anything, and the gating below is
+    // why the https address is the one printed first. It is not a case about the
+    // product's default origin any more, and a reading of *that* origin needs
+    // the root trusted in the browser profile, which this file does not do.
     const address = lanAddress();
     test.skip(address === undefined, "this machine has no LAN address");
 
@@ -2967,7 +2966,7 @@ test.describe("the display's own controls", () => {
  *
  * **The `0.0.0.0` binding is load-bearing twice.** A paired display is only a
  * display at a non-loopback address, and the re-find case needs a second origin
- * at the *same port* — `originFor(address, pairing.port)` — so it moves to
+ * at the *same port* — `originFor(address, pairing.port, scheme)` — so it moves to
  * `127.0.0.2`, which a host bound to `127.0.0.1` does not answer at all.
  */
 const THEMED_HOST_PORTS: Readonly<Record<string, number>> = {
@@ -3240,8 +3239,9 @@ test.describe("a paired display and the theme it is given", () => {
 
     // The address the display already knows, and the second one the host answers
     // at: **the same port**, which is what a re-find match is
-    // (`originFor(address, pairing.port)`). Both are this machine, because the
-    // host is bound to `0.0.0.0` and so answers across the loopback block.
+    // (`originFor(address, pairing.port, scheme)`). Both are this machine,
+    // because the host is bound to `0.0.0.0` and so answers across the loopback
+    // block.
     //
     // **What this case is, and is not.** The display it loads is `this-pc`: a
     // loopback request resolves as this PC whatever credential its URL carries,
