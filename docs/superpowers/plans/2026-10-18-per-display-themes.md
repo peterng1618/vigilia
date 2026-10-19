@@ -2220,6 +2220,8 @@ identity, so the re-find is a match rather than a guess.
 - Modify: `src/web/packages/player/src/session.ts`
 - Test: `src/web/packages/player/src/session.test.ts`
 - Modify: `src/web/packages/player/src/main.ts`
+- Modify: `src/web/packages/player/src/publish-follower.ts` (`onUnreachable`, R69)
+- Test: `src/web/packages/player/src/publish-follower.test.ts`
 
 **Where the pairing is stored, and what this task may not claim** (R60). `localStorage` is
 per-origin, so a record written on `192.168.1.10` is invisible to the page at
@@ -2257,8 +2259,24 @@ export function storePairing(storage: Storage, pairing: PairedHost): void;
 /** The ladder: last address, then the name, then the last address's /24. */
 export async function refindHost(pairing: PairedHost, probe: HostProbe, options?: { readonly concurrency?: number }): Promise<string | undefined>;
 export function originFor(address: string, port: number): string;
+/** Where the page moves to once a host is found: the origin, at `/`, carrying the
+ *  display's own credential and nothing the host resolves itself (R69). */
+export function refindTarget(origin: string, token: string | undefined): string;
 export function sweepAddresses(address: string): readonly string[];  // the 254 usable hosts, minus the host itself (253)
 ```
+
+**Rulings carried into this task (R69).** The failure the ladder keys on has no seam today:
+`followPublished`'s `catch` (`publish-follower.ts:162`) **deliberately discards** an
+unreachable host, so `publish-follower.ts` gains `readonly onUnreachable?: () => void`, called
+from that existing `catch`, and `main.ts` supplies the ladder — the file list is not a contract
+(R56). The ladder runs **once per unreachable episode**, latched and cleared by the next tick
+that reaches the host, because the follower ticks on an interval and a sleeping host would
+otherwise make every display sweep 253 addresses forever. And after a match the page navigates
+to `originFor(found, pairing.port)` at path `/` carrying **`?session=<token>` and nothing
+else** — omitted when there is no token, which is the loopback display. No `theme` and no
+`theme-source`: the host's root route resolves for the asking display and answers
+`theme-source=map` itself (R50). The token goes only to an origin that answered the stored
+`hostId`; the ladder's refusal of a first responder is what makes that safe.
 
 **Rulings carried into this task (R63).** `sweepAddresses` yields the /24's **usable** hosts
 `.1`–`.254` with the address itself removed — **253** entries, not 254; `.0` and `.255` are
@@ -2361,12 +2379,68 @@ it("hands the probe a bare origin, with nothing appended to it", async () => {
   expect(seen.length).toBeGreaterThan(0);
   expect(seen.every((o) => !o.includes("session"))).toBe(true);
 });
+
+// The navigation target is a pure function for the same reason `reResolveUrl`
+// is one (R51): jsdom does not navigate and will not let `location` be
+// redefined, so a hop that lives only inside `main.ts` cannot be asserted at all
+// and would ship dead behind a green suite.
+it("builds the URL to move to, and carries nothing the host will resolve itself", () => {
+  expect(refindTarget("http://192.168.1.44:5227", "abc")).toBe(
+    "http://192.168.1.44:5227/?session=abc",
+  );
+  // A loopback display has no credential, so the query is omitted entirely.
+  expect(refindTarget("http://127.0.0.1:5227", undefined)).toBe(
+    "http://127.0.0.1:5227/",
+  );
+});
+
+// publish-follower.test.ts — the trigger the whole task hangs on, and the latch.
+it("reports an unreachable host rather than swallowing it", async () => {
+  // Today this error is discarded (`publish-follower.ts:162`), which is why the
+  // ladder had no way to run at all.
+  const onUnreachable = vi.fn();
+  const stop = followPublished(
+    { pageUrl: MAP_PAGE, fetch: vi.fn(async () => Promise.reject(new Error("down"))) },
+    vi.fn(),
+    { intervalMs: 5, onUnreachable },
+  );
+
+  await settle(40);
+  stop();
+  expect(onUnreachable).toHaveBeenCalled();
+});
+
+it("reports one unreachable episode once, and a later one again", async () => {
+  let reachable = false;
+  const onUnreachable = vi.fn();
+  const stop = followPublished(
+    {
+      pageUrl: MAP_PAGE,
+      fetch: vi.fn(async () =>
+        reachable
+          ? new Response(JSON.stringify({ revision: 1 }))
+          : Promise.reject(new Error("down")),
+      ),
+    },
+    vi.fn(),
+    { intervalMs: 5, onUnreachable },
+  );
+
+  await settle(40);
+  expect(onUnreachable).toHaveBeenCalledTimes(1); // not once per failed tick
+  reachable = true;
+  await settle(20);
+  reachable = false;
+  await settle(40);
+  stop();
+  expect(onUnreachable).toHaveBeenCalledTimes(2); // a new episode reports
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run packages/player/src/host-refind.test.ts packages/player/src/session.test.ts`
-Expected: FAIL — cannot resolve `./host-refind.js`.
+Run: `npx vitest run packages/player/src/host-refind.test.ts packages/player/src/session.test.ts packages/player/src/publish-follower.test.ts`
+Expected: FAIL — cannot resolve `./host-refind.js`, and `onUnreachable` is never called.
 
 - [ ] **Step 3: Implement**
 
@@ -2384,8 +2458,9 @@ first-responder rule is exactly how it would. The sweep runs
 with `storePairing`, and resolves every later request from storage — so the
 credential stops living in the URL, which is what a durable credential requires
 (spec § "Identity"). A URL that carries no session and no stored pairing is
-unpaired, exactly as it is today. `main.ts` calls `refindHost` when a request fails
-to reach `pairing.lastAddress`, and re-stores the address it found.
+unpaired, exactly as it is today. `main.ts` supplies `followPublished`'s
+`onUnreachable` (R69), runs `refindHost` behind a latch that one episode cannot
+re-enter, and on a match navigates to the origin it found and re-stores the address.
 
 **What this task cannot fix, and must not pretend to.** A display that *reloads*
 while the host is elsewhere is served the browser's error page, not ours, so this
@@ -2403,13 +2478,13 @@ localhost result as a phone result.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/player/src/host-refind.test.ts packages/player/src/session.test.ts packages/player/src/main.dom.test.ts`
+Run: `npx vitest run packages/player/src/host-refind.test.ts packages/player/src/session.test.ts packages/player/src/publish-follower.test.ts packages/player/src/main.dom.test.ts`
 Expected: PASS. (`main.dom.test.ts` — the player has no `main.test.ts`.)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/player/src/host-refind.ts src/web/packages/player/src/host-refind.test.ts src/web/packages/player/src/session.ts src/web/packages/player/src/session.test.ts src/web/packages/player/src/main.ts
+git add src/web/packages/player/src/host-refind.ts src/web/packages/player/src/host-refind.test.ts src/web/packages/player/src/session.ts src/web/packages/player/src/session.test.ts src/web/packages/player/src/publish-follower.ts src/web/packages/player/src/publish-follower.test.ts src/web/packages/player/src/main.ts
 git commit -m "feat(player): find the host again after its address changes"
 ```
 
