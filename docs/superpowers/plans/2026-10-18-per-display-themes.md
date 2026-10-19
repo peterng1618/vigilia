@@ -2905,23 +2905,25 @@ already does and for the same reason: the host serves this module with no build 
 `themeList` **gains no option**: it reads the kind off the row it is already assigning to,
 `displays.find((d) => d.id === selected)?.kind ?? "default"`, and puts
 `costWarning(kind, theme.costs)` on each theme row as a note, hidden while there is
-nothing to say. **The note is raised when the row
-is chosen for a display and before the write lands**, and it is the row's, so it is still
-on screen after the page settles — `library.html` reloads on a successful choice today,
-and a warning wiped by that reload is a warning nobody read.
+nothing to say. **The note describes the pair the person is about to commit** — this
+theme, on the display `selected` names — and it is therefore on screen *before* the press,
+which is the only moment a warning can be read: both pages destroy a row's own contents on
+a successful write, one by reloading and one by re-rendering.
 
-**The reload above, answered by reading rather than by the browser test (R86).** The two
-pages that call `themeList` are not alike, and the brief had been written as if they were.
-`settings.html` — **the page this task's proof runs on** — has no reload in its choose path
-at all (`onChoose: chooseTheme`, `settings.html:188`; its only "reload" strings are about a
-*display* reloading), so the note stays on screen and this task needs no change there.
-`library.html` reloads the moment the write succeeds (`:102`, commented as landing the
-consumer on the dashboard they asked for), which erases the note before it can be read —
-so on that page the warning does not appear at all. **That page is out of this task's
-scope and is filed rather than fixed here:** deferring its reload until the reader
-acknowledges is a decision about that page's flow, not a line, and the brief's Files list
-deliberately names neither page. The browser test therefore proves the note on
-`settings.html` only, and must not be written to claim otherwise.
+**The reload above, answered by reading (R86).** **The note is computed while `themeList`
+renders — a function of the selected display's `kind` and each theme's `costs` — and is not
+an annotation added when a row is pressed.** That distinction is the whole answer, and it
+is what makes the sentence above true rather than merely asserted. A press-time note would
+be destroyed on **both** pages, by two different mechanisms: `library.html` reloads the
+moment the write succeeds (`:102`, commented as landing the consumer on the dashboard they
+asked for), and `settings.html` re-renders its rows on one (`renderThemes()` calls
+`themesHost.replaceChildren()`, `settings.html:149`, from `chooseTheme` at `:316`). A
+render-time note is destroyed by neither, because the next render computes the same answer
+from the same two facts. `selected` already names the display and already re-renders on
+change (`library.html:85-88`), so nothing new is needed to carry the kind.
+**The browser test therefore asserts the note is on the row for the selected display's kind
+before the press and still there after the page settles** — which is the property the
+sentence above claims, and the one a press-time implementation would fail.
 
 - [ ] **Step 4: Run test to verify it passes**
 
