@@ -5,12 +5,12 @@ Branch: `develop`
 
 ## Current objective
 
-Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Phases 1, 2 and 3 are complete and gated**; Phase 4 (the routes, the display's own write and its chooser, the reassignment read, the re-find ladder and the two host pages) is next. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
+Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-display-themes.md` (register `vg-574`) is active and lands before the theme store. **Phases 1, 2 and 3 are complete and gated**; Phase 4 (the routes, the display's own write and its chooser, the reassignment read, the re-find ladder and the two host pages) is **five of eight tasks in**. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
 - **Active plan:** `2026-10-18-per-display-themes.md` — [plan](docs/superpowers/plans/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md); execution ledger `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`.
-- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); the pre-flight scans and the review loops have ruled R1–R44 into the ledger and no seat is running.
+- **Phases 1–3 are complete and gated**: Phase 1 (the display record, its credential, pairing, the one-time code, the host's own monitors, the launcher), Phase 2 (one theme map keyed by display, `GET /` resolving the asking display) and Phase 3 (the answers keyed by display and theme, and the assignment **served** per display); **Phase 4's Tasks 4.1–4.5 are complete**; the pre-flight scans and the review loops have ruled R1–R68 into the ledger and no seat is running.
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
 - Plan queue after this: `2026-10-18-theme-store.md` (its phase A only — B–G each need their own plan, G before C), then the panel work; the colour/gradient spec is unreviewed and unplanned.
 - Recorded objectives rather than queued plans: a **native player app**, the only path to real device brightness (`vg-583`), and a **TURZX panel display** ([rough capture](docs/superpowers/specs/2026-10-18-turzx-panel-displays-design.md)), both sequenced after the theme store.
@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Task 4.4 (`8cd57486` + three fix rounds to `061f6cfd`): the editor client gains `assign(display, id)` and `listDisplays()`, the seam `2026-10-18-theme-store.md` consumes.
-- **The finding that mattered was the seam's shape**: `listDisplays` returned only the route's `displays`, and the default lives in a separate top-level field — so the consuming plan's Task A.9, which must offer the default and is forbidden a list of its own, could not have been written against it. Found by reading the consumer one task early (R57).
-- Three rounds, each a different kind of nothing-fails: a seam too narrow, a harness that could return a **different** function than the manager received, and a fallback case that did not pin the type checks it named.
-- **R56: a Step 5 `git add` is illustrative, not exhaustive.** Task 4.4's named two files and touched six — the fourth wrong staging list, so the fix is a rule rather than a fifth patch.
-- `npm run test` 152 files and **2043 tests** exit 0, typecheck exit 0. **Nothing consumes `listDisplays` yet**, so its shape is asserted only against a mock `fetch`.
+- Task 4.5 (`73790533` + two fix rounds to `31682fab`): a host-resolved display gains a chooser that writes its own assignment and re-resolves through `/`, mounted **only** on a `map` page.
+- **Round 1 found the regression that would have shipped silently**: mounted on any page, the control writes the map while `reResolveUrl` keeps `theme=`, so the display reloads onto the link's theme and the control appears to do nothing (R61).
+- **Round 2 found that round 1's own `link` case could not fail on its own** — a bare non-awaited assertion resting on an unstated no-await invariant, the phase's fifth occurrence of that shape (R62).
+- **The seat corrected two of my red-proof recipes, both reusable (R67)**: a microtask is not a deferral (`await Promise.resolve()` drains during the module import, so the break could not fail any implementation), and `vi.resetModules()` does not clear jsdom's `window`.
+- Proving the next three tasks before dispatch found six more plan defects — a 254-entry sweep that cannot exist, a `main.test.ts` no task can run, `samplesBackdrop` in the wrong owner, `0069` already taken (R63–R68).
 
 ## Next
 
-1. **Phase 4 continues at Task 4.5** (the display's own chooser); the scan and the four tasks so far have ruled R45–R58.
+1. **Phase 4 continues at Task 4.6** (a display re-finds its host after the address changes); its brief is re-extracted and R63 corrects it.
 2. `vg-620` is the open one to weigh first: a client disconnecting mid-stream kills the host, which makes every browser proof in this repo unreliable and takes every other display's stream with it.
 3. Resume the drain at Task 23.4 when this plan stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
