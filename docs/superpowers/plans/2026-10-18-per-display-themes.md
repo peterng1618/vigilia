@@ -1823,8 +1823,7 @@ git commit -m "feat(host): read and write the display map over one route"
 - Modify: `src/web/packages/player/src/main.ts` (R51 — the reload must re-resolve)
 - Test: `src/web/packages/host/src/server.test.ts`,
   `src/web/packages/player/src/publish-follower.test.ts`,
-  `src/web/packages/player/src/session.test.ts`,
-  `src/web/packages/player/src/main.dom.test.ts` (R51 — the reload's own URL)
+  `src/web/packages/player/src/session.test.ts`
 
 **The root route must say where a theme came from, or this task does nothing** (R50).
 `GET /` 302-redirects every display to a URL that names a theme — `url.searchParams.set(
@@ -1853,7 +1852,8 @@ reloads a display when the publish changes or stops.
   is the person's own instruction for that page.
   `publish-follower.ts` gains
   `readonly onThemeChange?: (theme: string | null) => void` on its options, called
-  when `display.theme` differs from the previous poll's.
+  when `display.theme` differs from the previous poll's, and
+  `export function reResolveUrl(href: string): string` (R51).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1880,13 +1880,20 @@ it("follows the map only for a page the host resolved itself", async () => {
   //   "named a theme -> null" rule live rather than unreachable surface.
 });
 
-// main.dom.test.ts — the reload's own URL (R51).
-it("re-resolves on a map page and leaves a link page's id alone", async () => {
-  // The URL the player navigates to: `data` always gone, `theme` gone only when
-  //   theme-source=map, and `display`/`session` kept. Without the first, the
-  //   reload re-serves the id already in the URL and no display ever moves.
+// publish-follower.test.ts — the reload's own URL, as a pure function (R51).
+it("re-resolves on a map page and leaves a link page's id alone", () => {
+  // reResolveUrl(href): `data` always gone, `theme` gone only when
+  //   theme-source=map, `display`/`session` kept. Without the first, the reload
+  //   re-serves the id already in the URL and no display ever moves.
 });
 ```
+
+**The URL is built by a pure exported function rather than in the callback** (R51):
+`export function reResolveUrl(href: string): string` in `publish-follower.ts`, which
+already reads `theme-source` to decide whether to act at all. `main.ts`'s callback is
+then one line, and the rule is unit-tested without a DOM — **jsdom does not navigate**,
+so a case in `main.dom.test.ts` could only assert against a stubbed `location`, which
+would test the stub.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1937,7 +1944,7 @@ git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.tes
   src/web/packages/player/src/publish-follower.ts \
   src/web/packages/player/src/publish-follower.test.ts \
   src/web/packages/player/src/session.ts src/web/packages/player/src/session.test.ts \
-  src/web/packages/player/src/main.ts src/web/packages/player/src/main.dom.test.ts
+  src/web/packages/player/src/main.ts
 git commit -m "feat(player): follow the theme this display was assigned"
 ```
 
