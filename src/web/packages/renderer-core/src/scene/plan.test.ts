@@ -79,27 +79,22 @@ describe("artboard", () => {
     ).toBe("#101216");
   });
 
-  // The palette's other shape — `{ kind: "solid" }` rather than a bare colour —
-  // and the artboard's second paint, which comes from the same globals. A solid
-  // paint resolves to its colour, which is the form the renderer paints.
-  it("resolves a structured palette value and the bar colour too", () => {
+  // The palette's other shape — `{ kind: "solid" }` rather than a bare colour.
+  // A solid paint resolves to its colour, which is the form the renderer paints.
+  it("resolves a structured palette value", () => {
     const globals: Globals = {
       palette: {
         paper: { name: "Paper", value: { kind: "solid", color: "#e8e4da" } },
-        bars: { name: "Bars", value: "#101318" },
       },
     };
 
     expect(
       planArtboard(
-        artboardWith({
-          background: { ref: "palette.paper" },
-          barColor: { ref: "palette.bars" },
-        }),
+        artboardWith({ background: { ref: "palette.paper" } }),
         globals,
         [],
-      ),
-    ).toMatchObject({ background: "#e8e4da", barColor: "#101318" });
+      ).background,
+    ).toBe("#e8e4da");
   });
 });
 

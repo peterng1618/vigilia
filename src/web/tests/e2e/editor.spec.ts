@@ -35,7 +35,6 @@ import {
 import {
   ACCENT_PAINT,
   ARTBOARD_BACKGROUND_PAINT,
-  ARTBOARD_BAR_PAINT,
   BACKGROUND_END_PAINT,
   BACKGROUND_PAINT,
   BARS_END_PAINT,
@@ -2007,7 +2006,6 @@ test.describe("Fabric editor route", () => {
         width: 1000,
         height: 720,
         background: { value: ARTBOARD_BACKGROUND_PAINT },
-        barColor: { value: ARTBOARD_BAR_PAINT },
       },
       scene: { version: "7.4.0", objects: [] },
     });
@@ -2032,7 +2030,6 @@ test.describe("Fabric editor route", () => {
         width: 1000,
         height: 720,
         background: { ref: "palette.background" },
-        barColor: { ref: "palette.bars" },
       },
       globals: {
         palette: {
@@ -2107,13 +2104,14 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The artboard must reference the token before it is deleted, or the
+    // reassignment has nothing to reassign and the test passes for the wrong
+    // reason. The board's one paint is `background`, so it is pointed at `bars`
+    // here through the Document pane.
+    await openPane(page, "Document");
+    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.bars");
     // The palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    // The token deleted has to be one the **artboard** references, or the
-    // reassignment has nothing to reassign and the test passes for the wrong
-    // reason. `bars` is the artboard's `barColor`; its own paint is `none`
-    // since the backdrop became packaged media, so `background` — the token
-    // this used to delete — is no longer referenced by it.
     await chooseIn(page, "[data-vigilia-palette-token]", "bars");
     await chooseIn(page, "[data-vigilia-palette-replacement]", "panel");
     await captureVisualReview(page, testInfo, "editor-palette-reassignment");
@@ -2126,10 +2124,10 @@ test.describe("Fabric editor route", () => {
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {
-      artboard: { barColor?: { ref: string } };
+      artboard: { background?: { ref: string } };
       globals: { palette: Record<string, unknown> };
     };
-    expect(envelope.artboard.barColor).toEqual({ ref: "palette.panel" });
+    expect(envelope.artboard.background).toEqual({ ref: "palette.panel" });
     expect(envelope.globals.palette.bars).toBeUndefined();
   });
 
@@ -2466,7 +2464,7 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The artboard panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-vigilia-background-media-fit]", "contain");
+    await chooseIn(page, "[data-vigilia-background-media-fit]", "display");
     await page.locator("[data-vigilia-artboard-width]").fill("1000");
     await page.locator("[data-vigilia-artboard-width]").press("Tab");
     await chooseIn(page, "[data-vigilia-artboard-background]", "palette.bars");
@@ -2483,7 +2481,7 @@ test.describe("Fabric editor route", () => {
     // The only fit an author sets is the media's. The artboard's own content
     // fit is a guarantee of the model, so this asserts the control that does
     // exist writes what it says and the one that does not is not invented.
-    expect(envelope.artboard.backgroundMedia?.fit).toBe("contain");
+    expect(envelope.artboard.backgroundMedia?.fit).toBe("display");
     expect(envelope.artboard.contentFit ?? "contain").toBe("contain");
     expect(envelope.artboard.width).toBe(1000);
     expect(envelope.artboard.background).toEqual({ ref: "palette.bars" });
@@ -2520,9 +2518,9 @@ test.describe("Fabric editor route", () => {
     // plan 1's select, and a button's `.value` is always "".
     expect(labels).toContain("Media fit");
     const chosen = mediaFit.locator("[data-vigilia-value]");
-    await expect(chosen).toHaveAttribute("data-vigilia-value", "cover");
-    await chooseIn(page, "[data-vigilia-background-media-fit]", "contain");
-    await expect(chosen).toHaveAttribute("data-vigilia-value", "contain");
+    await expect(chosen).toHaveAttribute("data-vigilia-value", "theme");
+    await chooseIn(page, "[data-vigilia-background-media-fit]", "display");
+    await expect(chosen).toHaveAttribute("data-vigilia-value", "display");
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {
@@ -2642,7 +2640,6 @@ test.describe("Fabric editor route", () => {
         width: 320,
         height: 180,
         background: { ref: "palette.background" },
-        barColor: { ref: "palette.none" },
       },
       globals: {
         palette: {
@@ -3243,7 +3240,7 @@ test.describe("Fabric editor route", () => {
     // The artboard's own panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
     await chooseIn(page, "[data-vigilia-background-asset]", "hero");
-    await chooseIn(page, "[data-vigilia-background-media-fit]", "contain");
+    await chooseIn(page, "[data-vigilia-background-media-fit]", "display");
     // The chosen asset, read off the hook the control commits through: it is a
     // plan-1 select, so there is no `select` element to ask `.value`.
     await expect(
@@ -3259,7 +3256,7 @@ test.describe("Fabric editor route", () => {
     if (!saved.parsed.ok) return;
     expect(saved.parsed.envelope.artboard.backgroundMedia).toEqual({
       assetId: "hero",
-      fit: "contain",
+      fit: "display",
     });
     expect(saved.parsed.assets["assets/hero.png"]).toBeDefined();
   });
@@ -3819,7 +3816,6 @@ test.describe("Fabric editor route", () => {
         width: STARTER_WIDTH,
         height: 941,
         background: { ref: "palette.none" },
-        barColor: { ref: "palette.none" },
       },
       globals: {
         palette: {

@@ -13,7 +13,7 @@ function deviceFor(
 ): { region: unknown; device: unknown } {
   let seen: { region: unknown; device: unknown } | undefined;
   const backdrop: BackdropMedia = {
-    artboard,
+    rect: { left: 0, top: 0, ...artboard },
     paint(_ctx, region, device) {
       seen = { region, device };
       return true;

@@ -479,7 +479,6 @@ describe("native editor shell", () => {
         width: 1280,
         height: 720,
         background: { kind: "solid", color: "#000" },
-        barColor: { kind: "solid", color: "#000" },
       } as never,
     });
     expect(shell.editor.viewport.zoom()).toBeGreaterThan(0);
@@ -536,7 +535,7 @@ describe("editor background media", () => {
     const artboard = {
       width: 100,
       height: 100,
-      backgroundMedia: { assetId: "loop", fit: "cover" as const },
+      backgroundMedia: { assetId: "loop", fit: "theme" as const },
     };
 
     try {
@@ -584,7 +583,7 @@ describe("editor background media", () => {
       artboard: {
         width: 100,
         height: 100,
-        backgroundMedia: { assetId: "hero", fit: "cover" },
+        backgroundMedia: { assetId: "hero", fit: "theme" },
       },
       assets: hero,
       resolveAsset: () => ({ url: "blob:hero" }),
@@ -629,7 +628,7 @@ describe("editor background media", () => {
       artboard: {
         width: 100,
         height: 100,
-        backgroundMedia: { assetId: "hero", fit: "cover" },
+        backgroundMedia: { assetId: "hero", fit: "theme" },
       },
       assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
       resolveAsset: () => ({ url: "blob:hero" }),

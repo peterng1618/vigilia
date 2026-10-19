@@ -321,13 +321,11 @@ describe("artboard panel", () => {
       width: 1280,
       height: 720,
       background: { ref: "palette.background" },
-      barColor: { ref: "palette.bars" },
     });
 
     expect(choiceOf("[data-vigilia-artboard-background]")).toBe(
       "palette.background",
     );
-    expect(choiceOf("[data-vigilia-artboard-bar-color]")).toBe("palette.bars");
 
     await chooseIn("[data-vigilia-artboard-background]", "palette.bars");
     expect(change).toHaveBeenLastCalledWith(
@@ -335,15 +333,14 @@ describe("artboard panel", () => {
     );
   });
 
-  it("keeps an uneditable literal bar colour when another artboard field changes", async () => {
+  it("keeps an uneditable literal background paint when another artboard field changes", async () => {
     const { change } = await mount({
       palette: { background: { name: "Background", value: "#101216" } },
     });
     await draw({
       width: 1280,
       height: 720,
-      background: { ref: "palette.background" },
-      barColor: { value: "#e20074" },
+      background: { value: "#e20074" },
     });
 
     await commitField("[data-vigilia-artboard-width]", "1000");
@@ -351,7 +348,7 @@ describe("artboard panel", () => {
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({
         width: 1000,
-        barColor: { value: "#e20074" },
+        background: { value: "#e20074" },
       }),
     );
   });
@@ -371,7 +368,7 @@ describe("artboard panel", () => {
     await chooseIn("[data-vigilia-background-asset]", "clip");
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        backgroundMedia: { assetId: "clip", fit: "cover" },
+        backgroundMedia: { assetId: "clip", fit: "theme" },
       }),
     );
   });
@@ -463,8 +460,8 @@ describe("artboard panel", () => {
 
     const options = await openControl("[data-vigilia-background-media-fit]");
     expect(options.map((option) => option.textContent)).toEqual([
-      "Cover",
-      "Contain",
+      "Fill theme",
+      "Fill display",
     ]);
   });
 

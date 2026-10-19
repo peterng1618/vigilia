@@ -702,11 +702,11 @@ export const uiCopy = {
   artboardOrientations: { landscape: "Landscape", portrait: "Portrait" },
   artboardResolutions: { "1080p": "1080p", "2k": "2K", "4k": "4K" },
   /**
-   * The two ways a picture can fill a box, spelled once. Background media's fit
-   * is the only fit an author sets; the artboard's content fit is a guarantee
-   * of the model, so there is one control left to name them.
+   * The two boxes a background picture can fill, spelled once. Background
+   * media's fit is the only fit an author sets; the artboard's content fit is a
+   * guarantee of the model, so there is one control left to name them.
    */
-  fitModes: { contain: "Contain", cover: "Cover" },
+  fitModes: { theme: "Fill theme", display: "Fill display" },
   /**
    * The four ways a reading may print its unit, keyed by what is stored.
    *
@@ -879,8 +879,7 @@ export const uiCopy = {
         boxes, so the row keeps its "Size" label and marks them W and H. */
     widthMark: "W",
     heightMark: "H",
-    background: "Background",
-    barColour: "Bar colour",
+    background: "Background color",
     /** A paint's own colour, as against the token it is chosen from. */
     colour: "Colour",
     /** Shown when the browser cannot paint what was typed. Named by the value

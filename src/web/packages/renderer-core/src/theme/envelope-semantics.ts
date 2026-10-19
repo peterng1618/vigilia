@@ -162,12 +162,6 @@ export function validateEnvelopeSemantics(
     "/artboard/background",
     globalKeys,
   );
-  validateStyleValue(
-    own,
-    resolveOptional(input["artboard"], "barColor"),
-    "/artboard/barColor",
-    globalKeys,
-  );
 
   issues.push(...own.list);
 }
@@ -340,7 +334,7 @@ function validateBackgroundMedia(
       );
   issues.enumValue(
     value["fit"],
-    ["contain", "cover"] as const,
+    ["theme", "display"] as const,
     "/artboard/backgroundMedia/fit",
     "fit",
   );

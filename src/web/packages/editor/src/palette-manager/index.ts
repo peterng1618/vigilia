@@ -49,11 +49,9 @@ export function reassignPaletteToken(
   const to = `palette.${replacement}` as const;
   reassignObjectPaletteReferences(canvas, from, to);
   const nextArtboard = { ...artboard };
-  for (const property of ["background", "barColor"] as const) {
-    const value = nextArtboard[property];
-    if (value !== undefined && "ref" in value && value.ref === from)
-      nextArtboard[property] = { ref: to };
-  }
+  const value = nextArtboard.background;
+  if (value !== undefined && "ref" in value && value.ref === from)
+    nextArtboard.background = { ref: to };
   const nextPalette = { ...palette };
   delete nextPalette[id];
   return { from, to, artboard: nextArtboard, palette: nextPalette };

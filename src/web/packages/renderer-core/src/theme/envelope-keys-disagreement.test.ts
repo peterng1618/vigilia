@@ -190,7 +190,7 @@ describe("one document, two registries, one answer", () => {
       artboard: {
         width: 400,
         height: 300,
-        backgroundMedia: { assetId: "backdrop", fit: "cover", scale: 2 },
+        backgroundMedia: { assetId: "backdrop", fit: "theme", scale: 2 },
       },
     };
 

@@ -26,14 +26,7 @@ const KNOWN_KEYS = {
     "updatedAt",
     "themeLanguage",
   ],
-  artboard: [
-    "width",
-    "height",
-    "background",
-    "contentFit",
-    "barColor",
-    "backgroundMedia",
-  ],
+  artboard: ["width", "height", "background", "contentFit", "backgroundMedia"],
   // `format` and `timeZone` are validated below and authored by the editor's
   // runs panel; omitting them here refused the key before that code ran.
   binding: [

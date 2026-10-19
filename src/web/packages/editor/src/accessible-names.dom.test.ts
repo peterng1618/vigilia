@@ -228,7 +228,7 @@ describe("editor panels", () => {
           }`,
       );
     expect(skipped).toEqual([
-      // The Document pane's eight, and it leads the list because it is the first
+      // The Document pane's seven, and it leads the list because it is the first
       // thing in `root` that renders one. The artboard panel was imperative
       // until Task 8, so its natives were not skipped at all; every control on it
       // is `ControlSelect` now, and each is a Base UI value carrier.
@@ -237,7 +237,6 @@ describe("editor panels", () => {
       "INPUT[type=][aria-hidden]", // Orientation
       "INPUT[type=][aria-hidden]", // Resolution
       "INPUT[type=][aria-hidden]", // Background
-      "INPUT[type=][aria-hidden]", // Bar colour
       "INPUT[type=][aria-hidden]", // Background media
       "INPUT[type=][aria-hidden]", // Media fit
       // The Tokens pane's three: the token chooser, the paint-kind chooser and

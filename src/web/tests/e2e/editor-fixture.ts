@@ -11,9 +11,8 @@
 /** The colour typed into the palette field, and read back out of it. */
 export const PALETTE_FIELD_PAINT = "#123456";
 
-/** The incompatible document's artboard paints. */
+/** The incompatible document's artboard paint. */
 export const ARTBOARD_BACKGROUND_PAINT = "#101216";
-export const ARTBOARD_BAR_PAINT = "#e20074";
 
 /** The gradient document's `background` and `bars` stops. */
 export const BACKGROUND_PAINT = "#102030";

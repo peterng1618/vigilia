@@ -91,7 +91,7 @@ describe("published Fabric theme schema", () => {
     expect(artboard["background"]).toEqual({
       $ref: "#/$defs/paletteReference",
     });
-    expect(artboard["barColor"]).toEqual({ $ref: "#/$defs/paletteReference" });
+    expect(artboard["barColor"]).toBeUndefined();
     expect(artboard["backgroundMedia"]).toEqual({
       $ref: "#/$defs/backgroundMedia",
     });

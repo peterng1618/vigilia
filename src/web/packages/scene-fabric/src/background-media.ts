@@ -25,14 +25,23 @@ export interface BackgroundMediaOptions {
 /** Reconfiguration carries the document, never the frame subscription. */
 type BackgroundMediaUpdate = Omit<BackgroundMediaOptions, "host" | "onFrame">;
 
+/** A box in host pixels: where a media layer sits and how large it is. */
+export interface MediaBox {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The two boxes a media layer can be sized to. */
+export interface MediaBounds {
+  readonly artboard: MediaBox;
+  readonly display: MediaBox;
+}
+
 export interface BackgroundMediaHandle {
   update(options: BackgroundMediaUpdate): void;
-  setBounds(bounds: {
-    readonly left: number;
-    readonly top: number;
-    readonly width: number;
-    readonly height: number;
-  }): void;
+  setBounds(bounds: MediaBounds): void;
   /** Pixel access for the glass sampler, or undefined with nothing to sample.
    *  The media is a DOM sibling below the canvas, so a glass panel cannot read
    *  it out of the canvas it is painting. */
@@ -53,9 +62,22 @@ export function mountBackgroundMedia(
   let stopFrames: (() => void) | undefined;
   let stopDecoded: (() => void) | undefined;
   let element: HTMLImageElement | HTMLVideoElement | undefined;
-  let fit: "cover" | "contain" = "cover";
+  let fit: "theme" | "display" = "theme";
   let artboardSize = { width: 0, height: 0 };
+  let bounds: MediaBounds | undefined;
   const onFrame = options.onFrame;
+
+  /** The layer sits on one of the two boxes; both fill it with `cover`. */
+  const place = (): void => {
+    const box = fit === "display" ? bounds?.display : bounds?.artboard;
+    if (box === undefined) return;
+    layer.style.left = `${box.left}px`;
+    layer.style.top = `${box.top}px`;
+    layer.style.right = "";
+    layer.style.bottom = "";
+    layer.style.width = `${box.width}px`;
+    layer.style.height = `${box.height}px`;
+  };
 
   const stop = (): void => {
     disposeSource?.();
@@ -101,7 +123,8 @@ export function mountBackgroundMedia(
         ? document.createElement("video")
         : document.createElement("img");
     mounted.src = source.url;
-    mounted.style.cssText = `display:block;width:100%;height:100%;object-fit:${media.fit};`;
+    mounted.style.cssText =
+      "display:block;width:100%;height:100%;object-fit:cover;";
     if (mounted instanceof HTMLVideoElement) {
       mounted.autoplay = true;
       mounted.muted = true;
@@ -114,24 +137,43 @@ export function mountBackgroundMedia(
     layer.append(mounted);
     stopFrames = followFrames(mounted, onFrame);
     stopDecoded = notifyOnDecode(mounted, onFrame);
+    place();
   };
 
   update(options);
   return {
     update,
     setBounds(next) {
-      layer.style.left = `${next.left}px`;
-      layer.style.top = `${next.top}px`;
-      layer.style.right = "";
-      layer.style.bottom = "";
-      layer.style.width = `${next.width}px`;
-      layer.style.height = `${next.height}px`;
+      bounds = next;
+      place();
     },
     backdrop(): BackdropMedia | undefined {
       const mounted = element;
       if (mounted === undefined) return undefined;
+      // The rect the layer covers, in artboard units. A display-filled layer
+      // covers more than the artboard and may start outside it, so the glass
+      // sampler is told the rect actually painted, not the board's own.
+      const scale =
+        bounds === undefined ? 0 : bounds.artboard.width / artboardSize.width;
+      const rect =
+        fit === "display" &&
+        bounds !== undefined &&
+        scale > 0 &&
+        Number.isFinite(scale)
+          ? {
+              left: (bounds.display.left - bounds.artboard.left) / scale,
+              top: (bounds.display.top - bounds.artboard.top) / scale,
+              width: bounds.display.width / scale,
+              height: bounds.display.height / scale,
+            }
+          : {
+              left: 0,
+              top: 0,
+              width: artboardSize.width,
+              height: artboardSize.height,
+            };
       return {
-        artboard: artboardSize,
+        rect,
         paint(ctx, region, device) {
           const source = intrinsic(mounted);
           if (source === undefined) return false;
@@ -147,7 +189,6 @@ export function mountBackgroundMedia(
             ...mediaDrawArgs({
               sourceWidth: width,
               sourceHeight: height,
-              fit,
               deviceLeft: device.left,
               deviceTop: device.top,
               deviceWidth: device.width,
@@ -168,8 +209,8 @@ export function mountBackgroundMedia(
 }
 
 /**
- * The nine `drawImage` arguments that reproduce the element's `object-fit` over
- * a device-space region, offset by where the media layer actually sits.
+ * The nine `drawImage` arguments that reproduce the element's `object-fit: cover`
+ * over a device-space region, offset by where the media layer actually sits.
  * `object-fit` is a CSS layout decision that `drawImage` does not apply, and
  * `object-position` is never authored, so the crop stays centred.
  *
@@ -184,7 +225,6 @@ export function mountBackgroundMedia(
 export function mediaDrawArgs(input: {
   readonly sourceWidth: number;
   readonly sourceHeight: number;
-  readonly fit: "cover" | "contain";
   readonly deviceLeft: number;
   readonly deviceTop: number;
   readonly deviceWidth: number;
@@ -194,25 +234,6 @@ export function mediaDrawArgs(input: {
   const { sourceWidth, sourceHeight, deviceWidth, deviceHeight } = input;
   const left = input.deviceLeft - input.region.left;
   const top = input.deviceTop - input.region.top;
-  if (input.fit === "contain") {
-    // The whole source, at the size the element letterboxes it to.
-    const scale = Math.min(
-      deviceWidth / sourceWidth,
-      deviceHeight / sourceHeight,
-    );
-    const width = sourceWidth * scale;
-    const height = sourceHeight * scale;
-    return [
-      0,
-      0,
-      sourceWidth,
-      sourceHeight,
-      left + (deviceWidth - width) / 2,
-      top + (deviceHeight - height) / 2,
-      width,
-      height,
-    ];
-  }
   // Cover: the largest source rect of the device rect's aspect, centred.
   const cropWidth = Math.min(
     sourceWidth,

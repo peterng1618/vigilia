@@ -154,7 +154,6 @@ const ENVELOPE = {
     height: ARTBOARD.height,
     contentFit: "contain" as const,
     background: { ref: "palette.bar" as const },
-    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: PALETTE,

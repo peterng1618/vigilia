@@ -131,7 +131,6 @@ export interface ScenePlan {
     readonly height: number;
     readonly contentFit: "contain" | "cover";
     readonly background: unknown;
-    readonly barColor: unknown;
   };
   readonly nodes: readonly PlanNode[];
   readonly issues: readonly PlanIssue[];
@@ -185,7 +184,6 @@ export function planArtboard(
       "artboard",
       issues,
     ),
-    barColor: resolveStyleValue(artboard.barColor, globals, "artboard", issues),
   };
 }
 

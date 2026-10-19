@@ -24,7 +24,7 @@ const STARTER_BACKDROP_ID = "starter-backdrop";
 
 /**
  * 2330x1311: 1.39x the 1672-unit artboard, centre-cropped to its 1.7768 aspect
- * so `fit: "cover"` crops nothing further. A 3111px source — the licensed
+ * so `fit: "theme"` crops nothing further. A 3111px source — the licensed
  * original's native height — is 729 KB for a 0.6% mean channel error.
  */
 export const starterBackdrop: AssetReference = {

@@ -146,7 +146,7 @@ describe("the new Fabric document", () => {
     // the artboard paint is now the transparent token the media needs.
     expect(document_.artboard).toMatchObject({
       background: { ref: "palette.none" },
-      backgroundMedia: { assetId: "starter-backdrop", fit: "cover" },
+      backgroundMedia: { assetId: "starter-backdrop", fit: "theme" },
     });
     expect(objectsOf(document_).map((object) => object["id"])).not.toContain(
       "background",
@@ -789,7 +789,7 @@ describe("the new Fabric document", () => {
     const saved = serialiseThemeEnvelope(canvas, theme);
     expect(saved.artboard.backgroundMedia).toEqual({
       assetId: "starter-backdrop",
-      fit: "cover",
+      fit: "theme",
     });
     expect(saved.artboard.background).toEqual({ ref: "palette.none" });
     expect(saved.assets).toEqual(theme.assets);
@@ -1112,10 +1112,7 @@ describe("the blank Fabric document", () => {
     const ids = (value: unknown): string[] =>
       value === undefined ? [] : [String((value as { ref: string }).ref)];
 
-    for (const ref of [
-      ...ids(blank.artboard.background),
-      ...ids(blank.artboard.barColor),
-    ]) {
+    for (const ref of ids(blank.artboard.background)) {
       expect(ref.startsWith("palette."), ref).toBe(true);
       expect(palette[ref.slice("palette.".length)], ref).toBeDefined();
     }

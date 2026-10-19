@@ -135,15 +135,24 @@ export function mountFabricScene(
       contentFit: plan.artboard.contentFit,
     });
 
-    // Letterbox bars are host background, not artboard paint (§53).
-    host.style.background = cssArtboardPaint(plan.artboard.barColor) ?? "#000";
+    // The one artboard paint is the board's fill and the bars behind it (§53).
+    host.style.background =
+      cssArtboardPaint(plan.artboard.background) ?? "#000";
     element.style.visibility = transform.isDegenerate ? "hidden" : "visible";
     if (!transform.isDegenerate)
       media?.setBounds({
-        left: transform.offsetX,
-        top: transform.offsetY,
-        width: plan.artboard.width * transform.scale,
-        height: plan.artboard.height * transform.scale,
+        artboard: {
+          left: transform.offsetX,
+          top: transform.offsetY,
+          width: plan.artboard.width * transform.scale,
+          height: plan.artboard.height * transform.scale,
+        },
+        display: {
+          left: 0,
+          top: 0,
+          width: host.clientWidth,
+          height: host.clientHeight,
+        },
       });
 
     if (transform.isDegenerate) {

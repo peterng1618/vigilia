@@ -74,7 +74,7 @@ describe("reassignPaletteToken", () => {
     const artboard: Artboard = {
       width: 100,
       height: 100,
-      barColor: { ref: "palette.other" },
+      background: { ref: "palette.other" },
     };
     const palette = {
       old: { name: "Old", value: { kind: "solid", color: "#000" } as const },
@@ -89,7 +89,7 @@ describe("reassignPaletteToken", () => {
       "new",
     );
 
-    expect(result.artboard.barColor).toEqual({ ref: "palette.other" });
+    expect(result.artboard.background).toEqual({ ref: "palette.other" });
   });
 
   it("reports the same objects the delete moves, at any depth", () => {

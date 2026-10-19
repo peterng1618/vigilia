@@ -234,7 +234,7 @@ describe("ThemeStore", () => {
       artboard: {
         width: 1920,
         height: 1080,
-        backgroundMedia: { assetId: "loop", fit: "cover" },
+        backgroundMedia: { assetId: "loop", fit: "theme" },
       },
       assets: [
         {

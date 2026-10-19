@@ -139,7 +139,6 @@ const envelopeFor = (
     height: 360,
     contentFit: "contain" as const,
     background: { ref: "palette.bar" as const },
-    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: {
@@ -303,7 +302,6 @@ const chartEnvelope = {
     height: 360,
     contentFit: "contain" as const,
     background: { ref: "palette.bar" as const },
-    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: {
@@ -373,8 +371,7 @@ const mediaEnvelope = {
     height: 360,
     contentFit: "contain" as const,
     background: { ref: "palette.bar" as const },
-    barColor: { ref: "palette.bar" as const },
-    backgroundMedia: { assetId: "badge", fit: "contain" as const },
+    backgroundMedia: { assetId: "badge", fit: "display" as const },
   },
   globals: {
     palette: {
@@ -411,8 +408,7 @@ const videoEnvelope = {
     height: 360,
     contentFit: "contain" as const,
     background: { ref: "palette.bar" as const },
-    barColor: { ref: "palette.bar" as const },
-    backgroundMedia: { assetId: "loop", fit: "cover" as const },
+    backgroundMedia: { assetId: "loop", fit: "theme" as const },
   },
   globals: {
     palette: {
@@ -446,7 +442,6 @@ const overhangEnvelope = {
     height: 360,
     contentFit: "contain" as const,
     background: { ref: "palette.bar" as const },
-    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: {
@@ -577,7 +572,6 @@ const groupedGlassEnvelope = {
     height: 480,
     contentFit: "contain" as const,
     background: { ref: "palette.none" as const },
-    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: {

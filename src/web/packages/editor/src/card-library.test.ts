@@ -508,9 +508,9 @@ describe("a theme whose vocabulary is not the starter's", () => {
     // failure the refusal was there to prevent, and the reason this is asserted
     // against `validateFabricThemeEnvelope` rather than by reading the refs.
     //
-    // The starter's own artboard is not reused: it names `palette.bars` and
-    // `palette.none`, which this theme does not have, and those two would fail
-    // the assertion for reasons that have nothing to do with the card.
+    // The artboard is re-pointed at this theme's own palette: `surface` is a
+    // token FOREIGN declares, so the paint resolves here rather than relying on
+    // the starter's transparent `none`.
     const copied = instantiateCard({
       unit: unit(CPU_CARD),
       globals: FOREIGN,
@@ -524,7 +524,6 @@ describe("a theme whose vocabulary is not the starter's", () => {
         width: 1672,
         height: 941,
         background: { ref: "palette.surface" },
-        barColor: { ref: "palette.none" },
       },
       globals: FOREIGN,
       // The starter's own bindings name objects this scene does not carry, so

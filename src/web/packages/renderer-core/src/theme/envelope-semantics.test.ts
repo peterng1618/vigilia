@@ -122,9 +122,9 @@ describe("artboard paint", () => {
   });
 
   it("rejects a reference into an unknown group", () => {
-    expect(codes(withPaint({ barColor: { ref: "colours.accent" } }))).toEqual([
-      "unresolved-global-ref",
-    ]);
+    expect(codes(withPaint({ background: { ref: "colours.accent" } }))).toEqual(
+      ["unresolved-global-ref"],
+    );
   });
 
   it("rejects a reference with no entry id", () => {
@@ -290,7 +290,7 @@ describe("background media", () => {
 
   it("refuses a key the media bag does not publish", () => {
     expect(
-      issuesFor(withMedia({ assetId: "backdrop", fit: "cover", scale: 2 })).map(
+      issuesFor(withMedia({ assetId: "backdrop", fit: "theme", scale: 2 })).map(
         ({ code, path }) => ({ code, path }),
       ),
     ).toContainEqual({
@@ -307,7 +307,7 @@ describe("background media", () => {
         artboard: {
           width: 10,
           height: 10,
-          backgroundMedia: { assetId: "clip", fit: "cover" },
+          backgroundMedia: { assetId: "clip", fit: "display" },
         },
       }),
     ).toContain("unresolved-asset-ref");

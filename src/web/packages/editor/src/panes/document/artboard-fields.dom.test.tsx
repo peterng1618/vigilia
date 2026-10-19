@@ -93,9 +93,8 @@ const enumeratedHooks = [
   "artboard-width",
   "artboard-height",
   "artboard-note",
-  // The board's paint, the media behind it, and how that media fills it.
+  // The board's one paint, the media behind it, and how that media fills it.
   "artboard-background",
-  "artboard-bar-color",
   "background-asset",
   "background-media-fit",
 ] as const;
@@ -247,11 +246,11 @@ it("renders every field the panel rendered, including the branch that needs a ba
   expect(
     host.querySelector("[data-vigilia-background-media-fit]"),
   ).not.toBeNull();
-  await chooseIn("[data-vigilia-background-media-fit]", "contain");
+  await chooseIn("[data-vigilia-background-media-fit]", "display");
 
   expect(change).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      backgroundMedia: { assetId: "clip", fit: "contain" },
+      backgroundMedia: { assetId: "clip", fit: "display" },
     }),
   );
 });

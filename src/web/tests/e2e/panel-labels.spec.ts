@@ -61,7 +61,6 @@ const DOCUMENT_CONTROLS = [
   "[data-vigilia-artboard-orientation]",
   "[data-vigilia-artboard-resolution]",
   "[data-vigilia-artboard-background]",
-  "[data-vigilia-artboard-bar-color]",
   "[data-vigilia-background-asset]",
   "[data-vigilia-background-media-fit]",
   "[data-vigilia-artboard-width]",

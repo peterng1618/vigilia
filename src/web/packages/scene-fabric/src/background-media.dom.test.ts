@@ -14,7 +14,7 @@ describe("background media", () => {
       artboard: {
         width: 400,
         height: 200,
-        backgroundMedia: { assetId: "hero", fit: "contain" },
+        backgroundMedia: { assetId: "hero", fit: "theme" },
       },
       assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
       resolveAsset: () => ({
@@ -29,7 +29,7 @@ describe("background media", () => {
       "[data-vigilia-background-media] img",
     );
     expect(image?.src).toBe("blob:hero");
-    expect(image?.style.objectFit).toBe("contain");
+    expect(image?.style.objectFit).toBe("cover");
     expect(
       host.firstElementChild?.hasAttribute("data-vigilia-background-media"),
     ).toBe(true);
@@ -48,7 +48,7 @@ describe("background media", () => {
       artboard: {
         width: 400,
         height: 200,
-        backgroundMedia: { assetId: "loop", fit: "cover" },
+        backgroundMedia: { assetId: "loop", fit: "theme" },
       },
       assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
       resolveAsset: () => ({ url: "blob:loop" }),
@@ -75,7 +75,7 @@ describe("background media", () => {
       artboard: {
         width: 400,
         height: 200,
-        backgroundMedia: { assetId: "one", fit: "cover" },
+        backgroundMedia: { assetId: "one", fit: "theme" },
       },
       assets: [{ id: "one", kind: "image", path: "assets/one.png" }],
       resolveAsset: (id) => ({
@@ -90,7 +90,7 @@ describe("background media", () => {
       artboard: {
         width: 400,
         height: 200,
-        backgroundMedia: { assetId: "two", fit: "contain" },
+        backgroundMedia: { assetId: "two", fit: "display" },
       },
       assets: [{ id: "two", kind: "svg", path: "assets/two.svg" }],
       resolveAsset: (id) => ({
@@ -103,7 +103,71 @@ describe("background media", () => {
 
     expect(disposed).toEqual(["one"]);
     expect(host.querySelector("img")?.src).toBe("blob:two");
-    expect(host.querySelector("img")?.style.objectFit).toBe("contain");
+    expect(host.querySelector("img")?.style.objectFit).toBe("cover");
+  });
+
+  it("sizes the layer to the chosen box and reports the rect it covered", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      artboard: {
+        width: 400,
+        height: 200,
+        backgroundMedia: { assetId: "hero", fit: "theme" },
+      },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+    const layer = host.querySelector<HTMLElement>(
+      "[data-vigilia-background-media]",
+    );
+    const boxes = {
+      artboard: { left: 10, top: 20, width: 800, height: 400 },
+      display: { left: 0, top: 0, width: 1200, height: 500 },
+    };
+    handle.setBounds(boxes);
+
+    // Theme: the layer sits on the artboard box, and the rect it covers in
+    // artboard units is the board itself.
+    expect([
+      layer?.style.left,
+      layer?.style.top,
+      layer?.style.width,
+      layer?.style.height,
+    ]).toEqual(["10px", "20px", "800px", "400px"]);
+    expect(handle.backdrop()?.rect).toEqual({
+      left: 0,
+      top: 0,
+      width: 400,
+      height: 200,
+    });
+
+    handle.update({
+      artboard: {
+        width: 400,
+        height: 200,
+        backgroundMedia: { assetId: "hero", fit: "display" },
+      },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+
+    // Display: the layer covers the display box, not the artboard.
+    expect([
+      layer?.style.left,
+      layer?.style.top,
+      layer?.style.width,
+      layer?.style.height,
+    ]).toEqual(["0px", "0px", "1200px", "500px"]);
+    // The reported rect is still artboard units: the artboard box is twice the
+    // board's own size, so the display box starts half a board outside it.
+    expect(handle.backdrop()?.rect).toEqual({
+      left: -5,
+      top: -10,
+      width: 600,
+      height: 250,
+    });
+    handle.destroy();
   });
 
   it("reports an unresolvable declared background instead of dropping it", () => {
@@ -114,7 +178,7 @@ describe("background media", () => {
       artboard: {
         width: 400,
         height: 200,
-        backgroundMedia: { assetId: "missing", fit: "cover" },
+        backgroundMedia: { assetId: "missing", fit: "theme" },
       },
       assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
       resolveAsset: () => ({ url: "blob:hero" }),
@@ -133,7 +197,7 @@ describe("background media", () => {
       artboard: {
         width: 400,
         height: 200,
-        backgroundMedia: { assetId: "hero", fit: "cover" },
+        backgroundMedia: { assetId: "hero", fit: "theme" },
       },
       assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
       resolveAsset: () => undefined,
@@ -151,7 +215,7 @@ describe("background media as a glass backdrop", () => {
   const artboard = {
     width: 400,
     height: 200,
-    backgroundMedia: { assetId: "hero", fit: "cover" },
+    backgroundMedia: { assetId: "hero", fit: "theme" },
   } as const;
 
   it("has nothing to sample without a declared, resolvable background", () => {
@@ -174,12 +238,11 @@ describe("background media as a glass backdrop", () => {
     handle.destroy();
   });
 
-  it("crops to the element's object-fit at the media layer's own offset", () => {
+  it("crops to object-fit: cover at the media layer's own offset", () => {
     // 200x100 source cover-cropped into a 400x400 device box placed at (60, 20).
     const covered = mediaDrawArgs({
       sourceWidth: 200,
       sourceHeight: 100,
-      fit: "cover",
       deviceLeft: 60,
       deviceTop: 20,
       deviceWidth: 400,
@@ -190,19 +253,6 @@ describe("background media as a glass backdrop", () => {
     // a 200x100 file — and `drawImage` scales that into the whole box:
     // [sx, sy, sw, sh, dx, dy, dw, dh].
     expect(covered).toEqual([50, 0, 100, 100, 60, 20, 400, 400]);
-
-    const contained = mediaDrawArgs({
-      sourceWidth: 200,
-      sourceHeight: 100,
-      fit: "contain",
-      deviceLeft: 60,
-      deviceTop: 20,
-      deviceWidth: 400,
-      deviceHeight: 400,
-      region: { left: 0, top: 0, width: 800, height: 800 },
-    });
-    // Contain letterboxes instead, and the bars stay where the element shows them.
-    expect(contained).toEqual([0, 0, 200, 100, 60, 120, 400, 200]);
   });
 
   it("shows the whole source at every device scale, not a window of it", () => {
@@ -215,7 +265,6 @@ describe("background media as a glass backdrop", () => {
       mediaDrawArgs({
         sourceWidth: 2330,
         sourceHeight: 1311,
-        fit: "cover",
         deviceLeft: 0,
         deviceTop: 0,
         deviceWidth,
@@ -259,7 +308,6 @@ describe("background media as a glass backdrop", () => {
     const atOrigin = mediaDrawArgs({
       sourceWidth: 200,
       sourceHeight: 100,
-      fit: "cover",
       deviceLeft: 0,
       deviceTop: 0,
       deviceWidth: 400,
@@ -269,7 +317,6 @@ describe("background media as a glass backdrop", () => {
     const shifted = mediaDrawArgs({
       sourceWidth: 200,
       sourceHeight: 100,
-      fit: "cover",
       deviceLeft: 0,
       deviceTop: 0,
       deviceWidth: 400,
@@ -319,7 +366,7 @@ describe("background media as a glass backdrop", () => {
         host,
         artboard: {
           ...artboard,
-          backgroundMedia: { assetId: "loop", fit: "cover" },
+          backgroundMedia: { assetId: "loop", fit: "theme" },
         },
         assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
         resolveAsset: () => ({ url: "blob:loop" }),
@@ -426,7 +473,7 @@ describe("background media as a glass backdrop", () => {
     handle.update({
       artboard: {
         ...artboard,
-        backgroundMedia: { assetId: "other", fit: "cover" },
+        backgroundMedia: { assetId: "other", fit: "theme" },
       },
       assets: [{ id: "other", kind: "image", path: "assets/other.png" }],
       resolveAsset: () => ({ url: "blob:other" }),
@@ -462,7 +509,7 @@ describe("background media as a glass backdrop", () => {
         host,
         artboard: {
           ...artboard,
-          backgroundMedia: { assetId: "loop", fit: "cover" },
+          backgroundMedia: { assetId: "loop", fit: "theme" },
         },
         assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
         resolveAsset: () => ({ url: "blob:loop" }),
@@ -476,7 +523,7 @@ describe("background media as a glass backdrop", () => {
       handle.update({
         artboard: {
           ...artboard,
-          backgroundMedia: { assetId: "loop", fit: "cover" },
+          backgroundMedia: { assetId: "loop", fit: "theme" },
         },
         assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
         resolveAsset: () => ({ url: "blob:loop" }),
@@ -495,7 +542,7 @@ describe("background media as a glass backdrop", () => {
       handle.update({
         artboard: {
           ...artboard,
-          backgroundMedia: { assetId: "other", fit: "cover" },
+          backgroundMedia: { assetId: "other", fit: "theme" },
         },
         assets: [{ id: "other", kind: "video", path: "assets/other.webm" }],
         resolveAsset: () => ({ url: "blob:other" }),

@@ -250,8 +250,7 @@ function applyArtboardPaint(
   // A revived envelope from before the camera carried the artboard paint here;
   // left set it would cover the pasteboard again.
   editor.canvas.backgroundColor = "";
-  host.style.background =
-    cssArtboardPaint(resolve(artboard.barColor)) ?? "#000";
+  host.style.background = cssArtboardPaint(background) ?? "#000";
   applyObjectPalettePaints(editor.canvas, globals, {
     // A document may ask for paint the product will not draw — a filled arc, say.
     // Said through the shell's own warning channel, beside the glass and media
@@ -524,7 +523,15 @@ export async function mountEditorShell({
     // The media layer is a DOM sibling of the canvas rather than a Fabric
     // object, so it has to be repositioned by hand whenever the camera moves.
     const placeMedia = (): void => {
-      media?.setBounds(editor.viewport.artboardScreenRect());
+      media?.setBounds({
+        artboard: editor.viewport.artboardScreenRect(),
+        display: editor.viewport.displayScreenRect() ?? {
+          left: 0,
+          top: 0,
+          width: container.clientWidth,
+          height: container.clientHeight,
+        },
+      });
     };
     editor.viewport.onChange(placeMedia);
     placeMedia();

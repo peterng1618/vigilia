@@ -24,7 +24,7 @@ function backgroundTheme(
     artboard: {
       width: 640,
       height: 360,
-      backgroundMedia: { assetId: asset.id, fit: "cover" },
+      backgroundMedia: { assetId: asset.id, fit: "theme" },
     },
     assets: [asset],
     scene: { version: "7.4.0", objects },
@@ -97,7 +97,7 @@ describe("what a theme costs the display it is given to", () => {
   it("answers no costs for a background whose asset is not declared", () => {
     const dangling = {
       schemaVersion: 2,
-      artboard: { backgroundMedia: { assetId: "loop", fit: "cover" } },
+      artboard: { backgroundMedia: { assetId: "loop", fit: "theme" } },
       assets: [],
       scene: { version: "7.4.0", objects: [GLASS_PANEL] },
     };

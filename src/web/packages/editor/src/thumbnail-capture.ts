@@ -66,10 +66,10 @@ export function captureCanvas(
     backdropContext,
     { left: 0, top: 0, width: under.width, height: under.height },
     {
-      left: view[4] * scale,
-      top: view[5] * scale,
-      width: backdrop.artboard.width * view[0] * scale,
-      height: backdrop.artboard.height * view[3] * scale,
+      left: view[4] * scale + backdrop.rect.left * view[0] * scale,
+      top: view[5] * scale + backdrop.rect.top * view[3] * scale,
+      width: backdrop.rect.width * view[0] * scale,
+      height: backdrop.rect.height * view[3] * scale,
     },
   );
   // Media down first, the scene over it: a media layer that is not in the

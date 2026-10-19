@@ -77,7 +77,6 @@ const envelope = {
     height: 360,
     contentFit: "contain" as const,
     background: { ref: "palette.paper" as const },
-    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: {

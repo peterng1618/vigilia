@@ -49,8 +49,7 @@ const envelope = (id: string) => ({
     height: ARTBOARD.height,
     contentFit: "cover" as const,
     background: { ref: "palette.none" as const },
-    barColor: { ref: "palette.bar" as const },
-    backgroundMedia: { assetId: "loop", fit: "cover" as const },
+    backgroundMedia: { assetId: "loop", fit: "theme" as const },
   },
   globals: {
     palette: {
@@ -888,8 +887,7 @@ test.describe("changing media on the real player", () => {
           height: 360,
           contentFit: "cover",
           background: { ref: "palette.none" },
-          barColor: { ref: "palette.bar" },
-          backgroundMedia: { assetId: "badge", fit: "contain" },
+          backgroundMedia: { assetId: "badge", fit: "display" },
         };
         handle.updateArtboard(artboard);
         const layer = document.querySelector("[data-vigilia-background-media]");

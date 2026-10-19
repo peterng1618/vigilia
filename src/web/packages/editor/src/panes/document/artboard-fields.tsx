@@ -102,12 +102,9 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
   /** A palette reference, or the removal of one. A literal is in no option of
    *  this control, so the blank reading is the author clearing a reference and
    *  never a literal being dropped behind their back. */
-  const commitPalette = (
-    property: "background" | "barColor",
-    value: string,
-  ): void => {
+  const commitPalette = (value: string): void => {
     const next = { ...artboard };
-    setPaletteReference(next, property, value, artboard[property]);
+    setPaletteReference(next, value, artboard.background);
     onCommit(next);
   };
 
@@ -120,7 +117,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
     commit({
       backgroundMedia: {
         assetId,
-        fit: artboard.backgroundMedia?.fit ?? "cover",
+        fit: artboard.backgroundMedia?.fit ?? "theme",
       },
     });
   };
@@ -131,7 +128,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
     commit({
       backgroundMedia: {
         assetId,
-        fit: fit === "contain" ? "contain" : "cover",
+        fit: fit === "display" ? "display" : "theme",
       },
     });
   };
@@ -202,14 +199,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
         data={{ "data-vigilia-artboard-background": "" }}
         value={paletteReference(artboard.background)}
         options={paletteOptions(globals)}
-        onChange={(value) => commitPalette("background", value)}
-      />
-      <ControlSelect
-        label={uiCopy.panels.barColour}
-        data={{ "data-vigilia-artboard-bar-color": "" }}
-        value={paletteReference(artboard.barColor)}
-        options={paletteOptions(globals)}
-        onChange={(value) => commitPalette("barColor", value)}
+        onChange={commitPalette}
       />
       <ControlSelect
         label={uiCopy.panels.backgroundMedia}
@@ -221,7 +211,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
       <ControlSelect
         label={uiCopy.panels.mediaFit}
         data={{ "data-vigilia-background-media-fit": "" }}
-        value={artboard.backgroundMedia?.fit ?? "cover"}
+        value={artboard.backgroundMedia?.fit ?? "theme"}
         options={fitOptions()}
         onChange={commitFit}
       />
@@ -285,11 +275,11 @@ function resolutionOptions(): readonly ControlOption[] {
   ];
 }
 
-/** The two ways a picture fills the box behind the artboard. The artboard's own
+/** The two boxes the media can fill, both with `cover`. The artboard's own
  *  content fit is a guarantee of the model and not a choice, so this is the only
  *  fit control the panel has. */
 function fitOptions(): readonly ControlOption[] {
-  return (["cover", "contain"] as const).map((fit) => ({
+  return (["theme", "display"] as const).map((fit) => ({
     id: fit,
     name: uiCopy.fitModes[fit],
   }));
@@ -354,11 +344,7 @@ function paletteReference(value: Artboard["background"]): string {
  *  of this panel: the control never showed it, so the blank reading cannot be
  *  the author asking for it to go. */
 function setPaletteReference(
-  artboard: {
-    background?: Artboard["background"];
-    barColor?: Artboard["barColor"];
-  },
-  property: "background" | "barColor",
+  artboard: { background?: Artboard["background"] },
   value: string,
   current: Artboard["background"],
 ): void {
@@ -367,10 +353,10 @@ function setPaletteReference(
       current === undefined ||
       ("ref" in current && current.ref.startsWith("palette."))
     )
-      delete artboard[property];
+      delete artboard.background;
     return;
   }
-  artboard[property] = { ref: value as `palette.${string}` };
+  artboard.background = { ref: value as `palette.${string}` };
 }
 
 function isDimension(value: number): boolean {

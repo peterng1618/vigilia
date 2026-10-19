@@ -403,23 +403,21 @@ function artboardPaintReferences(
     isRecord(globals) && isRecord(globals["palette"])
       ? globals["palette"]
       : undefined;
-  for (const property of ["background", "barColor"] as const) {
-    const value = artboard[property];
-    if (value === undefined) continue;
-    const ref = isRecord(value) ? value["ref"] : undefined;
-    if (
-      typeof ref !== "string" ||
-      !ref.startsWith("palette.") ||
-      palette?.[ref.slice("palette.".length)] === undefined
-    ) {
-      issues.push(
-        issue(
-          "unresolved-global-ref",
-          `/artboard/${property}`,
-          `${property} must reference an existing palette token.`,
-        ),
-      );
-    }
+  const value = artboard["background"];
+  if (value === undefined) return;
+  const ref = isRecord(value) ? value["ref"] : undefined;
+  if (
+    typeof ref !== "string" ||
+    !ref.startsWith("palette.") ||
+    palette?.[ref.slice("palette.".length)] === undefined
+  ) {
+    issues.push(
+      issue(
+        "unresolved-global-ref",
+        "/artboard/background",
+        "background must reference an existing palette token.",
+      ),
+    );
   }
 }
 

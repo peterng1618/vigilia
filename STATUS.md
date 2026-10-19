@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Theme store Task A.1 landed: the header's `Segmented` switches the shell between Editor, Themes and This PC** (`shell-layout.tsx`, `ui-copy.ts`, `editor-shell.css`), the labels the user chose on 2026-10-19, with the chosen item lifted to `--stage`/`--text` rather than an accent fill (§4 spends the header's accent on publish).
-- **The editor's body is hidden, never unmounted, so a switch cannot lose the document** — and the dirty guard is the browser's own dialog, asked only on the way out of the editor with an unsaved document, with a refusal leaving the mode where it was.
-- **§7.1 and §5 are amended in the same commit** — the header carries the mode switch and its action region is per-mode; §5's `Segmented` gains its bare form — and `docs/decisions/0074` claims `shell-layout.tsx` with all seven reuse-gate rungs.
-- **Browser proof in `editor-rail.spec.ts`**: the switch's geometry (32px well in the 42px strip), its chosen paint, and a real dirty document driven through the dialog both ways; desktop-chromium passes, phone skips.
-- **`design:check` stays red for the reason the last plan recorded** — the remainder is 20 against its ceiling of 19 (`vg-626`), reproduced at HEAD with this work stashed, so this commit neither caused nor cleared it.
+- **The artboard has one colour: `barColor` is deleted and `background` is both the board's fill and the letterbox** (`document.ts`, `envelope-keys.ts`, `envelope-semantics.ts`, `plan.ts`, `schema/theme-document.schema.json`), so the Document pane draws one "Background color" control (0075).
+- **`backgroundMedia.fit` becomes `theme | display`** — both `object-fit: cover`, the layer sized to the artboard's screen rect or the display's — and `contain` has no successor: the schema refuses it.
+- **`BackdropMedia` carries the covered `rect` in artboard units** so a display-filled layer's glass backdrop maps the pixels it actually painted; the editor passes both boxes and the starters keep `palette.none`, which is what leaves the backdrop visible.
+- **Both regression proofs run red when the change is disabled**: swapping the two boxes reddens the media-box/rect test, and painting the host from a second colour reddens the scene's host-paint test.
+- **Browser proof (desktop-chromium, `--workers=1`)**: the default dashboard shows the backdrop over the artboard, a 4:3 display lens with `display` moves the layer to the display box (measured equal to `[data-vigilia-display-screen]`), and the panel offers one "Background color" plus "Fill theme"/"Fill display"; `host-media.spec.ts`'s video-repaint case is red at HEAD too (3 vs 87 renders), so it is not this change.
 
 ## Next
 

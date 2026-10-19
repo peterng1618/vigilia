@@ -15,15 +15,10 @@ function envelope(paint: { readonly kind: "solid"; readonly color: string }) {
       width: 640,
       height: 360,
       background: { ref: "palette.paper" as const },
-      barColor: { ref: "palette.bar" as const },
     },
     globals: {
       palette: {
         paper: { name: "Paper", value: paint },
-        bar: {
-          name: "Bar",
-          value: { kind: "solid" as const, color: "#101318" },
-        },
       },
     },
     scene: {},
@@ -39,7 +34,6 @@ describe("hosted envelope plan", () => {
     );
 
     expect(artboard.background).toBe("#e8e4da");
-    expect(artboard.barColor).toBe("#101318");
   });
 
   it("carries the artboard box through", () => {
@@ -67,10 +61,8 @@ describe("hosted envelope plan", () => {
     const plan = envelopePlan(missing);
 
     expect(plan.artboard.background).toBeUndefined();
-    expect(plan.artboard.barColor).toBeUndefined();
     expect(plan.issues.map((issue) => issue.detail)).toEqual([
       'Global "palette.paper" is not defined in this document.',
-      'Global "palette.bar" is not defined in this document.',
     ]);
   });
 });

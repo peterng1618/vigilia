@@ -133,7 +133,7 @@ describe("Fabric theme envelope validation", () => {
         artboard: {
           width: 400,
           height: 300,
-          backgroundMedia: { assetId: "clip", fit: "cover" },
+          backgroundMedia: { assetId: "clip", fit: "theme" },
         },
         assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
       }),

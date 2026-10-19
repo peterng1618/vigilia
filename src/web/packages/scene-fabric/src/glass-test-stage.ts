@@ -172,14 +172,17 @@ export function stage(options: {
     ...(options.backdrop === undefined && options.artboard === undefined
       ? {}
       : {
-          backdrop: () => ({
-            artboard: options.artboard ?? { width: size, height: size },
-            paint: (ctx, region, device) => {
-              regions.push({ ...region });
-              paints.push({ region: { ...region }, device: { ...device } });
-              return options.backdrop?.().paint(ctx, region) ?? true;
-            },
-          }),
+          backdrop: () => {
+            const artboard = options.artboard ?? { width: size, height: size };
+            return {
+              rect: { left: 0, top: 0, ...artboard },
+              paint: (ctx, region, device) => {
+                regions.push({ ...region });
+                paints.push({ region: { ...region }, device: { ...device } });
+                return options.backdrop?.().paint(ctx, region) ?? true;
+              },
+            };
+          },
         }),
     onGlassError: (message) => errors.push(message),
   });

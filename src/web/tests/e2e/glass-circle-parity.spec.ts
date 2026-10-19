@@ -208,8 +208,7 @@ function packageFor(scene: Scene, backdrop: Backdrop): Uint8Array {
         ...(backdrop === "photograph" ? PHOTOGRAPH : STRIPES),
         contentFit: "contain" as const,
         background: { ref: "palette.none" as const },
-        barColor: { ref: "palette.bar" as const },
-        backgroundMedia: { assetId: asset.id, fit: "cover" as const },
+        backgroundMedia: { assetId: asset.id, fit: "theme" as const },
       },
       globals: {
         palette: {

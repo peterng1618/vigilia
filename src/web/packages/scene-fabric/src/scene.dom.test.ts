@@ -5,14 +5,14 @@ import { Group, Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { type FabricSceneHandle, mountFabricScene } from "./scene.js";
 
-function plan(): ScenePlan {
+function plan(artboard: Partial<ScenePlan["artboard"]> = {}): ScenePlan {
   return {
     artboard: {
       width: 400,
       height: 300,
       contentFit: "contain",
       background: "#000",
-      barColor: "#000",
+      ...artboard,
     },
     nodes: [],
     issues: [],
@@ -44,7 +44,7 @@ describe("mountFabricScene updateArtboard", () => {
 
     scene.updateArtboard({
       ...artboard,
-      backgroundMedia: { assetId: "b", fit: "cover" },
+      backgroundMedia: { assetId: "b", fit: "theme" },
     });
 
     const media = element.querySelector<HTMLImageElement>(
@@ -63,10 +63,28 @@ describe("mountFabricScene updateArtboard", () => {
       scene.updateArtboard({
         width: 400,
         height: 300,
-        backgroundMedia: { assetId: "b", fit: "cover" },
+        backgroundMedia: { assetId: "b", fit: "theme" },
       }),
     ).not.toThrow();
     expect(element.querySelector("[data-vigilia-background-media]")).toBeNull();
+
+    scene.dispose();
+    element.remove();
+  });
+});
+
+describe("mountFabricScene's artboard paint", () => {
+  it("paints the host from the artboard's one background", () => {
+    const element = host();
+    const scene = mountFabricScene({
+      host: element,
+      plan: plan({ background: "#101216" }),
+    });
+
+    // The board's own fill and the letterbox behind it are one paint. The host
+    // is the letterbox, so it must carry the artboard's `background` — there is
+    // no second colour to fall back to.
+    expect(element.style.background).toBe("rgb(16, 18, 22)");
 
     scene.dispose();
     element.remove();
@@ -106,7 +124,7 @@ describe("mountFabricScene's video repaint", () => {
     scene.updateArtboard({
       width: 400,
       height: 300,
-      backgroundMedia: { assetId: "loop", fit: "cover" },
+      backgroundMedia: { assetId: "loop", fit: "theme" },
     });
 
     if (options.glass) {
@@ -211,7 +229,7 @@ describe("mountFabricScene disposal", () => {
       const artboard: Artboard = {
         width: 400,
         height: 300,
-        backgroundMedia: { assetId: "loop", fit: "cover" },
+        backgroundMedia: { assetId: "loop", fit: "theme" },
       };
       scene.updateArtboard(artboard);
 
@@ -280,7 +298,7 @@ describe("mountFabricScene disposal", () => {
     scene.updateArtboard({
       width: 400,
       height: 300,
-      backgroundMedia: { assetId: "hero", fit: "cover" },
+      backgroundMedia: { assetId: "hero", fit: "theme" },
     });
     scene.canvas.add(
       new Rect({
@@ -341,7 +359,7 @@ describe("mountFabricScene disposal", () => {
         scene.updateArtboard({
           width: 400,
           height: 300,
-          backgroundMedia: { assetId: "hero", fit: "cover" },
+          backgroundMedia: { assetId: "hero", fit: "theme" },
         });
         const before = created.length;
         scene.canvas.add(
@@ -418,7 +436,7 @@ describe("mountFabricScene disposal", () => {
     scene.updateArtboard({
       width: 400,
       height: 300,
-      backgroundMedia: { assetId: "hero", fit: "cover" },
+      backgroundMedia: { assetId: "hero", fit: "theme" },
     });
     expect(
       element.querySelector("[data-vigilia-background-media] img"),
@@ -450,7 +468,7 @@ describe("mountFabricScene disposal", () => {
         scene.updateArtboard({
           width: 400,
           height: 300,
-          backgroundMedia: { assetId: "hero", fit: "contain" },
+          backgroundMedia: { assetId: "hero", fit: "display" },
         });
       }).not.toThrow();
       // The DOM cannot show the leak, because `destroy()` removed the layer and

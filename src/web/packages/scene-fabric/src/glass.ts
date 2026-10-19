@@ -33,15 +33,21 @@ export interface DeviceRect {
  * The artboard background media. It is a DOM sibling below the canvas, so the
  * canvas never contains it and a panel has to be handed it separately.
  *
- * The rect it covers is stated in **artboard units**, not screen pixels: both
- * mounts lay the media layer over exactly the artboard rect, so mapping that
- * with the same plane matrix the sampler already uses for object bounds is
- * exact, survives a `toCanvasElement` capture, and cannot disagree with what
- * the caller happened to measure in CSS.
+ * The rect it covers is stated in **artboard units**, not screen pixels: a
+ * `"theme"`-fitted layer covers exactly the artboard, while a `"display"`-fitted
+ * one covers more and may start outside it. Mapping the rect the layer actually
+ * painted with the plane matrix the sampler already uses for object bounds is
+ * exact, survives a `toCanvasElement` capture, and cannot disagree with what the
+ * caller happened to measure in CSS.
  */
 export interface BackdropMedia {
-  /** Artboard size the media layer is laid over. */
-  readonly artboard: { readonly width: number; readonly height: number };
+  /** The media layer's rect, in artboard units. */
+  readonly rect: {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+  };
   /** Paints the media over `region` of `ctx`, with `device` its rect in `ctx`'s
    *  own pixels. False when the source has decoded no pixels yet. */
   paint(
@@ -397,14 +403,15 @@ export function createGlass(options: GlassOptions): GlassHandle {
 
     // The media is a DOM sibling below the canvas, so the canvas alone misses
     // the wallpaper; it goes down first and the scene composites over it. Its
-    // rect is the artboard's, through the same matrix the objects use.
+    // rect is the one the layer actually covered, in artboard units, through
+    // the same matrix the objects use.
     const media = options.backdrop?.();
     if (media !== undefined) {
       media.paint(scratchContext, region, {
-        left: plane[4],
-        top: plane[5],
-        width: media.artboard.width * plane[0],
-        height: media.artboard.height * plane[3],
+        left: plane[4] + media.rect.left * plane[0],
+        top: plane[5] + media.rect.top * plane[3],
+        width: media.rect.width * plane[0],
+        height: media.rect.height * plane[3],
       });
     }
     scratchContext.drawImage(

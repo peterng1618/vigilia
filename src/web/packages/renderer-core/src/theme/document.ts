@@ -108,6 +108,8 @@ export type Globals = Readonly<Partial<Record<GlobalGroupName, GlobalGroup>>>;
 export interface Artboard {
   readonly width: number;
   readonly height: number;
+  /** The board's fill, and the colour behind it. One paint, so the board and
+   *  the letterbox bars around it cannot disagree. */
   readonly background?: StyleValue;
   /**
    * How the artboard's *content* fills the viewport. Not the background media's
@@ -115,12 +117,13 @@ export interface Artboard {
    * model rather than a choice, and absent means contain.
    */
   readonly contentFit?: "contain" | "cover";
-  readonly barColor?: StyleValue;
   readonly backgroundMedia?: BackgroundMedia;
 }
 export interface BackgroundMedia {
   readonly assetId: string;
-  readonly fit: "contain" | "cover";
+  /** The box the media fills, both with `object-fit: cover`: the theme's own
+   *  artboard ratio, or the display's. */
+  readonly fit: "theme" | "display";
 }
 
 /** Themes bind semantic keys, never provider-instance IDs. */

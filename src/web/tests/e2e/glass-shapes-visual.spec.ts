@@ -137,8 +137,7 @@ function envelope(fill: "panel" | "frost" | "none", withGlass: boolean) {
       height: ARTBOARD.height,
       contentFit: "contain" as const,
       background: { ref: "palette.none" as const },
-      barColor: { ref: "palette.bar" as const },
-      backgroundMedia: { assetId: "backdrop", fit: "cover" as const },
+      backgroundMedia: { assetId: "backdrop", fit: "theme" as const },
     },
     globals: {
       palette: {

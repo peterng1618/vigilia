@@ -135,7 +135,6 @@ function plan(
       height: 1080,
       contentFit: "contain",
       background: "#101216",
-      barColor: "#000",
       ...artboard,
     },
     nodes,

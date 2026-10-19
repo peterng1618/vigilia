@@ -60,10 +60,10 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
       height: 941,
       // Transparent, because the backdrop is a media layer mounted *below* the
       // canvas: an opaque artboard paint is exactly what would hide it. The
-      // letterbox bars outside the artboard are `barColor`, which stays.
+      // letterbox is painted by this same `background` now that `barColor` is
+      // gone, so this starter's bars are the stage colour (transparent) too.
       background: { ref: "palette.none" },
-      barColor: { ref: "palette.bars" },
-      backgroundMedia: { assetId: starterBackdrop.id, fit: "cover" },
+      backgroundMedia: { assetId: starterBackdrop.id, fit: "theme" },
     },
     globals: {
       palette: starterPalette,
@@ -285,12 +285,11 @@ export function createBlankFabricTheme(
       // `panel` is a card material and makes a card on the page 1.02:1 —
       // invisible; `dim` puts `text` on the page at 1.74:1, unreadable.
       //
-      // `panel` is the letterbox instead, which is what it is good at: a
-      // surround the page reads against. `backgroundMedia` is dropped with the
-      // assets — a declaration pointing at bytes this document does not carry
-      // is a theme the validator refuses and the player renders nothing behind.
+      // This one paint is also the letterbox around the board. `backgroundMedia`
+      // is dropped with the assets — a declaration pointing at bytes this
+      // document does not carry is a theme the validator refuses and the player
+      // renders nothing behind.
       background: { ref: "palette.chartTrack" },
-      barColor: { ref: "palette.panel" },
     },
     globals: {
       palette,
