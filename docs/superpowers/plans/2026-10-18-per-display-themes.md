@@ -2787,5 +2787,10 @@ reported on its own:**
 3. **A chosen theme navigates and lands (Task 4.5, R62).** Operating the chooser on a `map`
    page shows the chosen theme; the same control does not appear on a `link` page.
 
+**None of the three has a case today** (R68), so each is written at this boundary, before
+the gate runs rather than after it goes green: claims 1 and 3 go in
+`src/web/tests/e2e/host-player.spec.ts`, claim 2 in
+`src/web/tests/e2e/host-settings.spec.ts`. They are evidence cases, not features.
+
 A LAN origin is plain http and **not** a secure context, so no `wakeLock` or
 `serviceWorker` claim may rest on it, and the proof names the origin it ran on.
