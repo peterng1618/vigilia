@@ -1316,10 +1316,11 @@ Expected: FAIL — `read` takes one argument.
 - [ ] **Step 3: Implement**
 
 The **theme id** is validated against `THEME_ID` on write and its entry dropped on
-read when it does not match. The **display key** is not validated here: its shape is
-`displays.ts`'s rule (`DEVICE_ID_PATTERN`, "the host's one id shape"), and a key no
-reader can ask for is inert, so re-spelling that pattern in this file would be the
-second owner the plan's constraints forbid. **The old shape is read as the default** — an object whose `id` is
+read when it does not match. The **display key** is not validated here (ruling 39):
+its shape is `displays.ts`'s rule (`DEVICE_ID_PATTERN`, "the host's one id shape"),
+and a key no reader can ask for is inert, so re-spelling that pattern in this file
+would be the second owner the plan's constraints forbid. **The old shape is read as
+the default** — an object whose `id` is
 a string and which holds no `default` key is read as `{ default: id }`. That is a
 migration of a person's own choice rather than compatibility glue for a superseded
 internal design: losing it would leave a working dashboard blank. The next write
