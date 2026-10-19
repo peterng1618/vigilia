@@ -1820,9 +1820,11 @@ git commit -m "feat(host): read and write the display map over one route"
 - Modify: `src/web/packages/host/src/server.ts`
 - Modify: `src/web/packages/player/src/publish-follower.ts`
 - Modify: `src/web/packages/player/src/session.ts`
+- Modify: `src/web/packages/player/src/main.ts` (R51 — the reload must re-resolve)
 - Test: `src/web/packages/host/src/server.test.ts`,
   `src/web/packages/player/src/publish-follower.test.ts`,
-  `src/web/packages/player/src/session.test.ts`
+  `src/web/packages/player/src/session.test.ts`,
+  `src/web/packages/player/src/main.dom.test.ts` (R51 — the reload's own URL)
 
 **The root route must say where a theme came from, or this task does nothing** (R50).
 `GET /` 302-redirects every display to a URL that names a theme — `url.searchParams.set(
@@ -1873,8 +1875,16 @@ it("calls onThemeChange when the host's answer moves", async () => {
 it("does not call onThemeChange when the answer is unchanged", async () => { /* ... */ });
 
 it("follows the map only for a page the host resolved itself", async () => {
-  // theme-source=map -> acts; =link and =published -> the callback is not called,
-  //   and the poll carries no `theme` for the first and one for the second.
+  // theme-source=map -> the callback is called; =link and =published -> it is not.
+  //   The poll forwards `theme` only for =link, which is what makes the host's
+  //   "named a theme -> null" rule live rather than unreachable surface.
+});
+
+// main.dom.test.ts — the reload's own URL (R51).
+it("re-resolves on a map page and leaves a link page's id alone", async () => {
+  // The URL the player navigates to: `data` always gone, `theme` gone only when
+  //   theme-source=map, and `display`/`session` kept. Without the first, the
+  //   reload re-serves the id already in the URL and no display ever moves.
 });
 ```
 
@@ -1886,9 +1896,21 @@ Expected: FAIL.
 - [ ] **Step 3: Implement**
 
 The follower gains one more comparison beside the published-id one it already
-makes, over the same interval, and the player reloads on the callback — the
-existing reaction to a published change, reached the same way. No new poll is
-added.
+makes, over the same interval, and the player reloads on the callback. No new poll
+is added.
+
+**The reload must re-enter the resolution, or none of this works** (R51). `GET /` skips
+its resolution entirely when the URL carries `data` (`server.ts:2383`), and its own 302
+sets `data=live` — so `window.location.reload()` re-requests the same URL and re-serves
+**the same theme id**. The publish flow survives this because a publish keeps the id and
+changes the document; a reassignment changes the **id**, which is the one thing the
+reload cannot deliver. So the player's reload navigates to a URL built from the current
+one: **`data` is always dropped**, so the resolution runs again; **`theme` is dropped too,
+but only when `theme-source` is `map`** — a `map` page holds the id the host resolved for
+it and that id is the one that has to go, while a `link` page must keep its own id or the
+person's instruction dies on the next reload, and a `published` page keeping its id
+behaves exactly as it does today. `display` and `session` are never touched, so the
+display still names itself and the sighting pair survives the reload.
 
 **This task also carries the sighting pair that closes ruling 35** (ruling 40), and
 it is here rather than in Task 2.2 because this is the only task whose file list
@@ -1914,7 +1936,8 @@ Expected: PASS.
 git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts \
   src/web/packages/player/src/publish-follower.ts \
   src/web/packages/player/src/publish-follower.test.ts \
-  src/web/packages/player/src/session.ts src/web/packages/player/src/session.test.ts
+  src/web/packages/player/src/session.ts src/web/packages/player/src/session.test.ts \
+  src/web/packages/player/src/main.ts src/web/packages/player/src/main.dom.test.ts
 git commit -m "feat(player): follow the theme this display was assigned"
 ```
 
