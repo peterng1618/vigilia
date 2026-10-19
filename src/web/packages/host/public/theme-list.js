@@ -180,7 +180,47 @@ export function shownTheme(display, displays, defaultTheme) {
 }
 
 /**
- * @param {readonly {readonly id: string, readonly name?: string, readonly author?: string}[]} themes
+ * One sentence per cost, naming the cost rather than the word "performance":
+ * a warning a reader cannot act on is a warning nobody reads.
+ *
+ * Spelled here rather than imported for the reason `DELETE_LEAD` above is: the
+ * host serves this module as-is, and the editor's copy is not reachable from a
+ * file with no build step.
+ */
+const COST_WARNINGS = {
+  "glass-over-video":
+    "Glass over a video background repaints the whole screen for every video " +
+    "frame, on any display.",
+  "video-background":
+    "A video background never lets a host monitor idle, so this PC stays out " +
+    "of its low-power states.",
+};
+
+/**
+ * What this theme will cost the display it is being given to, or nothing when
+ * it costs nothing worth saying.
+ *
+ * The kind decides half of it. Glass over a video repaints on any display; a
+ * video alone costs only a host monitor, so a remote one is told nothing — a
+ * phone showing video is doing what a phone does, and warning there is how a
+ * warning stops being read. A row with no kind is the default, which any
+ * display may fall to, and is therefore told about both.
+ *
+ * @param {"paired" | "local" | "default"} kind
+ * @param {readonly string[]} costs
+ * @returns {string | undefined}
+ */
+export function costWarning(kind, costs) {
+  for (const cost of costs) {
+    if (cost === "video-background" && kind === "paired") continue;
+    const sentence = COST_WARNINGS[cost];
+    if (sentence !== undefined) return sentence;
+  }
+  return undefined;
+}
+
+/**
+ * @param {readonly {readonly id: string, readonly name?: string, readonly author?: string, readonly costs?: readonly string[]}[]} themes
  * @param {{
  *   readonly displays?: readonly {readonly id: string, readonly label: string, readonly kind?: string, readonly theme: string | null}[],
  *   readonly default?: string | null,
@@ -266,6 +306,13 @@ export function themeList(
   // "what is this display showing" rather than "what did anyone choose".
   const showing = shownTheme(selected, displays, defaultTheme);
 
+  // The kind of the display those rows are being chosen for. A cost note is
+  // about the pair a press would commit, so it depends on this as much as on
+  // the theme it sits under. A row with no kind is the default, which any
+  // display may fall to.
+  const assignedKind =
+    displays.find((display) => display.id === selected)?.kind ?? "default";
+
   if (templates.length > 0) {
     fragment.append(groupLabel("Templates"));
   }
@@ -346,6 +393,25 @@ export function themeList(
     const wrapper = document.createElement("div");
     wrapper.className = "theme-row";
     wrapper.append(row, edit);
+
+    /**
+     * What this theme will cost the display it is being given to, said on the
+     * row rather than in a page-level status line: it belongs to this theme,
+     * the same way the removal's refusal above does.
+     *
+     * Computed while the row is drawn, and not when the row is pressed. Both
+     * pages rebuild their rows on a successful write — one reloads, the other
+     * calls `replaceChildren` — so a note added on the press would be wiped by
+     * the very write it warns about. Drawn from the same two facts on the next
+     * render, it survives either.
+     */
+    const cost = costWarning(assignedKind, theme.costs ?? []);
+    const costNote = document.createElement("p");
+    costNote.className = "theme-cost-note";
+    costNote.setAttribute("role", "status");
+    costNote.textContent = cost ?? "";
+    costNote.hidden = cost === undefined;
+    wrapper.append(costNote);
 
     /**
      * Removal sits beside choosing and editing rather than replacing either: a

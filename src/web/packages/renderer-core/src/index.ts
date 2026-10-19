@@ -311,6 +311,8 @@ export {
 } from "./theme/object-name.js";
 export type { PaletteTokenOption } from "./theme/palette-tokens.js";
 export { paletteTokenOptions } from "./theme/palette-tokens.js";
+export type { PerformanceCost } from "./theme/performance-cost.js";
+export { performanceCostsOf } from "./theme/performance-cost.js";
 export type { WidgetIssue } from "./theme/widget.js";
 export { createWidgetIdAllocator } from "./theme/widget.js";
 export type {

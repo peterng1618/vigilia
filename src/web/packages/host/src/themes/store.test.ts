@@ -225,6 +225,43 @@ describe("ThemeStore", () => {
     expect(await store.read("theme-c")).toBeUndefined();
   });
 
+  it("carries each theme's costs on the entry it already built", async () => {
+    const store = createThemeStore(tmpDir);
+    // A video background, which is the one cost a listing can answer from the
+    // document alone — no asset is ever opened for it.
+    const video: FabricThemeEnvelope = {
+      ...envelopeFor("night-sky", "Night Sky"),
+      artboard: {
+        width: 1920,
+        height: 1080,
+        backgroundMedia: { assetId: "loop", fit: "cover" },
+      },
+      assets: [
+        {
+          id: "loop",
+          kind: "video",
+          path: "assets/loop.webm",
+          license: { name: "CC0", attribution: "Vigilia test fixture." },
+        },
+      ],
+    };
+    await store.write("night-sky", {
+      envelope: video,
+      assets: { "assets/loop.webm": new Uint8Array([1, 2, 3]) },
+    });
+    await store.write("plain", {
+      envelope: envelopeFor("plain", "Plain"),
+      assets: {},
+    });
+
+    const list = await store.list();
+    const byId = new Map(list.map((entry) => [entry.id, entry]));
+
+    // Both asserted, so the case cannot pass by the field being absent on both.
+    expect(byId.get("night-sky")?.costs).toEqual(["video-background"]);
+    expect(byId.get("plain")?.costs).toEqual([]);
+  });
+
   /**
    * The bare mount's answer has to be reproducible, and a tie is ordinary here
    * rather than exotic: the e2e fixtures seed the whole library in one pass and

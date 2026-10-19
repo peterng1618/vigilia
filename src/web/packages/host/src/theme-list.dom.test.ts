@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteTheme, themeList } from "../public/theme-list.js";
+import { costWarning, deleteTheme, themeList } from "../public/theme-list.js";
 
 /** The chooser at `/` and the settings page both list saved themes, so the row
  * is drawn once here. A chooser that drew its own would be the second copy of
@@ -559,5 +559,81 @@ describe("removing a saved theme from a host page", () => {
     // The editor's rule, for the same reason: a control that appears and does
     // nothing is worse than no control.
     expect(host.querySelector(".theme-delete")).toBeNull();
+  });
+});
+
+/** Assigning a theme said nothing about what it would cost the screen it was
+ *  being given to: glass over a video repaints on every decoded frame, and a
+ *  video background keeps a host monitor out of its low-power states. */
+describe("what a theme costs the display it is given to", () => {
+  it("warns about glass over video for every kind of row", () => {
+    for (const kind of ["local", "paired", "default"] as const) {
+      expect(costWarning(kind, ["glass-over-video"])).toMatch(/repaint/i);
+    }
+  });
+
+  it("warns about a video background only for a host monitor, and for the default", () => {
+    // Matched on the one word the prose names, not an alternation: a sentence
+    // containing "never" without naming the idle is not this warning.
+    expect(costWarning("local", ["video-background"])).toMatch(/idle/i);
+    expect(costWarning("paired", ["video-background"])).toBeUndefined();
+    // The default has no kind and may land on a host monitor, so it is told.
+    expect(costWarning("default", ["video-background"])).toMatch(/idle/i);
+  });
+
+  it("says nothing for a theme with no cost", () => {
+    // `undefined` is the assertion, not a weak match on one word: a theme with
+    // no cost has no sentence at all, so there is nothing for a reader to
+    // dismiss.
+    expect(costWarning("local", [])).toBeUndefined();
+    expect(costWarning("default", [])).toBeUndefined();
+  });
+
+  const COSTED = [
+    { id: "loop", name: "Loop", costs: ["video-background"] },
+    { id: "studio", name: "Studio", costs: [] },
+  ];
+  const DISPLAYS = [
+    { id: "this-pc", label: "This PC", kind: "local", theme: null },
+    {
+      id: "kitchen-tablet",
+      label: "Kitchen tablet",
+      kind: "paired",
+      theme: null,
+    },
+  ];
+
+  const noteFor = (host: HTMLElement, id: string): HTMLElement | undefined =>
+    host
+      .querySelector(`[data-theme='${id}']`)
+      ?.closest(".theme-row")
+      ?.querySelector<HTMLElement>(".theme-cost-note") ?? undefined;
+
+  it("puts the note on the row for the display the rows are being chosen for", () => {
+    const host = mount(
+      themeList(COSTED, { displays: DISPLAYS, selected: "this-pc", onChoose }),
+    );
+
+    // The note describes the pair the press would commit, so it is on screen
+    // before the press rather than added when the row is.
+    expect(noteFor(host, "loop")?.hidden).toBe(false);
+    expect(noteFor(host, "loop")?.textContent).toMatch(/idle/i);
+    // A theme with no cost has no sentence to dismiss.
+    expect(noteFor(host, "studio")?.hidden).toBe(true);
+    expect(noteFor(host, "studio")?.textContent).toBe("");
+  });
+
+  it("leaves the note off a row for a remote display, which pays nothing", () => {
+    const host = mount(
+      themeList(COSTED, {
+        displays: DISPLAYS,
+        selected: "kitchen-tablet",
+        onChoose,
+      }),
+    );
+
+    // A phone showing video is doing what a phone does, and warning there is
+    // how a warning stops being read.
+    expect(noteFor(host, "loop")?.hidden).toBe(true);
   });
 });

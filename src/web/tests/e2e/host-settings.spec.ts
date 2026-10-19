@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   type APIRequestContext,
@@ -11,6 +11,7 @@ import {
   HOST_PORT,
   HOST_SETTINGS_DIR,
   HOST_THEME_ID,
+  HOST_VIDEO_THEME_ID,
 } from "./host-theme.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -27,6 +28,54 @@ const HOST = `http://127.0.0.1:${HOST_PORT}`;
  * theme folder is only ever a theme (ADR-0017). */
 const ACTIVE_FILE = path.join(HOST_SETTINGS_DIR, "active-theme.json");
 const ANSWERS_FILE = path.join(HOST_SETTINGS_DIR, "theme-answers.json");
+
+/**
+ * The displays this host knows about, written by hand the same way the two
+ * stores above are. Nothing else seeds a **paired** display, and the warning
+ * table's other half needs one: a remote display is the row that must be told
+ * nothing about a video background.
+ *
+ * Returns whatever was there before, so a record this spec invents is not left
+ * behind for the cases that follow it.
+ */
+const DISPLAYS_FILE = path.join(HOST_SETTINGS_DIR, "display-clients.json");
+const PAIRED_DISPLAY_ID = "kitchen-tablet";
+
+function seedPairedDisplay(): string | undefined {
+  let previous: string | undefined;
+  try {
+    previous = readFileSync(DISPLAYS_FILE, "utf8");
+  } catch {
+    previous = undefined;
+  }
+
+  const at = new Date("2026-10-19T00:00:00.000Z").toISOString();
+  writeFileSync(
+    DISPLAYS_FILE,
+    `${JSON.stringify({
+      displays: [
+        {
+          id: PAIRED_DISPLAY_ID,
+          label: "Kitchen tablet",
+          kind: "paired",
+          createdAt: at,
+          lastSeenAt: at,
+          // A paired record with no credential is dropped on read: nothing
+          // could ever authenticate as it, so it would not be a display.
+          tokenHash: "e2e-paired-display-credential",
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  return previous;
+}
+
+function restoreDisplays(previous: string | undefined): void {
+  if (previous === undefined) rmSync(DISPLAYS_FILE, { force: true });
+  else writeFileSync(DISPLAYS_FILE, previous, "utf8");
+}
 
 function resetStores(): void {
   mkdirSync(HOST_SETTINGS_DIR, { recursive: true });
@@ -360,6 +409,57 @@ test.describe("the settings page a consumer configures", () => {
     await page.goto(`${HOST}/settings`);
     await chooseTheme(page, HOST_THEME_ID);
     await expect(questions(page)).toBeHidden();
+  });
+
+  /**
+   * The assignment says what a theme will cost the display it is being given
+   * to, before the press. A video background with no glass is the only cost
+   * whose answer depends on that display, so this is the case the whole table
+   * exists for.
+   */
+  test("says what a theme will cost the display it is given to", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass owns the shared host state",
+    );
+
+    resetStores();
+    const previous = seedPairedDisplay();
+
+    try {
+      await page.goto(`${HOST}/settings`);
+      const note = page.locator(
+        `.theme-row:has([data-theme="${HOST_VIDEO_THEME_ID}"]) .theme-cost-note`,
+      );
+
+      // This PC is a host monitor, and the note is on the row before anything
+      // is pressed: it describes the pair a press would commit.
+      await page.locator('#themes [data-display="this-pc"]').click();
+      await expect(note).toBeVisible();
+      await expect(note).toContainText(/idle/i);
+
+      // The press, for this PC. The page re-renders its rows from the write's
+      // own answer, which is also the reload a press-time note would not
+      // survive — so the assertion after it is the one that matters.
+      await page
+        .locator(`button.theme-option[data-theme="${HOST_VIDEO_THEME_ID}"]`)
+        .click();
+      await expect(page.locator("#status")).toHaveText(
+        "Saved. Displays show it on their next load.",
+      );
+      await expect(note).toBeVisible();
+
+      // A paired display across the room pays nothing for the same theme, and
+      // is told nothing: a phone showing video is doing what a phone does.
+      await page
+        .locator(`#themes [data-display="${PAIRED_DISPLAY_ID}"]`)
+        .click();
+      await expect(note).toBeHidden();
+    } finally {
+      restoreDisplays(previous);
+    }
   });
 });
 

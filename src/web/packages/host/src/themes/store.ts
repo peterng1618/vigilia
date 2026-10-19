@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {
   type FabricThemeEnvelope,
+  type PerformanceCost,
+  performanceCostsOf,
   type ValidationIssue,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
@@ -25,6 +27,9 @@ interface ThemeStoreEntry {
   /** The envelope's author, when it declares one; the library shows it. */
   readonly author?: string;
   readonly updatedAt: string;
+  /** What this theme will cost a display, read from the document this entry
+   *  was already built from — the assignment surface says it before the press. */
+  readonly costs: readonly PerformanceCost[];
 }
 
 interface ThemeStoreRecord extends ThemeStoreEntry {
@@ -555,6 +560,9 @@ async function entryFor(
       name: envelope.metadata?.name ?? id,
       ...(author === undefined ? {} : { author }),
       updatedAt: stat.mtime.toISOString(),
+      // From the envelope this entry was already handed, so the listing pays
+      // nothing new for it: no asset is opened and no second read is made.
+      costs: performanceCostsOf(envelope),
     };
   } catch {
     return undefined;

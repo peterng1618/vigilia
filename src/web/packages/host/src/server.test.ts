@@ -446,7 +446,14 @@ describe("Host theme routes", () => {
       themes: readonly { id: string; name: string }[];
     };
     expect(listData.themes).toEqual([
-      { id: "living-room", name: "Living Room", updatedAt: expect.any(String) },
+      {
+        id: "living-room",
+        name: "Living Room",
+        updatedAt: expect.any(String),
+        // What the theme costs a display, read from the document the listing
+        // already parsed: this one carries no video background and no glass.
+        costs: [],
+      },
     ]);
 
     const docRes = await request(

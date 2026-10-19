@@ -61,6 +61,13 @@ export const HOST_GROUPED_THEME_ID = "e2e-grouped-glass";
  *  fixture that covers it. */
 export const HOST_MEDIA_THEME_ID = "e2e-media";
 /**
+ * A video background and **no glass** — the one cost whose answer depends on
+ * the display the theme is given to, which is what the assignment's warning
+ * table is read against. Nothing here is ever decoded: the cost is read from
+ * the asset's declaration, and no test mounts this theme on a player.
+ */
+export const HOST_VIDEO_THEME_ID = "e2e-video";
+/**
  * **One chart, bound to nothing** — the theme a frame-determinism case needs.
  *
  * Every other fixture here binds a key the host's own sample stream answers, and
@@ -385,6 +392,44 @@ const mediaEnvelope = {
       kind: "svg" as const,
       path: "assets/badge.svg",
       license: { name: "MIT", attribution: "Vigilia test fixture." },
+    },
+  ],
+  scene: { version: "7.4.0" as const, objects: [] },
+};
+
+/** A video background, declared and never decoded: the bytes beside it are a
+ *  placeholder, because the cost the host reads is the asset's declaration and
+ *  the library writer only checks that a declared asset is present. An empty
+ *  scene, so the theme carries no glass and answers `video-background`. */
+const videoEnvelope = {
+  schemaVersion: 2 as const,
+  fabricVersion: "7.4.0",
+  id: HOST_VIDEO_THEME_ID,
+  metadata: { name: "E2E video", themeLanguage: "en" },
+  artboard: {
+    width: 640,
+    height: 360,
+    contentFit: "contain" as const,
+    background: { ref: "palette.bar" as const },
+    barColor: { ref: "palette.bar" as const },
+    backgroundMedia: { assetId: "loop", fit: "cover" as const },
+  },
+  globals: {
+    palette: {
+      none: {
+        name: "None",
+        value: { kind: "solid" as const, color: "transparent" },
+      },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+    },
+    typePresets: {},
+  },
+  assets: [
+    {
+      id: "loop",
+      kind: "video" as const,
+      path: "assets/loop.webm",
+      license: { name: "CC0", attribution: "Vigilia test fixture." },
     },
   ],
   scene: { version: "7.4.0" as const, objects: [] },
@@ -791,6 +836,11 @@ export async function seedHostTheme(): Promise<void> {
   const assets = {
     "assets/badge.svg": new TextEncoder().encode(badge),
     "assets/inter-400.woff2": await fontBytes(),
+    // Declared by the video theme and never decoded by any test: the host's
+    // warning table reads the declaration, and the library writer refuses a
+    // declaration with no file beside it. Four bytes of EBML header stand in
+    // for a recording nothing plays.
+    "assets/loop.webm": new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]),
   };
 
   const themes = [
@@ -820,6 +870,7 @@ export async function seedHostTheme(): Promise<void> {
     }),
     groupedGlassEnvelope,
     mediaEnvelope,
+    videoEnvelope,
     chartEnvelope,
     overhangEnvelope,
     // **A key nothing can report.** The envelope validator only checks that a

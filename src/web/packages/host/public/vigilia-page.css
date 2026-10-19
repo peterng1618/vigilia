@@ -125,11 +125,13 @@ a {
 }
 /* The row stays exactly where it was when a trash refuses, so the reason is
    said here, under the button that asked. The row wraps for it, and the note
-   takes a line of its own. */
+   takes a line of its own. A cost warning is a note of the same shape: it
+   belongs to the row it sits under, and it is read before the row is pressed. */
 .theme-row {
   flex-wrap: wrap;
 }
-.theme-delete-note {
+.theme-delete-note,
+.theme-cost-note {
   flex-basis: 100%;
   margin: 0;
   color: var(--muted);
