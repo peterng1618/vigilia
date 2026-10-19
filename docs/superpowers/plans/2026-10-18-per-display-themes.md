@@ -88,7 +88,9 @@ plan argues from the spec, so read both. Register row: `vg-574`.
 ## Review Focus
 
 Seventeen inputs and conditions the spec implies and no task's own tests exercise.
-Each gets its test in the task named beside it.1. **A display whose assigned theme was deleted** — a person removes a theme from
+Each gets its test in the task named beside it.
+
+1. **A display whose assigned theme was deleted** — a person removes a theme from
    the library while a wall screen holds it. The display must fall to the default
    and keep showing something, never an error page or a blank stage. (Task 2.2)
 2. **A label that mints no usable id** — `"???"`, `"---"`, an emoji-only name, or a
@@ -1477,7 +1479,9 @@ git commit -m "feat(host): resolve the root page against the asking display"
 
 **Files:**
 - Modify: `src/web/packages/host/src/settings/theme-settings.ts`
+- Modify: `src/web/packages/host/src/server.ts`
 - Test: `src/web/packages/host/src/settings/theme-settings.test.ts`
+- Test: `src/web/packages/host/src/server.test.ts`
 
 **Interfaces:**
 - Consumes: `DEVICE_ID_PATTERN` (Task 1.1).
@@ -1510,6 +1514,13 @@ it("removes one theme across every display, and one display across every theme",
   // removeTheme("wall") leaves the other theme on both displays;
   // removeDisplay("kitchen-tablet") leaves this-pc's answers untouched.
 });
+
+it("reads the shape that was on disk before this task as the default's answers", async () => {
+  // Hand-write the old flat file {"wall": {"gpu": "gpu-0"}} and read it back:
+  // read(DEFAULT_DISPLAY, "wall") is { gpu: "gpu-0" }, and no display called
+  // "wall" exists. A new-shape file holding a display named after a theme id is
+  // *not* rewritten — the trigger is that no value is a level map.
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1522,6 +1533,24 @@ Expected: FAIL.
 `normalizeAnswers` keeps its job and gains two callers: the outer map normalises
 its display keys with `DEVICE_ID_PATTERN` and its theme keys with `THEME_ID`, and
 drops a level that normalises to `{}` so an empty level is not written.
+
+**The file on disk changes shape, so the old one is migrated rather than
+misread** (ruling 42). The reader above does not read
+`{"wall": {"gpu": "gpu-0"}}` as the answers it holds: `wall` matches
+`DEVICE_ID_PATTERN` and `gpu` matches `THEME_ID`, so the old file reads as a display
+named after a theme, holding a theme named after a group. A file that holds **no**
+value whose keys are all `THEME_ID`-valid is the old shape, and it is read as
+`{ [DEFAULT_DISPLAY]: <old file> }` — the same reading Task 2.1 gave
+`active-theme.json`, because one answer set per theme is the answers of whoever
+asked, and that is the default display. The trigger is deliberately as narrow as
+2.1's corrected one: a file that already holds a display named after a theme id
+must not be rewritten.
+
+**Three call sites in `server.ts` move to `DEFAULT_DISPLAY`** (ruling 41), for
+ruling 38's reason: the assignment's read, the answers route's read and its write.
+Today's answer file is one answer set per theme for whoever asked, which is the
+default display's entry, so the move is behaviour-preserving rather than a
+placeholder. Task 3.2 replaces them with the display it is resolving for.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1539,13 +1568,24 @@ git commit -m "feat(host): key a theme's answers by the display that answered"
 
 **Files:**
 - Modify: `src/web/packages/host/src/server.ts`
+- Modify: `src/web/packages/host/src/transport/sse.ts`
+- Modify: `src/web/packages/host/src/providers/provider.ts`
+- Modify: `src/web/packages/host/src/providers/registry.ts`
+- Modify: `src/web/packages/host/src/providers/lhm.ts`
+- Modify: `src/web/packages/host/src/providers/library.ts`
+- Modify: `src/web/packages/host/src/main.ts`
 - Test: `src/web/packages/host/src/server.test.ts`
+- Test: `src/web/packages/host/src/providers/registry.test.ts`
 
 **Interfaces:**
 - Consumes: `ThemeSettingsStore.read(display, themeId)` (Task 3.1);
   `displayKeyFor` (Task 2.2).
 - Produces: `currentAssignment(display: string): Promise<DeviceAssignment>` — the
-  signature gains the display it is resolving for.
+  signature gains the display it is resolving for — and the assignment reaching
+  the connection that display is on. `SseConnection`'s constructor gains
+  `readonly display: string`; `registry.sample` and `provider.sample` gain the
+  assignment they should answer with, replacing the mutable `setAssignment` a
+  provider currently holds.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1562,6 +1602,12 @@ it("falls back to the global device settings where a display answered nothing", 
 it("does not leak a deleted display's answers to another display", async () => {
   // removeDisplay("kitchen-tablet") then the other display's answer is unchanged.
 });
+
+// providers/registry.test.ts
+it("samples once per distinct assignment, not once per display", async () => {
+  // Three connections, two holding the same assignment: two samples, and each
+  // connection is offered the payload its own assignment produced.
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1575,6 +1621,34 @@ The chosen theme and the display are both needed, so the resolution is
 `perDisplay[group] ?? stored.assigned[group]`, with the chosen theme read for that
 same display. `pick` and the `ASSIGNABLE_GROUPS` comment stay as they are
 (`vg-189`'s reason for that comment is unchanged).
+
+**The assignment has no per-display path to travel, so this task builds it**
+(ruling 43). `currentAssignment` has one caller, `publishAssignment()`, which has
+no request and no display: it pushes **one** assignment through
+`options.onDeviceAssignment` into `main.ts`, which calls `setAssignment` on the LHM
+and library providers, and `tick()` then samples the union **once** and offers
+**one** payload to every connection. So an assignment resolved for a display could
+not reach that display, and "the assignment each is served carries its own" would
+be a test asserting a path that does not exist. Three changes, and each replaces a
+global with the thing it was standing in for:
+
+- **The connection knows its display.** `openStream` has the request and the url,
+  so it resolves the key with Task 2.2's `displayKeyFor` and hands it to
+  `SseConnection`, which already takes per-display state (`semanticKeys`).
+- **`tick()` groups before it samples.** Connections are grouped by display, and
+  each distinct display gets its own `currentAssignment(display)` and its own
+  `registry.sample(keys, now, assignment)` — one sample per distinct assignment
+  rather than one per connection, so two displays holding the same devices still
+  cost one poll.
+- **The assignment is passed, not held.** `registry.sample` and `provider.sample`
+  take it, and `setAssignment` goes: a provider that holds a mutable assignment is
+  a provider that can only answer for one display, which is the global this task is
+  replacing. `main.ts` loses both the initial `setAssignment` and the
+  `onDeviceAssignment` fan-out.
+
+`publishAssignment` and its three call sites then have nothing to publish — a
+reassignment reaches a display on that display's next tick. Removing them is part
+of this task; leaving them would be a second, unused path to the same fact.
 
 - [ ] **Step 4: Run test to verify it passes**
 
