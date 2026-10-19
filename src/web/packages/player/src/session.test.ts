@@ -1,5 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
+import { readStoredPairing } from "./host-refind.js";
 import { displaySession } from "./session.js";
+
+/** The browser's own `Storage`, without a browser. */
+function memoryStorage(): Storage {
+  const entries = new Map<string, string>();
+
+  return {
+    get length() {
+      return entries.size;
+    },
+    clear: () => entries.clear(),
+    getItem: (key) => entries.get(key) ?? null,
+    key: (index) => [...entries.keys()][index] ?? null,
+    removeItem: (key) => void entries.delete(key),
+    setItem: (key, value) => void entries.set(key, value),
+  };
+}
 
 describe("display session token", () => {
   it("keeps the page it was built from, so a poll can read it", () => {
@@ -71,5 +88,81 @@ describe("display session token", () => {
     expect(loopback.withToken("/api/themes/living-room/")).toBe(
       "/api/themes/living-room/",
     );
+  });
+});
+
+describe("what a load remembers", () => {
+  it("stores the credential it was handed and stops reading it from the URL", () => {
+    const storage = memoryStorage();
+    displaySession("http://192.168.1.10:5227/?session=abc", fetch, storage);
+
+    expect(readStoredPairing(storage)?.token).toBe("abc");
+
+    // A later load with no query resolves the session from storage. This is the
+    // half that makes storing it worth anything: the host's own redirect keeps
+    // the query, but a URL that arrives without one is still this display.
+    const later = displaySession("http://192.168.1.10:5227/", fetch, storage);
+
+    expect(later.token).toBe("abc");
+  });
+
+  it("keeps the host identity beside the credential", () => {
+    const storage = memoryStorage();
+
+    displaySession(
+      "http://192.168.1.10:5227/?session=abc&host=h1&name=study-pc&port=5227",
+      fetch,
+      storage,
+    );
+
+    expect(readStoredPairing(storage)).toEqual({
+      hostId: "h1",
+      hostName: "study-pc",
+      port: 5227,
+      token: "abc",
+      lastAddress: "192.168.1.10",
+    });
+  });
+
+  it("lets a fresh pairing link replace a stored one", () => {
+    // Otherwise a display re-paired to a second host keeps the first one's
+    // token, and answers a host that never issued it.
+    const storage = memoryStorage();
+
+    displaySession(
+      "http://192.168.1.10:5227/?session=first&host=h1&name=a&port=5227",
+      fetch,
+      storage,
+    );
+    displaySession(
+      "http://192.168.1.10:5227/?session=second&host=h2&name=b&port=5227",
+      fetch,
+      storage,
+    );
+
+    expect(readStoredPairing(storage)?.token).toBe("second");
+    expect(readStoredPairing(storage)?.hostId).toBe("h2");
+  });
+
+  it("keeps the identity a load already stored, and moves its address", () => {
+    // The host's own redirect preserves the query, so a re-served page carries
+    // its token and no identity parameters. The address is the one thing that
+    // has to move with the load, because that is what the ladder tries first.
+    const storage = memoryStorage();
+
+    displaySession(
+      "http://192.168.1.10:5227/?session=abc&host=h1&name=study-pc&port=5227",
+      fetch,
+      storage,
+    );
+    displaySession("http://192.168.1.44:5227/?session=abc", fetch, storage);
+
+    expect(readStoredPairing(storage)).toEqual({
+      hostId: "h1",
+      hostName: "study-pc",
+      port: 5227,
+      token: "abc",
+      lastAddress: "192.168.1.44",
+    });
   });
 });

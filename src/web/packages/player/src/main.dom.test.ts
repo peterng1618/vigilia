@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readStoredPairing } from "./host-refind.js";
 
 /**
  * `vg-190`: a rejection arriving after the scene mounted calls
@@ -252,5 +253,67 @@ describe("the theme chooser's mount condition", () => {
     await vi.waitFor(() => expect(diagnostics.vigilia).toBeDefined());
 
     expect(document.querySelector("[data-vigilia-theme-chooser]")).toBeNull();
+  });
+});
+
+/**
+ * The record a load writes, driven through the real `main.ts`.
+ *
+ * The load itself writes a token-bearing record from the URL, so the assertion
+ * is the **identity** — the half only `GET /api/host` can supply — and the wait
+ * is on that rather than on the record existing, which would pass before the
+ * call was even made. `localStorage` outlives `vi.resetModules()`, which clears
+ * modules and not the window, so it is cleared first.
+ */
+describe("the pairing a load remembers", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+  });
+
+  it("records the host's identity beside this load's own address", async () => {
+    skeleton();
+    history.replaceState({}, "", "/?theme=living-room&session=paired-token");
+    vi.stubGlobal("EventSource", SilentEventSource);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+    Object.defineProperty(window, "fetch", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/document")) return json(mountedEnvelope());
+        if (url === "/api/host") {
+          return json({ id: "h1", name: "study-pc", port: 5227 });
+        }
+        return json({});
+      }),
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await import("./main.js");
+    await vi.waitFor(() =>
+      expect(readStoredPairing(window.localStorage)?.hostId).toBe("h1"),
+    );
+
+    expect(readStoredPairing(window.localStorage)).toEqual({
+      hostId: "h1",
+      hostName: "study-pc",
+      port: 5227,
+      token: "paired-token",
+      lastAddress: window.location.hostname,
+    });
   });
 });

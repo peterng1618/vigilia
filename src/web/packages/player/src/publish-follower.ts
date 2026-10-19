@@ -32,6 +32,12 @@ interface PublishFollowerOptions {
   /** The theme the host now says this display should be showing. Called only
    *  for a page the host resolved itself, and only when the answer moves. */
   readonly onThemeChange?: (theme: string | null) => void;
+  /** The host did not answer. Reported once per unreachable episode, not once
+   *  per tick: the caller's answer to this is a sweep of the network, and a
+   *  host that is simply asleep must not put every display on the /24 on a
+   *  three-second cadence. The next tick that reaches the host ends the
+   *  episode, so a host that recovers is allowed a later report. */
+  readonly onUnreachable?: () => void;
 }
 
 const DEFAULT_INTERVAL_MS = 2_000;
@@ -103,6 +109,7 @@ export function followPublished(
   // the revision comparison below reloads a display when the publish moves.
   const followsMap = page.searchParams.get("theme-source") === "map";
   let stopped = false;
+  let unreachable = false;
   let last: number | undefined;
   let lastTheme: string | null | undefined;
 
@@ -111,6 +118,8 @@ export function followPublished(
 
     try {
       const response = await session.fetch(url);
+      // Reached, so this episode is over and a later silence is a new one.
+      unreachable = false;
 
       if (response.status === 403 || response.status === 404) {
         stopped = true;
@@ -161,7 +170,14 @@ export function followPublished(
       }
     } catch {
       // A host that is briefly unreachable is the connection surface's news,
-      // not this follower's: the readings stream already says it.
+      // not this follower's: the readings stream already says it. It is also
+      // the only sighting of an unreachable host anything has, so the caller is
+      // told — and told once, because the answer to it is a sweep of the
+      // network rather than a per-tick action.
+      if (!unreachable) {
+        unreachable = true;
+        options.onUnreachable?.();
+      }
     }
   };
 

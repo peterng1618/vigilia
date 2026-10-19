@@ -25,6 +25,14 @@ import { Group } from "fabric/es";
 import { boundSemanticKeys } from "./bound-keys.js";
 import { showAvailabilityNotice, showConnectionState } from "./chrome.js";
 import { mountDisplayControls } from "./display-controls.js";
+import {
+  type HostProbe,
+  PROBE_TIMEOUT_MS,
+  readStoredPairing,
+  refindHost,
+  refindTarget,
+  storePairing,
+} from "./host-refind.js";
 import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
 import { followPublished, reResolveUrl } from "./publish-follower.js";
@@ -46,6 +54,76 @@ if (!artboardHost) {
   throw new Error("Artboard host element is missing.");
 }
 
+/** The browser's own storage, or nothing. A private window refuses the accessor
+ *  itself, and a display with no storage is a display with no pairing to keep —
+ *  not a display that fails to start. */
+function displayStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+const storage = displayStorage();
+
+/**
+ * Records who this display's host is, on every load rather than once at pairing.
+ * `localStorage` is per-origin, so a record written at the old address is
+ * invisible to the page at the new one: storing once would make the first move
+ * work and lose the host on the second (R60).
+ *
+ * `/api/host` is unauthenticated and cross-origin readable, and this call is
+ * same-origin, so it carries no credential — the identity is public and the
+ * token is not. A loopback display has no token and an address that never
+ * moves, so it keeps nothing.
+ */
+async function rememberPairing(
+  session: DisplaySessionToken,
+  store: Storage | undefined,
+): Promise<void> {
+  const token = session.token;
+
+  if (store === undefined || token === undefined) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/host");
+
+    if (!response.ok) {
+      return;
+    }
+
+    const body = (await response.json()) as {
+      readonly id?: unknown;
+      readonly name?: unknown;
+      readonly port?: unknown;
+    };
+
+    if (
+      typeof body.id !== "string" ||
+      typeof body.name !== "string" ||
+      typeof body.port !== "number"
+    ) {
+      return;
+    }
+
+    // The port is the one the socket answered on, so a host that walked to the
+    // next free port is still dialled where it actually is.
+    storePairing(store, {
+      hostId: body.id,
+      hostName: body.name,
+      port: body.port,
+      token,
+      lastAddress: new URL(session.pageUrl).hostname,
+    });
+  } catch {
+    // The record this load already wrote stands. A host that cannot answer here
+    // is the connection surface's news, not a second failure to report.
+  }
+}
+
 async function start(host: HTMLElement): Promise<void> {
   const parameters = new URLSearchParams(window.location.search);
   const requested = parameters.get("theme");
@@ -59,7 +137,11 @@ async function start(host: HTMLElement): Promise<void> {
     const session = displaySession(
       window.location.href,
       window.fetch.bind(window),
+      storage,
     );
+    // Not awaited: the display is what the person came for, and the identity is
+    // what a later address change is matched against.
+    void rememberPairing(session, storage);
     await startHostedTheme(
       host,
       await loadHostedTheme(requested, session.fetch),
@@ -197,6 +279,68 @@ async function startHostedTheme(
   const reResolve = (): void => {
     window.location.href = reResolveUrl(window.location.href);
   };
+  // The ladder, and the two things that keep it off the network: a sweep of 253
+  // addresses is not something to start twice, and a page the browser has put
+  // in its back/forward cache must not keep probing a LAN it has left.
+  let refinding = false;
+  let disposed = false;
+
+  /** Deliberately not `session.fetch`: `/api/host` is unauthenticated and
+   *  cross-origin readable, so it needs no credential, and a probe carrying
+   *  this display's token would offer it to every address that answers — the
+   *  opposite of what the stored id is for (R63). */
+  const probe: HostProbe = async (origin) => {
+    if (disposed) {
+      return undefined;
+    }
+
+    try {
+      const response = await fetch(`${origin}/api/host`, {
+        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        return undefined;
+      }
+
+      const body = (await response.json()) as {
+        readonly id?: unknown;
+        readonly name?: unknown;
+      };
+
+      return typeof body.id === "string" && typeof body.name === "string"
+        ? { id: body.id, name: body.name }
+        : undefined;
+    } catch {
+      // An address that does not answer is an address with no host on it.
+      return undefined;
+    }
+  };
+
+  const refind = async (): Promise<void> => {
+    const pairing =
+      storage === undefined ? undefined : readStoredPairing(storage);
+
+    if (pairing === undefined || refinding || disposed) {
+      return;
+    }
+
+    refinding = true;
+
+    try {
+      const found = await refindHost(pairing, probe);
+
+      if (found === undefined || disposed) {
+        return;
+      }
+
+      // The address is re-stored by the load this lands on, which writes its
+      // own origin's record — the only place that record is visible from.
+      window.location.href = refindTarget(found, pairing.token);
+    } finally {
+      refinding = false;
+    }
+  };
   // A display the host resolved can choose another theme for itself, and shows
   // it through the same navigation an assignment takes. A link's id is the
   // person's instruction and a published page's is what it shows; `reResolveUrl`
@@ -216,6 +360,10 @@ async function startHostedTheme(
   const stopFollowing = followPublished(session, reResolve, {
     onRefused: (reason) => showConnectionState("refused", 0, reason),
     onThemeChange: reResolve,
+    // The one sighting of a host that has stopped answering, and the only thing
+    // that can start the ladder: the follower reports the episode once, and
+    // `refind` decides whether this display has an identity to match.
+    onUnreachable: () => void refind(),
   });
   const chartRefresh = startChartRefresh(refresh, 30, undefined, {
     onError: reportRepaintError,
@@ -225,6 +373,10 @@ async function startHostedTheme(
   window.addEventListener(
     "pagehide",
     () => {
+      // A page going into the back/forward cache is still running: a sweep that
+      // carried on would probe a LAN this page has left and could navigate it
+      // out of the cache it was put in.
+      disposed = true;
       releaseFonts();
       chartRefresh.dispose();
       observer.disconnect();

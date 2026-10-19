@@ -229,6 +229,56 @@ describe("followPublished", () => {
   });
 });
 
+describe("followPublished's unreachable report", () => {
+  it("reports an unreachable host rather than swallowing it", async () => {
+    // Today this error is discarded (`publish-follower.ts`'s `catch`), which is
+    // why the ladder had no way to run at all.
+    const onUnreachable = vi.fn();
+    const stop = followPublished(
+      {
+        pageUrl: MAP_PAGE,
+        fetch: vi.fn(async () => Promise.reject(new Error("down"))),
+      },
+      vi.fn(),
+      { intervalMs: 5, onUnreachable },
+    );
+
+    await settle(40);
+    stop();
+
+    expect(onUnreachable).toHaveBeenCalled();
+  });
+
+  it("reports one unreachable episode once, and a later one again", async () => {
+    // The caller's answer to this is a sweep of 253 addresses, so a host that
+    // is simply asleep must not put every display on the /24 on a cadence.
+    let reachable = false;
+    const onUnreachable = vi.fn();
+    const stop = followPublished(
+      {
+        pageUrl: MAP_PAGE,
+        fetch: vi.fn(async () =>
+          reachable
+            ? new Response(JSON.stringify({ revision: 1 }))
+            : Promise.reject(new Error("down")),
+        ),
+      },
+      vi.fn(),
+      { intervalMs: 5, onUnreachable },
+    );
+
+    await settle(40);
+    expect(onUnreachable).toHaveBeenCalledTimes(1); // not once per failed tick
+    reachable = true;
+    await settle(20);
+    reachable = false;
+    await settle(40);
+    stop();
+
+    expect(onUnreachable).toHaveBeenCalledTimes(2); // a new episode reports
+  });
+});
+
 describe("reResolveUrl", () => {
   const page = "http://127.0.0.1:5227/";
 
