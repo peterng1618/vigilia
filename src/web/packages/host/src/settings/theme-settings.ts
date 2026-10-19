@@ -202,6 +202,10 @@ export function createThemeSettingsStore(
       if (!THEME_ID.test(themeId)) return;
 
       const all = await readLevels(file);
+      // Nothing to remove is no write: a file that could not be read reads as
+      // `{}`, and saving that would replace the file that is actually there.
+      if (!Object.values(all).some((level) => themeId in level)) return;
+
       for (const level of Object.values(all)) delete level[themeId];
       await save(normalizeLevels(all));
     },
@@ -210,6 +214,8 @@ export function createThemeSettingsStore(
       if (!DEVICE_ID_PATTERN.test(display)) return;
 
       const all = await readLevels(file);
+      if (!(display in all)) return;
+
       delete all[display];
       await save(all);
     },

@@ -149,6 +149,26 @@ describe("theme answers", () => {
     expect(await store.read(DEFAULT_DISPLAY, "this-pc")).toEqual({});
   });
 
+  it("does not write over a file it could not read when there is nothing to remove", async () => {
+    const corrupt = "{ not json";
+    await writeFile(answersFile(dir), corrupt, "utf8");
+
+    await store.removeTheme("wall");
+    await store.removeDisplay("kitchen-tablet");
+
+    expect(await readFile(answersFile(dir), "utf8")).toBe(corrupt);
+  });
+
+  it("leaves the file alone when there is nothing to remove", async () => {
+    const stored = JSON.stringify({ "this-pc": { wall: { gpu: "gpu-0" } } });
+    await writeFile(answersFile(dir), stored, "utf8");
+
+    await store.removeTheme("office");
+    await store.removeDisplay("kitchen-tablet");
+
+    expect(await readFile(answersFile(dir), "utf8")).toBe(stored);
+  });
+
   it("does not write an empty level", async () => {
     await store.write("this-pc", "wall", { gpu: "gpu-0" });
     await store.write("this-pc", "wall", {});

@@ -1770,11 +1770,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
+      // This route resolves no display yet, so both branches read and write the
+      // answers of whoever asked: the default display's entry.
       if (request.method === "GET") {
         const record = await readThemeOrAbsent(rawId);
         sendJson(response, 200, {
-          // This route resolves no display yet, so it reads and writes the
-          // answers of whoever asked: the default display's entry.
           answers: await themeSettings.read(DEFAULT_DISPLAY, rawId),
           required: requiredDeviceGroups(record?.envelope),
         });
