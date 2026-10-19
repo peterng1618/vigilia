@@ -2770,6 +2770,17 @@ declaration is what the cost reads, not the file** — `performanceCostsOf` neve
 One video theme with **no** glass is what the proof needs: it yields `["video-background"]`, which
 is the only cost whose answer differs by kind, and that difference is the whole point of the case.
 
+**And the remote row the proof compares against does not exist either (R89).** The proof's second
+half is "does not for a remote display", which needs a `paired` row on the page — and no e2e test
+seeds one: `display-clients.json` (`displays.ts:80`) is written by no file under `tests/`, so the
+map holds only this machine's own monitors and the page has nothing but `default` and local rows.
+The spec must **hand-write that file** in its own `resetStores`, exactly as it already hand-writes
+`active-theme.json` and `theme-answers.json` and for the same reason. The minimal record is
+`{ id, label, kind: "paired", createdAt, lastSeenAt }` (`DisplayRecord`, `displays.ts:47-57`) —
+`tokenHash` is absent for a local display and optional here, and nothing in this proof pairs.
+**Both seeds are the same shape of gap**: the assertion was written against state the harness never
+creates, which is why the fix is in the spec and the fixtures rather than in the code under test.
+
 **The decision note lands before the first write to `renderer-core/src/theme/`** (R47):
 that directory is on the reuse gate's watchlist and the gate matches a claim by path, so
 notes 0003 and 0015 — which claim `document.ts` and `glass.ts` — do not cover a new
