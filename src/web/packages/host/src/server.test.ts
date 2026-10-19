@@ -3058,6 +3058,21 @@ describe("A theme's own device answers", () => {
     });
   });
 
+  it("keys what it stores by the display an unpaired client is served as", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/disk-only/answers",
+      json({ "system-disk": "disk-d" }),
+    );
+
+    // The route resolves no display of its own yet, so it reads and writes the
+    // entry of whoever asked — the default display's.
+    expect(
+      await createThemeSettingsStore(tmpDir).read(DEFAULT_DISPLAY, "disk-only"),
+    ).toEqual({ "system-disk": "disk-d" });
+  });
+
   it("overrides the global choice for its theme, and tells the providers", async () => {
     await request(
       hosted.server,

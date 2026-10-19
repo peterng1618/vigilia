@@ -681,10 +681,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
       activeTheme === undefined
         ? undefined
         : await activeTheme.read(DEFAULT_DISPLAY, async () => true);
+    // Answers are keyed by display as well as theme, and this path resolves no
+    // display yet: the default's entry is the one this file held before it was
+    // keyed by display, so a caller with no display is served what it was.
     const perTheme =
       chosen === undefined || themeSettings === undefined
         ? {}
-        : await themeSettings.read(chosen);
+        : await themeSettings.read(DEFAULT_DISPLAY, chosen);
 
     // The group is the settings module's `AssignableGroup`, not a union
     // re-spelled here: the owner is `ASSIGNABLE_GROUPS` (`settings/devices.ts`),
@@ -1770,7 +1773,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (request.method === "GET") {
         const record = await readThemeOrAbsent(rawId);
         sendJson(response, 200, {
-          answers: await themeSettings.read(rawId),
+          // This route resolves no display yet, so it reads and writes the
+          // answers of whoever asked: the default display's entry.
+          answers: await themeSettings.read(DEFAULT_DISPLAY, rawId),
           required: requiredDeviceGroups(record?.envelope),
         });
         return;
@@ -1779,7 +1784,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (request.method === "PUT") {
         try {
           const body = JSON.parse(await readBody(request)) as unknown;
-          const saved = await themeSettings.write(rawId, body);
+          const saved = await themeSettings.write(DEFAULT_DISPLAY, rawId, body);
           await publishAssignment();
           sendJson(response, 200, { ok: true, answers: saved });
         } catch (error) {
