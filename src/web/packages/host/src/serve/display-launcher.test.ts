@@ -3,6 +3,7 @@ import {
   type SpawnOptions,
   spawn,
 } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -356,13 +357,15 @@ describe("findBrowser", () => {
     // exactly the case that is not this one.)
     expect(findBrowser("aix")).toBeUndefined();
 
-    // Whatever this machine answers has to be a browser this host would open a
-    // window with. `existsSync` alone is satisfied by any file that is there,
-    // which is what a guessed path is.
+    // Whatever this machine answers has to satisfy both halves, and neither
+    // alone is enough: `existsSync` is satisfied by any file that is there,
+    // which is what a guessed path is, and the name alone is satisfied by a
+    // browser-shaped path that is not on this machine at all.
     const found = findBrowser();
-    expect(found === undefined || BROWSER_NAME.test(path.basename(found))).toBe(
-      true,
-    );
+    expect(
+      found === undefined ||
+        (existsSync(found) && BROWSER_NAME.test(path.basename(found))),
+    ).toBe(true);
   });
 });
 
