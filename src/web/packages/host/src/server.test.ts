@@ -1430,7 +1430,9 @@ describe("Host theme routes", () => {
 
     const res = await request(hosted.server, "GET", "/");
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe("/?theme=living-room&data=live");
+    expect(res.headers.location).toBe(
+      "/?theme=living-room&data=live&theme-source=map",
+    );
   });
 
   it("leads a first-run consumer to the editor instead of dead-ending", async () => {
@@ -2022,9 +2024,10 @@ describe("A local monitor is specified rather than paired", () => {
    *  line. */
   function windowsOver(
     opened: { readonly kill: ReturnType<typeof vi.fn> }[],
+    from: ReturnType<typeof createDisplayStore> = displays,
   ): ReturnType<typeof createDisplayLauncher> {
     return createDisplayLauncher({
-      displays,
+      displays: from,
       port: 5227,
       browser: "/fake/chrome.exe",
       spawn: ((
@@ -2332,6 +2335,62 @@ describe("A local monitor is specified rather than paired", () => {
 
       // The record the POST wrote has never been seen, so the sighting is not
       // evidence of a window: the host opens one now, on that monitor.
+      expect(opened).toHaveLength(1);
+    } finally {
+      await hosting.close();
+    }
+  });
+
+  it("counts a local display's own poll as a sighting", async () => {
+    // A record stamped in the past, so the poll's own stamp is a value this
+    // case can tell apart rather than one a fast box may collide with.
+    const past = Date.parse("2026-10-18T12:00:00.000Z");
+    const store = createDisplayStore(dir, { now: () => past });
+    const opened: { readonly kill: ReturnType<typeof vi.fn> }[] = [];
+    const hosting = host({
+      displays: store,
+      launcher: windowsOver(opened, store),
+    });
+
+    try {
+      const created = await request(
+        hosting.server,
+        "POST",
+        "/api/displays",
+        json({
+          label: "Left screen",
+          monitor: { deviceName: "\\\\.\\DISPLAY2" },
+        }),
+      );
+      expect(created.status).toBe(201);
+      // The record has never been seen, so the sighting is not evidence of a
+      // window: the host opens one now.
+      expect(opened).toHaveLength(1);
+
+      // The poll a local display's page makes, naming itself the way its URL
+      // does. It is the only repeating request such a display has, and so the
+      // only sighting it can make.
+      const poll = await request(
+        hosting.server,
+        "GET",
+        "/api/published?display=left-screen",
+      );
+      expect(poll.status).toBe(200);
+      expect((poll.json() as { display: unknown }).display).toEqual({
+        id: "left-screen",
+        theme: null,
+      });
+
+      const seen = await store.find("left-screen");
+      expect(seen?.lastSeenAt).not.toBe(seen?.createdAt);
+
+      // A host restarted after being killed has no memory of the window it
+      // left behind, so the sighting is the only thing that says one is up —
+      // without it this second window lands on a monitor that already has one.
+      const restarted = windowsOver(opened, store);
+      await restarted.reconcile();
+      restarted.stop();
+
       expect(opened).toHaveLength(1);
     } finally {
       await hosting.close();
@@ -4632,7 +4691,136 @@ describe("The published overlay", () => {
       // host, and the revision is still a number a display can poll.
       const here = await request(hosted.server, "GET", "/api/published");
       expect(here.status).toBe(200);
-      expect(here.json()).toEqual({ id: null, revision: 0 });
+      expect(here.json()).toEqual({
+        id: null,
+        revision: 0,
+        display: { id: LOCAL_DISPLAY_ID, theme: null },
+      });
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("answers the display its own theme on /api/published", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const store = createThemeStore(dir);
+    const activeTheme = createActiveThemeStore(dir);
+    const displays = createDisplayStore(dir);
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: store,
+      activeTheme,
+      displays,
+    });
+
+    try {
+      await store.write("living-room", createValidPackage());
+      await store.write("studio", createValidPackage("studio", "Studio"));
+      await activeTheme.write(DEFAULT_DISPLAY, "living-room");
+
+      const token = newToken();
+      await displays.create("Kitchen tablet", token);
+      await activeTheme.write("kitchen-tablet", "studio");
+
+      const own = await request(
+        hosted.server,
+        "GET",
+        "/api/published",
+        undefined,
+        {
+          remoteAddress: "192.168.1.50",
+          headers: { "x-vigilia-session": token },
+        },
+      );
+      expect(own.status).toBe(200);
+      expect((own.json() as { display: unknown }).display).toEqual({
+        id: "kitchen-tablet",
+        theme: "studio",
+      });
+
+      // A display nobody assigned a theme of its own is an unpaired client, and
+      // the default is what such a client should be showing.
+      const other = newToken();
+      await displays.create("Hallway phone", other);
+
+      const fallback = await request(
+        hosted.server,
+        "GET",
+        "/api/published",
+        undefined,
+        {
+          remoteAddress: "192.168.1.50",
+          headers: { "x-vigilia-session": other },
+        },
+      );
+      expect((fallback.json() as { display: unknown }).display).toEqual({
+        id: "hallway-phone",
+        theme: "living-room",
+      });
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("answers null for a display on an explicit ?theme= link", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const store = createThemeStore(dir);
+    const activeTheme = createActiveThemeStore(dir);
+    const displays = createDisplayStore(dir);
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: store,
+      activeTheme,
+      displays,
+    });
+
+    try {
+      await store.write("living-room", createValidPackage());
+      await store.write("studio", createValidPackage("studio", "Studio"));
+      await activeTheme.write(LOCAL_DISPLAY_ID, "living-room");
+
+      const token = newToken();
+      await displays.create("Kitchen tablet", token);
+      await activeTheme.write("kitchen-tablet", "studio");
+
+      // The link is the person's own instruction for that page, so an
+      // assignment must not move it — and the host says so by answering none.
+      const linked = await request(
+        hosted.server,
+        "GET",
+        "/api/published?theme=other",
+        undefined,
+        {
+          remoteAddress: "192.168.1.50",
+          headers: { "x-vigilia-session": token },
+        },
+      );
+      expect(linked.status).toBe(200);
+      expect((linked.json() as { display: unknown }).display).toEqual({
+        id: "kitchen-tablet",
+        theme: null,
+      });
+
+      // The same display without one is answered its assignment, so the null
+      // above is the link rather than a route that answers nothing.
+      const assigned = await request(
+        hosted.server,
+        "GET",
+        "/api/published",
+        undefined,
+        {
+          remoteAddress: "192.168.1.50",
+          headers: { "x-vigilia-session": token },
+        },
+      );
+      expect((assigned.json() as { display: unknown }).display).toEqual({
+        id: "kitchen-tablet",
+        theme: "studio",
+      });
     } finally {
       await hosted.close();
       await fs.rm(dir, { recursive: true, force: true });
@@ -4659,7 +4847,9 @@ describe("The published overlay", () => {
       await activeTheme.write(DEFAULT_DISPLAY, "studio");
 
       const before = await request(hosted.server, "GET", "/");
-      expect(before.headers.location).toBe("/?theme=studio&data=live");
+      expect(before.headers.location).toBe(
+        "/?theme=studio&data=live&theme-source=map",
+      );
 
       await request(
         hosted.server,
@@ -4669,7 +4859,9 @@ describe("The published overlay", () => {
       );
 
       const after = await request(hosted.server, "GET", "/");
-      expect(after.headers.location).toBe("/?theme=living-room&data=live");
+      expect(after.headers.location).toBe(
+        "/?theme=living-room&data=live&theme-source=published",
+      );
     } finally {
       await hosted.close();
       await fs.rm(dir, { recursive: true, force: true });
@@ -4788,6 +4980,41 @@ describe("The root page resolves the display that asked", () => {
     await activeTheme.write(LOCAL_DISPLAY_ID, "living-room");
 
     expect(await root("/?theme=studio")).toBe("studio");
+  });
+
+  /** Where the theme `GET /` resolved came from, read off the redirect it
+   *  answers with. */
+  async function source(urlPath = "/"): Promise<string | undefined> {
+    const answer = await request(hosted.server, "GET", urlPath);
+    expect(answer.status).toBe(302);
+    const location = answer.headers.location as string | undefined;
+
+    return location === undefined
+      ? undefined
+      : (new URL(location, "http://host").searchParams.get("theme-source") ??
+          undefined);
+  }
+
+  it("says where the theme it resolved came from", async () => {
+    await library();
+    await activeTheme.write(LOCAL_DISPLAY_ID, "living-room");
+
+    // The display's own entry, which is what an assignment moves.
+    expect(await source()).toBe("map");
+    // The person's own instruction for that page.
+    expect(await source("/?theme=studio")).toBe("link");
+
+    // The publish outranks both. A page showing it must not be moved by an
+    // assignment: reloading there would re-resolve to the published theme and
+    // see the map's entry again on the next poll — a reload loop.
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/publish?id=studio",
+      themeBody(createValidPackage("studio", "Studio")),
+    );
+
+    expect(await source()).toBe("published");
   });
 
   it("resolves a local monitor from loopback", async () => {

@@ -2,6 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { displaySession } from "./session.js";
 
 describe("display session token", () => {
+  it("keeps the page it was built from, so a poll can read it", () => {
+    // The follower builds its own poll out of the page a display is on — which
+    // display it is and where its theme came from — and it is handed the token,
+    // not the URL, so the URL has to ride along.
+    const pageUrl =
+      "http://127.0.0.1:5227/?display=left-screen&theme=studio&data=live";
+
+    expect(displaySession(pageUrl, fetch).pageUrl).toBe(pageUrl);
+  });
+
   it("carries no token for a loopback display", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => new Response("ok"));
     const session = displaySession("http://127.0.0.1:5227/", fetcher);

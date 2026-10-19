@@ -340,6 +340,12 @@ export async function displayFor(
  * loopback, and matched only against records whose kind is `local`. A paired
  * display is reached by the credential it was given and by nothing else, which
  * is the reason that credential exists.
+ *
+ * **A request that resolves to a local display is a sighting of it.** Such a
+ * display has no credential, so this is the only way it can be seen to be up —
+ * and the launcher reads `lastSeenAt` to tell a window that is running from one
+ * a killed host left behind. Without the write here, a host restarted after
+ * being killed opens a second window on a monitor that already has one.
  */
 export async function displayKeyFor(
   request: http.IncomingMessage,
@@ -350,7 +356,16 @@ export async function displayKeyFor(
     const named = url.searchParams.get("display");
     const record = named === null ? undefined : await displays?.find(named);
 
-    return record?.kind === "local" ? record.id : LOCAL_DISPLAY_ID;
+    if (record !== undefined && record.kind === "local") {
+      // A refused write is dropped, as it is in `displayFor`: bookkeeping must
+      // not fail the request it rode in on.
+      await displays
+        ?.touch(record.id, new Date().toISOString())
+        .catch(() => undefined);
+      return record.id;
+    }
+
+    return LOCAL_DISPLAY_ID;
   }
 
   return (await displayFor(request, url, displays))?.id ?? DEFAULT_DISPLAY;
@@ -803,21 +818,24 @@ export function createHostServer(options: HostServerOptions): HostServer {
   }
 
   /**
-   * The theme the asking display was assigned, or the default's when it holds
-   * no entry of its own — and none when that too is unset, which leaves the
-   * caller to decide what to show. A display nobody has assigned a theme to is
-   * an unpaired client, and `default` is the display such a client is served as.
+   * The theme the display was assigned, or the default's when it holds no entry
+   * of its own — and none when that too is unset, which leaves the caller to
+   * decide what to show. A display nobody has assigned a theme to is an unpaired
+   * client, and `default` is the display such a client is served as.
+   *
+   * The key rather than the request, so a caller that also needs the key — the
+   * poll, which answers it beside the theme — resolves the display once. A
+   * local display's resolution is a write, and paying for it twice per poll is
+   * a cost this signature exists not to have.
    */
   async function assignedThemeFor(
-    request: http.IncomingMessage,
-    url: URL,
+    display: string,
     exists: (id: string) => Promise<boolean>,
   ): Promise<string | undefined> {
     if (activeTheme === undefined) {
       return undefined;
     }
 
-    const display = await displayKeyFor(request, url, displays);
     const own = await activeTheme.read(display, exists);
 
     return (
@@ -1493,8 +1511,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
 
     // One number, so a display can tell whether what it is showing is still
-    // what the author is publishing. A display read, so it is behind the same
-    // guard: what this PC is holding is not something the network enumerates.
+    // what the author is publishing — and the theme it was assigned, so an
+    // assignment made at the host reaches a display nobody walks to. A display
+    // read, so it is behind the same guard: what this PC is holding is not
+    // something the network enumerates.
     if (url.pathname === "/api/published") {
       if (
         !isLoopbackRemote(request.socket.remoteAddress) &&
@@ -1505,9 +1525,21 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       const live = published.read();
+      const available = await themeStore.list();
+      const display = await displayKeyFor(request, url, displays);
+      // A request that named a theme is on a link, and the link is the person's
+      // own instruction for that page: an assignment must not move it, so the
+      // host answers none rather than one the follower would act on.
+      const theme = url.searchParams.has("theme")
+        ? null
+        : ((await assignedThemeFor(display, async (id) =>
+            available.some((entry) => entry.id === id),
+          )) ?? null);
+
       sendJson(response, 200, {
         id: live?.id ?? null,
         revision: published.revision(),
+        display: { id: display, theme },
       });
       return;
     }
@@ -2360,13 +2392,23 @@ export function createHostServer(options: HostServerOptions): HostServer {
         available.some((entry) => entry.id === id);
       const stored =
         requested === null
-          ? await assignedThemeFor(request, url, exists)
+          ? await assignedThemeFor(
+              await displayKeyFor(request, url, displays),
+              exists,
+            )
           : undefined;
+      const live = published.read()?.id;
       const theme =
-        published.read()?.id ??
+        live ??
         requested ??
         stored ??
         (available.length === 1 ? available[0]?.id : undefined);
+      // Where the theme came from, because every display arrives carrying one:
+      // the player reads this to know whether an assignment may move it at all.
+      // Without it, the person's own link and the host's own resolution are the
+      // same URL, and the display's poll would be answered `null` for ever.
+      const source =
+        live !== undefined ? "published" : requested !== null ? "link" : "map";
 
       if (theme === undefined) {
         // Nothing to show: either a first run, or a choice to make. Both lead
@@ -2398,6 +2440,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
       url.searchParams.set("theme", theme);
       url.searchParams.set("data", "live");
+      url.searchParams.set("theme-source", source);
       response.writeHead(302, {
         location: `${url.pathname}?${url.searchParams.toString()}`,
         "cache-control": "no-store",

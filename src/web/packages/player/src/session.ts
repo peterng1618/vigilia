@@ -3,6 +3,9 @@
 
 export interface DisplaySessionToken {
   readonly token: string | undefined;
+  /** The page this display is on, which is where its own display and the origin
+   * of its theme are read from: a poll has to name the display that asked. */
+  readonly pageUrl: string;
   /** Adds the token to a fetch, which can use the header form. */
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
   /** Appends the token to a stream URL, which cannot. */
@@ -21,6 +24,7 @@ export function displaySession(
 
   return {
     token,
+    pageUrl,
     fetch(input, init) {
       if (token === undefined) {
         return fetcher(input, init);
