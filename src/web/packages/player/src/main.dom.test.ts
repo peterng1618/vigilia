@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * `vg-190`: a rejection arriving after the scene mounted calls
@@ -139,5 +139,106 @@ describe("a rejection that arrives after the scene mounted", () => {
     expect(
       document.querySelector("[data-vigilia-load-failure]")?.parentElement,
     ).toBe(document.body);
+  });
+});
+
+/** Valid to the compatibility check, so the display mounts whole and reaches
+ *  the point where its chrome is built. */
+function mountedEnvelope(): unknown {
+  return {
+    schemaVersion: 2,
+    fabricVersion: "7.4.0",
+    id: "living-room",
+    artboard: { width: 1920, height: 1080 },
+    metadata: { themeLanguage: "en" },
+    scene: { version: "7.4.0", objects: [] },
+  };
+}
+
+/**
+ * The chooser's mount condition, driven through the real `main.ts`.
+ *
+ * A link page's id is the person's instruction, and `reResolveUrl` keeps it
+ * (`publish-follower.ts:60-62` drops `theme` only for `map`), so a chooser
+ * mounted there would write the map and then reload onto the link's theme —
+ * the control appearing to do nothing. The hop from a chosen id to
+ * `reResolveUrl` is not asserted here: jsdom does not navigate, `reResolveUrl`
+ * is unit-tested in `publish-follower.test.ts`, and the hop itself is the
+ * Phase 4 gate's browser run.
+ */
+describe("the theme chooser's mount condition", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /** Mounts the player at `search` and waits until its chrome has been built,
+   *  which is the point the chooser's condition is decided at. */
+  async function mountAt(search: string): Promise<void> {
+    skeleton();
+    history.replaceState({}, "", `/${search}`);
+    vi.stubGlobal("EventSource", SilentEventSource);
+    // jsdom has no `ResizeObserver`, and the scene's re-fit observer is created
+    // after the chrome: without a stub the display fails to start and the
+    // failure page replaces the document this test is about.
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+    Object.defineProperty(window, "fetch", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/document")) return json(mountedEnvelope());
+        if (url === "/api/themes") {
+          return json({ themes: [{ id: "living-room", name: "Living Room" }] });
+        }
+        return json({});
+      }),
+    });
+
+    await import("./main.js");
+    // The display's own diagnostics are not this test's news; the failure page
+    // replacing the document would be, and the wait below catches that.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await vi.waitFor(
+      () => {
+        expect(
+          document.querySelector("[data-vigilia-load-failure]"),
+        ).toBeNull();
+        expect(
+          document.querySelector("[data-vigilia-controls]"),
+        ).not.toBeNull();
+      },
+      { timeout: 10_000 },
+    );
+  }
+
+  it("offers the chooser on a page the host resolved", async () => {
+    await mountAt(
+      "?theme=living-room&display=d1&theme-source=map&session=paired-token",
+    );
+
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector("[data-vigilia-theme-chooser]"),
+      ).not.toBeNull(),
+    );
+  });
+
+  it("offers nothing on a link page, whose theme id is the person's instruction", async () => {
+    // Paired, so the absence is the mount condition and not the missing token.
+    await mountAt("?theme=living-room&theme-source=link&session=paired-token");
+
+    expect(document.querySelector("[data-vigilia-theme-chooser]")).toBeNull();
   });
 });

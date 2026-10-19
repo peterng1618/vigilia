@@ -59,26 +59,33 @@ export function chromeBand(side: ChromeSide): HTMLElement {
  * connection moves. Replacing by id is what keeps one kind of notice one strip
  * — which each writer used to arrange by hand, by removing the element it had
  * found and reusing it in place.
+ *
+ * A strip is either a line of `text` or `children` a reader operates. The
+ * theme chooser needs the second form, and it comes through here so the inset,
+ * the font and the strip marker stay one construction rather than a second
+ * hand-written copy of them.
  */
-export function putStrip(input: {
-  readonly side: ChromeSide;
-  readonly id: string;
-  readonly text: string;
-  readonly background: string;
-  readonly color: string;
-  /** A notice that can flash: fixed to the display's edge rather than laid out
-   *  in the band, so raising or clearing it cannot re-fit the scene (see the
-   *  module comment). The `z-index` is what puts it over the artboard — the top
-   *  band precedes `#artboard` in `index.html`, and Fabric's wrapper is
-   *  positioned, so without one the canvas would paint over the notice. */
-  readonly overlay?: boolean;
-}): HTMLElement {
+export function putStrip(
+  input: {
+    readonly side: ChromeSide;
+    readonly id: string;
+    readonly background: string;
+    readonly color: string;
+    /** A notice that can flash: fixed to the display's edge rather than laid out
+     *  in the band, so raising or clearing it cannot re-fit the scene (see the
+     *  module comment). The `z-index` is what puts it over the artboard — the top
+     *  band precedes `#artboard` in `index.html`, and Fabric's wrapper is
+     *  positioned, so without one the canvas would paint over the notice. */
+    readonly overlay?: boolean;
+  } & ({ readonly text: string } | { readonly children: readonly Node[] }),
+): HTMLElement {
   removeStrip(input.id);
 
   const strip = document.createElement("div");
   strip.id = input.id;
   strip.dataset["vigiliaChromeStrip"] = "";
-  strip.textContent = input.text;
+  if ("text" in input) strip.textContent = input.text;
+  else strip.append(...input.children);
   strip.style.cssText =
     `${stripInset(input.side)};text-align:center;` +
     (input.overlay === true

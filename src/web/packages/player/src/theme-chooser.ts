@@ -1,4 +1,4 @@
-import { type ChromeSide, chromeBand } from "./chrome.js";
+import { type ChromeSide, putStrip } from "./chrome.js";
 import type { DisplaySessionToken } from "./session.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -95,7 +95,7 @@ export async function chooseOwnTheme(
   id: string,
 ): Promise<void> {
   if (id.length === 0) {
-    throw new Error("A theme id is required.");
+    throw new Error(uiCopy.chooser.idRequired);
   }
 
   const response = await session.fetch("/api/themes/active", {
@@ -123,14 +123,6 @@ export function createThemeChooser(input: ThemeChooserOptions): {
     return { dispose: () => {} };
   }
 
-  const strip = document.createElement("div");
-  strip.id = STRIP_ID;
-  strip.dataset["vigiliaThemeChooser"] = "";
-  strip.dataset["vigiliaChromeStrip"] = "";
-  strip.style.cssText =
-    "padding:6px 12px;text-align:center;background:#14161c;color:#e8ecf3;" +
-    "font:12px/1.4 ui-monospace,monospace";
-
   const label = document.createElement("label");
   label.textContent = `${uiCopy.chooser.label} `;
 
@@ -138,10 +130,24 @@ export function createThemeChooser(input: ThemeChooserOptions): {
   select.dataset["vigiliaThemeSelect"] = "";
   select.setAttribute("aria-label", uiCopy.chooser.label);
   label.append(select);
-  strip.append(label);
-  chromeBand(input.side).append(strip);
+
+  // Through the chrome's own construction, so the safe-area inset, the font
+  // and the strip marker are one owner rather than a second copy of them.
+  const strip = putStrip({
+    side: input.side,
+    id: STRIP_ID,
+    children: [label],
+    background: "#14161c",
+    color: "#e8ecf3",
+  });
+  strip.dataset["vigiliaThemeChooser"] = "";
 
   let disposed = false;
+
+  function dispose(): void {
+    disposed = true;
+    strip.remove();
+  }
 
   select.addEventListener("change", () => {
     const id = select.value;
@@ -173,14 +179,13 @@ export function createThemeChooser(input: ThemeChooserOptions): {
       select.value = input.current;
     },
     (error: unknown) => {
-      if (!disposed) input.onError?.(messageOf(error));
+      if (disposed) return;
+      input.onError?.(messageOf(error));
+      // A list that did not arrive leaves nothing to choose, and a strip that
+      // could only refuse is the thing this control must never be.
+      dispose();
     },
   );
 
-  return {
-    dispose(): void {
-      disposed = true;
-      strip.remove();
-    },
-  };
+  return { dispose };
 }

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { putStrip } from "./chrome.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   chooseOwnTheme,
@@ -8,6 +9,7 @@ import {
   listLocalThemes,
   type ThemeChoice,
 } from "./theme-chooser.js";
+import { uiCopy } from "./ui-copy.js";
 
 /**
  * The display's own chooser: the one control a reader at a paired screen has
@@ -175,5 +177,60 @@ describe("choosing a theme for this display", () => {
     await vi.waitFor(() =>
       expect(onChosen).toHaveBeenCalledWith("kitchen-strip"),
     );
+  });
+
+  it("refuses an empty id without asking the host", async () => {
+    const fetcher = vi.fn<Fetcher>(async () => json({}));
+
+    await expect(chooseOwnTheme(paired(fetcher), "")).rejects.toThrow(
+      uiCopy.chooser.idRequired,
+    );
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("builds its strip through the chrome, inset and font included", async () => {
+    // `index.html` sets `viewport-fit=cover`, so the strip's own inset is what
+    // keeps a persistent control out of a notched phone's home indicator; a
+    // hand-written padding is how that inset goes missing.
+    const fetcher = vi.fn<Fetcher>(async () => json({ themes: THEMES }));
+    createThemeChooser({
+      session: paired(fetcher),
+      side: "bottom",
+      current: "living-room",
+      onChosen: vi.fn(),
+    });
+    await vi.waitFor(() => expect(select().options).toHaveLength(2));
+
+    const reference = putStrip({
+      side: "bottom",
+      id: "vigilia-reference-strip",
+      text: "x",
+      background: "#14161c",
+      color: "#e8ecf3",
+    });
+    const strip = document.querySelector<HTMLElement>(CHOOSER) as HTMLElement;
+
+    expect(strip.style.padding).toBe(reference.style.padding);
+    expect(strip.style.font).toBe(reference.style.font);
+    expect(strip.dataset["vigiliaChromeStrip"]).toBeDefined();
+  });
+
+  it("takes itself away when the library cannot be read", async () => {
+    // An empty select is a control that could only refuse, which is the one
+    // thing this control must never be.
+    const fetcher = vi.fn<Fetcher>(
+      async () => new Response("No list.", { status: 500 }),
+    );
+    const onError = vi.fn();
+    createThemeChooser({
+      session: paired(fetcher),
+      side: "bottom",
+      current: "living-room",
+      onChosen: vi.fn(),
+      onError,
+    });
+
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith("No list."));
+    expect(document.querySelector(CHOOSER)).toBeNull();
   });
 });

@@ -142,6 +142,7 @@ export const uiCopy = {
     label: "Theme",
     listFailed: "Could not list this host's themes.",
     chooseFailed: "Could not change this display's theme.",
+    idRequired: "A theme id is required.",
   },
 } as const;
 
