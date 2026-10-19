@@ -1898,8 +1898,17 @@ git commit -m "feat(player): follow the theme this display was assigned"
 - Modify: `src/web/packages/host/public/theme-list.js` — **the rows are drawn there**, so
   a display column cannot be added to a page without it. It gains the `displays` option
   the column offers and reports `(display, id)` on choose.
+- Modify: `src/web/packages/host/src/editor-link.dom.test.ts`
+- Modify: `src/web/packages/host/src/settings-page.dom.test.ts`
 - Test: `src/web/tests/e2e/host-settings.spec.ts` (the existing spec covering the
   host's own pages)
+
+**Both DOM test files stub this route and neither task 4.1 nor this one named them**
+(R49). `editor-link.dom.test.ts:79` and `settings-page.dom.test.ts:74` both feed the
+page `{ themes, templates, active }` — the shape Task 4.1 replaced — so they go red the
+moment the pages read `default` and `displays`, and they go red as a task-boundary
+surprise rather than as a red test in the task that changed the route. A repo-wide grep
+for `api/themes/active` finds no third one.
 
 **Interfaces:**
 - Consumes: the route shapes from Task 4.1.
@@ -1932,12 +1941,18 @@ warning; the warning itself is not this task's, and this task must not add one.
 
 Run: `npx playwright test tests/e2e/host-settings.spec.ts --workers=1`
 Expected: PASS, with the rendered page inspected rather than only its element
-counts.
+counts. Also run `npx vitest run packages/host/src/editor-link.dom.test.ts
+packages/host/src/settings-page.dom.test.ts` (R49) — both stubs move to the new shape
+in this task.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/public/library.html src/web/packages/host/public/settings.html src/web/tests/e2e/host-settings.spec.ts
+git add src/web/packages/host/public/library.html src/web/packages/host/public/settings.html \
+  src/web/packages/host/public/theme-list.js \
+  src/web/packages/host/src/editor-link.dom.test.ts \
+  src/web/packages/host/src/settings-page.dom.test.ts \
+  src/web/tests/e2e/host-settings.spec.ts
 git commit -m "feat(host): choose a theme per display from the host's own pages"
 ```
 

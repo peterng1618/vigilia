@@ -18,15 +18,15 @@ Give every display client its own theme: `docs/superpowers/plans/2026-10-18-per-
 
 ## Last completed change
 
-- Phase 3 closed: Task 3.1 (`d06b76c8`, fix `ab359448`) keyed `theme-answers.json` by display and theme, and Task 3.2 (`8f45a847`, fix `cf801d54`) resolved the assignment per display and **served** it — the connection carries its display, `tick()` samples once per distinct assignment, and `setAssignment`/`publishAssignment` are gone.
-- Two findings the seats' own reports got wrong, both caught by review and corrected on the record: Task 3.1's "pre-existing" framing (the remove paths regressed against `7000a7b5`) and Task 3.2's "inert, not wrong" (the host page's per-theme answer reached no display — ruling 44).
-- The Phase 3 gate: `npm run gate` exit 0 (271 files, **3665 tests**) and `backlog:check` exit 0 (620 items); two live sample streams off one host with both displays on the same theme and different answers returned `disk.used ok 336.1 GB` for `this-pc` and `status=missing` for `gate-screen`.
-- **The gate found a host crash and filed it as `vg-620`**: a client disconnecting mid-stream killed the process with an unhandled `ECONNRESET`, because nothing in the sample-stream path listens on the socket or the response. Reproduced deterministically, three narrower attempts did not, and attribution is pre-existing by source and by diff.
-- Rulings R41–R44: Task 3.1's missing call sites, the `theme-answers.json` migration by depth rather than key validity (my first wording was wrong), Task 3.2 owning the fan-out, and the assignment's `DEFAULT_DISPLAY` fallback.
+- Task 4.1 (`9d9b9e1b`): `/api/themes/active` is the display map — `GET` answers `{ default, displays, themes, templates }` with `this-pc` first and `theme: null` for a display holding none, `PUT` answers the same map, and `ActiveThemeStore.readAll` was added for it (R45).
+- The write's authority is derived: a paired request's key is its own authenticated record's id (`server.ts:1807`), verified by review to read no body field, and the admin `GET` stays loopback-only.
+- Red proof 10 failed / 154 passed before, 164 passed after; `packages/host` green at 41 files and 648 tests, `typecheck` exit 0.
+- **Both host pages are broken on `develop` until Task 4.3**, which is the plan's own 4.1 → 4.3 order: each still PUTs a bare `{ id }` and reads the removed `active` key.
+- The Phase 4 scan and the review ruled R45–R49, including R49's correction of the scan itself — two DOM test files stub the replaced shape and no task owned them.
 
 ## Next
 
-1. **Phase 4 is next, starting at Task 4.1** (`/api/themes/active` becomes the display map); run its pre-flight scan first — Phases 2 and 3 each had plan defects that only the scan found, and Task 4.2 carries R40's sighting pair, which is the one phase-4 item with a ruling already attached.
+1. **Phase 4 continues at Task 4.2** (a reassignment reaches a display that is already showing); its pre-flight scan is done and ruled R45–R49, and 4.2 carries R40's sighting pair.
 2. `vg-620` is the open one to weigh first: a client disconnecting mid-stream kills the host, which makes every browser proof in this repo unreliable and takes every other display's stream with it.
 3. Resume the drain at Task 23.4 when this plan stops, then the theme store's phase A; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
