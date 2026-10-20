@@ -470,10 +470,6 @@ it("contains the theme in a fixed stage rather than sizing to its ratio", () => 
   // Two items of different ratios render a stage of the same height.
 });
 
-it("says a tag the vocabulary does not know is proposed", () => {
-  // A tag outside the known set carries its own mark on its own pill.
-});
-
 it("offers the two different empty states, and not the same one twice", () => {
   // An empty library and an empty filter result are different sentences.
 });
@@ -487,6 +483,13 @@ it("closes back onto the same page, filter and sort", () => {
 
 Run: `npx vitest run packages/editor/src/store-mode/item-modal.dom.test.tsx`
 Expected: FAIL.
+
+**The tag-proposal case this task used to name is phase G's (R127).** A tag the vocabulary does not know
+cannot be proposed in phase A: the format carries no `tags` at all
+(`schema/theme-document.schema.json`), and the spec's own phase table
+(`2026-10-12-theme-store-design.md:912`) gives **G** "the format's shape rule, the editor's
+pick-or-propose control, and the Style facet". The case moved there with the field it needs, rather than
+being written against a field invented here.
 
 - [ ] **Step 3: Implement**
 
