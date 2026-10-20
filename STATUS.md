@@ -5,11 +5,11 @@ Branch: `develop`
 
 ## Current objective
 
-Give every display client its own theme, then let a person browse the themes it holds: `2026-10-18-per-display-themes.md` is **complete, reviewed and archived** — all eight phases, its boundary, the final whole-branch review and one fix round — and its spec is `implemented` with two named exceptions. **`2026-10-18-theme-store.md` is the active plan: its phase A — all ten tasks, its boundary, the final whole-branch review and one fix round — has landed, and its scoped re-review returned all four findings addressed with no new defects, so only the close remains.** Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
+Give every display client its own theme, then let a person browse the themes it holds: `2026-10-18-per-display-themes.md` is **complete, reviewed and archived** — all eight phases, its boundary, the final whole-branch review and one fix round — and its spec is `implemented` with two named exceptions. **`2026-10-18-theme-store.md`'s phase A is CLOSED: all ten tasks, its boundary, the final whole-branch review, one fix round and a scoped re-review that returned all four findings addressed with no new defects — so the spec itself is now the goal's last open item, and it is the user's to review.** Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), and [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
-- **Active plan:** `2026-10-18-theme-store.md` — **phase A only**; B–G each need their own plan, and G comes before C. [plan](docs/superpowers/plans/2026-10-18-theme-store.md), [spec](docs/superpowers/specs/2026-10-12-theme-store-design.md). Its ten tasks each passed a task review, its boundary has run, and its final whole-branch review's one fix round (`b561dcaf`) was re-reviewed as **all four findings addressed, no new defects**; only the close and the deletion of its SDD workspace remain.
+- **No plan is active.** `2026-10-18-theme-store.md`'s **phase A is closed** — ten task reviews, the boundary, the final whole-branch review, one fix round (`b561dcaf`) and a scoped re-review returning **all four findings addressed, no new defects**. [plan](docs/superpowers/plans/2026-10-18-theme-store.md), [spec](docs/superpowers/specs/2026-10-12-theme-store-design.md), rulings **R1–R171** in `.superpowers/sdd/2026-10-18-theme-store/progress.md`, which is **kept rather than deleted** (R171).
 - **Completed and archived:** [per-display themes](docs/superpowers/plans/archive/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md) — eight phases, the boundary's four browser claims with red proofs, the final review's seventeen acceptance conditions, and one fix round; rulings R1–R98 in `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`. No seat is running.
 - **The close records two named exceptions, never a clean gate**: `design:check` is red on a player file this plan introduced (`vg-626`, issue 36), and the surface the spec hands to the store spec — creating a local display and turning on sign-in registration — exists in no shipped surface (`vg-628`, issue 38).
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
@@ -26,11 +26,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Next
 
-1. **Close the theme-store plan**: its review loop is done, so the next step is the close and the deletion of `.superpowers/sdd/2026-10-18-theme-store/`.
-2. **Before that deletion, anything durable that lives only in the ledger must reach `docs/` or the register** — rulings R1–R166, the A.10 route correction (R161) and the boundary's evidence are the ones to check.
-3. **`vg-633` is ruled (R116) and archived `verified`**, and **R161 corrects A.10's route fact**: the chooser is `library.html` served at `/`, not a `/library` route.
-4. Decide whether `vg-626` (the red `design:check`) blocks the store plan's close as it did the per-display one; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
-5. Resume the drain at Task 23.4 when the store plan stops; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
+1. **Choose the next plan, because none is active**: the store spec's B–G each need their own plan (G before C), the backlog drain resumes at Task 23.4, and the panel work is queued behind them.
+2. **The theme-store spec is the goal's last open item, and it is the user's**: `docs/superpowers/specs/2026-10-12-theme-store-design.md` awaits review, and that review gates B–G.
+3. **R171 keeps `.superpowers/sdd/2026-10-18-theme-store/`** — 162 KB of rulings R1–R171 that nothing else records — so the plan closes without the deletion `STATUS.md` previously promised; all 28 prior workspaces survive too.
+4. Decide whether `vg-626` (the red `design:check`) blocks the next plan as it did the per-display close; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
+5. Resume the drain at Task 23.4; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 
 ## Blockers / unverified
 
