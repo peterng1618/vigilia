@@ -81,6 +81,13 @@ export class ThemeValidationError extends Error {
  * the page's question and not this seam's. The default is not a row — it is the
  * theme a display holding none of its own falls to — so it travels beside these.
  */
+/** The key `assign` takes for the theme a display holding no choice of its own
+ *  falls to. The host owns this literal — `packages/host/src/settings/displays.ts`'s
+ *  `DEFAULT_DISPLAY` — and this package does not depend on that one, so this is
+ *  the editor's single copy of the string, beside the interface that documents
+ *  the same key. */
+export const DEFAULT_DISPLAY_KEY = "default";
+
 export interface ThemedDisplay {
   readonly id: string;
   readonly label: string;
@@ -109,14 +116,15 @@ export interface ThemeLibraryClient {
    *  cannot delete must simply not offer deletion, rather than fail at the
    *  moment the author presses the button. */
   remove?(id: string): Promise<void>;
-  /** Puts a theme on one display, or on `"default"` — what a display holding no
-   *  choice of its own falls to. */
+  /** Puts a theme on one display, or on {@link DEFAULT_DISPLAY_KEY} — what a
+   *  display holding no choice of its own falls to. */
   assign(display: string, id: string): Promise<void>;
   /** Every display this host holds with the theme it shows, and the theme a
    *  display holding none falls to. This PC is always present and always first.
    *
-   *  The default is its own field and never a row: a theme id is not a display
-   *  id, and a pseudo-row would make the two indistinguishable. */
+   *  `default` is a *theme*, not a key: {@link DEFAULT_DISPLAY_KEY} is what
+   *  `assign` takes. It is its own field and never a row, because a theme id is
+   *  not a display id and a pseudo-row would make the two indistinguishable. */
   listDisplays(): Promise<{
     readonly default: string | null;
     readonly displays: readonly ThemedDisplay[];

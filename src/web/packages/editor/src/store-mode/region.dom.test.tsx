@@ -1047,6 +1047,19 @@ function assignValue(): string {
   );
 }
 
+/** The choice's own way out, pressed: the dialog's close control, which is the
+ *  one route out of a modal that needs no Escape key (`dialog.tsx`). */
+async function closeAssign(): Promise<void> {
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        ".editor-shell-dialog-close",
+      ),
+      "the display choice's close control",
+    ).click(),
+  );
+}
+
 /** Opens the choice's own select, which is how a display is reached. */
 async function openDisplays(): Promise<void> {
   await act(async () => assignSelect().click());
@@ -1283,6 +1296,43 @@ it("reports where the theme already is as the choice's own value", async () => {
 });
 
 /**
+ * **"Nothing holds this theme" and "this theme is the default" are two states,
+ * not one rendering.** `""` is the first — the common path, every theme nothing
+ * has been assigned to — and the default's own key is the second, because the
+ * host's answer says every display with no choice of its own already gets this
+ * theme. The host's `default` field is what tells them apart, and reading `""`
+ * for both is a real answer rendered as absence.
+ */
+it("tells a theme no display holds apart from the theme that is the default", async () => {
+  const host = hostServing({
+    answer: {
+      default: null,
+      displays: [{ id: "this-pc", label: "This PC", theme: null }],
+    },
+  });
+  await mountOver(host);
+
+  await openAssign("living-room");
+  expect(
+    assignValue(),
+    "a theme no display holds of its own did not open with nothing chosen",
+  ).toBe("");
+
+  await closeAssign();
+
+  // The host's own answer now names this theme as the default.
+  host.answer = {
+    default: "living-room",
+    displays: [{ id: "this-pc", label: "This PC", theme: null }],
+  };
+  await openAssign("living-room");
+  expect(
+    assignValue(),
+    "the theme the host names as its default opened as though nothing held it",
+  ).toBe("default");
+});
+
+/**
  * **The modal's footer assign is the same route as the cell's**, because the
  * modal draws the cell's own four actions and reports them through the one
  * callback. Two answers to "what does assign mean" is the state this case
@@ -1306,6 +1356,18 @@ it("opens the same choice from the modal's own assign action", async () => {
     assignIsOpen(),
     "the modal's own assign action does not open the display choice",
   ).toBe(true);
+  // **The two dialogs never coexist.** Both are modal and portalled to `body`,
+  // and as React siblings Base UI never nests them, so each believes it is the
+  // topmost: one Escape closed both and two scrims stacked. The modal that
+  // opened the choice is gone rather than sitting under it.
+  expect(
+    itemIsOpen(),
+    "the item's own modal stayed open under the display choice",
+  ).toBe(false);
+  expect(
+    document.body.querySelectorAll(".editor-shell-dialog-overlay").length,
+    "two dialog scrims are stacked over the region",
+  ).toBe(1);
   expect(await offeredDisplays()).toEqual([
     "default",
     "this-pc",

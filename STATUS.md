@@ -18,10 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **A.8 fix round 1 moves the Host mode's status line into the shell's §7.6 strip**: `host-settings-mode/region.tsx` publishes `HostStatusLine` through a new `onStatus` prop and draws no bar of its own; `editor-shell/shell-layout.tsx` places those two strings when the mode is `this-pc` and its editor readouts otherwise.
-- **The region owns the content and the shell owns the placement**: the shell draws what the region said rather than reading the host again, and the count is the one the route answered — `null`, never `0`, when no read landed.
-- **The clock's write has its own sentence** (`savedZone`, the page's own zone wording) instead of borrowing the device save's key, and every write continuation now checks the same unmount flag the reads keep.
-- **Evidence**: 18 cases in `host-settings-mode/` and 36 in `shell-layout.dom.test.tsx`, all green; three red proofs failed their case (zone key reverted, strip restored, seam disabled) and each was restored `cmp`-identical; the unmount guard is unobservable under React 19 and no case sees it. No browser run: the served bundles predate `49df4b24`.
+- **A.9 fix round 1 makes the display choice and the item modal never coexist**: pressing *Assign to display* from the modal's footer closes that modal as the choice opens, so the two React-sibling dialogs can no longer each read as topmost — one Escape closed both and two scrims stacked.
+- **The host's `default` is read rather than discarded**: the choice opens on `"default"` when the host names this theme as its default, and on `""` only when no display holds it and it is not the default — two states that had rendered identically.
+- **`DEFAULT_DISPLAY_KEY` is the editor's one copy of the host's `"default"`**, in `theme-library-client.ts` beside the interface that documents the key; the editor does not depend on `packages/host`, so the two cannot be one constant.
+- **Evidence**: 21 cases in `region.dom.test.tsx` (20 before), 75 across `store-mode/` and `theme-library-client.test.ts`, 2071 across `packages/editor` — all green; three red proofs failed their case and each was restored `cmp`-identical. No browser run: the served bundles predate `4f82fcc3`.
 
 ## Next
 

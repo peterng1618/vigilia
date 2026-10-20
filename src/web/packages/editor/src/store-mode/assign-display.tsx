@@ -5,21 +5,22 @@ import {
   ControlSelect,
 } from "../components/ui/control-select.js";
 import { Dialog } from "../components/ui/dialog.js";
-import type {
-  ThemedDisplay,
-  ThemeLibraryClient,
+import {
+  DEFAULT_DISPLAY_KEY,
+  type ThemedDisplay,
+  type ThemeLibraryClient,
 } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import type { StoreItem } from "./local-source.js";
 
-/**
- * The key the route gives the theme a display holding no choice of its own falls
- * to (`settings/displays.ts`'s `DEFAULT_DISPLAY`). It is a real key `assign`
- * accepts, which is why it is offered as a choice — **beside** the displays and
- * never as one of them: a theme id is not a display id, and a pseudo-row would
- * make the two indistinguishable (`listDisplays`).
- */
-const DEFAULT_KEY = "default";
+/** What the host answers about the displays: the list, and the theme a display
+ *  holding none of its own falls to. Both are kept, because they are two things
+ *  the answer says and the second is what tells "nothing holds this theme" apart
+ *  from "this theme is the default". */
+type DisplayRead = {
+  readonly default: string | null;
+  readonly displays: readonly ThemedDisplay[];
+};
 
 /** A message a person can act on: the host's own words where it sent any. */
 function reason(error: unknown): string {
@@ -42,11 +43,13 @@ function reason(error: unknown): string {
  * drawn only from a read that arrived, and a read that did not is the host's
  * own refusal, printed where the choice would have been.
  *
- * **The value is where the theme already is** — the display whose own choice is
- * this theme — which is the one reading this control can make truthfully before
- * a choice. `""` is no display holding it of its own, which is not the same as
- * the default: the default is the theme a display holding none falls to, and it
- * is a choice of this control rather than a reading of it.
+ * **The value is where the theme already is**: the display whose own choice is
+ * this theme, or the host's `default` when it names this theme — the theme every
+ * display with no choice of its own gets, which the host's own answer says. `""`
+ * is the third state rather than the second: no display holds it and it is not
+ * the default, which is where every theme nothing has been assigned to opens.
+ * Reading `""` for the default too would be a real answer rendered as absence,
+ * and the two states would collapse into one rendering.
  *
  * **Nothing warns about the cost here.** The user narrowed the cost warning to
  * the host's own pages on 2026-10-18, so the per-display plan's own surface
@@ -59,11 +62,9 @@ export function AssignDisplay(props: {
 }): React.JSX.Element {
   const { item, client, onClose } = props;
 
-  /** The displays the host answered, or `undefined` until one arrives. The
-   *  dialog draws no choice before then rather than an empty one. */
-  const [answered, setAnswered] = useState<
-    readonly ThemedDisplay[] | undefined
-  >(undefined);
+  /** What the host answered, or `undefined` until an answer arrives. The dialog
+   *  draws no choice before then rather than an empty one. */
+  const [answered, setAnswered] = useState<DisplayRead | undefined>(undefined);
   /** The last refusal, in the host's own words: a read that failed or an
    *  assignment the host would not take. The two are one slot because they are
    *  one thing to the person reading it — what the host said — and they cannot
@@ -74,7 +75,7 @@ export function AssignDisplay(props: {
     let live = true;
     client.listDisplays().then(
       (read) => {
-        if (live) setAnswered(read.displays);
+        if (live) setAnswered(read);
       },
       (error: unknown) => {
         if (live) setRefusal(reason(error));
@@ -85,16 +86,20 @@ export function AssignDisplay(props: {
     };
   }, [client]);
 
-  const displays = answered ?? [];
+  const displays = answered?.displays ?? [];
   const options: readonly ControlOption[] = [
     // The default leads, as the host's own page draws it: it is what every
     // display with no choice of its own already gets, so it is the one meant
     // until another is chosen.
-    { id: DEFAULT_KEY, name: uiCopy.store.assign.default },
+    { id: DEFAULT_DISPLAY_KEY, name: uiCopy.store.assign.default },
     ...displays.map((display) => ({ id: display.id, name: display.label })),
   ];
+  // A display that holds this theme of its own is the answer; the host's
+  // `default` naming it is the next, because that is what a display with no
+  // choice of its own is served. `""` is left for neither.
   const heldBy =
-    displays.find((display) => display.theme === item.id)?.id ?? "";
+    displays.find((display) => display.theme === item.id)?.id ??
+    (answered?.default === item.id ? DEFAULT_DISPLAY_KEY : "");
 
   /** Choosing a display is the assignment. A refusal leaves the choice where it
    *  is, with the host's reason beside it, so another display can be tried;

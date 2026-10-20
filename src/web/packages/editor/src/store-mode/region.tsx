@@ -608,7 +608,16 @@ function StoreRegion(props: {
       props.onOpenTheme?.(id);
       return;
     }
-    if (action === "assign") setAssignId(id);
+    if (action === "assign") {
+      // **The choice never coexists with the modal it was opened from.** Both
+      // are modal dialogs portalled to `body`, and below they are React
+      // siblings — which Base UI's nested-dialog coordination never sees, so
+      // each believes it is the topmost: one Escape closes both, and two scrims
+      // stack. Closing the modal as the choice opens removes the pair rather
+      // than arbitrating it.
+      setOpenId(undefined);
+      setAssignId(id);
+    }
   };
 
   /** **A changed filter returns to page one** (R123). A narrower result would
