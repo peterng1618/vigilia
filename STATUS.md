@@ -18,10 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **A.5 fix round 1**: a gap stands for **two or more** pages on both arms, so a one-page hole is drawn as that page's numeral — `pageNumbers(5, 8)`, `(4, 8)` and `(5, 9)` now show every page. R119's own example is withdrawn; the ruling's prose and the plan's "never a gap adjacent to a number it stands for" govern.
-- **The rest of A.5 is as landed at `159e99da`**: the five-page window, the clamped current, the empty listing, the preference, the 76px design-language value, the copy and the component are unchanged.
-- **Concern 2 is carried to A.6, not fixed** (ruled): the labelled-row shape stands, and A.6's browser case must look at the pager's bar and say what it sees.
-- **Evidence**: the two suites 18 passed exit 0; a red proof on the final bytes (the old gap conditions restored) reddens the two corrected cases and restores byte-identical by `cmp`; `typecheck`, `biome check ..` (720 files) and `status:check` exit 0; `design:check` unchanged at its `vg-626` baseline (remainder 20, no store-mode file in it, zero violations).
+- **A.5 fix round 2**: `pageNumbers` refuses a page count that is not a whole number rather than truncating it, so `pageNumbers(1, 12.5)` answers `[]` instead of drawing a fractional numeral — one case beside the guard's own.
+- **`pager.tsx`'s comment about the one-page hole now says what the branch does**: `[1, 2]` at `start === 3`, drawn because a hole of one page is a numeral and not a gap (R121).
+- **`DESIGN.md` §5 states the 76px value and its reason and stops there** — where the label lands is A.6's browser finding, not a design-language fact yet — and two `page-size.test.ts` case names now claim only what their assertions establish (a write is dropped rather than raised).
+- **Evidence**: the two suites 19 passed exit 0; a red proof on the final bytes (the integer guard removed) reddens the fractional-total case and restores byte-identical by `cmp`; `typecheck`, `biome check ..` (720 files) and `status:check` exit 0; `design:check` unchanged at its `vg-626` baseline (remainder 20, no store-mode file in it, zero violations).
 
 ## Next
 

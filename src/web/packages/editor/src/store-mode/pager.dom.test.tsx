@@ -232,6 +232,19 @@ it("numbers nothing when there is nothing to page", () => {
 });
 
 /**
+ * A page count that is not a whole number is refused rather than truncated
+ * (`AGENTS.md`: refuse invalid numeric input rather than coercing it). Half a
+ * page is not a page, and answering 12 for 12.5 hides the caller's bug behind a
+ * numeral nothing could draw.
+ */
+it("numbers nothing for a page count that is not a whole number", () => {
+  expect(pageNumbers(1, 12.5)).toEqual([]);
+  expect(pageNumbers(6, 0.5)).toEqual([]);
+  expect(pageNumbers(1, Number.NaN)).toEqual([]);
+  expect(pageNumbers(1, Number.POSITIVE_INFINITY)).toEqual([]);
+});
+
+/**
  * The current page carries the store's chosen treatment — `--stage` behind a
  * `--text` numeral, the same one the halves and the facet rows take — and never
  * an accent fill (§4).

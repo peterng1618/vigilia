@@ -112,7 +112,7 @@ describe("page size preference", () => {
 
   /** No storage at all is not a failure: a viewer with one reads the default,
    *  and a write is dropped rather than raised into the render that made it. */
-  it("reads the default and writes nothing with no storage", () => {
+  it("reads the default and drops the write with no storage", () => {
     const preference = createPageSizePreference();
 
     expect(preference.read()).toBe(DEFAULT_PAGE_SIZE);
@@ -122,7 +122,7 @@ describe("page size preference", () => {
     }).not.toThrow();
   });
 
-  it("reads the default and writes nothing when storage refuses", () => {
+  it("reads the default and drops the write when storage refuses", () => {
     const preference = preferenceOver(blocked());
 
     expect(preference.read()).toBe(DEFAULT_PAGE_SIZE);

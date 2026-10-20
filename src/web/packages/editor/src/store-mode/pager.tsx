@@ -73,14 +73,18 @@ function pagesIn(from: number, to: number): number[] {
  * `1, "gap", 8, …`, because that hole is three pages wide.
  *
  * It is pure and total: a page outside the listing is clamped into it, so a
- * number a filter left behind still numbers something, and a listing with no
- * pages numbers nothing rather than inventing page one.
+ * number a filter left behind still numbers something, and a total that is not a
+ * whole page count — nothing, less than one, or fractional — numbers nothing
+ * rather than inventing page one or drawing half of one.
  */
 export function pageNumbers(
   current: number,
   total: number,
 ): readonly (number | "gap")[] {
-  if (!Number.isFinite(total) || total < 1) return [];
+  // A page count is a whole number, and half a page is not a page: a fractional
+  // `total` is refused rather than truncated, which would answer 12 for 12.5 and
+  // hide the caller's bug.
+  if (!Number.isInteger(total) || total < 1) return [];
   if (total <= NO_GAP_TOTAL) return pagesIn(1, total);
 
   const page = Math.min(Math.max(Math.trunc(current) || 1, 1), total);
@@ -88,10 +92,10 @@ export function pageNumbers(
   const end = start + PAGE_WINDOW - 1;
 
   const shown: (number | "gap")[] = [];
-  // The pages between the first and the window: one page is drawn, two or more
-  // are the gap. `start` is at least 1, so `pagesIn(1, start - 1)` is empty when
-  // the window already holds page 1 and holds exactly one page when `start` is 2
-  // or 3 — the hole of one, which is drawn.
+  // The pages before the window: empty when it already holds page 1, page 1
+  // alone at `start === 2`, and `[1, 2]` at `start === 3` — both of those drawn,
+  // because a hole of one page is a numeral and not a gap (R121). Two or more is
+  // the gap.
   if (start > 3) shown.push(1, "gap");
   else shown.push(...pagesIn(1, start - 1));
   shown.push(...pagesIn(start, end));
