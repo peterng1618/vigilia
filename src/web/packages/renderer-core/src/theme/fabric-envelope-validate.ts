@@ -699,6 +699,7 @@ function scalarPairs(
   family: ChartFamily,
 ): readonly (readonly [string, string])[] {
   if (family === "pie") return [["innerRadiusPercent", "outerRadiusPercent"]];
+  // Both pairs are top-level today; one that gains a `path` must be read through it.
   const properties = new Set(
     CHART_SETTINGS_FIELDS[family].map((descriptor) => descriptor.property),
   );

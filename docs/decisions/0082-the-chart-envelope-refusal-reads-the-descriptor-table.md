@@ -168,16 +168,26 @@ Measured on this box, 2026-10-21, by building `renderer-core` to `dist`
 `pie {total:{kind:"fixed",value:null}}`, `settings: ["windowSeconds"]`.
 
 **Eighteen `theme.json` documents exist on disk under the repo** (excluding
-`node_modules`). Three carry a chart and read `ok: true` today —
-`src/web/.e2e-display-app/themes/vigilia-new-theme/theme.json`,
-`src/web/.e2e-host-app/themes/e2e-chart/theme.json` and
-`.e2e-host-app/themes/vigilia-demo-dashboard/theme.json`. Four read `ok: false`
-today for reasons that have nothing to do with chart settings (`metadata.locale`,
-`artboard.barColor`, `backgroundMedia.fit`), so they are the control: the change
-must add no chart-settings issue to any of them. The remaining eleven carry no
-chart and are unaffected. Every chart settings bag on disk is inside the
+`node_modules`); the re-run partitions them **thirteen `ok: true` and five
+`ok: false`**. **Four carry a chart**, and the chart is not what decides them:
+**two read `ok: true`** —
+`src/web/.e2e-display-app/themes/vigilia-new-theme/theme.json` and
+`src/web/.e2e-host-app/themes/e2e-chart/theme.json` — and **two read `ok: false`
+already, before this change**, the two `vigilia-demo-dashboard/theme.json`
+copies (`.e2e-host-app/themes/` and
+`.superpowers/sdd/2026-09-29-author-journey-proof/p1-app/themes/`), each on
+`artboard.barColor` and `backgroundMedia.fit` (the `p1-app` copy also on
+`metadata.locale` and a missing `themeLanguage`). Those five red documents are
+the control: the change must add no chart-settings issue to any of them, and it
+does not — every issue list is identical before and after. The remaining
+thirteen documents carry no chart. Every chart settings bag on disk is inside the
 descriptor table's own key set and inside every descriptor's range — which is
 what the binding constraint below turns into a re-runnable check.
+
+*(This paragraph is the corrected record. The partition it replaced — "three
+carry a chart and read `ok: true` … Four read `ok: false`" — is also in
+`1d26aac5`'s commit body, which cannot be amended; this note is where the truth
+lives.)*
 
 ## Decision
 
@@ -215,6 +225,12 @@ Four rules the implementation settles, and why each is not the obvious reading:
   not by choosing families. (The deleted v1 validator held `gauge`/`bar`
   `max > min` and said nothing about `line`; this is wider than that rule, and
   the binding constraint below is what licensed the widening.)
+  **Equality is refused too** — the test is `low >= high`, so `{min: 0, max: 0}`
+  is refused although it loads today. That is deliberate and it is the rule as
+  shipped: a zero-span range is degenerate, nothing can be drawn against it, and
+  the ruling's "at or above" wording, written for the pie clause, is the same
+  fact for the same reason. The binding-constraint sweep above covers it — no
+  document on disk carries an equal pair.
 - **The allowed key set is derived, not listed.** A chart's settings keys are
   `(descriptor.path ?? [descriptor.property])[0]` over both tables — which is how
   `total` and `animation` (nested, dotted `property`) stay in the set without the
