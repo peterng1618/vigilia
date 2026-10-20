@@ -619,6 +619,20 @@ it("asks for the theme as a document from the cell's open action and the modal's
     opened,
     "the modal's own open action does not take the route the cell's does",
   ).toEqual(["porch-strip", "porch-strip"]);
+  // **And it leaves this surface where it was** (`item-modal.tsx`): loading a
+  // document is a fact about the document, so the surface someone is reading
+  // stays on screen — closing it here would be the modal deciding something the
+  // region's own `openId` owns.
+  expect(
+    itemIsOpen(),
+    "the modal's own open action closed the item's own surface",
+  ).toBe(true);
+  expect(
+    document.body
+      .querySelector("[data-vigilia-store-item-name]")
+      ?.textContent?.trim(),
+    "the modal's own open action moved the item's own surface",
+  ).toBe("Porch strip");
 });
 
 /**

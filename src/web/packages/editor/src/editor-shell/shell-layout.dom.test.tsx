@@ -1374,6 +1374,43 @@ it("teaches a File row exactly the chord whose id runs the call that row runs", 
   layout.destroy();
 });
 
+/**
+ * **The File row reaches the import** — `file.open` → `importPackage()` → the
+ * package picker, which is the product's only import trigger now that the row
+ * is named for what it does.
+ *
+ * The row is clicked the way a person clicks it, File then the row, so this is
+ * the wiring rather than the table: the case above proves the chord and the row
+ * name the same id, and this proves the row runs the call that id reaches. It
+ * matters more after A.7b than before it, because the row no longer opens a
+ * document and nothing else imports one.
+ */
+it("runs the import from the File row, and nothing else", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const session = facade();
+  layout.setBridge(bridgeStub({ session }), undefined);
+  await Promise.resolve();
+
+  await act(async () => menubarEntry(root, uiCopy.menus.file).click());
+  const row = menuItems().find((item) =>
+    (item.textContent ?? "").startsWith(uiCopy.file.importPackage),
+  );
+  if (row === undefined) throw new Error("No Import package row.");
+  await act(async () => row.click());
+
+  expect(
+    session.importPackage,
+    "the File row does not reach the import",
+  ).toHaveBeenCalledTimes(1);
+  expect(
+    session.openLibrary,
+    "the File row imported and opened a library theme as well",
+  ).not.toHaveBeenCalled();
+
+  layout.destroy();
+});
+
 /** The three mode segments, in the order the header draws them. */
 function modeSegments(root: HTMLElement): readonly HTMLButtonElement[] {
   return Array.from(

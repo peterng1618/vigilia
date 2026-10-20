@@ -670,7 +670,7 @@ function StoreRegion(props: {
           <Gallery
             items={body.items}
             onAction={onAction}
-            onOpenItem={(id) => setOpenId(id)}
+            onOpenItem={setOpenId}
           />
         ) : null}
       </div>

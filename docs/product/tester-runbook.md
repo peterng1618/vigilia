@@ -211,7 +211,7 @@ this pass:
 - **Host/settings:** `/settings`; each drive dropdown; the active theme; the
   pairing link.
 - **Packaging:** `Release package` (answer `patch`), `Save package`,
-  `Open package`, and the export→import round trip.
+  `Import package`, and the export→import round trip.
 
 Read [`probe-notes.md`](probe-notes.md) before trusting any "nothing happened".
 

@@ -1806,12 +1806,15 @@ test("the store lists a library, opens an item, and comes back to the same page"
  * happen: an open that replaced the document with the same document would read
  * the same either way.
  *
- * **The base is read through the bridge, and it is the one browser-visible
- * consequence of it travelling with the document** (`vg-642`).
- * `publishableDocument` answers only for a document the library holds, so it is
- * `undefined` over the template the editor boots with and names the theme once
- * that theme is open — a save with no base is ungated, which no readout of the
- * document's own identity would show.
+ * **What the base reading here shows is that *a* base exists, not which one.**
+ * `publishableDocument` answers with the document envelope's own id and only
+ * for a document the library holds, so it is `undefined` over the template the
+ * editor boots with and names the theme once that theme is open. A base moved
+ * onto another stored id would read the same; which base travels is proved
+ * where it is set, in `theme-library-manager/index.test.ts`, by the `opened.base`
+ * handed to `onOpenTheme`. What this case adds is the one browser-visible
+ * consequence: a save with no base is ungated (`vg-642`), and no readout of the
+ * document's own identity would show that.
  */
 test("the store opens a library theme as the document, from the cell and its footer", async ({
   page,
