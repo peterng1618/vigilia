@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope, FacetRecord } from "@vigilia/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import { bootTheme } from "./boot-theme.js";
 import {
@@ -42,6 +42,18 @@ const SAVED: FabricThemeEnvelope = {
 };
 
 const content = { envelope: SAVED, assets: {} };
+
+/** The record the host derives for every listed theme. These cases read the id
+ *  and the modified time and never the record, so one value stands in for all. */
+const FACETS: FacetRecord = {
+  author: undefined,
+  colourMode: "unclassified",
+  sensors: [],
+  orientation: "landscape",
+  aspect: "16:9",
+  width: 1920,
+  height: 1080,
+};
 
 /** The content of an `opened` outcome, or a failure the case reads as its own
  *  — the outcome is discriminated, so a test has to say which kind it expected
@@ -150,6 +162,7 @@ describe("the editor on a URL that names a theme", () => {
           id: "someone-elses-work",
           name: "Last",
           updatedAt: "2026-10-01T09:00:00.000Z",
+          facets: FACETS,
         },
       ]),
       open: vi.fn(async () => {
@@ -185,7 +198,11 @@ describe("the editor on a URL that names a theme", () => {
     // entry without one is not the author's own work however it is named.
     const client = clientOpening(content);
     client.list = vi.fn(async () => [
-      { id: "vigilia-starter-template", name: "Starter — System dashboard" },
+      {
+        id: "vigilia-starter-template",
+        name: "Starter — System dashboard",
+        facets: FACETS,
+      },
     ]);
 
     await expect(bootTheme("", client)).resolves.toEqual({ kind: "none" });
@@ -228,13 +245,15 @@ describe("the editor on a URL that names nothing", () => {
         id: "edited-yesterday",
         name: "Older",
         updatedAt: "2026-09-30T09:00:00.000Z",
+        facets: FACETS,
       },
       {
         id: "edited-by-hand",
         name: "Last",
         updatedAt: "2026-10-01T09:00:00.000Z",
+        facets: FACETS,
       },
-      { id: "vigilia-starter-template", name: "Starter" },
+      { id: "vigilia-starter-template", name: "Starter", facets: FACETS },
     ]);
 
     const opened = openedContent(await bootTheme("", client));
@@ -252,11 +271,13 @@ describe("the editor on a URL that names nothing", () => {
         id: "edited-by-hand",
         name: "Last",
         updatedAt: "2026-10-01T09:00:00.000Z",
+        facets: FACETS,
       },
       {
         id: "edited-yesterday",
         name: "Older",
         updatedAt: "2026-09-30T09:00:00.000Z",
+        facets: FACETS,
       },
     ]);
 
@@ -289,6 +310,7 @@ describe("the editor on a URL that names nothing", () => {
         id: "edited-by-hand",
         name: "Last",
         updatedAt: "2026-10-01T09:00:00.000Z",
+        facets: FACETS,
       },
     ]);
     client.open = vi.fn(async (id: string) => {

@@ -59,10 +59,23 @@ function remover(
   return own.remove === undefined ? undefined : own.remove.bind(own);
 }
 
+/**
+ * What the chooser reads off a template: the id it is opened by and the label
+ * it is shown under.
+ *
+ * Not a `ThemeLibraryEntry`: a template has no document in the host's library,
+ * so it has no derived record and no modified time, and the chooser reads
+ * neither. The two lists meet on this rather than on the whole entry.
+ */
+export interface TemplateEntry {
+  readonly id: string;
+  readonly name: string;
+}
+
 /** The id of the first option the list offers, which is the one a native
  *  `<select>` would have selected. */
 function firstId(
-  templates: readonly ThemeLibraryEntry[],
+  templates: readonly TemplateEntry[],
   themes: readonly ThemeLibraryEntry[],
 ): string {
   return templates[0]?.id ?? themes[0]?.id ?? "";
@@ -89,7 +102,7 @@ export function ThemeLibraryChooser({
   settle,
 }: {
   readonly themes: readonly ThemeLibraryEntry[];
-  readonly templates: readonly ThemeLibraryEntry[];
+  readonly templates: readonly TemplateEntry[];
   readonly client?: ThemeLibraryClient | undefined;
   readonly settle: ModalSettle<ThemeLibraryChoice>;
 }): React.JSX.Element {
@@ -264,7 +277,7 @@ export function ThemeLibraryChooser({
  *  theme carries its id because two themes can share a display name; a template
  *  has one, so the id is noise there. */
 function libraryOptions(
-  templates: readonly ThemeLibraryEntry[],
+  templates: readonly TemplateEntry[],
   themes: readonly ThemeLibraryEntry[],
 ): readonly ControlOption[] {
   return [
@@ -348,7 +361,7 @@ export function ThemeConflict({
  */
 export function promptThemeSelection(
   themes: readonly ThemeLibraryEntry[],
-  templates: readonly ThemeLibraryEntry[] = [STARTER_TEMPLATE],
+  templates: readonly TemplateEntry[] = [STARTER_TEMPLATE],
   options?: { readonly client?: ThemeLibraryClient },
 ): Promise<ThemeLibraryChoice | undefined> {
   return openModal((settle) =>

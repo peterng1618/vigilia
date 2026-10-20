@@ -262,6 +262,73 @@ describe("ThemeStore", () => {
     expect(byId.get("plain")?.costs).toEqual([]);
   });
 
+  it("carries each theme's facets on the entry it already built", async () => {
+    const store = createThemeStore(tmpDir);
+    // A portrait board on a dark ground, which is the whole point: the record
+    // is read off this theme's own document, not off the one beside it.
+    await store.write("night-sky", {
+      envelope: {
+        ...envelopeFor("night-sky", "Night Sky"),
+        artboard: {
+          width: 1080,
+          height: 1920,
+          background: { ref: "palette.night" },
+        },
+        globals: {
+          palette: {
+            // The immutable fallback every palette must carry.
+            none: {
+              name: "None",
+              value: { kind: "solid", color: "transparent" },
+            },
+            night: {
+              name: "Night",
+              value: { kind: "solid", color: "#101014" },
+            },
+          },
+        },
+      },
+      assets: {},
+    });
+    await store.write("plain", {
+      envelope: envelopeFor("plain", "Plain"),
+      assets: {},
+    });
+
+    const list = await store.list();
+    const byId = new Map(list.map((entry) => [entry.id, entry]));
+
+    expect(byId.get("night-sky")?.facets).toEqual({
+      author: "Ada",
+      colourMode: "dark",
+      sensors: [],
+      orientation: "portrait",
+      // The published bucket for both orientations, which is what a 9:16
+      // artboard reads as.
+      aspect: "16:9",
+      width: 1080,
+      height: 1920,
+    });
+    // A board with no ground at all is one the record will not classify, and a
+    // landscape 1920×1080 is exactly 16:9.
+    expect(byId.get("plain")?.facets).toEqual({
+      author: "Ada",
+      colourMode: "unclassified",
+      sensors: [],
+      orientation: "landscape",
+      aspect: "16:9",
+      width: 1920,
+      height: 1080,
+    });
+    // The line's own fields are untouched by the new one.
+    expect(byId.get("night-sky")).toMatchObject({
+      id: "night-sky",
+      name: "Night Sky",
+      author: "Ada",
+    });
+    expect(typeof byId.get("night-sky")?.updatedAt).toBe("string");
+  });
+
   /**
    * The bare mount's answer has to be reproducible, and a tie is ordinary here
    * rather than exotic: the e2e fixtures seed the whole library in one pass and

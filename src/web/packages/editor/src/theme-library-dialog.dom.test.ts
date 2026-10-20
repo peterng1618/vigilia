@@ -9,10 +9,14 @@
  * controls rather than a native `<select>`.
  */
 
+import type { FacetRecord } from "@vigilia/renderer-core";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
-import type { ThemeLibraryClient } from "./theme-library-client.js";
+import type {
+  ThemeLibraryClient,
+  ThemeLibraryEntry,
+} from "./theme-library-client.js";
 import {
   promptThemeConflict,
   promptThemeSelection,
@@ -49,9 +53,25 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** The record the host derives for every listed theme; no case here reads it. */
+const FACETS: FacetRecord = {
+  author: undefined,
+  colourMode: "unclassified",
+  sensors: [],
+  orientation: "landscape",
+  aspect: "16:9",
+  width: 1920,
+  height: 1080,
+};
+
+/** A stored theme as these cases hand one to the chooser. */
+function listedTheme(id: string, name: string): ThemeLibraryEntry {
+  return { id, name, updatedAt: "", facets: FACETS };
+}
+
 /** Opens the chooser the way the session opens it. */
 function open(
-  themes: readonly { id: string; name: string; updatedAt: string }[],
+  themes: readonly ThemeLibraryEntry[],
   client?: ThemeLibraryClient,
 ): Promise<unknown> {
   let pending: Promise<unknown> | undefined;
@@ -70,7 +90,7 @@ function open(
 /** Opens the chooser, picks an option and presses Open — one journey. */
 async function choose(
   value: string,
-  themes: readonly { id: string; name: string; updatedAt: string }[] = [],
+  themes: readonly ThemeLibraryEntry[] = [],
 ): Promise<unknown> {
   const pending = open(themes);
   await chooseIn("theme", value);
@@ -90,7 +110,7 @@ function topDialog(): HTMLElement {
 
 describe("the library chooser", () => {
   it("lists the starter as a template and the author's themes as theirs", async () => {
-    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }]);
+    const pending = open([listedTheme("mine", "My theme")]);
     await openControl("theme");
 
     // A template is something the product offers; a saved theme is something the
@@ -112,7 +132,7 @@ describe("the library chooser", () => {
       id: STARTER_TEMPLATE.id,
     });
     await expect(
-      choose("mine", [{ id: "mine", name: "My theme", updatedAt: "" }]),
+      choose("mine", [listedTheme("mine", "My theme")]),
     ).resolves.toEqual({
       kind: "theme",
       id: "mine",
@@ -129,7 +149,7 @@ describe("the library chooser", () => {
 
   it("offers a delete only for a theme, and never for a template", async () => {
     const removed: string[] = [];
-    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+    const pending = open([listedTheme("mine", "My theme")], {
       remove: async (id: string) => {
         removed.push(id);
       },
@@ -154,7 +174,7 @@ describe("the library chooser", () => {
 
   it("confirms by name before removing, and the row goes afterwards", async () => {
     const removed: string[] = [];
-    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+    const pending = open([listedTheme("mine", "My theme")], {
       remove: async (id: string) => {
         removed.push(id);
       },
@@ -185,7 +205,7 @@ describe("the library chooser", () => {
 
   it("keeps the theme when the author backs out of the confirmation", async () => {
     const removed: string[] = [];
-    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+    const pending = open([listedTheme("mine", "My theme")], {
       remove: async (id: string) => {
         removed.push(id);
       },
@@ -206,7 +226,7 @@ describe("the library chooser", () => {
 
   it("dismisses only the confirmation on Escape, and leaves the chooser's promise open", async () => {
     const removed: string[] = [];
-    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+    const pending = open([listedTheme("mine", "My theme")], {
       remove: async (id: string) => {
         removed.push(id);
       },
@@ -258,7 +278,7 @@ describe("the library chooser", () => {
   });
 
   it("says why a removal failed, and keeps the theme listed", async () => {
-    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+    const pending = open([listedTheme("mine", "My theme")], {
       remove: async () => {
         throw new Error("This PC has no trash command (gio, trash-put)");
       },

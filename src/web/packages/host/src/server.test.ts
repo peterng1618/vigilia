@@ -453,6 +453,18 @@ describe("Host theme routes", () => {
         // What the theme costs a display, read from the document the listing
         // already parsed: this one carries no video background and no glass.
         costs: [],
+        // And what it *is*, derived from the same document — which is the whole
+        // claim of the task: the route already answers `themeStore.list()`, so
+        // the record travels with no change to `server.ts`.
+        facets: {
+          author: undefined,
+          colourMode: "unclassified",
+          sensors: [],
+          orientation: "landscape",
+          aspect: "16:9",
+          width: 1920,
+          height: 1080,
+        },
       },
     ]);
 

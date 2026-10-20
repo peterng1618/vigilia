@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The facet record lands** (A.3): `renderer-core/src/theme/facet-record.ts` derives a theme's author, colour mode, sensors, orientation, aspect bucket and pixel size from the envelope alone, in the one layer both the host and a catalogue Action can import — nothing authored, nothing stored in `theme.json`.
-- **Colour mode is a perceptual band, not a threshold**: the ground is resolved by the document's own `resolveStyleValue`, read as WCAG luminance through CIE `L*`, with `L*` 40–60 `unclassified`; a gradient's stops are averaged in `L*`, so a black-to-white ground is `unclassified` rather than `light`.
-- **Aspect is bucketed in log space at 0.005** over the seven published ratios (portrait reads its landscape inversion), and a 2.35:1 artboard falls to `other` rather than 21:9; orientation is exact equality; unclassified is the answer for media behind the board, an undeclared reference and a colour `parseHex` rejects, never a guess.
-- **Evidence**: `facet-record.test.ts` 10 passed exit 0, red first (module absent, exit 1) and red twice with the fix disabled (tolerance 0.005→0.05 → `expected '21:9' to be 'other'`; the band widened to 0/100 → 3 cases), each restored green; `npm run typecheck` exit 0; `npx biome check ..` exit 0 after `--write`; decision `0077` records the seven rungs and claims `renderer-core/src/theme/`.
-- **Not wired, and not this task's**: A.2's `STORE_FACETS` still carries `options: []` — A.4/A.5 pass the record's values in, and the editor package is untouched here.
+- **The listing carries the facet record** (A.4a): the host store's `entryFor` derives `facetRecordOf(envelope)` beside the `performanceCostsOf` call it already made, so `ThemeStoreEntry.facets` rides the listing route with no second read and no cache.
+- **The editor's `ThemeLibraryEntry` declares `facets`, `author` and `thumbnailUrl`**, the last built in the client's own `list()` because the client is what knows its base URL (`/api/themes/<id>/thumbnail`).
+- **A template is not a listed theme**: the chooser's templates take their own `TemplateEntry` — a template has no document, so no derived record — while the stored-theme fixtures in the tests gained the record the host now sends.
+- **Evidence**: `store.test.ts` + `theme-library-client.test.ts` 76 passed exit 0, red first with `facets` removed from `entryFor` and with the thumbnail mapping reverted (the two new cases red, exit 1), each restored byte-identical (`cmp`) and green; `npm run typecheck` exit 0; `npx biome check ..` exit 0; `npm run status:check` exit 0.
+- **Nothing consumes the record yet**: `host/src/server.ts` is untouched because the route already answers `themeStore.list()`, and A.4b builds the source and the gallery on this.
 
 ## Next
 

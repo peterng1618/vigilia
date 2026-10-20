@@ -27,6 +27,7 @@
  * The table's own rules are `ui-copy.test.ts`, and the imperative panels and
  * the picker they mount are `ui-copy-panels.test.ts`.
  */
+import type { FacetRecord } from "@vigilia/renderer-core";
 import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -219,6 +220,18 @@ interface ReadSurface {
   }>;
 }
 
+/** The record the host derives for every listed theme. The walk reads words and
+ *  never the record, so one value stands in for all of them. */
+const FACETS: FacetRecord = {
+  author: undefined,
+  colourMode: "unclassified",
+  sensors: [],
+  orientation: "landscape",
+  aspect: "16:9",
+  width: 1920,
+  height: 1080,
+};
+
 /** The four surfaces `vg-418` found unmounted, each mounted here. They portal to
  *  `body` — a `Dialog` and a `Popover` both do — so the read is over `body`
  *  rather than the mount point, which holds none of the words. */
@@ -261,7 +274,7 @@ const READ_SURFACES: readonly ReadSurface[] = [
       await act(async () =>
         root.render(
           createElement(ThemeLibraryChooser, {
-            themes: [{ id: "mine", name: "My theme" }],
+            themes: [{ id: "mine", name: "My theme", facets: FACETS }],
             templates: [STARTER_TEMPLATE],
             settle: answeringSettle(),
           }),

@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {
   type FabricThemeEnvelope,
+  type FacetRecord,
+  facetRecordOf,
   type PerformanceCost,
   performanceCostsOf,
   type ValidationIssue,
@@ -30,6 +32,10 @@ interface ThemeStoreEntry {
   /** What this theme will cost a display, read from the document this entry
    *  was already built from — the assignment surface says it before the press. */
   readonly costs: readonly PerformanceCost[];
+  /** What this theme *is* — author, colour mode, sensors, shape — derived from
+   *  the same envelope, so a reader filtering the library never opens a theme
+   *  to ask. Required, because every entry here was built from a document. */
+  readonly facets: FacetRecord;
 }
 
 interface ThemeStoreRecord extends ThemeStoreEntry {
@@ -563,6 +569,7 @@ async function entryFor(
       // From the envelope this entry was already handed, so the listing pays
       // nothing new for it: no asset is opened and no second read is made.
       costs: performanceCostsOf(envelope),
+      facets: facetRecordOf(envelope),
     };
   } catch {
     return undefined;

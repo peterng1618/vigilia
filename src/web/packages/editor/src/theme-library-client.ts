@@ -1,5 +1,6 @@
 import type {
   FabricThemeEnvelope,
+  FacetRecord,
   ValidationIssue,
 } from "@vigilia/renderer-core";
 
@@ -15,6 +16,15 @@ export interface ThemeLibraryEntry {
   /** The host store's own mtime. A template is not a stored file and has none,
    *  which is what keeps it out of a count of the author's saved themes. */
   readonly updatedAt?: string;
+  /** The document's author, when it declares one. */
+  readonly author?: string;
+  /** What the theme *is*, derived by the host from the document it listed —
+   *  required, because every entry here is a stored theme and every stored
+   *  theme has a document to derive it from. */
+  readonly facets: FacetRecord;
+  /** Where the theme's picture is served, built here because this is what
+   *  knows the host's base URL. Absent from a producer that has no host. */
+  readonly thumbnailUrl?: string;
 }
 
 export interface ThemeLibraryContent {
@@ -154,18 +164,22 @@ export function createThemeLibraryClient(options?: {
       const data = (await response.json()) as
         | { themes?: readonly ThemeLibraryEntry[] }
         | readonly ThemeLibraryEntry[];
-      if (Array.isArray(data)) {
-        return data;
-      }
-      if (
-        typeof data === "object" &&
-        data !== null &&
-        "themes" in data &&
-        Array.isArray(data.themes)
-      ) {
-        return data.themes;
-      }
-      return [];
+      const entries = Array.isArray(data)
+        ? data
+        : typeof data === "object" &&
+            data !== null &&
+            "themes" in data &&
+            Array.isArray(data.themes)
+          ? data.themes
+          : [];
+      // The picture's address is built here, because this is the thing that
+      // knows the host's base URL and the route `saveThumbnail` writes to. A
+      // theme with no picture yet is a 404 at that address, which is the
+      // reader's to show or not.
+      return entries.map((entry) => ({
+        ...entry,
+        thumbnailUrl: `${baseUrl}/api/themes/${encodeURIComponent(entry.id)}/thumbnail`,
+      }));
     },
 
     async open(id: string): Promise<ThemeLibraryContent> {

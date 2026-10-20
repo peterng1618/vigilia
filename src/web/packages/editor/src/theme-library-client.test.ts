@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope, FacetRecord } from "@vigilia/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import {
   createThemeLibraryClient,
@@ -14,6 +14,17 @@ const envelope: FabricThemeEnvelope = {
   artboard: { width: 1920, height: 1080 },
   metadata: { name: "Living Room", themeLanguage: "en" },
   scene: { version: "7.4.0", objects: [] },
+};
+
+/** What the host derives for a listed theme, carried through unchanged. */
+const FACETS: FacetRecord = {
+  author: "Ada",
+  colourMode: "dark",
+  sensors: [],
+  orientation: "landscape",
+  aspect: "16:9",
+  width: 1920,
+  height: 1080,
 };
 
 /** What a request body costs on the wire, which is the only size that matters. */
@@ -138,7 +149,10 @@ describe("ThemeLibraryClient", () => {
     expect(bytes(full)).toBeGreaterThan(448 * 1024);
   });
 
-  it("lists themes with metadata", async () => {
+  it("lists themes with their metadata, their record and their picture", async () => {
+    // The route's own shape: the author and the derived record travel with the
+    // line, and the picture's address is built here because the client is what
+    // knows the host's base URL.
     const mockFetch = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -146,7 +160,9 @@ describe("ThemeLibraryClient", () => {
             {
               id: "living-room",
               name: "Living Room",
+              author: "Ada",
               updatedAt: "2026-09-19T00:00:00.000Z",
+              facets: FACETS,
             },
           ],
         }),
@@ -155,6 +171,7 @@ describe("ThemeLibraryClient", () => {
     });
 
     const client = createThemeLibraryClient({
+      baseUrl: "/host",
       fetch: mockFetch as unknown as typeof fetch,
     });
     const list = await client.list();
@@ -162,7 +179,10 @@ describe("ThemeLibraryClient", () => {
       {
         id: "living-room",
         name: "Living Room",
+        author: "Ada",
         updatedAt: "2026-09-19T00:00:00.000Z",
+        facets: FACETS,
+        thumbnailUrl: "/host/api/themes/living-room/thumbnail",
       },
     ]);
   });
