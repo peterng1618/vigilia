@@ -517,6 +517,21 @@ export const uiCopy = {
         Record<string, string>
       >,
     },
+    /** The pager (`2026-10-12-theme-store-design.md`, "The gallery, and
+     *  paging"): the per-page well, the two steps and the numerals' names.
+     *
+     *  **A numeral's name composes the concept around it**, the way
+     *  `statusBar.objects` composes a count: a bare `6` is announced as a
+     *  number and says nothing about what pressing it does. The sizes
+     *  themselves are numbers and stay data — `all` is the one entry in the
+     *  well that is a word, and the drawing's own word for it. */
+    pager: {
+      perPage: "Per page",
+      all: "All",
+      previous: "Previous page",
+      next: "Next page",
+      page: (page: number): string => `Page ${page}`,
+    },
   },
   /** The library chooser. Its two groups say which kind of thing a row is: a
    *  template the product offers, or a theme the author made and can delete. */

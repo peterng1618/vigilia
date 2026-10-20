@@ -6,6 +6,7 @@ import {
   ChartPie,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Download,
   Ellipse,
@@ -265,6 +266,13 @@ export const TWISTY_GLYPHS: Readonly<
   collapsed: ChevronRight,
   expanded: ChevronDown,
 };
+
+/** The pager's two steps, from the drawing's own chevrons
+ *  (`mockups/current/store-themes.html`): each points the way the press goes,
+ *  and the step that would leave the listing is the disabled one rather than a
+ *  missing glyph. */
+export const PREVIOUS_PAGE_GLYPH: LucideIcon = ChevronLeft;
+export const NEXT_PAGE_GLYPH: LucideIcon = ChevronRight;
 
 /** Locked is a filled lock, unlocked an outline one: at this size the outlines
  *  differ only by a gap in the shackle, so the state rides the fill (§6) rather

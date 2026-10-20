@@ -18,11 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Task A.4b is complete** (`9fda14c3`, after `c8f4adf9`): the local item source and the gallery — `localThemeSource` reads the listing with no `open()` call at all, and `Gallery` draws the drawing's cell.
-- **The facet predicate is the spec's, not R112's**: OR within a facet, AND across facets, **except Sensors and Shape, which are AND** (Shape's three groups AND with each other and OR within themselves), and `unclassified` is a colour mode nobody can ask for.
-- **The ground is derived where the envelope is** (R114): the host's `entryFor` fills it beside `facets` and `costs`, and a board with media behind it has an absent ground rather than the token's paint.
-- **The gallery's failed picture is keyed by the address *and* the theme's `updatedAt`**, which is what a save changes; and the host's ground has its first gradient case.
-- **Evidence**: three suites 78 passed exit 0 and the whole unit suite 279 files / 3804 tests exit 0, both from the re-review's own runs; red proofs for the flat OR, the latched picture, the per-item `open()` and the colour-mode carry, each restored byte-identical by `cmp`; `typecheck`, `biome check ..` (716 files) and `status:check` exit 0; `design:check` at its `vg-626` baseline (remainder 20).
+- **Task A.5 is complete**: the pager's pure `pageNumbers`, the persisted page-size preference and the `Pager` component — `editor-shell/page-size.ts`, `store-mode/pager.tsx` and their two test files. **Nothing mounts it yet**; A.6 wires it into the region and owns "a changed filter returns to page one".
+- **A gap is drawn only where it stands for pages** (R119): the window slides rather than shrinks, so `pageNumbers(5, 8)` ends `…, 7, 8` and never `…, 7, "gap", 8`.
+- **The 76px size well is a design-language value, not a local literal** (R118): `DESIGN.md` §5 states it, `designLanguagePx` carries `76`, and `pager.tsx` joins the gated list — all three in this commit, and `remainderCeiling` untouched.
+- **Evidence**: the two suites 18 passed exit 0; red proofs for the gap rule (R119's own case reddens) and for the preference's unreadable-value default, each restored byte-identical by `cmp`; `typecheck`, `biome check ..` (720 files) and `status:check` exit 0; `design:check` unchanged at its `vg-626` baseline (remainder 20, no store-mode file in it, zero violations).
 
 ## Next
 

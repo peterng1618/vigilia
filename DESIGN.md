@@ -518,6 +518,13 @@ this one is sized by the drawing that fixes it
 (`docs/design/mockups/current/store-themes.html`) and holds that width while the
 facet row beside it wraps to a second line.
 
+**The store's page-size well is 76px**, for the same reason and from the same
+drawing: the pager is a bar rather than a field row, so the per-page choice is
+sized by what the drawing fixes instead of by a value cell. The row it sits in is
+that well's own 76px column, so the `Per page` label takes the line above it
+rather than a 74px label column beside it — a field row's column would leave the
+well the rest of the bar, which is the width the drawing does not draw.
+
 **The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
 carries an editable field now, so the 24×24 target below binds it: the control pads its wells with
 `px-[var(--space-6)]` (`control-well.tsx`'s `wellClasses`, the 6px step at
