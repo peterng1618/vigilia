@@ -46,7 +46,9 @@ export type HostingSnapshot =
  *  When the staleness is judged worth fixing the direction is push, never poll:
  *  the host — the only process that can observe its own `setLan` or a restart —
  *  announces the change on a connection the editor already holds, and this store
- *  re-reads. */
+ *  re-reads. That connection is the sample stream at `/ws`, which the editor
+ *  opens only in `live` mode; in `preview` mode it holds none, so the fix would
+ *  have to establish one before the host could push on it. */
 export class HostingStore {
   #snapshot: HostingSnapshot = { kind: "unknown" };
   readonly #listeners = new Set<() => void>();
