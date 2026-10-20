@@ -1580,6 +1580,7 @@ it("moves the shell only when the open's replacement is accepted", async () => {
   ]);
 
   layout.destroy();
+  vi.unstubAllGlobals();
 });
 
 /**

@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Fix round 1 on A.7d is complete** — the mode switch left the click and rides the open's own answer: `ThemeLibraryManager.openById` takes an `onAccepted` callback and calls it between the replacement question and the read, so an author who cancels the discard prompt stays in the store instead of being moved into the editor on their previous document (F2).
-- **The callback is threaded through the three signatures it crosses** — `editor-document.ts`'s `openLibraryTheme`, `editor-shell/session-facade.ts`'s and `editor-session.ts`'s wiring — with the manager keeping the ask and the shell keeping the mode; the return-value alternative would have needed `refitOnViewportChange`, which is the second refit path this task rules out.
-- **Two cases added**: `theme-library-manager/index.test.ts` records the order (a refused question calls nothing, an agreed one reads `["accepted", "read"]`), and `shell-layout.dom.test.tsx` clicks the store's own cell over a stubbed `/api/themes` and reads the mode segments — declined stays in Themes, accepted moves to Editor.
-- **The nine A.7c cases are green again after the reorder** — `snapping.spec.ts` 39, `editor.spec.ts` 69, the four phone glass files 3/1/1/1, whole files, one worker, own JSON reports — with the phone measurement unchanged to the last decimal: `{canvas 86×771, board 64.5×48.375 at 10.75,361.3125, fitted true}`.
-- **Evidence**: red proofs — the callback moved above the ask prints `expected [ 'accepted' ] to deeply equal []`, the old click-first ordering prints `a declined open moved the shell out of the store`, and deleting the call leaves the phone case unfit; each file restored `cmp`-identical. Plus F3's comment trimmed to three lines and F1's false reason replaced in the report.
+- **Fix round 2 on A.7d is complete** — the phone case's store-region assertion is deleted (F4): `openThemeFromStore` leaves the shell in Editor before the read, so the element was already absent and `toBeHidden()` passed for an element that was not there.
+- **The coverage note is declined rather than answered**: the fit reading is the assertion that carries the phone case (`opened.fitted` fails with the callback deleted), and clicking the cell before the helper's own mode switch would duplicate the desktop case for no new information.
+- **`shell-layout.tsx`'s comment is three lines** — the reason (a `hidden` body measures zero) and the consequence (a cancelled open leaves the author in the store) — so the length claimed in the report and here is now true.
+- **`shell-layout.dom.test.tsx`'s fetch stub is restored** at the end of its case with `vi.unstubAllGlobals()`, the file's own convention at its other two stub sites.
+- **Evidence**: the phone case stays green and stays discriminating — with `onAccepted?.()` deleted it fails on the fit assertion, printing `board 640×480 at 0,0` on the 86×771 canvas, and green again after a `cmp`-identical restore and rebuild at `{canvas 86×771, board 64.5×48.375 at 10.75,361.3125, fitted true}`; biome, typecheck and status:check exit 0, design:check exit 1 at its `vg-626` baseline.
 
 ## Next
 

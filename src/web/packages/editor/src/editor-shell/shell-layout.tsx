@@ -613,11 +613,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 callback holding this render's session would open a theme into
                 the document the shell had a moment ago.
 
-                **The editor first, then the document** (A.7d). The body is
-                `hidden` in every other mode, so a document mounted behind it is
-                measured into a zero-sized host and its own fit writes nothing.
-                The move rides the open's own answer, so a cancelled question
-                leaves the author in the store. */}
+                **The editor first, then the document** (A.7d): a body that is
+                `hidden` measures zero, so the mount behind it fits nothing —
+                and a cancelled open leaves the author in the store. */}
             <StoreModeRegion
               mode={mode}
               onOpenTheme={(id) => {

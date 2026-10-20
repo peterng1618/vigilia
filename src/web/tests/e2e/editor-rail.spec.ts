@@ -2249,7 +2249,6 @@ test("opening a library theme fits it to the phone's own canvas", async ({
     page.locator(".editor-shell-body"),
     "Open in editor left the shell showing the store",
   ).toBeVisible();
-  await expect(page.locator("[data-vigilia-store-region]")).toBeHidden();
   await settled(page);
   const opened = await boardOnCanvas(page);
   const openedReading = `store open on the phone ${JSON.stringify(opened)}`;
