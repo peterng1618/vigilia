@@ -1,6 +1,12 @@
+import {
+  CHART_PAINT_FIELDS,
+  CHART_SETTINGS_FIELDS,
+} from "../charts/settings-fields.js";
 import { isTimeZoneName } from "../scene/datetime/instant.js";
 import { isLocaleName } from "../scene/datetime/names.js";
 import {
+  CHART_FAMILIES,
+  type ChartFamily,
   MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
@@ -105,7 +111,7 @@ export function validateFabricThemeEnvelope(
   const sceneIds = scene(input["scene"], issues);
   scenePaintReferences(input["scene"], input["globals"], issues);
   sceneTypeReferences(input["scene"], input["globals"], issues);
-  chartPaintReferences(input["scene"], input["globals"], issues);
+  chartSettingsReferences(input["scene"], input["globals"], issues);
   bindings(input["bindings"], sceneIds, issues);
 
   return issues.length === 0
@@ -522,8 +528,14 @@ function hasResolvedPaint(
   );
 }
 
-/** Chart settings are semantic authored paint, never embedded literal colours. */
-function chartPaintReferences(
+/**
+ * A chart's settings are semantic authored values: its paint is a palette
+ * reference, never an embedded literal colour, and every scalar is read against
+ * the descriptor table that owns it (`charts/settings-fields.ts`) rather than
+ * against a second list here. Both are decided in one pass over the scene, so
+ * one traversal reports both.
+ */
+function chartSettingsReferences(
   scene: unknown,
   globals: unknown,
   issues: ValidationIssue[],
@@ -533,33 +545,10 @@ function chartPaintReferences(
     isRecord(globals) && isRecord(globals["palette"])
       ? globals["palette"]
       : undefined;
-  const fields: Readonly<Record<string, readonly string[]>> = {
-    gauge: ["track", "progress"],
-    line: ["stroke", "area", "palette"],
-    bar: ["fill", "track"],
-    pie: ["remainderFill", "palette"],
-  };
   const visit = (object: unknown, path: string): void => {
     if (!isRecord(object)) return;
-    if (
-      object["type"] === "VigiliaChart" &&
-      typeof object["family"] === "string" &&
-      isRecord(object["settings"])
-    ) {
-      for (const field of fields[object["family"]] ?? []) {
-        const value = object["settings"][field];
-        if (value === undefined) continue;
-        const paints = Array.isArray(value) ? value : [value];
-        paints.forEach((paint, index) =>
-          chartPaint(
-            paint,
-            `${path}/settings/${field}${Array.isArray(value) ? `/${index}` : ""}`,
-            palette,
-            issues,
-          ),
-        );
-      }
-    }
+    if (object["type"] === "VigiliaChart")
+      chartSettings(object, path, palette, issues);
     if (Array.isArray(object["objects"]))
       object["objects"].forEach((child, index) =>
         visit(child, `${path}/objects/${index}`),
@@ -568,6 +557,205 @@ function chartPaintReferences(
   scene["objects"].forEach((object, index) =>
     visit(object, `/scene/objects/${index}`),
   );
+}
+
+/**
+ * One chart's own settings.
+ *
+ * An unknown family has no descriptors to read, so it is left to the editor
+ * rather than refused here; a chart with no settings is the authored default.
+ * `settings` itself must be an object, because an array or a scalar is not a
+ * settings bag and would otherwise skip every check below.
+ */
+function chartSettings(
+  object: Record<string, unknown>,
+  path: string,
+  palette: Record<string, unknown> | undefined,
+  issues: ValidationIssue[],
+): void {
+  const family = object["family"];
+  if (typeof family !== "string" || !isChartFamily(family)) return;
+  const settings = object["settings"];
+  if (settings === undefined) return;
+  if (!isRecord(settings)) {
+    issues.push(
+      issue(
+        "wrong-type",
+        `${path}/settings`,
+        "Chart settings must be an object.",
+      ),
+    );
+    return;
+  }
+
+  // The allowed key set is the descriptor table's own reading: a nested field's
+  // top-level key is the first segment of its write path, so `total` and
+  // `animation` are in the set without this file listing them.
+  const allowed = new Set<string>();
+  for (const descriptor of CHART_SETTINGS_FIELDS[family])
+    allowed.add(descriptor.path?.[0] ?? descriptor.property);
+  for (const descriptor of CHART_PAINT_FIELDS[family])
+    allowed.add(descriptor.property);
+  unknownKeys(settings, `${path}/settings`, [...allowed], "A chart", issues);
+
+  chartScalars(settings, family, path, issues);
+
+  for (const descriptor of CHART_PAINT_FIELDS[family]) {
+    const value = settings[descriptor.property];
+    if (value === undefined) continue;
+    const paints = Array.isArray(value) ? value : [value];
+    paints.forEach((paint, index) =>
+      chartPaint(
+        paint,
+        `${path}/settings/${descriptor.property}${Array.isArray(value) ? `/${index}` : ""}`,
+        palette,
+        issues,
+      ),
+    );
+  }
+}
+
+/**
+ * Each scalar against its own descriptor's bound.
+ *
+ * Absent is an authorable state, so only a present value is refused. A
+ * descriptor whose ceiling is a `bound` (`drawnBox`, `halfDrawnBox`) carries no
+ * numeric `max`: the ceiling is the chart's drawn box, which the envelope cannot
+ * know, and inventing one would refuse a document for a reason the loader cannot
+ * see.
+ */
+function chartScalars(
+  settings: Record<string, unknown>,
+  family: ChartFamily,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  for (const descriptor of CHART_SETTINGS_FIELDS[family]) {
+    if (descriptor.kind !== "number") continue;
+    const field = descriptor.path ?? [descriptor.property];
+    const value = valueAt(settings, field);
+    if (value === undefined) continue;
+    const where = `${path}/settings/${field.join("/")}`;
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      issues.push(
+        issue(
+          "wrong-type",
+          where,
+          `${descriptor.property} must be a finite number.`,
+        ),
+      );
+      continue;
+    }
+    if (descriptor.min !== undefined && value < descriptor.min) {
+      issues.push(
+        issue(
+          "out-of-range",
+          where,
+          `${descriptor.property} must be at least ${descriptor.min}.`,
+        ),
+      );
+    } else if (descriptor.max !== undefined && value > descriptor.max) {
+      issues.push(
+        issue(
+          "out-of-range",
+          where,
+          `${descriptor.property} must be at most ${descriptor.max}.`,
+        ),
+      );
+    }
+  }
+
+  // The pair is refused where the pair is complete: a half on its own is not a
+  // range, and neither half's descriptor carries a bound of its own.
+  for (const [lower, upper] of scalarPairs(family)) {
+    const low = settings[lower];
+    const high = settings[upper];
+    if (typeof low !== "number" || !Number.isFinite(low)) continue;
+    if (typeof high !== "number" || !Number.isFinite(high)) continue;
+    if (low >= high)
+      issues.push(
+        issue(
+          "out-of-range",
+          `${path}/settings/${upper}`,
+          `${upper} must be above ${lower}.`,
+        ),
+      );
+  }
+
+  if (family === "pie") pieTotal(settings, path, issues);
+}
+
+/**
+ * The two scalar pairs a family's own descriptors make impossible when equal or
+ * crossed: a gauge's or bar's reading range, and a donut's inner and outer
+ * radius.
+ */
+function scalarPairs(
+  family: ChartFamily,
+): readonly (readonly [string, string])[] {
+  if (family === "pie") return [["innerRadiusPercent", "outerRadiusPercent"]];
+  if (family === "gauge" || family === "bar") return [["min", "max"]];
+  return [];
+}
+
+/**
+ * A pie's total is the one scalar one level down: a fixed total with no value is
+ * a whole nobody stated, so the parts cannot be read as shares of it.
+ */
+function pieTotal(
+  settings: Record<string, unknown>,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  const total = settings["total"];
+  if (total === undefined) return;
+  if (!isRecord(total)) {
+    issues.push(
+      issue(
+        "wrong-type",
+        `${path}/settings/total`,
+        "A pie total must be an object.",
+      ),
+    );
+    return;
+  }
+  const kind = total["kind"];
+  if (kind !== "sum" && kind !== "fixed") {
+    issues.push(
+      issue(
+        "invalid-enum",
+        `${path}/settings/total/kind`,
+        "A pie total kind must be one of: sum, fixed.",
+      ),
+    );
+    return;
+  }
+  if (kind === "fixed" && total["value"] === undefined) {
+    issues.push(
+      issue(
+        "missing-field",
+        `${path}/settings/total/value`,
+        "A fixed pie total needs a value.",
+      ),
+    );
+  }
+}
+
+function isChartFamily(value: string): value is ChartFamily {
+  return (CHART_FAMILIES as readonly string[]).includes(value);
+}
+
+/** The value a descriptor's write path names, or `undefined` if any step is absent. */
+function valueAt(
+  record: Record<string, unknown>,
+  path: readonly string[],
+): unknown {
+  let current: unknown = record;
+  for (const key of path) {
+    if (!isRecord(current)) return undefined;
+    current = current[key];
+  }
+  return current;
 }
 
 function chartPaint(

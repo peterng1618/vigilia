@@ -49,6 +49,19 @@ function envelope(): Record<string, unknown> {
   };
 }
 
+function chartEnvelope(
+  family: string,
+  settings: unknown,
+): Record<string, unknown> {
+  return {
+    ...envelope(),
+    scene: {
+      version: "7.4.0",
+      objects: [{ type: "VigiliaChart", id: "chart", family, settings }],
+    },
+  };
+}
+
 function fontAsset(id: string, weight: number): Record<string, unknown> {
   return {
     id,
@@ -619,6 +632,120 @@ describe("Fabric theme envelope validation", () => {
         }),
       ]),
     });
+  });
+
+  it("refuses a chart scalar the descriptor table bounds", () => {
+    const window = validateFabricThemeEnvelope(
+      chartEnvelope("line", { windowSeconds: 0 }),
+    );
+    const points = validateFabricThemeEnvelope(
+      chartEnvelope("line", { maxPoints: -5 }),
+    );
+    const width = validateFabricThemeEnvelope(
+      chartEnvelope("line", { lineWidth: -1 }),
+    );
+
+    expect(issuesOf(window)).toEqual([
+      {
+        code: "out-of-range",
+        path: "/scene/objects/0/settings/windowSeconds",
+        message: "windowSeconds must be at least 1.",
+      },
+    ]);
+    expect(issuesOf(points)).toMatchObject([
+      { code: "out-of-range", path: "/scene/objects/0/settings/maxPoints" },
+    ]);
+    expect(issuesOf(width)).toMatchObject([
+      { code: "out-of-range", path: "/scene/objects/0/settings/lineWidth" },
+    ]);
+  });
+
+  it("refuses a crossed pair the family's own descriptors own", () => {
+    const gauge = validateFabricThemeEnvelope(
+      chartEnvelope("gauge", { min: 10, max: 1 }),
+    );
+    const bar = validateFabricThemeEnvelope(
+      chartEnvelope("bar", { min: 100, max: 100 }),
+    );
+    const pie = validateFabricThemeEnvelope(
+      chartEnvelope("pie", { innerRadiusPercent: 80, outerRadiusPercent: 20 }),
+    );
+
+    expect(issuesOf(gauge)).toMatchObject([
+      { code: "out-of-range", path: "/scene/objects/0/settings/max" },
+    ]);
+    expect(issuesOf(bar)).toMatchObject([
+      { code: "out-of-range", path: "/scene/objects/0/settings/max" },
+    ]);
+    expect(issuesOf(pie)).toMatchObject([
+      {
+        code: "out-of-range",
+        path: "/scene/objects/0/settings/outerRadiusPercent",
+      },
+    ]);
+  });
+
+  it("refuses a settings bag that is not an object, and an unknown key", () => {
+    const array = validateFabricThemeEnvelope(
+      chartEnvelope("line", ["windowSeconds"]),
+    );
+    const unknown = validateFabricThemeEnvelope(
+      chartEnvelope("gauge", { minimum: 0 }),
+    );
+
+    expect(issuesOf(array)).toEqual([
+      {
+        code: "wrong-type",
+        path: "/scene/objects/0/settings",
+        message: "Chart settings must be an object.",
+      },
+    ]);
+    expect(issuesOf(unknown)).toMatchObject([
+      { code: "unknown-field", path: "/scene/objects/0/settings/minimum" },
+    ]);
+  });
+
+  it("refuses a fixed pie total with no finite value", () => {
+    const absent = validateFabricThemeEnvelope(
+      chartEnvelope("pie", { total: { kind: "fixed" } }),
+    );
+    const nulled = validateFabricThemeEnvelope(
+      chartEnvelope("pie", { total: { kind: "fixed", value: null } }),
+    );
+
+    expect(issuesOf(absent)).toMatchObject([
+      { code: "missing-field", path: "/scene/objects/0/settings/total/value" },
+    ]);
+    expect(issuesOf(nulled)).toMatchObject([
+      { code: "wrong-type", path: "/scene/objects/0/settings/total/value" },
+    ]);
+  });
+
+  it("accepts absent, in-range and nested settings the table declares", () => {
+    expect(validateFabricThemeEnvelope(chartEnvelope("gauge", {})).ok).toBe(
+      true,
+    );
+    expect(
+      validateFabricThemeEnvelope(chartEnvelope("gauge", { min: 0, max: 100 }))
+        .ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(
+        chartEnvelope("pie", {
+          innerRadiusPercent: 60,
+          outerRadiusPercent: 100,
+          total: { kind: "fixed", value: 120 },
+        }),
+      ).ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(
+        chartEnvelope("line", { min: 0, max: 100, windowSeconds: 60 }),
+      ).ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(chartEnvelope("line", { animation: {} })).ok,
+    ).toBe(true);
   });
 
   it("rejects resolved text type without a preset reference", () => {
