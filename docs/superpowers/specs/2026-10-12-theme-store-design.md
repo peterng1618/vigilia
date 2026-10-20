@@ -1,6 +1,6 @@
 # A theme store for Vigilia
 
-- **Status:** revised 2026-10-20 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **B–G have no plan yet**
+- **Status:** revised 2026-10-21 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **the pre-planning probes are answered**, and two open questions (3, freshness, and 8, the facet's buckets and tolerance) are settled by measurement rather than left as drafts — see § "Measured 2026-10-21" and § "Open questions"; **B–G have no plan yet, and the owner's review of this document is what gates them**
 - **Date:** 2026-10-12, **revised 2026-10-16** after the `hydralauncher/hydra-themes`
   study, **revised again 2026-10-17** after the rulings in the next section
 - **Scope:** two subjects that are one shell. **The storefront**, specified
@@ -16,8 +16,11 @@
 A design agreed in conversation, revised. It exists so a future session starts
 from the decisions rather than re-deriving them. It is **not** accepted work:
 `STATUS.md` alone decides acceptance, and nothing here is the active plan. The
-sections that say *unverified* are load-bearing unknowns, not omissions — a
-free-tier limit that turns out false changes the architecture.
+free-tier limits that decide feasibility were probes rather than assumptions, and
+**they have now been run**: § "Measured 2026-10-21" carries the answers, and two of
+them contradict what this document assumed — the CDN cannot carry a package, and
+the re-home's download counter does not obviously survive it. A limit that turns
+out false changes the architecture, which is what that section is for.
 
 **Superseded by this revision, and named so the old reading is not resurrected:**
 the previous scope line said "the **theme** half only … the widget store is a
@@ -224,9 +227,9 @@ No server the owner runs, and no recurring cost.
 | Review | **the PR diff** — an item is JSON, so the change is readable |
 | Listing | merging the PR |
 | Verified author | a login in a list file, which makes their PRs auto-merge |
-| Media | release assets, which carry a native `download_count` — **but whose repository they live in is open question 1, and the app-opened PR made it sharper** |
-| Delivery to the app | a generated `index.json` over a free CDN |
-| Counters | `created`/`updated` from git; `downloads` native; `favorites` via reactions, folded into `index.json` on a schedule |
+| Media | release assets — 2 GiB per file, 1000 per release, no documented bandwidth limit — **but whose repository they live in is open question 1, and the app-opened PR made it sharper** |
+| Delivery to the app | `index.json` and thumbnails over a free CDN, **and never a package**: jsDelivr refuses a single GitHub file over 20 MB, so the CDN is a metadata-and-pictures layer and an item comes from a release asset (§ "Measured 2026-10-21") |
+| Counters | `created`/`updated` from git; `downloads` native **if the bytes live on a release the store owns — the re-home's counter restart is the open probe**; `favorites` via reactions, folded into `index.json` on a schedule |
 
 Why the diff matters: the review instrument is the thing that costs the most to
 build, and a PR gives it for free. An item is JSON, so a reviewer reads what
@@ -325,8 +328,15 @@ client that can name a path is a store-wide write primitive in a compromised bui
 ### Identity: the device flow, and the first credential this product stores
 
 Browsing and downloading need **no identity at all** — `index.json` is a static
-file and downloads are plain URLs, so neither a token nor an API call is involved
-and no rate limit applies. Favorite **counts** are baked into `index.json` by the
+file and downloads are plain URLs, so neither a token nor an API call is involved.
+**Which plain URL is the load-bearing part, and it is measured**: the browser
+download URL (`github.com/<owner>/<repo>/releases/download/…`) answered with no
+rate-limit headers at all, while the API asset endpoint answered
+`X-RateLimit-Limit: 60` — the anonymous hourly quota, per IP, shared with every
+other anonymous API call. So `item.json` records the browser download URL and the
+API endpoint is not an alternative, and the raw path that serves `index.json`
+carries its own ETag and a 5-minute cache (§ "Measured 2026-10-21"). Favorite
+**counts** are baked into `index.json` by the
 Action, so an anonymous viewer still sees them; only *casting* a favorite needs a
 token. Anonymous downloads still increment the asset counter, so the download
 metric survives anonymity.
@@ -539,12 +549,17 @@ three questions, and nothing new to author.
   artboard of 1000×1001 is not square.
 - **Aspect ratio is bucketed, and the bucket is published.** An artboard may be any
   size up to 16384, so the exact ratio would be a facet with one value per theme.
-  The set is 1:1, 4:3, 3:2, 16:10, 16:9, 21:9 and 32:9 together with each one's
-  portrait inversion, and the nearest is chosen by comparing `width / height` in
-  log space, which is the comparison that treats 16:9 and 9:16 as the same
-  distance. **A theme further from every bucket than the tolerance is `Other`** —
-  never the nearest wrong bucket, because a facet that files a 2.35:1 artboard
-  under 21:9 is a facet that lies about the thing it exists to filter.
+  The set is 1:1, 4:3, 3:2, 16:10, 16:9, **19.5:9**, 21:9 and 32:9 together with each
+  one's portrait inversion — the seven the facet shipped with plus the one the
+  measurement added (§ Open questions 8, `vg-673`) — and the nearest is chosen by
+  comparing the artboard's **long edge over its short edge** in log space, which is
+  the comparison that treats 16:9 and 9:16 as the same distance and is the one
+  `artboard-presets.ts`'s `nearestArtboardPreset` already makes. **A theme further
+  from every bucket than the tolerance is `Other`** — never the nearest wrong
+  bucket, because a facet that files a 2.35:1 artboard under 21:9 is a facet that
+  lies about the thing it exists to filter. **The tolerance is bounded rather than
+  picked**: it must stay under 3.2%, the tightest half-gap between two adjacent
+  buckets (3:2 against 16:10), and 0.5% is what shipped.
 - **Pixel size is exact**, and the facet offers the sizes **more than one theme
   declares**, largest first. A facet of one-off sizes is a list of themes wearing a
   filter's clothes; every other size is reachable under `Other`, and the exact size
@@ -914,8 +929,8 @@ document's plan, in phases that are each useful on their own:
 |---|---|---|
 | **A** | the three-mode shell; the store mode's local half as a gallery, with the facet record, the facet row, paging and the item modal; and the Host settings mode absorbing this PC | the per-display spec's assign action; `shell-layout.tsx`'s decision note |
 | **B** | the origin record and the *Installed* badge | A |
-| **C** | the online tab, read-only: the catalogue repo exists, `index.json` is generated with each item's derived facet record, browse, filter and sort work, and the item modal gains its online facts | a public repo and one Action; **not** open question 1 |
-| **D** | install: download, validate, write to the library, record the origin | C, and **open question 1 decided** |
+| **C** | the online tab, read-only: the catalogue repo exists, `index.json` is generated with each item's derived facet record, browse, filter and sort work, and the item modal gains its online facts | a public repo and one Action; the raw path for `index.json` and the CDN for thumbnails (§ "Measured 2026-10-21"); **not** open question 1 |
+| **D** | install: download, validate, write to the library, record the origin | C, and **open question 1 decided** — with the `download_count` probe run, since which URL `item.json` records and whether the store can count downloads both fall out of that decision |
 | **E** | submission: the device flow, the fork-and-PR client, CI validation and the auto-merge Action | D |
 | **F** | the publish-time normalizer and the duration and resolution caps | E, and open question 2 |
 | **G** | the style-tag field: the format's shape rule, the editor's pick-or-propose control, and the Style facet | A, and **open question 7** |
@@ -951,8 +966,10 @@ of the decision rather than a placeholder:
      them.** The app uploads to the author's fork release, `item.json` references
      it, reviewers download from there, and a post-merge Action in the upstream
      repo downloads it, uploads it as an upstream release asset and rewrites the
-     URL in a follow-up commit. Keeps native `download_count` and store-owned
-     bytes, and no secret ever reaches a fork PR. Costs one exception to "the PR
+     URL in a follow-up commit. Its advertised gain is a native `download_count`
+     and store-owned bytes, **and the first of those is doubtful as of
+     2026-10-21 — see the paragraph below the options**; what stands is that no
+     secret ever reaches a fork PR. Costs one exception to "the PR
      diff is the review instrument" — the merged `item.json` is not byte-identical
      to the submitted one — and a video is downloaded twice (once at merge, once
      per user).
@@ -963,10 +980,40 @@ of the decision rather than a placeholder:
      being a sort.
    - **C — an object store with signed uploads.** It is a server, which is the
      one premise this design rests on. Recorded only to be dismissed.
+
+   **What the 2026-10-21 measurements do to this comparison, without deciding it.**
+   Option A's two advertised properties are the ones that moved. "Keeps native
+   `download_count`" is now doubtful rather than likely: the field sits on the
+   *asset*, a re-upload creates a new one, and GitHub documents the field with no
+   prose at all — so the store's counter would restart at the re-home while the
+   fork's counter keeps the pre-merge downloads, and the probe that settles it is
+   named in § "Measured 2026-10-21". And "no secret ever reaches a fork PR" is
+   true but not sufficient: the upstream Action cannot read the fork with
+   `GITHUB_TOKEN` at all, so the download is anonymous HTTPS against a URL the
+   *author* controls and can repoint or delete, which is the fork-hosting problem
+   arriving one step later rather than being solved. The re-home also has to be
+   delete-then-upload (`422` on a name collision) and its follow-up commit starts
+   no workflow, so nothing re-validates the rewritten URL. **Option B does not
+   have those three problems and has one of its own**: 128 MiB in git history per
+   item, against GitHub's own soft guidance of "ideally less than 1 GB" and "less
+   than 5 GB is strongly recommended" per repository, and no download count for
+   repository files. **Which is cheaper is a question about how big an item really
+   is**, and that is now measurable rather than arguable: the caps in phase F
+   bound the video, so the number to decide against is F's own bound rather than
+   128 MiB. The decision remains the user's, and it is the last thing phase D
+   waits on.
 2. **The ffmpeg source** — probe a system binary, or bundle a static build and
    take on the licence obligation.
-3. **`index.json` freshness** — how often the scheduled Action regenerates it,
-   which sets how stale a favorite count can be.
+3. **`index.json` freshness — ANSWERED 2026-10-21, and the answer is the route
+   rather than the Action.** Through jsDelivr a branch file is 12 hours stale at
+   the edge and 7 days in the client's own cache, and purge does not apply to a
+   static file at all; from the raw path the same file is 5 minutes old with an
+   `ETag` a client can revalidate against. So `index.json` is fetched from the raw
+   path and thumbnails from the CDN, and a favorite count is at most five minutes
+   behind. The scheduled Action's cadence therefore becomes a cost question
+   rather than a freshness one: hourly is already finer than any reader can
+   observe, and the only reason to run it more often is a reaction that has to
+   appear quickly.
 4. **Moderation beyond the review gate** — the owner reading a diff catches a
    broken item; it does not catch objectionable imagery in a thumbnail or a
    background video. Who looks at the pixels, and when.
@@ -986,28 +1033,95 @@ of the decision rather than a placeholder:
    because an author working offline has nothing else to pick from, and because the
    seed is what the first proposals are measured against. Phase G carries this
    question rather than shipping the field with an empty list.
-8. **The aspect-ratio buckets and their tolerance** — the set named in § "Finding a
-   theme: the five facets" is a draft from the sizes dashboards actually are, and
-   the distance at which a theme falls to `Other` is a number nobody has measured.
-   Both are cheap to change later and both change what the facet says, so they are
-   decided with the facet rather than guessed here.
+8. **The aspect-ratio buckets and their tolerance — MEASURED 2026-10-21, and the
+   measurement found a defect rather than confirming the draft.** The tolerance is
+   no longer unmeasured: the bound is the tightest half-gap between two adjacent
+   buckets, which is 3.2% (3:2 against 16:10), and the largest distance any theme
+   this product has actually produced sits at is 0.05% (a 1672×941 artboard, 16:9
+   to five decimal places). So any tolerance between about 0.1% and 3% behaves
+   identically on every theme that exists, and the shipped 0.5% is inside it.
+   **The set is the half that is wrong**: 19.5:9 — the ratio this product's own
+   chooser offers for the phone workflow, `artboard-presets.ts:14-21`, at
+   2340×1080 — is **7.4%** from its nearest published bucket, against a 0.5%
+   tolerance, so a phone-shaped dashboard is filed as `other`. No tolerance can
+   rescue it, because the tolerance exists to keep a 2.35:1 artboard out of 21:9
+   and that artboard is only 0.71% away: any tolerance wide enough to take the
+   phone swallows the case the number was chosen for. **So the set gains a
+   bucket** rather than the tolerance gaining a digit, and 1920×480 (4:1, the
+   TURZX panel's own shape, 11.8% from 32:9) is the second case that has to be
+   decided with the work that needs it rather than fallen into. Filed as `vg-673`,
+   issue 50, because it changes a published vocabulary and belongs with a
+   decision; the shipped set is `facet-record.ts:65-87`, which is where the fix
+   lands.
 
-## Not verified, and must be before this is planned
+## Measured 2026-10-21
 
-Free-tier limits decide feasibility, so each is a probe rather than an assumption:
+Free-tier limits decide feasibility, so each of these was a probe rather than an
+assumption. Five are answered — from the platform's own documentation, or from a
+header read on this box — and one remains a probe because it needs a repository
+and a fork to run against. **Two of the answers contradict what this document
+assumed**, and they are the reason option A in open question 1 is no longer the
+obvious leaning.
 
-- **The device flow against a public client**: that the scope needed to fork and
-  open a PR on a public repo is grantable, and what the token's lifetime and
-  revocation behaviour are.
-- **Release assets on a fork, and a post-merge re-home**: that an Action can read
-  a fork's release asset and publish it upstream, and that `download_count`
-  survives the move.
-- Per-file size caps on the CDN used to serve `index.json` and thumbnails, which
-  determine whether it proxies metadata only or can also serve packages.
-- Release-asset size ceilings, and Actions minutes on a public versus private
-  repo.
-- Whether the CDN in front of release assets is viable at all for multi-megabyte
-  packages, given its per-file limits.
+- **The device flow against a public client.** `public_repo` is the scope, and it
+  is grantable through the device flow: the request takes a `scope` parameter and
+  needs no client secret, which is the property that makes the flow usable by a
+  locally-run host at all. An OAuth App's tokens are **non-expiring by default**;
+  expiring tokens are opted into per app, and with them on (or with
+  `offline_access` asked for) the access token lasts **8 hours** and the refresh
+  token **6 months without use**, rotating on every use so the previous pair dies.
+  A GitHub App's user tokens *always* expire in 8 hours with the same 6-month
+  refresh, which is the heavier credential for the same act — so the OAuth App is
+  the fit, and the app has to have the device flow switched on in its settings.
+  **What is not documented is the scope-to-endpoint mapping**: that forking a
+  public repo and opening a PR need `public_repo` is read off the scope's own
+  description, because the REST pages list fine-grained permissions and no OAuth
+  scopes at all. The README owes that step, not this document.
+- **Release assets, as a ceiling.** 2 GiB per file, 1000 per release, and "no
+  limit on the total size of a release, nor bandwidth usage". A 128 MiB item is
+  two orders of magnitude inside the file limit, so the reason to doubt release
+  assets was never their size.
+- **The re-home, which is now option A's weakest link.** Three of its premises are
+  documented and none holds as written. (i) `GITHUB_TOKEN`'s "permissions are
+  limited to the repository that contains your workflow", so the upstream Action
+  **cannot** read the fork with it — the download has to be anonymous HTTPS
+  against `browser_download_url`, which the API does document as usable
+  unauthenticated for public resources. (ii) A commit made by `GITHUB_TOKEN`
+  **does not create a new workflow run**, so the follow-up commit that rewrites
+  the URL is re-validated by nothing. (iii) Re-uploading an asset whose file name
+  already exists fails `422` until the old asset is deleted, so the re-home is
+  delete-then-upload and has a window in which neither copy is the store's.
+  **What is still a probe**: whether `download_count` survives the move. The REST
+  schema documents the field with no prose at all, and the field sits on the
+  *asset*, which a re-upload creates anew — so the honest reading is that the
+  store's count restarts at the re-home, and the fork's count is the one holding
+  the pre-merge downloads. The probe is a public test repo, one asset, a counted
+  download through `browser_download_url`, then a delete and a re-upload of the
+  same bytes.
+- **The CDN, which cannot carry a package at all.** jsDelivr's GitHub path refuses
+  "single files larger than 20 MB", so `index.json` and thumbnails fit and an item
+  never does. It also sets the floor on freshness, which is open question 3: a
+  branch URL answers `cache-control: public, max-age=604800, s-maxage=43200` —
+  read on this box 2026-10-21, with an `Age` of 6.6 hours on the response — so
+  **12 hours at the edge and 7 days in the client's own cache**, and purge "will
+  not work for static files", needs valid semver and is granted by email. GitHub
+  Pages is no better for the job: a published site "may be no larger than 1 GB"
+  against a soft 100 GB per month, which is 800 downloads of one 128 MiB item.
+- **Actions minutes are not the constraint.** "GitHub Actions usage is free for
+  self-hosted runners and for public repositories that use standard GitHub-hosted
+  runners" — not the word *unlimited*, but with no public-repo quota stated
+  anywhere. What binds instead is plan-independent: 6 hours per job, 35 days per
+  workflow run, a 10 GB cache per repository, 20 concurrent jobs on Free, and a
+  default 90-day artifact retention that is configurable for a public repo.
+- **The raw path is what serves `index.json`, and it is a 5-minute cache.**
+  `raw.githubusercontent.com` answers `cache-control: max-age=300` with an `ETag`
+  and `access-control-allow-origin: *`, so a client can revalidate conditionally
+  and see a regeneration within five minutes — which is *faster* than jsDelivr's
+  twelve hours and the reason the two files take two different routes. Its rate
+  limit is **not documented** by GitHub at all; the only figure is a staff comment
+  on a closed documentation issue. That is a probe if the catalogue ever gets
+  popular enough for it to matter, and it is named rather than assumed away.
+
 - ~~Whether `requestVideoFrameCallback` cadence actually suffers under a variable
   frame rate in this renderer, or whether the envelope rule above is defensive
   without a measured reason.~~ **Measured 2026-10-20, and it does.** The clip the
