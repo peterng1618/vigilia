@@ -5,7 +5,7 @@ taken since are `docs/decisions/` notes. The numbers here are this directory's
 own, and `docs/decisions/` numbers from 0001 as well, so the two series collide
 across 0001–0010 — both hold a `0004`, on different decisions. Nothing here is
 merged, removed or renumbered: a merge would renumber one series and break every
-citation to the other, and 0002–0010 still govern. **Cite a decision by its
+citation to the other, and 0001–0010 still govern. **Cite a decision by its
 directory** — `adr/0004` against `decisions/0004` — because the bare number alone
 is ambiguous between the two.
 
