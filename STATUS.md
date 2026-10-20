@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The glass-over-video defect is fixed** (`bb630a83`, decision 0079): a panel keeps the media alone in a second surface and blits it when the media cannot paint, keyed to the region so a moved panel still starts from nothing; the scratch is rebuilt from nothing every frame, so the canvas half stays fresh.
-- **Its one inferred claim is now measured**: a looping video's `readyState` falls below `HAVE_CURRENT_DATA` at five seams, t=3782/7399/11029/14634/18265 ms, each 20–35 ms with `currentTime` 0, so the window is one to two frames every ~3.6 s.
-- **A browser A/B proves the fix**: with the reuse disabled the panel reads alpha **130** (the tint over transparency) at every wrap; at HEAD it holds alpha **255** and the last painted colour. Recorded as 0079's rung 6b.
-- **`vg-647` closes `verified` against `bb630a83`**, and **`vg-667` is filed**: an opaque artboard paint covers the DOM media layer, measured as a canvas reading `[16,19,24,255]` outside the panel with `maxFrameDelta` 0 across 1208 frames.
-- **Gates for the change**: `npx biome check` exit 0 on both files, `npm run typecheck` exit 0, `npx vitest run` exit 0 (286 files, 3905 tests), `npm run backlog:check` exit 0 (667 items).
+- **The theme-store spec is current again**: it records that **phase A landed 2026-10-20 and B–G are unstarted**, and states that landing is not acceptance — `STATUS.md` alone accepts, and the user has not.
+- **A10's route fact is corrected in the spec**: the chooser is `library.html` **served at `/`**, not a `/library` route; `/settings` is a real alias, `/library` is no route at all (R161, verified against `server.ts`).
+- **Export package and Delete are recorded as drawn disabled with their reason** (R164): they have a library owner but no task in A and no phase in the landing order owns the wiring, and the spec now says so rather than claiming every action is wired.
+- **The spec's own "must be verified before this is planned" bullet on `requestVideoFrameCallback` cadence is answered by measurement**: 684 presented frames over 20 s carry 189 distinct intervals from 11 to 88 ms with 11% of frames dropped, so a variable frame rate really is a variable repaint rate and the envelope rule is not defensive without a reason.
+- **Checks**: `npm run docs:check` exit 0 (995 files), `design:md --cite` exit 0 (367 citations), `npm run status:check` exit 0.
 
 ## Next
 

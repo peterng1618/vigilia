@@ -1,6 +1,6 @@
 # A theme store for Vigilia
 
-- **Status:** revised 2026-10-17 for acceptance; no plan yet
+- **Status:** revised 2026-10-20 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **B–G have no plan yet**
 - **Date:** 2026-10-12, **revised 2026-10-16** after the `hydralauncher/hydra-themes`
   study, **revised again 2026-10-17** after the rulings in the next section
 - **Scope:** two subjects that are one shell. **The storefront**, specified
@@ -469,6 +469,14 @@ dropped"), local by name and `updatedAt`.
 the library's existing operations, import is § "Import lands in the library" and
 install is § "Provenance". The store mode composes them and invents none.
 
+**As landed, two of the four are drawn disabled, and a later phase owns the
+wiring.** `Export package` and `Delete` have an owner in the library — removal
+still reaches `DELETE /api/themes/:id` through `theme-list.js`'s `deleteTheme` —
+but **no task in phase A and no phase in the landing order owns bringing them into
+the cell**, so A draws all four, as the checked drawing does, and disables the two
+with their reason rather than answering a press with nothing (R164). Naming the
+phase that wires them is B's or D's call, not A's.
+
 ## Finding a theme: the five facets
 
 A store that only lists is a store you scroll. Five facets — and the first thing
@@ -842,7 +850,8 @@ The envelope, each item earning its place:
 - **Constant frame rate, ≤ 30fps** — and this one is Vigilia-specific:
   `scene-fabric/src/background-media.ts` repaints the scene once per decoded
   frame via `requestVideoFrameCallback`, so a variable cadence becomes a variable
-  repaint rate.
+  repaint rate. **Measured 2026-10-20** rather than assumed, on a real screen
+  recording: see "Not verified" below for the distribution.
 - **No audio track.**
 - **Single-pass CRF ~20–23**; 2-pass buys little on a background loop.
 
@@ -910,6 +919,11 @@ document's plan, in phases that are each useful on their own:
 | **E** | submission: the device flow, the fork-and-PR client, CI validation and the auto-merge Action | D |
 | **F** | the publish-time normalizer and the duration and resolution caps | E, and open question 2 |
 | **G** | the style-tag field: the format's shape rule, the editor's pick-or-propose control, and the Style facet | A, and **open question 7** |
+
+**A landed 2026-10-20.** Ten tasks, its boundary's four browser claims, a
+whole-branch review and one fix round, closed with rulings R167–R171 in
+`.superpowers/sdd/2026-10-18-theme-store/progress.md`. **B–G are unstarted**, and
+the acceptance below still decides whether A is accepted: landing is not acceptance.
 
 **A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
 `index.json` and no hosting decision. **C is the last phase that dodges open
@@ -994,9 +1008,22 @@ Free-tier limits decide feasibility, so each is a probe rather than an assumptio
   repo.
 - Whether the CDN in front of release assets is viable at all for multi-megabyte
   packages, given its per-file limits.
-- Whether `requestVideoFrameCallback` cadence actually suffers under a variable
+- ~~Whether `requestVideoFrameCallback` cadence actually suffers under a variable
   frame rate in this renderer, or whether the envelope rule above is defensive
-  without a measured reason.
+  without a measured reason.~~ **Measured 2026-10-20, and it does.** The clip the
+  user reported the glass defect from — 3.533 s, 2340×1080, a screen recording —
+  is itself variable: **684 presented frames over 20.0 s carry 189 distinct
+  media-time intervals**, from **11 ms to 88 ms**, median 24.9 ms, and the most
+  common interval occurs 11 times out of 683, so there is no dominant rate.
+  `getVideoPlaybackQuality()` reports **104 of 913 frames dropped** (11%), and
+  `presentedFrames` advances in gaps of 1, 2 and 3, so the callback coalesces as
+  well as varies. `background-media.ts`'s `followFrames` repaints once per
+  callback, so that variance *is* the repaint rate — **the envelope rule is not
+  defensive without a reason.** The same clip also sits outside the proposed
+  envelope on both counts (≈46 fps against ≤30, 2340 against 1920), which makes it
+  the shape the normalizer exists for. Probe: `C:\tmp\glass-proof\cadence.ts`,
+  desktop Chromium, outside the repo; the wrap shows as the one negative delta
+  (`mediaTime` returning to 0).
 
 ## The repo's own gates still apply
 
@@ -1069,7 +1096,9 @@ each on its own phase gate, and each item below is something a person can see:
   kind is a second source and not a rewrite of the tab; switching modes with an
   unsaved document loses nothing; the grid is checked at 1280×720, 1440×900 and 200%
   zoom with every facet still reachable; and `settings.html` no longer lists themes
-  while `/settings` and `/library` still work in a plain browser.
+  while `/settings` still works in a plain browser — the chooser is `library.html`
+  **served at `/`**, not a `/library` route, which is the fact A.10's brief got wrong
+  and R161 corrected.
 - **B** — a theme installed from a catalogue item reads *Installed*, and the mark
   survives a restart because it is read from the origin record rather than held in
   the session.
