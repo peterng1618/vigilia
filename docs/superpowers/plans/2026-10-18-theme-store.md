@@ -644,6 +644,62 @@ cannot be taken until they are re-pointed.
 - The `Opened <file>.vigilia-theme` assertions become the surface's own words; a
   status line the product no longer writes is not an assertion to keep.
 
+### Task A.7d: Opening a library theme shows the editor
+
+**The defect this owns** (issue 48, found by A.7c's sweep and not by A.7b's own
+browser case, which asserted the document's id and never the mode). A.7b wired
+the store's `open` action to load a document but nothing switches the shell out
+of Themes, and `shell-layout.tsx`'s editor body is `hidden={mode !== "editor"}` —
+so the mount's `viewport.zoomToFit()` runs against a zero-sized host and writes
+nothing, and when the body becomes visible `viewport-manager`'s `resize()` asks
+whether the camera is fitted against a canvas the camera was never fitted to,
+answers no, and commits the identity transform. Measured: after the store's open
+the camera is `[1, 0, 0, 1, 0, 0]` on the desktop project (canvas 712x652) and on
+the phone project (canvas 86x771), where the product's own `zoomToFit()` writes
+`[0.834375, 0, 0, 0.834375, 89, 125.75]`.
+
+**Two things are wrong and the second is the visible one.** A control labelled
+**Open in editor** leaves the author in the store; and the theme it opened
+renders at 1:1, which on a phone-sized window puts most of the artboard off an
+86px canvas. The first is why the second happens.
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/shell-layout.tsx` — the mode
+  state, `requestMode`, the store's `onOpenTheme` handler and
+  `refitOnViewportChange`
+- Test: a browser case, and the nine cases A.7c left red
+
+**Interfaces:**
+- Consumes: `requestMode` and `refitOnViewportChange` (both already in that file),
+  `session.openLibraryTheme(id)` (A.7b).
+- Produces: opening a library theme puts the shell in Editor mode with the theme
+  fitted, on both viewports.
+
+- [ ] **Step 1: A failing browser case** — open a theme from a stubbed store and
+  assert the shell is in Editor mode **and** the camera is fitted, on the desktop
+  project and on the phone project's 86px canvas.
+- [ ] **Step 2: Run it to verify it fails.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: The nine cases A.7c left red must go green**, run whole and one
+  worker at a time, each with its own JSON report.
+- [ ] **Step 5: Commit.**
+
+**Constraints:**
+- **The mode change is not guarded on the way in.** `requestMode` asks the
+  dirty-document question only when *leaving* editor; opening a library theme
+  already asks it through `ThemeLibraryManager.openById`'s `confirmReplacement()`,
+  so the author must not be asked twice.
+- **Ruled: the shell enters Editor mode before the document is read**, so the
+  mount measures a visible body rather than relying on a later refit. Cost if
+  wrong: an open that fails leaves the author in Editor mode with their previous
+  document — which is where they came from, with the error reported.
+- **`refitOnViewportChange` is the owner of "the canvas's box changed, so
+  refit"**, and a mode change changes that box. If the fix needs it there, it goes
+  there rather than into a second refit path.
+- The nine red cases are this task's **proof**, not its scope: they are not to be
+  edited, weakened or skipped, and a case that goes green for a different reason
+  than the camera is a finding.
+
 ### Task A.8: This PC as a mode
 
 **Files:**
