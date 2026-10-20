@@ -78,8 +78,8 @@ const THIS_PC: Display = {
   theme: null,
 };
 
-/** One saved theme, because `settings.html` draws no chooser — and so no
- *  display column to press — until the library holds something. */
+/** One saved theme: these cases are about which theme the link carries, not
+ *  about a list of them. */
 const THEMES = [{ id: "living-room", name: "Living Room" }];
 
 /** The answers both pages ask for. `active` is the theme the default display
@@ -155,25 +155,35 @@ for (const page of ["settings.html", "library.html"]) {
         "Open the editor",
       );
     });
-
-    it("carries the theme of the display whose row is pressed", async () => {
-      // The default row opens pressed, so every case above is about the
-      // fallback. A display holding a theme of its own is the case the column
-      // exists for: pressing its row has to move the link to what that display
-      // shows, not to what the default holds.
-      await open(page, "living-room", [{ ...THIS_PC, theme: "kitchen-strip" }]);
-
-      expect(document.querySelector("#editor-link")?.getAttribute("href")).toBe(
-        "/editor/?theme=living-room",
-      );
-
-      document
-        .querySelector<HTMLButtonElement>('[data-display="this-pc"]')
-        ?.click();
-
-      expect(document.querySelector("#editor-link")?.getAttribute("href")).toBe(
-        "/editor/?theme=kitchen-strip",
-      );
-    });
   });
 }
+
+/**
+ * The chooser's link follows the row that is pressed, and it is the chooser's
+ * alone now: the column those rows live in is `library.html`'s, since the
+ * settings page stopped listing themes (R116). Its link still carries the
+ * default's theme, which is what the three cases above read.
+ */
+describe("the chooser's link into the editor", () => {
+  it("carries the theme of the display whose row is pressed", async () => {
+    // The default row opens pressed, so every case above is about the fallback.
+    // A display holding a theme of its own is the case the column exists for:
+    // pressing its row has to move the link to what that display shows, not to
+    // what the default holds.
+    await open("library.html", "living-room", [
+      { ...THIS_PC, theme: "kitchen-strip" },
+    ]);
+
+    expect(document.querySelector("#editor-link")?.getAttribute("href")).toBe(
+      "/editor/?theme=living-room",
+    );
+
+    document
+      .querySelector<HTMLButtonElement>('[data-display="this-pc"]')
+      ?.click();
+
+    expect(document.querySelector("#editor-link")?.getAttribute("href")).toBe(
+      "/editor/?theme=kitchen-strip",
+    );
+  });
+});

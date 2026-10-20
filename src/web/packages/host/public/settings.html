@@ -46,17 +46,12 @@
     <main>
       <h1>This PC</h1>
       <p class="lead">
-        Choose the theme your displays show, and which hardware it reports.
+        Which hardware this PC reports, and how its readings are shown.
       </p>
       <p class="elsewhere">
         Building a theme, or changing one?
         <a id="editor-link" href="/editor/">Open the editor</a>.
       </p>
-      <section aria-labelledby="themes-heading">
-        <h2 id="themes-heading">Themes</h2>
-        <p class="hint" id="themes-hint"></p>
-        <div id="themes"></div>
-      </section>
       <section aria-labelledby="devices-heading">
         <h2 id="devices-heading">Devices on this PC</h2>
         <p class="hint">
@@ -88,15 +83,12 @@
       <div id="status">Loading…</div>
     </main>
     <script type="module">
-      import { deleteTheme, shownTheme, themeList } from "/settings/theme-list.js";
-
       const status = document.querySelector("#status");
       const groups = document.querySelector("#groups");
-      const themesHost = document.querySelector("#themes");
+      const editorLink = document.querySelector("#editor-link");
       const questionsSection = document.querySelector("#questions-section");
       const questionsHost = document.querySelector("#questions");
       const questionsHint = document.querySelector("#questions-hint");
-      const themesHint = document.querySelector("#themes-hint");
 
       const GROUP_LABELS = {
         gpu: "Graphics card",
@@ -125,88 +117,39 @@
       };
 
       let state = { available: { gpus: [], disks: [] }, assigned: {}, names: {} };
-      let themes = [];
-      // The product's templates, which are not saved on this PC and so are
-      // never chosen here — only listed, beside the author's own.
-      let templates = [];
-      let displays = [];
+      // The theme the default display holds, and so the theme this page's
+      // questions are about.
       let defaultTheme = null;
-      // The display this page is showing settings for. The default is what
-      // every display with no choice of its own already gets, so it is what the
-      // page means until another row in the column is pressed.
-      let selected = "default";
+      // The display this page answers a theme's questions for. The default is
+      // what every display with no choice of its own already gets, and it is
+      // the only one this page can answer for: the column that moved it lived
+      // inside the theme list, and that listing is the chooser's now (`vg-649`).
+      // So the page answers for the default and says so, rather than answering
+      // for one silently.
+      const DEFAULT_DISPLAY = "default";
       // The device slots the chosen theme reads; empty means "ask about none".
       let requiredDevices = [];
       // Answers this theme already has, so a question is asked only once.
       let themeAnswers = {};
 
-      /** The theme the display this page is showing for holds. */
-      function shown() {
-        return shownTheme(selected, displays, defaultTheme);
-      }
-
-      function renderThemes() {
-        themesHost.replaceChildren();
-        // An author who is looking at a theme and then goes to change it means
-        // that one. The link cannot carry it in the markup — the host serves
-        // this file as-is and the display's theme is only known once the map
-        // has answered — so it is pointed at the theme the page is showing.
-        const editorLink = document.querySelector("#editor-link");
-        const showing = shown();
-        if (editorLink !== null) {
-          editorLink.href =
-            showing === null
-              ? "/editor/"
-              : `/editor/?theme=${encodeURIComponent(showing)}`;
-        }
-        themesHint.textContent =
-          themes.length === 0
-            ? "No themes are saved on this PC yet. Build one in the editor, then save it here."
-            : themes.length === 1
-              ? "The only saved theme is shown on every display."
-              : "Pick the theme the chosen display should show.";
-
-        // A template is worth listing even with nothing saved, so the empty
-        // state still shows what the product offers.
-        if (themes.length === 0 && templates.length === 0) return;
-
-        const list = document.createElement("div");
-        list.className = "theme-list";
-        list.append(
-          themeList(themes, {
-            displays,
-            default: defaultTheme,
-            selected,
-            templates,
-            onSelect: (display) => {
-              selected = display;
-              renderThemes();
-              // The questions belong to the display the page is now showing
-              // for, so they are read again rather than left from the last one.
-              loadQuestions();
-            },
-            onChoose: chooseTheme,
-            // This page lists the library too, so a Delete that worked on `/`
-            // and was missing here would be the same finding on the next
-            // screen: an author who cannot remove what they made.
-            onDelete: deleteTheme,
-          }),
-        );
-        themesHost.append(list);
-      }
-
       function renderQuestions(required, answers) {
         const unanswered = required.filter((group) => answers[group] === undefined);
         questionsHost.replaceChildren();
 
-        if (shown() === null || required.length === 0 || unanswered.length === 0) {
+        if (
+          defaultTheme === null ||
+          required.length === 0 ||
+          unanswered.length === 0
+        ) {
           questionsSection.hidden = true;
           return;
         }
 
         questionsSection.hidden = false;
         questionsHint.textContent =
-          "This theme reads hardware that has no answer yet. Pick a device, or leave it following this PC's settings.";
+          "This theme reads hardware that has no answer yet. Pick a device, or " +
+          "leave it following this PC's settings. These answers are for the " +
+          "default display — every screen with no choice of its own.";
 
         for (const group of unanswered) {
           const fieldset = document.createElement("fieldset");
@@ -241,16 +184,16 @@
 
       /** A theme's answers for one display: which devices a dashboard reads is
        *  a fact about a screen, not about the machine, so the display the page
-       *  is showing for rides the request. */
+       *  answers for rides the request. */
       function answersUrl(theme) {
         return (
           `/api/themes/${encodeURIComponent(theme)}/answers` +
-          `?display=${encodeURIComponent(selected)}`
+          `?display=${encodeURIComponent(DEFAULT_DISPLAY)}`
         );
       }
 
       async function answerTheme(group, value) {
-        const theme = shown();
+        const theme = defaultTheme;
         if (theme === null) return;
         status.textContent = "Saving…";
         try {
@@ -274,16 +217,16 @@
       }
 
       async function loadQuestions() {
-        const theme = shown();
+        const theme = defaultTheme;
         if (theme === null) {
           requiredDevices = [];
           themeAnswers = {};
           renderQuestions([], {});
           return;
         }
-        // Never rejects: a row press reads these without awaiting them, and an
-        // unhandled rejection here would leave the questions from the last
-        // display on screen as though they were this one's.
+        // Never rejects: the devices load reads the questions again without
+        // awaiting this one, and an unhandled rejection here would leave the
+        // last theme's questions on screen as though they were this one's.
         try {
           const response = await fetch(answersUrl(theme));
           if (!response.ok) {
@@ -299,37 +242,22 @@
         }
       }
 
-      async function chooseTheme(display, id) {
-        status.textContent = "Saving…";
-        try {
-          const response = await fetch("/api/themes/active", {
-            method: "PUT",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ display, id }),
-          });
-          if (!response.ok) throw new Error(await response.text());
-          // The route answers the whole map, so the page reads back what the
-          // write did rather than assuming it landed on one display.
-          const saved = await response.json();
-          defaultTheme = saved.default ?? null;
-          displays = saved.displays ?? displays;
-          renderThemes();
-          await loadQuestions();
-          status.textContent = "Saved. Displays show it on their next load.";
-        } catch (error) {
-          status.textContent = `Could not save: ${error.message}`;
-        }
-      }
-
-      async function loadThemes() {
+      /** The theme the default display holds, and the link to the editor that
+       *  follows it. An author who is looking at a theme and then goes to change
+       *  it means that one, and the link cannot carry it in the markup — the
+       *  host serves this file as-is and the display's theme is only known once
+       *  the map has answered. */
+      async function loadActiveTheme() {
         const response = await fetch("/api/themes/active");
         if (!response.ok) return;
         const body = await response.json();
-        themes = body.themes ?? [];
-        templates = body.templates ?? [];
-        displays = body.displays ?? [];
         defaultTheme = body.default ?? null;
-        renderThemes();
+        if (editorLink !== null) {
+          editorLink.href =
+            defaultTheme === null
+              ? "/editor/"
+              : `/editor/?theme=${encodeURIComponent(defaultTheme)}`;
+        }
         await loadQuestions();
       }
       let saving = false;
@@ -536,7 +464,7 @@
         }
       }
 
-      await loadThemes();
+      await loadActiveTheme();
       await load();
       await loadDisplay();
     </script>

@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import * as themeListModule from "../public/theme-list.js";
 
 /**
@@ -73,10 +73,9 @@ const json = (body: unknown): Response =>
     text: async () => JSON.stringify(body),
   }) as unknown as Response;
 
-/** What `/api/themes/active` answers: one saved theme, and the display column
- *  the page draws from it. The default row opens pressed, and this PC holds no
- *  theme of its own, so the two displays' answers are told apart by their key
- *  rather than by their contents. */
+/** What `/api/themes/active` answers: one saved theme, and the map the page
+ *  reads its `default` out of. The rows that map once drew are the chooser's
+ *  now, so this page draws no display column at all. */
 const THEME_MAP = {
   themes: [{ id: "living-room", name: "Living Room" }],
   templates: [],
@@ -94,11 +93,11 @@ const stubFetch = (hardware: Hardware, map: unknown = THEME_MAP): void => {
     switch (input) {
       case "/api/themes/active":
         return json(map);
-      // The display the page is showing for rides the request, because the
-      // answers belong to a screen rather than to the machine.
+      // The display the page answers for rides the request, because the answers
+      // belong to a screen rather than to the machine. It is the default and
+      // only the default: the column that moved it lived in the theme list, and
+      // the listing is the chooser's now (`vg-649`).
       case "/api/themes/living-room/answers?display=default":
-        return json({ required: ["data-disk"], answers: {} });
-      case "/api/themes/living-room/answers?display=this-pc":
         return json({ required: ["data-disk"], answers: {} });
       case "/api/devices":
         return json({
@@ -210,31 +209,21 @@ describe("no two fieldsets on the page carry the same prompt", () => {
 });
 
 /**
- * A theme's answers belong to the display the page is showing for, so the page
- * has to name that display in the request it makes.
- *
- * **The URL is the assertion**, because it is the only thing that fails when the
- * display is dropped from it: a page that read the wrong key would still draw
- * the same form, and the host would still store what it was sent.
+ * A theme's answers belong to a display, and this page has no selector for one:
+ * the column that named a display lived inside the theme list, and the listing
+ * is the chooser's now (`vg-649`). So the page answers for the default, and the
+ * URL is still the assertion — it is the only thing that fails when the display
+ * is dropped from it, because a page that read the wrong key would still draw
+ * the same form and the host would still store what it was sent.
  */
 describe("the display the answers are read and written for", () => {
-  it("rides the request, and follows the row that is pressed", async () => {
+  it("is the default, which is the only one the page can answer for", async () => {
     await render(MANY);
 
-    expect(requested).toContain(
+    // Every answers URL the page asked for, and not only that it asked once:
+    // a page that still offered another display would name it here.
+    expect(requested.filter((url) => url.includes("/answers"))).toEqual([
       "/api/themes/living-room/answers?display=default",
-    );
-
-    document
-      .querySelector<HTMLButtonElement>('[data-display="this-pc"]')
-      ?.click();
-
-    // Pressing the display's row is what makes the questions this PC's, so the
-    // next read has to name it.
-    await vi.waitFor(() =>
-      expect(requested).toContain(
-        "/api/themes/living-room/answers?display=this-pc",
-      ),
-    );
+    ]);
   });
 });
