@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { CARD_LIBRARY } from "../card-library.js";
 import { hitTargetClasses } from "../components/ui/control-well.js";
+import { HostSettingsRegion } from "../host-settings-mode/region.js";
 import { CompositionPane } from "../panes/composition/composition-pane.js";
 import { confirmDocumentReplacement } from "../persistence-manager/index.js";
 import type { PublishSwitch } from "../publish-client.js";
@@ -597,11 +598,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
         {/* The mode's own region — the seam a non-editor surface fills. A task
             that lands one replaces this element's body and nothing around it:
             the switch, the header, the status bar and the editor's own body are
-            the shell's, and a region is what a mode adds. A mode with no surface
-            yet renders an empty section, because a mode with nothing to draw is
-            that rather than a placeholder standing in for one (§9) — and each
-            region is handed the mode rather than the shell choosing between
-            them, so A.8's Host region mounts beside this one. */}
+            the shell's, and a region is what a mode adds. Each region is handed
+            the mode rather than the shell choosing between them, so the two
+            below mount together and one of them draws — and a mode with no
+            surface yet renders an empty section rather than a placeholder
+            standing in for one (§9). */}
         {mode === "editor" ? null : (
           <section
             className="editor-shell-mode"
@@ -624,6 +625,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 );
               }}
             />
+            {/* The Host mode's region, beside the store's rather than chosen
+                between here: each is handed the mode and draws itself in its
+                own, so the section holds one surface whatever mode is showing.
+                It takes no route from the shell — it writes this PC's own
+                settings, and assigning a theme is the store's. */}
+            <HostSettingsRegion mode={mode} />
           </section>
         )}
         {/* §7.6's strip: readouts only, the counts on the left and the save

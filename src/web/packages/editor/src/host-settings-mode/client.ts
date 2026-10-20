@@ -1,0 +1,310 @@
+import {
+  isMeasurementSystem,
+  isTimeZoneName,
+  type MeasurementSystem,
+} from "@vigilia/renderer-core";
+
+/**
+ * The editor's seam to the host's own settings: which hardware this PC reports,
+ * how its readings are displayed, and the hardware one theme on one display
+ * reads.
+ *
+ * **Every call below is a route the host already serves** — `GET/PUT
+ * /api/devices`, `GET/PUT /api/display`, `GET/PUT /api/themes/:id/answers` — and
+ * these are the three routes `packages/host/public/settings.html` reads. The
+ * shell's Host mode is that page rebuilt in React, so this adds no route and no
+ * host-side read.
+ *
+ * **It is a separate client from `ThemeLibraryClient` on purpose.** That one is
+ * the theme library's — listing, opening, saving, removing, and the display map
+ * — and this one is the machine's. Two owners, and the routes do not overlap.
+ */
+
+/** The slots a theme's sensors are answered from. Spelled here rather than
+ *  imported: the editor has no dependency on the host package. The three are
+ *  the host's own `ASSIGNABLE_GROUPS`, and the routes filter to them on both
+ *  sides, so a fourth would arrive at neither. */
+export type AssignableGroup = "gpu" | "system-disk" | "data-disk";
+
+const ASSIGNABLE_GROUPS: readonly AssignableGroup[] = [
+  "gpu",
+  "system-disk",
+  "data-disk",
+];
+
+function isAssignableGroup(value: string): value is AssignableGroup {
+  return (ASSIGNABLE_GROUPS as readonly string[]).includes(value);
+}
+
+/** One device a provider reported: the id a choice stores, and the name it
+ *  reports, which is what a row falls back to when it has no chosen name. */
+export interface AvailableDevice {
+  readonly id: string;
+  readonly name: string;
+}
+
+/** This PC's devices and what has been chosen about them. */
+export interface DeviceSettings {
+  readonly available: {
+    readonly gpus: readonly AvailableDevice[];
+    readonly disks: readonly AvailableDevice[];
+  };
+  /** The chosen device per slot. An absent slot is the automatic choice, which
+   *  is the absence of a choice rather than a device of that name. */
+  readonly assigned: Readonly<Partial<Record<AssignableGroup, string>>>;
+  /** Names by device id. A device with no entry uses the name it reports. */
+  readonly names: Readonly<Record<string, string>>;
+}
+
+/** What a display sends to answer one theme's questions: a device per slot, and
+ *  the slot absent where the theme follows this PC's own device settings. */
+export type ThemeAnswers = Readonly<Partial<Record<AssignableGroup, string>>>;
+
+export interface DisplayPreferences {
+  /** The zone the reading is shown in. Absent is this PC's own zone — the
+   *  absence of a choice, which the route also writes from `""`. */
+  readonly timeZone?: string;
+  readonly measurement?: MeasurementSystem;
+}
+
+/** What the display form sends: both fields always, because the route replaces
+ *  the whole object and saving one field would clear the other. */
+export interface DisplayPreferencesWrite {
+  readonly timeZone: string;
+  readonly measurement: MeasurementSystem;
+}
+
+export interface HostSettingsClient {
+  readDevices(): Promise<DeviceSettings>;
+  /** Writes the whole object, because the route replaces it: a caller merges
+   *  its own change in and sends both fields. Answers what was written, which
+   *  is the settings file's own reading of it rather than the caller's. */
+  saveDevices(next: {
+    readonly assigned: Readonly<Partial<Record<AssignableGroup, string>>>;
+    readonly names: Readonly<Record<string, string>>;
+  }): Promise<{
+    readonly assigned: Readonly<Partial<Record<AssignableGroup, string>>>;
+    readonly names: Readonly<Record<string, string>>;
+  }>;
+  readDisplay(): Promise<{
+    readonly settings: DisplayPreferences;
+    readonly zones: readonly string[];
+  }>;
+  saveDisplay(next: DisplayPreferencesWrite): Promise<DisplayPreferences>;
+  /** Which slots the theme on that display reads, and the answers it already
+   *  has. The `required` list is the host's own `requiredDeviceGroups` run
+   *  against the theme's document — derived, never authored here. */
+  readQuestions(
+    display: string,
+    theme: string,
+  ): Promise<{
+    readonly required: readonly AssignableGroup[];
+    readonly answers: ThemeAnswers;
+  }>;
+  saveQuestions(
+    display: string,
+    theme: string,
+    answers: ThemeAnswers,
+  ): Promise<ThemeAnswers>;
+}
+
+/** A device a provider reported, kept only where it has the shape one reads. */
+function readDevices(input: unknown): readonly AvailableDevice[] {
+  if (!Array.isArray(input)) return [];
+  return input.flatMap((entry) => {
+    const device = entry as { readonly id?: unknown; readonly name?: unknown };
+    return typeof device?.id === "string" && typeof device.name === "string"
+      ? [{ id: device.id, name: device.name }]
+      : [];
+  });
+}
+
+/** The stored settings, keeping only the slots this build knows: a group a
+ *  newer host named is one no control here could offer, and inventing a row for
+ *  it would be a question with no answer. */
+function readAssigned(
+  input: unknown,
+): Partial<Record<AssignableGroup, string>> {
+  if (typeof input !== "object" || input === null) return {};
+  const assigned: Partial<Record<AssignableGroup, string>> = {};
+  for (const [group, device] of Object.entries(
+    input as Record<string, unknown>,
+  )) {
+    if (typeof device === "string" && isAssignableGroup(group)) {
+      assigned[group] = device;
+    }
+  }
+  return assigned;
+}
+
+function readNames(input: unknown): Record<string, string> {
+  if (typeof input !== "object" || input === null) return {};
+  const names: Record<string, string> = {};
+  for (const [id, name] of Object.entries(input as Record<string, unknown>)) {
+    if (typeof name === "string" && name.length > 0) names[id] = name;
+  }
+  return names;
+}
+
+/** A refusal is the host's own words where it sent any, so the person reads the
+ *  reason rather than a status code. */
+async function refusal(response: Response, what: string): Promise<Error> {
+  const text = await response.text().catch(() => "");
+  return new Error(text.trim() === "" ? `${what} (${response.status}).` : text);
+}
+
+export function createHostSettingsClient(options?: {
+  readonly baseUrl?: string;
+  readonly fetch?: typeof fetch;
+}): HostSettingsClient {
+  const fetcher = options?.fetch ?? globalThis.fetch.bind(globalThis);
+  const baseUrl = options?.baseUrl ?? "";
+
+  const readDeviceSettings = (body: unknown): DeviceSettings => {
+    const answer = body as {
+      readonly available?: {
+        readonly gpus?: unknown;
+        readonly disks?: unknown;
+      };
+      readonly assigned?: {
+        readonly assigned?: unknown;
+        readonly names?: unknown;
+      };
+    };
+    return {
+      available: {
+        gpus: readDevices(answer?.available?.gpus),
+        disks: readDevices(answer?.available?.disks),
+      },
+      assigned: readAssigned(answer?.assigned?.assigned),
+      names: readNames(answer?.assigned?.names),
+    };
+  };
+
+  return {
+    async readDevices(): Promise<DeviceSettings> {
+      const response = await fetcher(`${baseUrl}/api/devices`);
+      if (!response.ok) {
+        throw await refusal(response, "Could not read the devices");
+      }
+      return readDeviceSettings(await response.json());
+    },
+
+    async saveDevices(next) {
+      const response = await fetcher(`${baseUrl}/api/devices`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ assigned: next.assigned, names: next.names }),
+      });
+      if (!response.ok) {
+        throw await refusal(response, "Could not save the devices");
+      }
+      // Only what was written. The route answers no availability on a write, and
+      // a device list invented here would be a list of no devices.
+      const saved = readDeviceSettings(await response.json());
+      return { assigned: saved.assigned, names: saved.names };
+    },
+
+    async readDisplay() {
+      const response = await fetcher(`${baseUrl}/api/display`);
+      if (!response.ok) {
+        throw await refusal(response, "Could not read the display settings");
+      }
+      const body = (await response.json()) as {
+        readonly settings?: {
+          readonly timeZone?: unknown;
+          readonly measurement?: unknown;
+        };
+        readonly zones?: unknown;
+      };
+      const zone = body?.settings?.timeZone;
+      const measurement = body?.settings?.measurement;
+      return {
+        // A stored value this runtime can no longer resolve is refused rather
+        // than printed: the control would otherwise show a zone it cannot
+        // offer, and the person could not tell it from a choice.
+        settings: {
+          ...(typeof zone === "string" && isTimeZoneName(zone)
+            ? { timeZone: zone }
+            : {}),
+          ...(isMeasurementSystem(measurement) ? { measurement } : {}),
+        },
+        zones: Array.isArray(body?.zones)
+          ? body.zones.filter(
+              (name): name is string => typeof name === "string",
+            )
+          : [],
+      };
+    },
+
+    async saveDisplay(next): Promise<DisplayPreferences> {
+      const response = await fetcher(`${baseUrl}/api/display`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        // Both fields travel: the route replaces the whole object, so a save of
+        // one would clear the other.
+        body: JSON.stringify({
+          timeZone: next.timeZone,
+          measurement: next.measurement,
+        }),
+      });
+      if (!response.ok) {
+        throw await refusal(response, "Could not save the display settings");
+      }
+      const body = (await response.json()) as {
+        readonly settings?: {
+          readonly timeZone?: unknown;
+          readonly measurement?: unknown;
+        };
+      };
+      const zone = body?.settings?.timeZone;
+      const measurement = body?.settings?.measurement;
+      return {
+        ...(typeof zone === "string" && isTimeZoneName(zone)
+          ? { timeZone: zone }
+          : {}),
+        ...(isMeasurementSystem(measurement) ? { measurement } : {}),
+      };
+    },
+
+    async readQuestions(display, theme) {
+      const response = await fetcher(
+        `${baseUrl}/api/themes/${encodeURIComponent(theme)}/answers` +
+          `?display=${encodeURIComponent(display)}`,
+      );
+      if (!response.ok) {
+        throw await refusal(response, "Could not read this theme's questions");
+      }
+      const body = (await response.json()) as {
+        readonly required?: unknown;
+        readonly answers?: unknown;
+      };
+      return {
+        required: Array.isArray(body?.required)
+          ? body.required.filter(
+              (group): group is AssignableGroup =>
+                typeof group === "string" && isAssignableGroup(group),
+            )
+          : [],
+        answers: readAssigned(body?.answers),
+      };
+    },
+
+    async saveQuestions(display, theme, answers): Promise<ThemeAnswers> {
+      const response = await fetcher(
+        `${baseUrl}/api/themes/${encodeURIComponent(theme)}/answers` +
+          `?display=${encodeURIComponent(display)}`,
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(answers),
+        },
+      );
+      if (!response.ok) {
+        throw await refusal(response, "Could not save the answer");
+      }
+      const body = (await response.json()) as { readonly answers?: unknown };
+      return readAssigned(body?.answers);
+    },
+  };
+}

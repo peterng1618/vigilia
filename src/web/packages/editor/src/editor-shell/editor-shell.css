@@ -529,6 +529,11 @@ body,
   --layer-rename-min-height: 22px;
   --view-readout-min-width: 56px;
   --compact-layer-panel-width: 280px;
+  /* How wide the Host mode's sections run. A settings form is read, not
+     scanned, and its rows are label-and-well pairs that a 2560px window would
+     stretch past reading. The measure is the drawing's own
+     (`docs/design/mockups/current/host-settings.html:43`). */
+  --host-settings-measure: 640px;
   /* Read through `theme()` by the media query below: a custom property cannot
      be a `@media` feature value, so the query is resolved at build time. */
   --breakpoint-compact: 980px;

@@ -13,6 +13,7 @@ import type {
   SemanticFamily,
 } from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
+import type { AssignableGroup } from "./host-settings-mode/client.js";
 import type { ShortcutPrefix } from "./shortcut-manager/display.js";
 import type { CellAction } from "./store-mode/local-source.js";
 
@@ -381,6 +382,108 @@ export const uiCopy = {
      *  three answers — Save, Discard, Cancel — and the author can save rather
      *  than choose between losing the work and staying put. */
     unsaved: "Save changes before leaving the editor?",
+  },
+  /**
+   * The Host mode's own surface: this PC.
+   *
+   * **The words are `packages/host/public/settings.html`'s** — its hints, its
+   * device labels, its status line — taken rather than rewritten, because they
+   * are the same questions, and the checked drawing
+   * (`docs/design/mockups/current/host-settings.html`) says so. The one section
+   * that page has and this does not is Themes: that list is the store mode's
+   * local half now, and the assignment is made from a theme's own row.
+   */
+  hostSettings: {
+    displays: {
+      heading: "Displays",
+      hint: "Each display shows its own theme. Assign one from the theme's row in Themes.",
+      /** The name of the control that picks which display the questions below
+       *  speak for. It is a choice and not an assignment. */
+      label: "Displays",
+      /** A display holding no theme of its own is served the default. The row
+       *  names the theme it shows and says where that answer came from, because
+       *  a name alone would read as a choice this display made. */
+      follows: "Follows this PC",
+      /** Neither a theme of its own nor a default: nothing falls back to. */
+      nothing: "No theme",
+    },
+    devices: {
+      heading: "Devices on this PC",
+      hint: "Which hardware this PC reports. These apply to every theme, unless a theme asks for something different.",
+      groups: {
+        gpu: "Graphics card",
+        "system-disk": "System disk",
+        "data-disk": "Data disk",
+      } as const satisfies Record<AssignableGroup, string>,
+      /** What a slot does when nothing has been chosen, in the words a consumer
+       *  would use. The empty answer is a rule about this PC and not a device:
+       *  naming it after discovery order puts a machine's bookkeeping in the
+       *  same list as the model numbers a person bought. */
+      automatic: {
+        gpu: "Automatic (the first card this PC reports)",
+        "system-disk": "Automatic (every drive, combined)",
+        "data-disk": "Automatic (every drive, combined)",
+      } as const satisfies Record<AssignableGroup, string>,
+      /** What a slot's own question is, where one question is not enough for
+       *  the whole page: the two disk slots read the same sensor on two drives,
+       *  so the legend was the only thing telling them apart. The card slot has
+       *  none — one question covers it — so its label is the count's below. */
+      // Typed as the partial it is rather than narrowed to the two keys it
+      // holds, so a lookup by any slot compiles and answers `undefined` for the
+      // card slot — which is what its count-based label is for.
+      asked: {
+        "system-disk": "Which drive does this PC run from?",
+        "data-disk": "Which second drive should dashboards show?",
+      } as Partial<Record<AssignableGroup, string>>,
+      /** What a slot with no question of its own is labelled. */
+      question: "Which device should dashboards use?",
+      /** One device is not a question, so the label answers it. */
+      onlyOne: (name: string): string =>
+        `Only one found — dashboards use ${name}`,
+      namesHeading: "Names",
+      namesHint:
+        "What dashboards call each device. Leave one blank to use the name it reports.",
+      namePlaceholder: "Use the reported name",
+      empty:
+        "No graphics card or disk was reported. Start LibreHardwareMonitor " +
+        "with its web server enabled, then reopen Host.",
+    },
+    display: {
+      heading: "Display",
+      hint: "How this PC's readings are shown. A theme decides how a clock reads; this decides which zone it reads and which units temperatures use.",
+      timeZone: "Clock time zone",
+      ownZone: "This PC's own zone",
+      measurement: "Temperature units",
+      /** The systems by the unit they read in, which is the choice rather than
+       *  its name: `metric` and `imperial` say nothing about a thermometer. The
+       *  host page adds the unit's own mark and this table cannot — a
+       *  pictograph is not copy (`ui-copy.test.ts`), and the mark a reading
+       *  prints is the renderer's. */
+      metric: "Celsius",
+      imperial: "Fahrenheit",
+    },
+    /** The questions the theme on the chosen display raises. Only the ones it
+     *  has not answered are drawn, so answering one is what makes it leave. */
+    questions: {
+      heading: (theme: string): string => `${theme} needs`,
+      hint: "This theme reads hardware that has no answer yet. Pick a device, or leave it following this PC's settings.",
+      inherit: "Use this PC's settings",
+    },
+    /** The region's own status line, which is the host page's: its two halves
+     *  are the display count and the last write's answer. */
+    status: {
+      displays: (count: number): string =>
+        `${count} ${count === 1 ? "display" : "displays"}`,
+      ready: "Changes apply to every display immediately.",
+      saving: "Saving…",
+      savedDevices: "Saved. Displays update on their next frame.",
+      /** The units are read once, when a display loads, so the sentence says
+       *  which screens the change has not reached yet — the page's own. */
+      savedUnits:
+        "Saved. Displays already open keep their old units until they reload.",
+      savedAnswers: "Saved. Only this theme is affected.",
+      failed: (reason: string): string => `Could not save: ${reason}`,
+    },
   },
   /**
    * How a chord reads. What a key *prints* is deliberately not here: the caps

@@ -18,15 +18,15 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **A.7 is re-done as the host's import**: `POST /api/themes/import` takes a package's bytes, `readThemePackage` runs on the host, and the answer is the id it landed under — the browser's half is a post and a mapping (`theme-import.ts`), and `THEME_ID_REGEX`'s export reverts.
-- **Import never overwrites**: `ThemeWriteOptions.expectFree` makes the free-id claim and the write one step (R136), refusing whenever the folder is occupied — a `theme.json` that does not validate included — so the theme already there stays byte-for-byte unchanged.
-- **The id rule is the host's** (R137), in the spec's order: the package's own id via `isValidThemeId`, else a slug of `metadata.name`, else `-2`, `-3`; a package the reader refuses writes nothing and reaches the author with the reader's own reason.
-- **Evidence**: 85 unit tests green across `themes/import.test.ts`, `themes/store.test.ts` and the editor's `theme-import.test.ts`, plus 157 in `server.test.ts`; red-proved by disabling the `expectFree` guard, where the taken-id case replaced `family-room` and printed `{ ok: true, id: 'family-room' }`, restored `cmp`-identical.
-- **`vg-642` stays open** — a base-less save onto a taken id still replaces silently, and `expectFree` closes that on the import path only; decision note `0078` claims `server.ts` before the first write to it.
+- **A.8 lands the Host mode's surface**: `host-settings-mode/region.tsx` rebuilds the four sections `settings.html` is — the displays and the theme each shows, the devices and their names, the display settings, and the slots the chosen display's theme leaves unanswered — in the shell's own React, and `shell-layout.tsx` mounts it beside `StoreModeRegion` in the one `[data-vigilia-mode-region]` section.
+- **It shows which theme a display has and never chooses it**: a display holding none of its own is shown the default's name and said to follow this PC, and assignment stays A.9's, on a theme's own row in the store.
+- **The writes ride the host page's own routes**: `host-settings-mode/client.ts` is the seam to `GET/PUT /api/devices`, `/api/display` and `/api/themes/:id/answers?display=` — `server.ts` is untouched, because every read the region needs was already served.
+- **Evidence**: 9 dom cases in `region.dom.test.tsx`, 7 in `client.test.ts` and one in `shell-layout.dom.test.tsx`, with the whole unit suite green at 3890; red-proved by disabling the unanswered filter (`[ 'gpu', 'data-disk' ]` against `[ 'data-disk' ]`), the default fallback (`'No theme'` against `'Kitchen strip'`), the per-keystroke commit and the shell mount, each restored `cmp`-identical.
+- **Not run and not drawn**: no browser run, because the served bundles predate this commit; and the drawing's Displays secondary line (address · resolution) is in no route's answer, so a row draws the display and its theme only.
 
 ## Next
 
-1. **A.8 is next** (A.7 closed at `d8571786`): the browser proof that an imported package appears in the list and survives a restart belongs to the phase boundary, and it needs **rebuilt** bundles — the served ones predate that commit and still carry the withdrawn shape's copy.
+1. **A.9 is next**: the browser proof that an imported package appears in the list and survives a restart belongs to the phase boundary, and it needs **rebuilt** bundles — the served ones predate `d8571786` and still carry the withdrawn shape's copy.
 2. **`vg-633` is ruled (R116) and archived `verified`**, ahead of A.10 rather than after it: A.10 removes `/settings`'s Themes section only, `theme-list.js` is untouched so `/library` keeps the display column (per-display's Task 4.3) and the cost note (Task 4.8), and their spec cases move to a `/library` case instead of being deleted.
 3. Decide whether `vg-626` (the red `design:check`) runs alongside phase A or gates it; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 4. Resume the drain at Task 23.4 when the store plan stops; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.

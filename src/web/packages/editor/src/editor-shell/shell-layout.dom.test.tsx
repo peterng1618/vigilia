@@ -1810,3 +1810,81 @@ it("stays in the editor when the save does not land", async () => {
 
   layout.destroy();
 });
+
+/**
+ * **The third mode has a surface, and the store's is not showing beside it.**
+ *
+ * A.1 left the seam and A.2 filled it for Themes; this is the Host region
+ * mounting in the same section — one `[data-vigilia-mode-region]` element
+ * whichever of the two draws, which is the seam's own rule rather than two
+ * regions stacked. Both clients are the shell's own, so the stub is what the
+ * host answers: the display map, the library, this PC's devices and its display
+ * settings.
+ */
+it("shows the Host mode's own region, and the store's only in Themes", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/themes/active")) {
+        return new Response(
+          JSON.stringify({
+            default: null,
+            displays: [{ id: "this-pc", label: "This PC", theme: null }],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith("/api/themes")) {
+        return new Response(JSON.stringify({ themes: [], templates: [] }), {
+          status: 200,
+        });
+      }
+      if (url.startsWith("/api/devices")) {
+        return new Response(
+          JSON.stringify({
+            available: { gpus: [], disks: [] },
+            assigned: { assigned: {}, names: {} },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ settings: {}, zones: [] }), {
+        status: 200,
+      });
+    }),
+  );
+
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+
+  await act(async () => modeSegments(root)[1]?.click());
+  expect(
+    root.querySelector("[data-vigilia-store-region]"),
+    "the Themes mode drew no store region",
+  ).not.toBeNull();
+  expect(
+    root.querySelector("[data-vigilia-host-region]"),
+    "the store's region was drawn beside the Host one",
+  ).toBeNull();
+
+  await act(async () => modeSegments(root)[2]?.click());
+  await act(async () => {});
+
+  expect(
+    root.querySelector("[data-vigilia-host-region]"),
+    "the Host mode drew no region",
+  ).not.toBeNull();
+  expect(
+    root.querySelector("[data-vigilia-store-region]"),
+    "the store's region is still showing in the Host mode",
+  ).toBeNull();
+  const sections = root.querySelectorAll("[data-vigilia-mode-region]");
+  expect(sections, "the seam is more than one element").toHaveLength(1);
+  expect(
+    sections[0]?.getAttribute("data-vigilia-mode-region"),
+    "the section does not name the mode that is showing",
+  ).toBe("this-pc");
+
+  layout.destroy();
+});
