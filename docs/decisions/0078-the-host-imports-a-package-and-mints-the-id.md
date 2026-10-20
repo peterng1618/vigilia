@@ -111,7 +111,7 @@ being part of the write.
 | Browser parses and saves, refusing a taken id | Opposite of the spec; two clients would repeat the id rule | — | The window the rule exists to close | Rejected (R133) |
 | Host lists, then saves the free id | Small | A second pass over the library | Replaced theme between the two calls (R136) | Rejected |
 | Host claims the id with an exclusive `mkdir` | Atomic on this platform | Restructures the store's staged swap into a create | Touches vg-642's territory in the general write | Rejected for this task |
-| Host passes `expectFree` into the write it already makes | One flag on an existing call | The check is not atomic against a concurrent import | A microseconds-wide race, versus a window that is user-visible | **Chosen** |
+| Host passes `expectFree` into the write it already makes | One flag on an existing call | The check is not atomic against a concurrent import | A race from the claim to the swap — the whole staged write of `theme.json` and every asset, not microseconds — versus a window that is user-visible | **Chosen** |
 
 ## Rung 6 — probe
 

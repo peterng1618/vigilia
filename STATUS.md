@@ -26,7 +26,7 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Next
 
-1. **A.7 re-done is next**, then A.8–A.10: A.7's re-do lands on a suite that no longer touches the picker, and the nine cases A.7d made green are its floor. `2c74bb2e` is kept, not reverted.
+1. **A.8 is next** (A.7 closed at `d8571786`): the browser proof that an imported package appears in the list and survives a restart belongs to the phase boundary, and it needs **rebuilt** bundles — the served ones predate that commit and still carry the withdrawn shape's copy.
 2. **`vg-633` is ruled (R116) and archived `verified`**, ahead of A.10 rather than after it: A.10 removes `/settings`'s Themes section only, `theme-list.js` is untouched so `/library` keeps the display column (per-display's Task 4.3) and the cost note (Task 4.8), and their spec cases move to a `/library` case instead of being deleted.
 3. Decide whether `vg-626` (the red `design:check`) runs alongside phase A or gates it; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 4. Resume the drain at Task 23.4 when the store plan stops; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
