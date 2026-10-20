@@ -7,10 +7,12 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Download,
   Ellipse,
   Eye,
   EyeOff,
   FileText,
+  Folder,
   Gauge,
   Hexagon,
   Image as ImageIcon,
@@ -23,6 +25,7 @@ import {
   LogOut,
   type LucideIcon,
   Minus,
+  Monitor,
   OctagonAlert,
   Palette,
   Pencil,
@@ -33,6 +36,7 @@ import {
   Spline,
   Square,
   Star,
+  Trash2,
   TriangleAlert,
   TriangleRight,
   Type,
@@ -187,6 +191,16 @@ export const ENTER_GLYPH: LucideIcon = LogIn;
 export const LEAVE_GLYPH: LucideIcon = LogOut;
 export const VISIBLE_GLYPH: LucideIcon = Eye;
 export const HIDDEN_GLYPH: LucideIcon = EyeOff;
+
+/** The store cell's four actions, from the drawing's facts band
+ *  (`mockups/current/store-themes.html`): a folder for opening the item, a
+ *  monitor for assigning it to a display, a download for exporting it as a
+ *  package, and the bin for deleting it — the last is the one the mark in §4
+ *  paints `--hot`, which the control's own `destructive` flag carries. */
+export const OPEN_ITEM_GLYPH: LucideIcon = Folder;
+export const ASSIGN_ITEM_GLYPH: LucideIcon = Monitor;
+export const EXPORT_ITEM_GLYPH: LucideIcon = Download;
+export const DELETE_ITEM_GLYPH: LucideIcon = Trash2;
 
 /** The rail's four slot glyphs, from §7.2's table. Keyed by the rail's own slot
  *  union so a fifth slot is a compile error here rather than a slot with no

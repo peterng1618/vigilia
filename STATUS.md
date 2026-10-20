@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The listing carries the facet record** (A.4a): the host store's `entryFor` derives `facetRecordOf(envelope)` beside the `performanceCostsOf` call it already made, so `ThemeStoreEntry.facets` rides the listing route with no second read and no cache.
-- **The editor's `ThemeLibraryEntry` declares `facets`, `author` and `thumbnailUrl`**, the last built in the client's own `list()` because the client is what knows its base URL (`/api/themes/<id>/thumbnail`).
-- **A template is not a listed theme**: the chooser's templates take their own `TemplateEntry` — a template has no document, so no derived record — while the stored-theme fixtures in the tests gained the record the host now sends.
-- **Evidence**: `store.test.ts` + `theme-library-client.test.ts` 76 passed exit 0, red first with `facets` removed from `entryFor` and with the thumbnail mapping reverted (the two new cases red, exit 1), each restored byte-identical (`cmp`) and green; `npm run typecheck` exit 0; `npx biome check ..` exit 0; `npm run status:check` exit 0.
-- **Nothing consumes the record yet**: `host/src/server.ts` is untouched because the route already answers `themeStore.list()`, and A.4b builds the source and the gallery on this.
+- **The local half's source and the gallery land** (A.4b): `store-mode/local-source.ts` reads the host's library through an `ItemSource` — one hop, so a second kind is a second source — labelling every item with the wire kind `dashboard-theme` and carrying the facet record A.4a put on the listing.
+- **`StoreItem` gains `ground`**, resolved in the source from `artboard.background` through `resolveStyleValue` and `cssArtboardPaint`; `matchesFacets` is pure and narrows by the record's own readings — chosen values are alternatives within a facet, every facet chosen in must hold, an empty facet is "any", and `style` matches nothing until phase G's tags.
+- **`gallery.tsx` draws the drawing's cell**: the `2/1` picture with the theme's own ground behind it, so a theme with no stored picture draws its artboard rather than a broken image; the name, the mono byline and the 26px facts band, whose four actions travel through one `onAction` while the origin badge stays phase B's.
+- **The grid's 272px minimum becomes a design-language value across three files** — DESIGN.md's Layout section, `designLanguagePx`, and `gallery.tsx` joining the gated list as its consumer — so the remainder stays 20 against its ceiling of 19 (`vg-626`) with neither new file in it.
+- **Evidence**: the two new files 12 passed exit 0; red proof on the final bytes (the predicate made to treat an empty value set as matching, and the ground dropped — 4 failed, exit 1), each restored byte-identical by `cmp`; `npm run typecheck`, `npx biome check ..` (716 files), `design:check` (remainder 20, unchanged) and `status:check` exit 0; no browser case, because nothing mounts the gallery until A.6.
 
 ## Next
 

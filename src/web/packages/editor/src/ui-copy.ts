@@ -9,6 +9,7 @@
 import type { ChartFamily } from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
 import type { ShortcutPrefix } from "./shortcut-manager/display.js";
+import type { CellAction } from "./store-mode/local-source.js";
 
 /**
  * The one name per chart family, hoisted so the layer role vocabulary can
@@ -477,6 +478,44 @@ export const uiCopy = {
         downloads: "Downloads",
         favorites: "Favorites",
       },
+    },
+    /** One cell of either gallery (`2026-10-12-theme-store-design.md`, "The store
+     *  mode"). The actions are keyed by `CellAction`, so an action added to the
+     *  cell without a word for it fails to compile rather than drawing an
+     *  icon-only button nobody can name.
+     *
+     *  **The origin badge is not here**, and neither is any word for it: the
+     *  spec's own landing order puts the origin record and the *Installed* badge
+     *  in phase B, so the band this task draws has the four actions and an empty
+     *  left slot. */
+    cell: {
+      /** A theme whose document declares no author. A fact about the theme
+       *  rather than a missing reading, which is why it is a word and not the
+       *  gap's blank. */
+      noAuthor: "No author",
+      /** Between the author and the date on the mono line, the way
+       *  `shortcuts.alternativeSeparator` sits between two chords. Punctuation,
+       *  because a word here would read as part of the name. */
+      authorSeparator: " · ",
+      /** The four actions, as the drawing's facts band orders them. Spelled as
+       *  the spec does — **Open in editor**, **Assign to display**, **Export
+       *  package** and **Delete** — because each names the operation the library
+       *  already has rather than the mechanism behind it. */
+      actions: {
+        open: "Open in editor",
+        assign: "Assign to display",
+        export: "Export package",
+        delete: "Delete",
+      } satisfies Record<CellAction, string>,
+      /** What each kind is called, keyed by its wire identifier. The cell draws
+       *  no kind — the local half's drawing has no room for one and the online
+       *  half's badge is not this cell — so this is the item's own surface's word
+       *  (A.6) rather than this cell's. A kind this build does not know prints
+       *  its own identifier, which is what the spec requires of a client older
+       *  than the kind. */
+      kinds: { "dashboard-theme": "Dashboard theme" } as Readonly<
+        Record<string, string>
+      >,
     },
   },
   /** The library chooser. Its two groups say which kind of thing a row is: a

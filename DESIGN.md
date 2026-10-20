@@ -192,6 +192,14 @@ Row rhythm: a control row is **26px** tall in a panel, **30px** in a dialog,
 **32px** in the settings surface. Density does not vary by taste — it varies by
 which of those three a surface is.
 
+**The store's gallery grid is 272px minimum per column.** The number is not the
+local half's own: it is derived from the **online** half's busiest facts band —
+its badge, its counts and its four actions — so a person switching halves does
+not watch the grid change shape. It is fixed by the drawing
+(`docs/design/mockups/current/store-themes.html`), which states where it comes
+from, and the grid is `repeat(auto-fill, minmax(272px, 1fr))`: the column count
+follows the width, so no breakpoint is invented for it.
+
 ### The header
 
 <!-- §7.1 -->

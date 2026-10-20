@@ -48,6 +48,20 @@ import { openPosition } from "./rebuild-driver.js";
 import { choosePalette } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
+/** The facet record the host derives for every theme it lists (A.4). The store
+ *  mode reads it, so a stub that answers a theme without one renders a filter
+ *  over nothing — and `route.fulfill({ json })` is untyped, so nothing but this
+ *  constant makes that a compile error. */
+const LISTED_THEME_FACETS = {
+  author: undefined,
+  colourMode: "dark",
+  sensors: [{ key: "cpu.load", label: "CPU", family: "system" }],
+  orientation: "landscape",
+  aspect: "16:9",
+  width: 1920,
+  height: 1080,
+} as const;
+
 /** Clicks one primitive in the Add pane's shape group.
  *
  *  Reached through the group's own hook rather than by its heading: the heading
@@ -2402,8 +2416,18 @@ test.describe("Fabric editor route", () => {
       route.fulfill({
         json: {
           themes: [
-            { id: "graphite-desk", name: "Graphite desk", updatedAt: "" },
-            { id: "editorial-wall", name: "Editorial wall", updatedAt: "" },
+            {
+              id: "graphite-desk",
+              name: "Graphite desk",
+              updatedAt: "",
+              facets: LISTED_THEME_FACETS,
+            },
+            {
+              id: "editorial-wall",
+              name: "Editorial wall",
+              updatedAt: "",
+              facets: LISTED_THEME_FACETS,
+            },
           ],
         },
       }),
