@@ -167,7 +167,15 @@ function matchesShape(item: StoreItem, chosen: readonly string[]): boolean {
  */
 const FACET_MATCHERS: Readonly<Record<string, FacetMatcher>> = {
   author: (item, chosen) => chosen.some((value) => value === item.author),
-  "colour-mode": (item, chosen) => chosen.includes(item.facets.colourMode),
+  // **An unclassified theme carries no colour-mode value.** `unclassified` is
+  // the absence of an answer rather than one a person can ask for — a mid-grey
+  // ground, or a picture behind the board — so it is reachable under "any" and
+  // under no other value, including a selection naming it (spec, "Finding a
+  // theme"). Reading it as a value would let the facet hide a theme from
+  // someone who never asked it to.
+  "colour-mode": (item, chosen) =>
+    item.facets.colourMode !== "unclassified" &&
+    chosen.includes(item.facets.colourMode),
   sensors: (item, chosen) =>
     chosen.every((value) =>
       item.facets.sensors.some((sensor) => sensor.key === value),

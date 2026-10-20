@@ -214,6 +214,56 @@ it("draws a picture again when the address changes after a failure", async () =>
 });
 
 /**
+ * A save is what gives a theme its picture, and the address does not move when
+ * one happens: the host builds it from the theme's id. So the failed state is
+ * keyed by the theme's own time as well — the same address with a new
+ * `updatedAt` asks again, and a re-listing that changed nothing does not.
+ */
+it("asks for the picture again only when the theme itself changed", async () => {
+  const container = await mount(
+    <Gallery items={[item()]} onAction={() => undefined} />,
+  );
+  const box = pictureBox(container);
+
+  await act(async () => {
+    must(box.querySelector("img"), "picture").dispatchEvent(new Event("error"));
+  });
+  expect(box.querySelector("img")).toBeNull();
+
+  // Same address and same time, with a change the cell does draw — so this is a
+  // real re-render rather than one React skipped, and the picture stays dropped.
+  await rerender(
+    <Gallery
+      items={[item({ name: "Living room (renamed)" })]}
+      onAction={() => undefined}
+    />,
+  );
+  expect(
+    must(
+      container.querySelector<HTMLElement>("[data-vigilia-store-cell-name]"),
+      "cell name",
+    ).textContent,
+    "the cell did not re-render, so the case below proves nothing",
+  ).toBe("Living room (renamed)");
+  expect(
+    box.querySelector("img"),
+    "the cell asked again for a picture nothing had changed",
+  ).toBeNull();
+
+  await rerender(
+    <Gallery
+      items={[item({ updatedAt: "2026-10-16T11:02:00.000Z" })]}
+      onAction={() => undefined}
+    />,
+  );
+
+  expect(
+    must(box.querySelector("img"), "picture").getAttribute("src"),
+    "the cell kept hiding the picture a save had stored",
+  ).toBe("/api/themes/living-room/thumbnail");
+});
+
+/**
  * The four actions, named and reported through the one callback.
  *
  * The cell draws four, so `onAction` carries which one as well as which item —

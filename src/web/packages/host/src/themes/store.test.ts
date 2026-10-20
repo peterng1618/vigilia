@@ -405,6 +405,52 @@ describe("ThemeStore", () => {
     expect(byId.get("plain")?.ground).toBeUndefined();
   });
 
+  it("carries a gradient ground as the CSS form a cell draws", async () => {
+    const store = createThemeStore(tmpDir);
+    // The gradient branch of `cssArtboardPaint`, which every case above reaches
+    // only through a solid: the CSS form carries every stop, and the angle is
+    // CSS's own convention rather than the authored one.
+    await store.write("dusk", {
+      envelope: {
+        ...envelopeFor("dusk", "Dusk"),
+        artboard: {
+          width: 1920,
+          height: 1080,
+          background: { ref: "palette.dusk" },
+        },
+        globals: {
+          palette: {
+            none: {
+              name: "None",
+              value: { kind: "solid", color: "transparent" },
+            },
+            dusk: {
+              name: "Dusk",
+              value: {
+                kind: "gradient",
+                angle: 0,
+                stops: [
+                  { offset: 0, color: "#101014" },
+                  { offset: 1, color: "#2b2b3a" },
+                ],
+              },
+            },
+          },
+        },
+      },
+      assets: {},
+    });
+
+    const list = await store.list();
+
+    expect(list[0]?.ground).toBe(
+      "linear-gradient(90deg, #101014 0%, #2b2b3a 100%)",
+    );
+    // The same document is still classified, so the gradient is not a ground the
+    // rest of the entry disagrees with.
+    expect(list[0]?.facets.colourMode).toBe("dark");
+  });
+
   /**
    * The bare mount's answer has to be reproducible, and a tie is ordinary here
    * rather than exotic: the e2e fixtures seed the whole library in one pass and

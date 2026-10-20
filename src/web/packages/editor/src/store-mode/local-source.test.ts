@@ -34,7 +34,7 @@ function envelope(
     artboard: {
       width: 1920,
       height: 1080,
-      background: { value: { kind: "solid", color: "midnightblue" } },
+      background: { value: { kind: "solid", color: "#101014" } },
     },
     metadata: {
       name: "Living room",
@@ -69,7 +69,7 @@ function entry(
 
 /** The ground the host derives for the fixture document, and the value the
  *  cases that are not about an absence hand the client. */
-const GROUND = "midnightblue";
+const GROUND = "#101014";
 
 /** A client whose listing is the fixtures and whose `open` **rejects**: the
  *  source must never call it, and a case that silently started to would fail
@@ -129,7 +129,7 @@ describe("the local half's items", () => {
 
     const items = await source.list();
 
-    expect(items[0]?.ground).toBe("midnightblue");
+    expect(items[0]?.ground).toBe("#101014");
     expect(client.open).not.toHaveBeenCalled();
     expect(client.list).toHaveBeenCalledOnce();
   });
@@ -256,6 +256,52 @@ describe("narrowing by a facet", () => {
     expect(
       matchesFacets(one, { author: ["someone-else"], sensors: ["cpu.load"] }),
     ).toBe(false);
+  });
+
+  it("keeps an unclassified theme reachable under any and under no other value", async () => {
+    // A picture behind the board: the token is not what a viewer sees, so the
+    // document carries no colour mode. `unclassified` is the absence of an
+    // answer rather than one a person can ask for, so it is reachable by not
+    // asking and by nothing else (spec, "Finding a theme") — a selection naming
+    // it must not be the one thing that finds it.
+    const filmed = await item(
+      envelope({
+        id: "film",
+        artboard: {
+          width: 1920,
+          height: 1080,
+          background: { value: { kind: "solid", color: "#101014" } },
+          backgroundMedia: { assetId: "loop", fit: "theme" },
+        },
+      }),
+    );
+    const daylight = await item(
+      envelope({
+        id: "daylight",
+        artboard: {
+          width: 1920,
+          height: 1080,
+          background: { value: { kind: "solid", color: "#f7f7f7" } },
+        },
+      }),
+    );
+    const dark = await item(envelope());
+
+    expect(filmed.facets.colourMode).toBe("unclassified");
+    expect(matchesFacets(filmed, {})).toBe(true);
+    expect(matchesFacets(filmed, { "colour-mode": [] })).toBe(true);
+    expect(matchesFacets(filmed, { "colour-mode": ["unclassified"] })).toBe(
+      false,
+    );
+    expect(
+      matchesFacets(filmed, { "colour-mode": ["dark", "unclassified"] }),
+    ).toBe(false);
+
+    expect(daylight.facets.colourMode).toBe("light");
+    expect(matchesFacets(daylight, { "colour-mode": ["light"] })).toBe(true);
+    expect(matchesFacets(daylight, { "colour-mode": ["dark"] })).toBe(false);
+    expect(dark.facets.colourMode).toBe("dark");
+    expect(matchesFacets(dark, { "colour-mode": ["light"] })).toBe(false);
   });
 
   it("matches nothing on a facet no theme carries a value for", async () => {

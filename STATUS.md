@@ -18,10 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Fix round 1 on A.4b** (`68be21ea`): the facet predicate now follows the spec rather than R112 — OR within a facet, AND across facets, **except Sensors and Shape, which are AND**, with Shape's three groups AND with each other and OR within themselves.
-- **The ground is derived where the envelope is** (R114): the host's `entryFor` fills it beside `facets` and `costs` from the document it already parsed, `ThemeLibraryEntry` declares it, and `localThemeSource.list()` makes no `open()` call at all — the second pass over the library the spec refuses is gone, and media behind the board is an absent ground rather than the token's paint.
-- **`Picture`'s broken state is the address that failed** rather than a latched flag, so a cell whose picture is replaced draws the new one; and the e2e and gallery fixtures build their facet record with `facetRecordOf`, so no stub invents a sensor descriptor `describeSemanticKey` never produces.
-- **Evidence**: the four touched suites 91 passed exit 0; three red proofs on the final bytes (the old flat OR, the latched picture, an `open()` per item), each restored byte-identical by `cmp`; `npm run test` 279 files / 3801 tests exit 0; `typecheck`, `biome check ..` (716 files), `design:md`, `status:check` and `docs:check` exit 0; `design:check` still the `vg-626` baseline (remainder 20, no new violation).
+- **Fix round 2 on A.4b** (fixing `c8f4adf9`): `unclassified` is not a colour-mode value — an unclassified theme carries none, so it is reachable under "any" and under no other value, including a selection naming it (spec, "Finding a theme").
+- **The gallery's failed picture is keyed by the address *and* the theme's own `updatedAt`**, which is what a save changes: a save that stores a thumbnail now draws it, while a re-listing that changed nothing does not ask again.
+- **The host's ground has a gradient case**: `cssArtboardPaint`'s gradient branch is asserted through a palette entry, as `linear-gradient(90deg, #101014 0%, #2b2b3a 100%)`, where every earlier case reached only the solid branch.
+- **Evidence**: the three suites 78 passed exit 0; the F5 red proof (the old colour-mode carry put back) failed exactly the unclassified case, exit 1, restored byte-identical by `cmp`; `typecheck` and `biome check ..` (716 files) exit 0; `design:check` still the `vg-626` baseline (remainder 20); `status:check` exit 0.
 - **Two controller commits land R116 and its register move**: the plan's A.10 is amended to scope the removal to the section (`1897c11e`), and `vg-633` moves to the archive as `verified` with the check that proves it (`eefc38c9`); issue 43 closed naming both.
 
 ## Next

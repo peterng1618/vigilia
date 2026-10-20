@@ -131,20 +131,30 @@ function Cell(props: {
  * that fails is dropped rather than left showing a browser's broken mark. With
  * no address at all the box is the ground alone.
  *
- * **What failed is the address, not the box.** The state is the address that
- * failed rather than a flag, so a cell whose picture is replaced — a save that
- * stores a thumbnail, a listing refreshed — draws the new picture instead of
- * the neutral box the old one left behind. A latched flag would be a cell that
- * never shows a picture again for as long as it is mounted.
+ * **What failed is the address and the theme's own time, not the box.** The host
+ * builds the address from the theme's id (`theme-library-client.ts`), so it is
+ * the same one across a re-listing and the address alone cannot say a picture
+ * arrived; `updatedAt` is what a save changes. Keying on both means a cell whose
+ * picture is replaced — a save that stores a thumbnail, a listing refreshed —
+ * draws the new picture instead of the neutral box the old one left behind,
+ * while a re-listing that changed nothing does not ask for a picture it already
+ * knows is missing. A latched flag would be a cell that never shows a picture
+ * again for as long as it is mounted.
  *
  * The image is `alt=""` because the cell names the theme beside it: a picture
  * repeating the name is read twice.
  */
 function Picture(props: { readonly item: StoreItem }): React.JSX.Element {
   const { item } = props;
+  const picture =
+    item.thumbnailUrl === undefined
+      ? undefined
+      : {
+          url: item.thumbnailUrl,
+          key: `${item.thumbnailUrl} ${item.updatedAt ?? ""}`,
+        };
   const [broken, setBroken] = useState<string | undefined>(undefined);
-  const showPicture =
-    item.thumbnailUrl !== undefined && item.thumbnailUrl !== broken;
+  const showPicture = picture !== undefined && picture.key !== broken;
 
   return (
     <span
@@ -155,12 +165,12 @@ function Picture(props: { readonly item: StoreItem }): React.JSX.Element {
         item.ground === undefined ? undefined : { background: item.ground }
       }
     >
-      {showPicture ? (
+      {picture !== undefined && showPicture ? (
         <img
-          src={item.thumbnailUrl}
+          src={picture.url}
           alt=""
           className="size-full object-cover"
-          onError={() => setBroken(item.thumbnailUrl)}
+          onError={() => setBroken(picture.key)}
         />
       ) : null}
     </span>
