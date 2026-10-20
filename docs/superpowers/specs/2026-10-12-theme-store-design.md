@@ -1003,7 +1003,16 @@ of the decision rather than a placeholder:
    128 MiB. The decision remains the user's, and it is the last thing phase D
    waits on.
 2. **The ffmpeg source** — probe a system binary, or bundle a static build and
-   take on the licence obligation.
+   take on the licence obligation. **Measured 2026-10-21: there is no `ffmpeg` on
+   `PATH` on the development box at all**, so the probe arm refuses there and the
+   normalizer would report "no encoder" to the author who is standing at the
+   machine this product is built on. That is the probe arm's own cost rather than
+   an argument against it — the refusal is honest and actionable, where a silent
+   re-encode is not — but it does mean the fallback has to be designed: an author
+   whose machine has no ffmpeg still has to be able to submit an item whose video
+   is already inside the caps, and the caps are phase F's. Bundling is the other
+   arm, and it owes `THIRD-PARTY-NOTICES.md` and a licence read before it is
+   chosen rather than after.
 3. **`index.json` freshness — ANSWERED 2026-10-21, and the answer is the route
    rather than the Action.** Through jsDelivr a branch file is 12 hours stale at
    the edge and 7 days in the client's own cache, and purge does not apply to a
