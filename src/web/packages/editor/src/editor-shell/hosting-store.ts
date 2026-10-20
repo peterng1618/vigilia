@@ -32,7 +32,21 @@ export type HostingSnapshot =
 
 /** The host's answer, owned outside React: the header's control and Task 4's
  *  status bar read one subscription rather than each asking the host. Unknown
- *  until the host answers, and it renders no claim until then. */
+ *  until the host answers, and it renders no claim until then.
+ *
+ *  **The editor is the session's only writer, by design, and this store never
+ *  polls** (`vg-214`). The host is asked once, in the constructor, and again only
+ *  where this store's own `toggle()` writes — so a change made outside the editor
+ *  (the host CLI's `setLan`, or a restart) is not observed until the page reloads,
+ *  and the live indicator renders a stale claim meanwhile. That is a boundary and
+ *  not a gap: an editor polling the host would be a timer the host owns, which
+ *  this repo's own rule places with the host (providers acquire; the host owns
+ *  scheduling), and it would race the editor's own writes for no benefit.
+ *
+ *  When the staleness is judged worth fixing the direction is push, never poll:
+ *  the host — the only process that can observe its own `setLan` or a restart —
+ *  announces the change on a connection the editor already holds, and this store
+ *  re-reads. */
 export class HostingStore {
   #snapshot: HostingSnapshot = { kind: "unknown" };
   readonly #listeners = new Set<() => void>();

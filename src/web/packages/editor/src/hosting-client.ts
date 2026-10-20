@@ -5,6 +5,15 @@
  * routinely served by a build with no host behind it, and a header that cannot
  * say where the phone should go must render nothing — not an error the author
  * cannot act on, and never an address the editor invented.
+ *
+ * **Nothing here subscribes to the host.** Every call below is one `fetch`
+ * request and one answer — `readHosting`, `readPairingCode`, `setLan` — so a
+ * hosting change made outside the editor is invisible until something asks
+ * again, and the store that owns the answer says what that costs (`vg-214`,
+ * `HostingStore`). The host's only stream *to* the editor is the sample stream
+ * at `/ws`, which carries telemetry batches and is open only in live mode; a
+ * hosting announcement would ride a connection the editor already holds rather
+ * than a new one it opens, and the editor never polls.
  */
 
 export interface HostingAnswer {
