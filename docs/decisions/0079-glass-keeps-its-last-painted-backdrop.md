@@ -108,6 +108,34 @@ Two limits, stated rather than implied: the probe ran in **desktop Chromium on t
 and it measured a plain `<video>`, not the player's own layer. The phone's own numbers could differ; the
 mechanism does not depend on them.
 
+## Rung 6b — the fix, proved in a browser
+
+Rung 6 measured the mechanism. This measures the **fix**, as a real A/B: one script, one clip, and the only
+difference between the arms the source. `C:\tmp\glass-proof` (outside the repo) is a Vite-served page that
+calls the real `mountFabricScene`, so the real `createGlass` and the real `mountBackgroundMedia` run against
+the user's own 3.533 s recording. It forces `renderAll()` on every frame, so the seam is sampled whatever
+else drives repaints, and reads `getImageData` at the panel's centre and at (4, 4) outside it.
+
+~1208 frames per arm over ~20 s. The five loop wraps land at t = 3839, 7454, 11070, 14670, 18287 ms with
+`currentTime = 0` and `readyState = 1` — rung 6's 3782/7399/11029/14634/18265, within the harness's own
+startup offset.
+
+| | at every loop wrap | frames either side |
+|---|---|---|
+| **reuse disabled** (`return unmoved ? element : undefined` → `return undefined`) | alpha **130**, rgb `[253,253,253]` — the 50% white tint over **transparency** | alpha 255, per-channel jump **222-223** |
+| **HEAD**, the fix | alpha **255**, rgb held at the last painted `[156,185,196]` | alpha 255, `jumpIn` **0**, `jumpOut` 0-1 |
+
+The pixel outside the panel reads `[0,0,0,0]` in both arms, so the signal is the panel's own. That is the
+reported defect at the level the user saw it, and its removal.
+
+**One harness fact is recorded because it produced a false green first.** The adapter paints the plan's
+artboard fill onto the canvas as its `backgroundColor` (`adapter.ts:284`), with no reference to whether a
+media layer sits below it. The first run used `background: "#101318"`, which made the canvas opaque
+everywhere: `maxFrameDelta` was **0** across 1208 frames and alpha was **255 in both arms**. A probe that
+cannot move is not a passing probe — the media blit was simply covered. The harness needs
+`background: "transparent"`, the only paint under which a video background is visible at all. That is filed
+as `vg-667` rather than settled here.
+
 ## Decision
 
 **Keep the last successfully painted backdrop in a surface of its own, per panel, and paint the media into it
