@@ -193,7 +193,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Image/SVG | `scene-fabric/src/fabric-image.ts` |
 | Paint conversion | `scene-fabric/src/paint.ts` |
 | **Which objects point at a token** — the walk a token delete and a swap both read | `scene-fabric/src/palette-references.ts` |
-| **What persists** — the scene properties a save carries, and which of an object's state is authored | `scene-fabric/src/persist.ts` (`SCENE_PERSISTED_PROPERTIES`) |
+| **What persists** — the scene properties a save carries, and which of an object's state is authored: `locked` is authored state and persists, and the transform flags beside it are re-derived from it rather than persisted (0083); whether `selectable`/`evented` are authored is a separate question the lock path does not answer | `scene-fabric/src/persist.ts` (`SCENE_PERSISTED_PROPERTIES`) |
 | **Whether an object is locked** — the one `locked` predicate, a Fabric fact rather than lock policy, so no reader reaches up to a manager for it | `scene-fabric/src/object-lock.ts` (`isLocked`) |
 | **Which collection holds an object** — the one `holderOf` helper for the owning collection (or the canvas, never the `undefined` a caller had to patch with `?? canvas`) and `targetsOf` for an `ActiveSelection`'s members | `scene-fabric/src/object-holder.ts` (`holderOf`, `targetsOf`) |
 
