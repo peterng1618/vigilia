@@ -9,7 +9,7 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Active work
 
-- **Active plan:** `2026-10-18-theme-store.md` — **phase A only** (ten tasks); B–G each need their own plan, and G comes before C. [plan](docs/superpowers/plans/2026-10-18-theme-store.md), [spec](docs/superpowers/specs/2026-10-12-theme-store-design.md).
+- **Active plan:** `2026-10-18-theme-store.md` — **phase A only**; B–G each need their own plan, and G comes before C. [plan](docs/superpowers/plans/2026-10-18-theme-store.md), [spec](docs/superpowers/specs/2026-10-12-theme-store-design.md).
 - **Completed and archived:** [per-display themes](docs/superpowers/plans/archive/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md) — eight phases, the boundary's four browser claims with red proofs, the final review's seventeen acceptance conditions, and one fix round; rulings R1–R98 in `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`. No seat is running.
 - **The close records two named exceptions, never a clean gate**: `design:check` is red on a player file this plan introduced (`vg-626`, issue 36), and the surface the spec hands to the store spec — creating a local display and turning on sign-in registration — exists in no shipped surface (`vg-628`, issue 38).
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
@@ -18,14 +18,14 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Task A.7 is complete**: the package picker is a library write — the new `theme-import.ts` composes `parseThemePackage` and `ThemeLibraryClient.save`, and `editor-main.ts` keeps only the input, the `change` listener, the status line and the call, so an import no longer replaces the open document (R129).
-- **The id is the package's own**, checked against `theme-library-client.ts`'s now-exported `THEME_ID_REGEX` with no fallback slug (R130); the write sends neither `overwrite` nor `base`, every refusal carries the reader's or `save`'s own words through the new `uiCopy.themeImport` pair (R131), and no invalidation channel was built (R132).
-- **Evidence**: `npx vitest run packages/editor/src/theme-import.test.ts` exit 0 (6 cases), the full suite exit 0 (283 files / 3848 tests), `npx biome check ..` exit 0, `typecheck` exit 0, `status:check` exit 0, `design:check` at its `vg-626` baseline (remainder 20); the red proof disabled the write, ran red, and was restored byte-identical by `cmp`.
-- **A.7 breaks the browser suite as ruled and this commit does not fix it** — issue 47: no route opens a package as a document any more, 14 e2e files drive the picker, 25 assertions wait for `Opened <file>.vigilia-theme`, and `clip-parity.spec.ts` was measured red (`npx playwright test … --project=desktop-chromium` exit 1).
+- **Task A.7 landed at `2c74bb2e`, and the controller withdrew its own ruling set**: R129–R132 were ruled from the plan's text, and the spec's Import section (`2026-10-12-theme-store-design.md:761-777`) rules the opposite — the **host** owns the import, the id rule is the package's own **when it is free** and a suffixed id otherwise, and **import never overwrites** (R133).
+- **Two holes it exposed are now tasks in the plan**: the store's `open` action opens a modal while `uiCopy` labels it "Open in editor", so A.7 leaves no route into a document at all (R134, **A.7b**); and fourteen e2e files reach a document through the picker, so the suite is red until they are re-pointed (R135, **A.7c**).
+- **R136/R137**: `ThemeWriteOptions` gains `expectFree`, so "never overwrite" is the store's guarantee rather than the route's, and the host reuses `isValidThemeId` rather than the editor's regex.
+- **The seat's own finding is filed, not fixed**: a base-less `save` onto a taken id replaces it silently, because `store.ts`'s `write` refuses only when a base was sent and mismatched.
 
 ## Next
 
-1. **A.1–A.6 are complete; dispatch A.7 next**, then A.8–A.10. A.6 wired the region's body and ran this plan's first browser case, so what is left is the rest of phase A rather than any part of it.
+1. **Dispatch A.7b, then A.7c, then A.7 re-done**, then A.8–A.10: A.7b restores a way into a document, A.7c takes the suite off the picker, and A.7's re-do lands on a suite that no longer touches it. `2c74bb2e` is kept, not reverted.
 2. **`vg-633` is ruled (R116) and archived `verified`**, ahead of A.10 rather than after it: A.10 removes `/settings`'s Themes section only, `theme-list.js` is untouched so `/library` keeps the display column (per-display's Task 4.3) and the cost note (Task 4.8), and their spec cases move to a `/library` case instead of being deleted.
 3. Decide whether `vg-626` (the red `design:check`) runs alongside phase A or gates it; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 4. Resume the drain at Task 23.4 when the store plan stops; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.

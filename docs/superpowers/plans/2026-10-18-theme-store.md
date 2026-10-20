@@ -515,57 +515,134 @@ git add src/web/packages/editor/src/store-mode/item-modal.tsx src/web/packages/e
 git commit -m "feat(store): open an item as a viewer with pills, not rows"
 ```
 
-### Task A.7: Import lands in the library
+### Task A.7: Import lands in the library, as the host's write
+
+**The spec is this task's authority** — `2026-10-12-theme-store-design.md:761-777`
+(R133). It rules where the import happens, the id rule, and that import never
+overwrites. The plan's earlier text had the browser compose the write and refuse a
+taken id; that is the opposite of the spec's rule and is withdrawn.
 
 **Files:**
-- Modify: `src/web/packages/editor/src/editor-main.ts`
-- Test: `src/web/packages/editor/src/editor-main.test.ts` (or the existing spec
-  that covers the picker — check before creating one)
+- New: `src/web/packages/host/src/themes/import.ts` — the id rule and the two writes
+- Modify: `src/web/packages/host/src/server.ts` — the route. **A watched path: its
+  decision note lands before the first write.**
+- Modify: `src/web/packages/host/src/themes/store.ts` — the write's free-id claim
+- Modify: `src/web/packages/editor/src/theme-import.ts`, `editor-main.ts` — the
+  browser posts bytes and maps the answer; `THEME_ID_REGEX`'s export reverts
+- Test: `src/web/packages/host/src/themes/import.test.ts`, and the editor module's
+  own cases
 
 **Interfaces:**
-- Consumes: `parseThemePackage` (existing), `ThemeLibraryClient.save` (existing).
-- Produces: the picker's handler writes to the library and refreshes the local
-  half, instead of opening the package as a document.
+- Consumes: `readThemePackage` (`@vigilia/theme-package`), `ThemeStore.write` and
+  `isValidThemeId` (`store.ts`), `createThumbnailStore(...).write`.
+- Produces: one host route taking package bytes and answering the id the package
+  landed under, or the reader's own refusal. The browser's half is a post and a
+  mapping, and nothing else.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests** — at the module and at the route: a
+  package whose `id` is free lands under its own; a package whose `id` is taken
+  lands under a suffixed one **and the theme already there is byte-for-byte
+  unchanged**; a package whose `id` fails the shape lands under an id derived from
+  `metadata.name`; a package carrying a thumbnail has it written; a package
+  `readThemePackage` refuses writes nothing and reaches the caller with the
+  reader's own reason.
+- [ ] **Step 2: Run them to verify they fail.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Re-run them, then the editor's own suite.**
+- [ ] **Step 5: Commit.**
 
-```ts
-it("writes an imported package into the library and leaves the document alone", async () => {
-  // Choosing a package saves it, the open document is unchanged, and the library
-  // list then holds it.
-});
-it("does not open the imported package as a document", async () => {
-  // The open document's id is the same before and after.
-});
-it("reports a package the validator refuses, and changes nothing", async () => {
-  // A §141 refusal reaches the caller with its reason and the library is unchanged.
-});
-```
+**Constraints the spec does not spell out:**
+- **The id rule is the host's** (R137): reuse `isValidThemeId` rather than
+  importing the editor's regex.
+- **The free-id claim and the write are one step** (R136): `ThemeWriteOptions`
+  gains `expectFree`. A listing in the browser followed by a save is a window in
+  which a theme is replaced — the data loss the spec's rule exists to prevent.
+- **The thumbnail is written after the theme**: the thumbnail store addresses it
+  through the theme's own folder (`library/<id>/thumbnail.png`) and accepts PNG
+  only. A package whose slot is not a PNG is not an error — the library falls back
+  to text.
+- **No invalidation channel** (R132 stands), and the browser never parses the
+  package.
 
-- [ ] **Step 2: Run test to verify it fails**
+### Task A.7b: The store opens a theme in the editor
 
-Run: `npx vitest run packages/editor/src/editor-main.test.ts`
-Expected: FAIL.
+**The defect this owns** (R134): `region.tsx`'s `onAction` maps `open` to
+`setOpenId(id)`, so the control `uiCopy` labels **"Open in editor"** opens a modal,
+and the modal's footer repeats the same inert call. The spec says the *cell* opens
+the modal (`:712`, `:1064`), which leaves `open` naming the library operation the
+drawing labels. A.7 removes the picker's document route, so until this lands there
+is no way into a document at all.
 
-- [ ] **Step 3: Implement**
+**Files:**
+- Modify: `src/web/packages/editor/src/store-mode/gallery.tsx`, `region.tsx`,
+  `item-modal.tsx`
+- Modify: the editor's document path (`editor-document.ts`, `editor-session.ts`,
+  `editor-main.ts`) so a library theme can become the open document
+- Modify: `src/web/packages/editor/src/ui-copy.ts`,
+  `src/web/packages/editor/src/shortcut-manager/reference.ts` — the File row's word
+- Test: the store mode's dom cases, the document's own, and a browser case
 
-Today the picker makes the package an open *document* which reaches the library
-only if the author then saves it. The import becomes a library write, so an
-imported theme survives the editor closing and appears in the local list. The id
-the write uses is derived, never taken from the package's own metadata unchecked —
-`THEME_ID_REGEX` is the owner of that shape.
+**Interfaces:**
+- Consumes: `ThemeLibraryClient.open` (existing), the mount path the picker used
+  before A.7.
+- Produces: the cell's own surface opens the item's modal; the `open` action — from
+  the cell and from the modal's footer — loads that library theme as the open
+  document; the File row reads **Import package** and imports without touching the
+  document.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 1: A failing case per half** — the cell's surface opens the modal and
+  the `open` control does not; the `open` control loads a theme as the document,
+  from the cell and from the footer.
+- [ ] **Step 2: Run them to verify they fail.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Re-run them, then the store's and the document's own suites.**
+- [ ] **Step 5: Commit.**
 
-Run: `npx vitest run packages/editor/src/editor-main.test.ts`
-Expected: PASS.
+**Constraints:**
+- **The document bookkeeping moves rather than being deleted.** `File ▸ Open
+  package` reaches `EditorDocument.open()`, which asks "Save changes before opening
+  another theme?" and calls `#library.forget()` before handing to the picker. In
+  front of an *import* both are wrong — nothing is replaced, and forgetting the base
+  drops the open document's conflict guard on its next save. In front of opening a
+  library theme over the open document both are right, so the bookkeeping belongs to
+  this route.
+- **The opened theme's base is the library's**, so the next save is gated on the
+  document the library holds rather than ungated (R136's other half).
+- A.7's editor module is not this task's; the import's own shape is A.7's.
 
-- [ ] **Step 5: Commit**
+### Task A.7c: The browser suite reaches a document through the store
 
-```bash
-git add src/web/packages/editor/src/editor-main.ts src/web/packages/editor/src/editor-main.test.ts
-git commit -m "feat(store): an imported package lands in the library"
-```
+**Why this is a task** (R135): fourteen files under `tests/e2e/` reach a document
+through the package picker — 26 `setInputFiles` sites on
+`input[accept=".vigilia-theme"]`, plus the `filechooser` route, which is the same
+handler and not a second route. A.7 ends that route, so the phase's browser proof
+cannot be taken until they are re-pointed.
+
+**Files:**
+- New or extended: one helper under `tests/e2e/` that puts a fixture into a stubbed
+  library and opens it through the store
+- Modify: the fourteen spec files and the two fixtures that drive the picker
+
+**Interfaces:**
+- Consumes: the store's `open` action (A.7b), `page.route` against `/api/themes`.
+- Produces: every spec that needs a document gets one the same way, and no spec
+  reaches a document through the picker.
+
+- [ ] **Step 1: Write the helper and re-point one spec.** Prove it green before
+  touching the rest.
+- [ ] **Step 2: Re-point the remainder.**
+- [ ] **Step 3: Run the affected specs whole, one worker, each run's own JSON
+  report.**
+- [ ] **Step 4: Commit.**
+
+**Constraints:**
+- **The helper seeds the stub library directly and does not import.** A spec about
+  glass geometry must not fail because the import broke; the two routes are proved
+  separately.
+- **The stub is the pattern A.6 established** — `editor-rail.spec.ts:1476-1480`,
+  "The editor preview serves no `/api/themes` at all".
+- The `Opened <file>.vigilia-theme` assertions become the surface's own words; a
+  status line the product no longer writes is not an assertion to keep.
 
 ### Task A.8: This PC as a mode
 
