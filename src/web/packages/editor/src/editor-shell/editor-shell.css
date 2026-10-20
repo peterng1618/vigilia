@@ -772,6 +772,13 @@ body,
   line-height: var(--text-xs--line-height);
   color: var(--faint);
 }
+/* The Host mode's own status line, which its region publishes and the strip
+   above places: the display count on the left, the last write's answer held at
+   the right edge, which is where the drawing puts it. §7.6 carries readings
+   only, and in this mode the readings are the host's. */
+.editor-shell-status-host {
+  margin: 0 0 0 auto;
+}
 .editor-shell-header strong {
   font-family: var(--shell-display);
   letter-spacing: 0.18em;

@@ -1888,3 +1888,83 @@ it("shows the Host mode's own region, and the store's only in Themes", async () 
 
   layout.destroy();
 });
+
+/**
+ * **§7.6's strip is the shell's and it is one strip in every mode**, so the Host
+ * mode's line is placed here rather than drawn as a second bar inside the
+ * region. Its two halves are the host's: the count of displays the host holds
+ * and the last write's answer — not a document's object and selection counts,
+ * which this mode has no document to make.
+ *
+ * **The content is the region's and the placement is this strip's.** The region
+ * publishes the line, so the shell draws it without reading the host again, and
+ * the editor's readouts come back when the mode does.
+ */
+it("puts the Host mode's line in the status strip, and the editor's readouts elsewhere", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/themes/active")) {
+        return new Response(
+          JSON.stringify({
+            default: null,
+            displays: [{ id: "this-pc", label: "This PC", theme: null }],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith("/api/themes")) {
+        return new Response(JSON.stringify({ themes: [], templates: [] }), {
+          status: 200,
+        });
+      }
+      if (url.startsWith("/api/devices")) {
+        return new Response(
+          JSON.stringify({
+            available: { gpus: [], disks: [] },
+            assigned: { assigned: {}, names: {} },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ settings: {}, zones: [] }), {
+        status: 200,
+      });
+    }),
+  );
+
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  layout.setBridge(bridgeStub(), viewStub());
+  await act(async () => {});
+
+  const strip = (): HTMLElement =>
+    root.querySelector<HTMLElement>("#status") as HTMLElement;
+  expect(
+    strip().querySelector("[data-vigilia-status-objects]"),
+    "the editor's own counts are not in the strip to begin with",
+  ).not.toBeNull();
+  expect(
+    strip().querySelector("[data-vigilia-host-status]"),
+    "the Host mode's line is drawn in a mode that is not Host",
+  ).toBeNull();
+
+  await act(async () => modeSegments(root)[2]?.click());
+  await act(async () => {});
+
+  expect(
+    strip().querySelector("[data-vigilia-status-objects]"),
+    "the editor's counts are still in the strip in the Host mode",
+  ).toBeNull();
+  expect(
+    strip().querySelector("[data-vigilia-host-display-count]")?.textContent,
+    "the strip does not count the displays the host answered",
+  ).toBe(uiCopy.hostSettings.status.displays(1));
+  expect(
+    strip().querySelector("[data-vigilia-host-status]")?.textContent,
+    "the strip does not carry the Host mode's own line",
+  ).toBe(uiCopy.hostSettings.status.ready);
+
+  layout.destroy();
+});

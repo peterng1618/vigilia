@@ -1,7 +1,7 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import type * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type ControlOption,
   ControlSelect,
@@ -142,6 +142,33 @@ function Group(props: {
 }
 
 /**
+ * The clock's own answer. It reads the same as the device save's sentence — the
+ * page this absorbs spells one sentence for two writes — but they are two
+ * writes, and a single key named for the device save made an edit to either one
+ * change what the other says. It lives here rather than beside the others in
+ * `ui-copy.ts`, which another task holds this round.
+ */
+const savedZone = "Saved. Displays update on their next frame.";
+
+/**
+ * The two halves of §7.6's strip while the Host mode is showing, already spelled:
+ * the display count on the left, the last write's answer on the right.
+ *
+ * **The region owns the content and the shell owns the placement.** The strip is
+ * a sibling of every mode's region and is one strip in all three modes, so the
+ * region publishes these strings rather than drawing a second bar — and the
+ * shell draws them rather than re-reading the host, which would be a second
+ * owner of the same fetch.
+ */
+export interface HostStatusLine {
+  /** How many displays the host holds, or `null` when no read answered. A
+   *  failed read is never a fabricated zero, and never an empty list. */
+  readonly displays: string | null;
+  /** The last write's answer, or the page's resting sentence. */
+  readonly status: string;
+}
+
+/**
  * The Host mode's region, and nothing in any other mode.
  *
  * **The mode is a prop rather than state read here**, exactly as
@@ -152,14 +179,20 @@ function Group(props: {
  *
  * `client` and `settings` are for a test and for a surface that already has
  * one. The shell mounts this with neither and the region builds both.
+ * `onStatus` is the shell's own strip asking for the line this mode says there.
  */
 export function HostSettingsRegion(props: {
   readonly mode: ShellMode;
   readonly client?: ThemeLibraryClient | undefined;
   readonly settings?: HostSettingsClient | undefined;
+  readonly onStatus?: ((line: HostStatusLine) => void) | undefined;
 }): React.JSX.Element | null {
   return props.mode === "this-pc" ? (
-    <HostSettings client={props.client} settings={props.settings} />
+    <HostSettings
+      client={props.client}
+      settings={props.settings}
+      onStatus={props.onStatus}
+    />
   ) : null;
 }
 
@@ -170,6 +203,7 @@ export function HostSettingsRegion(props: {
 function HostSettings(props: {
   readonly client?: ThemeLibraryClient | undefined;
   readonly settings?: HostSettingsClient | undefined;
+  readonly onStatus?: ((line: HostStatusLine) => void) | undefined;
 }): React.JSX.Element {
   // One client of each for the life of the region: a client built per render
   // would be a new one every time, and a write would reach a host the read never
@@ -212,6 +246,18 @@ function HostSettings(props: {
   const [chosen, setChosen] = useState<string | undefined>(undefined);
   /** The last thing that happened, or `undefined` for the resting sentence. */
   const [status, setStatus] = useState<string | undefined>(undefined);
+
+  /** The flag every continuation below checks before it sets state — the reads
+   *  keep their own in the scope of the effect that can cancel them, and a write
+   *  starts in an event handler, so it needs the same flag where no effect can
+   *  reach it. */
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -262,6 +308,22 @@ function HostSettings(props: {
   const fallback = map?.default ?? null;
   const showing = shownTheme(selectedRow, fallback);
 
+  /** **The mode's status line is published, not drawn**: §7.6's strip is the
+   *  shell's and is the same strip in every mode, so the region hands it the two
+   *  strings and the shell places them. A count no read answered is `null`
+   *  rather than `0`, which is the same refusal the rows above make. */
+  const publish = props.onStatus;
+  const countLine =
+    map === undefined
+      ? null
+      : uiCopy.hostSettings.status.displays(map.displays.length);
+  useEffect(() => {
+    publish?.({
+      displays: countLine,
+      status: status ?? uiCopy.hostSettings.status.ready,
+    });
+  }, [publish, countLine, status]);
+
   // **The questions belong to the display the region is showing for, and to the
   // theme that display has** — which is its own, or the default's. A read that
   // fails leaves the section out rather than asking questions about the last
@@ -290,12 +352,21 @@ function HostSettings(props: {
     themes.find((entry) => entry.id === id)?.name ?? id;
 
   /** One write, one status line: the run answers the sentence for a success and
-   *  a refusal is the host's own words after the region's own lead. */
+   *  a refusal is the host's own words after the region's own lead. **Every
+   *  continuation checks the flag first**, as the reads do — a save in flight
+   *  when the mode changes would otherwise set state on a tree that is gone. */
   const write = (run: () => Promise<string>): void => {
     setStatus(uiCopy.hostSettings.status.saving);
-    void run().then(setStatus, (error: unknown) => {
-      setStatus(uiCopy.hostSettings.status.failed(reason(error)));
-    });
+    void run().then(
+      (sentence) => {
+        if (mounted.current) setStatus(sentence);
+      },
+      (error: unknown) => {
+        if (mounted.current) {
+          setStatus(uiCopy.hostSettings.status.failed(reason(error)));
+        }
+      },
+    );
   };
 
   const saveDevices = (patch: {
@@ -311,11 +382,13 @@ function HostSettings(props: {
     };
     write(async () => {
       const saved = await settings.saveDevices(next);
-      setDevices((current) =>
-        current === undefined
-          ? current
-          : { ...current, assigned: saved.assigned, names: saved.names },
-      );
+      if (mounted.current) {
+        setDevices((current) =>
+          current === undefined
+            ? current
+            : { ...current, assigned: saved.assigned, names: saved.names },
+        );
+      }
       return uiCopy.hostSettings.status.savedDevices;
     });
   };
@@ -333,9 +406,11 @@ function HostSettings(props: {
         timeZone: next.timeZone,
         measurement,
       });
-      setPreferences((current) =>
-        current === undefined ? current : { ...current, settings: written },
-      );
+      if (mounted.current) {
+        setPreferences((current) =>
+          current === undefined ? current : { ...current, settings: written },
+        );
+      }
       return saved;
     });
   };
@@ -350,7 +425,9 @@ function HostSettings(props: {
     else answers[group] = device;
     write(async () => {
       const saved = await settings.saveQuestions(selected, showing, answers);
-      setQuestions({ required: questions.required, answers: saved });
+      if (mounted.current) {
+        setQuestions({ required: questions.required, answers: saved });
+      }
       return uiCopy.hostSettings.status.savedAnswers;
     });
   };
@@ -358,6 +435,9 @@ function HostSettings(props: {
   const asked = unanswered(questions?.required ?? [], questions?.answers ?? {});
 
   return (
+    // **No status strip of its own.** §7.6's bar is the shell's, drawn once as a
+    // sibling of every mode's region, and this mode's line reaches it through
+    // `onStatus` rather than through a second bar stacked on top of it.
     <div data-vigilia-host-region="" className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-[var(--space-24)] overflow-y-auto p-[var(--space-24)]">
         <div className="flex max-w-[var(--host-settings-measure)] flex-col gap-[var(--space-24)]">
@@ -517,7 +597,7 @@ function HostSettings(props: {
                         measurement:
                           preferences.settings.measurement ?? "metric",
                       },
-                      uiCopy.hostSettings.status.savedDevices,
+                      savedZone,
                     )
                   }
                 />
@@ -585,23 +665,6 @@ function HostSettings(props: {
             </Group>
           )}
         </div>
-      </div>
-
-      {/* The host page's own status line: the display count on the left, the
-          last write's answer on the right. It rests on the page's own sentence
-          rather than on nothing, and it is mounted whether or not it is saying
-          something — a live region added together with its own text is the less
-          reliably announced pattern. */}
-      <div className="flex flex-none items-center gap-[var(--space-16)] border-t border-edge px-[var(--space-16)] py-[var(--space-8)] text-2xs text-faint">
-        <span data-vigilia-host-display-count="" className="font-mono">
-          {map === undefined
-            ? null
-            : uiCopy.hostSettings.status.displays(displays.length)}
-        </span>
-        <span aria-hidden className="flex-1" />
-        <p role="status" data-vigilia-host-status="" className="m-0 text-faint">
-          {status ?? uiCopy.hostSettings.status.ready}
-        </p>
       </div>
     </div>
   );

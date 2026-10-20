@@ -18,10 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **A.9 lands the assignment on a theme's own cell**: the store region's `onAction` answers `assign` as well as `open`, and `store-mode/assign-display.tsx` is the display choice the cell's third action and the modal's own footer both reach through that one callback.
-- **The choice is the host's answer, read when it opens and kept nowhere**: §5's select offers the default first, beside one row per display `listDisplays` answers, with the display this theme already holds as its own value — a display the host does not answer is not offered.
-- **A failed read is not an empty list**: no choice is drawn and the host's own words are what the dialog says; a refused assign is the host's words too and leaves the choice open, while a success closes it. No cost warning here — the user narrowed that to the host's own pages (per-display's Task 4.8).
-- **Evidence**: 7 dom cases in `store-mode/region.dom.test.tsx` over the real client and a stubbed transport, red-proved by disabling the region's assign branch (7 failed) and the failed-read path (the fabricated empty answer printed `''` where the host's sentence belongs), each restored `cmp`-identical; `gallery.tsx` needed no change, and no browser run was made.
+- **A.8 fix round 1 moves the Host mode's status line into the shell's §7.6 strip**: `host-settings-mode/region.tsx` publishes `HostStatusLine` through a new `onStatus` prop and draws no bar of its own; `editor-shell/shell-layout.tsx` places those two strings when the mode is `this-pc` and its editor readouts otherwise.
+- **The region owns the content and the shell owns the placement**: the shell draws what the region said rather than reading the host again, and the count is the one the route answered — `null`, never `0`, when no read landed.
+- **The clock's write has its own sentence** (`savedZone`, the page's own zone wording) instead of borrowing the device save's key, and every write continuation now checks the same unmount flag the reads keep.
+- **Evidence**: 18 cases in `host-settings-mode/` and 36 in `shell-layout.dom.test.tsx`, all green; three red proofs failed their case (zone key reverted, strip restored, seam disabled) and each was restored `cmp`-identical; the unmount guard is unobservable under React 19 and no case sees it. No browser run: the served bundles predate `49df4b24`.
 
 ## Next
 

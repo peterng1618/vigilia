@@ -11,6 +11,11 @@
  * fields, the whole answer map — with a refusal reaching the person in the
  * host's own words.
  *
+ * **And that the mode's status line is published rather than drawn.** §7.6's
+ * strip is the shell's, so this region hands it the two strings and the shell
+ * places them; the line the strip shows is asserted in
+ * `shell-layout.dom.test.tsx`, and what this file reads is what the region said.
+ *
  * **What it deliberately does not measure.** jsdom lays nothing out and paints
  * nothing, so nothing here is a claim about how the region looks. The drawing it
  * follows (`docs/design/mockups/current/host-settings.html`) is read by its own
@@ -33,7 +38,7 @@ import {
   type HostSettingsClient,
   type ThemeAnswers,
 } from "./client.js";
-import { HostSettingsRegion } from "./region.js";
+import { HostSettingsRegion, type HostStatusLine } from "./region.js";
 
 // Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
 // its anchor, and the popup waits for its own open transition. Each test file
@@ -236,20 +241,39 @@ const DEVICES: DeviceSettings = {
   names: { "ssd-0": "Data drive" },
 };
 
-/** The region over one run's answers, with both seams handed in. */
+/** The region over one run's answers, with both seams handed in. `published` is
+ *  every status line the region handed the shell, in order: §7.6's strip is the
+ *  shell's, so this is what the region *says* about the run rather than a bar it
+ *  draws. */
 async function mountHost(
   fixture: Fixture,
   refuse?: { readonly devices?: string; readonly answers?: string },
-): Promise<{ readonly container: HTMLDivElement; readonly wrote: Written }> {
+): Promise<{
+  readonly container: HTMLDivElement;
+  readonly wrote: Written;
+  readonly published: HostStatusLine[];
+}> {
   const settings = hostSettings(fixture, refuse);
+  const published: HostStatusLine[] = [];
   const container = await mount(
     <HostSettingsRegion
       mode="this-pc"
       client={library(fixture)}
       settings={settings.client}
+      onStatus={(line) => published.push(line)}
     />,
   );
-  return { container, wrote: settings.wrote };
+  return { container, wrote: settings.wrote, published };
+}
+
+/** The line the shell's strip is showing: the last one published, or a defect
+ *  this file names rather than a `null` a later assertion reports as a value. */
+function statusLine(published: readonly HostStatusLine[]): HostStatusLine {
+  const last = published.at(-1);
+  if (last === undefined) {
+    throw new Error("the region published no status line");
+  }
+  return last;
 }
 
 /** One display row, by the display it names. */
@@ -380,7 +404,7 @@ it("renders no region for a mode that is not Host", async () => {
  * display made, which is the one act this region does not perform.
  */
 it("names each display, and the default for the ones with none", async () => {
-  const { container } = await mountHost(TWO_DISPLAYS);
+  const { container, published } = await mountHost(TWO_DISPLAYS);
 
   const rows = Array.from(
     container.querySelectorAll<HTMLElement>("[data-vigilia-host-display]"),
@@ -410,18 +434,12 @@ it("names each display, and the default for the ones with none", async () => {
   ).toBe(true);
 
   expect(
-    must(
-      container.querySelector<HTMLElement>("[data-vigilia-host-display-count]"),
-      "the display count",
-    ).textContent,
-    "the status line does not count the displays the route answered",
+    statusLine(published).displays,
+    "the line published does not count the displays the route answered",
   ).toBe(uiCopy.hostSettings.status.displays(2));
   expect(
-    must(
-      container.querySelector<HTMLElement>("[data-vigilia-host-status]"),
-      "the status line",
-    ).textContent,
-    "the status line does not rest on the page's own sentence",
+    statusLine(published).status,
+    "the line published does not rest on the page's own sentence",
   ).toBe(uiCopy.hostSettings.status.ready);
 });
 
@@ -523,7 +541,7 @@ it("offers each slot's devices with the automatic choice first", async () => {
  * region holds, and both fields travel.
  */
 it("writes both device fields together, because the route replaces the object", async () => {
-  const { container, wrote } = await mountHost({
+  const { container, wrote, published } = await mountHost({
     ...TWO_DISPLAYS,
     devices: DEVICES,
   });
@@ -541,11 +559,8 @@ it("writes both device fields together, because the route replaces the object", 
     },
   ]);
   expect(
-    must(
-      container.querySelector<HTMLElement>("[data-vigilia-host-status]"),
-      "the status line",
-    ).textContent,
-    "the status line does not report the write",
+    statusLine(published).status,
+    "the line published does not report the write",
   ).toBe(uiCopy.hostSettings.status.savedDevices);
 });
 
@@ -617,7 +632,7 @@ it("writes both display fields together", async () => {
  *  from one that worked. */
 it("reports the host's own reason when a write is refused", async () => {
   const refusal = "Device settings are available on this PC only.";
-  const { container } = await mountHost(
+  const { container, published } = await mountHost(
     { ...TWO_DISPLAYS, devices: DEVICES },
     { devices: refusal },
   );
@@ -626,10 +641,7 @@ it("reports the host's own reason when a write is refused", async () => {
   await leave(nameField(container, "gpu-0"));
 
   expect(
-    must(
-      container.querySelector<HTMLElement>("[data-vigilia-host-status]"),
-      "the status line",
-    ).textContent,
+    statusLine(published).status,
     "the refusal did not reach the person",
   ).toBe(uiCopy.hostSettings.status.failed(refusal));
 });
@@ -641,7 +653,7 @@ it("reports the host's own reason when a write is refused", async () => {
  * machine that nothing made.
  */
 it("draws no display when the display map cannot be read", async () => {
-  const { container } = await mountHost({
+  const { container, published } = await mountHost({
     ...TWO_DISPLAYS,
     refuseDisplays: true,
   });
@@ -651,17 +663,74 @@ it("draws no display when the display map cannot be read", async () => {
     "a failed read was drawn as an empty list",
   ).toHaveLength(0);
   expect(
-    must(
-      container.querySelector<HTMLElement>("[data-vigilia-host-display-count]"),
-      "the display count",
-    ).textContent,
+    statusLine(published).displays,
     "a failed read was counted as no displays",
-  ).toBe("");
+  ).toBeNull();
   expect(
-    must(
-      container.querySelector<HTMLElement>("[data-vigilia-host-status]"),
-      "the status line",
-    ).textContent,
+    statusLine(published).status,
     "the host's reason did not reach the person",
   ).toBe("Settings are available on this PC only.");
+});
+
+/**
+ * **§7.6's strip is the shell's, and this region draws none of its own.** The
+ * drawing puts the host page's status line in the shell's bar, outside the
+ * content region and outside it by construction; a strip here was a second bar
+ * stacked on the shell's, and a live region inside a mode that unmounts is not
+ * the one the person is reading.
+ */
+it("draws no status strip of its own, and publishes the line instead", async () => {
+  const { container, published } = await mountHost(TWO_DISPLAYS);
+
+  expect(
+    container.querySelector("[data-vigilia-host-status]"),
+    "the region drew a status line the shell's strip also draws",
+  ).toBeNull();
+  expect(
+    container.querySelector("[data-vigilia-host-display-count]"),
+    "the region drew a display count the shell's strip also draws",
+  ).toBeNull();
+  expect(
+    published.length,
+    "the region drew no line and published none either",
+  ).toBeGreaterThan(0);
+});
+
+/**
+ * **The clock's answer is its own, not the device save's sentence under a
+ * borrowed key.** The page this absorbs spells one sentence for both writes, so
+ * the two are indistinguishable by their value — which is exactly what made a
+ * single key dangerous: sharpening the device sentence silently changed what a
+ * time-zone save said. This makes the device sentence specific for one run and
+ * watches the clock's answer stay the page's own.
+ */
+it("answers a zone write in its own words, not the device save's", async () => {
+  const pageSentence = uiCopy.hostSettings.status.savedDevices;
+  const sharpened = "Saved. Displays read the new card on their next frame.";
+  const copy = uiCopy.hostSettings.status as { savedDevices: string };
+  copy.savedDevices = sharpened;
+  try {
+    const { container, published } = await mountHost({
+      ...TWO_DISPLAYS,
+      preferences: {
+        settings: { measurement: "imperial" },
+        zones: ["Europe/Paris"],
+      },
+    });
+
+    await offered(
+      must(
+        container.querySelector<HTMLElement>("[data-vigilia-host-time-zone]"),
+        "the clock's zone row",
+      ),
+    );
+    await choose("Europe/Paris");
+
+    expect(
+      statusLine(published).status,
+      "the clock reported the device save's sentence",
+    ).toBe(pageSentence);
+  } finally {
+    copy.savedDevices = pageSentence;
+  }
 });

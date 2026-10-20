@@ -5,7 +5,10 @@ import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { CARD_LIBRARY } from "../card-library.js";
 import { hitTargetClasses } from "../components/ui/control-well.js";
-import { HostSettingsRegion } from "../host-settings-mode/region.js";
+import {
+  HostSettingsRegion,
+  type HostStatusLine,
+} from "../host-settings-mode/region.js";
 import { CompositionPane } from "../panes/composition/composition-pane.js";
 import { confirmDocumentReplacement } from "../persistence-manager/index.js";
 import type { PublishSwitch } from "../publish-client.js";
@@ -283,6 +286,14 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      *  `createShellLayout` made for the live table — and moved from there by
      *  the Keyboard tab, which asks for a new set and writes storage itself. */
     const [overrides, setOverrides] = useState(initialOverrides);
+    /** **The Host mode's status line, as its region publishes it.** §7.6's strip
+     *  is the shell's in every mode, so the content is the region's and the
+     *  placement is this strip's — the shell draws these two strings rather than
+     *  reading the host a second time. `undefined` until the region answers, and
+     *  nothing is drawn for it: a count no read answered is not a zero. */
+    const [hostStatus, setHostStatus] = useState<HostStatusLine | undefined>(
+      undefined,
+    );
     const applyOverrides = (next: ShortcutOverrides): void => {
       setOverrides(next);
       setActiveShortcuts(resolveShortcuts(next));
@@ -630,22 +641,45 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 own, so the section holds one surface whatever mode is showing.
                 It takes no route from the shell — it writes this PC's own
                 settings, and assigning a theme is the store's. */}
-            <HostSettingsRegion mode={mode} />
+            <HostSettingsRegion mode={mode} onStatus={setHostStatus} />
           </section>
         )}
         {/* §7.6's strip: readouts only, the counts on the left and the save
             state and live mark on the right. The message span sits between the
             counts and the diagnostic, so a report is added to the left's
             reading rather than replacing it — the counts are what the author
-            has when the editor is simply open, and a message is a moment. */}
+            has when the editor is simply open, and a message is a moment.
+
+            **It is one strip in every mode, and the Host mode's line is the
+            host's rather than the editor's**: there is no document to count
+            there, so its region publishes the two strings and this places them.
+            A mode that publishes none draws the editor's readouts, which is
+            what the store mode does. */}
         <footer id="status" className="editor-shell-status">
-          <StatusReadout store={store} />
-          <Host node={hosts.status} />
-          <DiagnosticMessage canvas={store.bridge?.editor.canvas} />
-          <SaveState session={store.bridge?.session} />
-          {/* The host's own fact, beside the save state: an unknown host renders
-              no mark rather than "not live". */}
-          <PublishIndicator store={hosting} />
+          {mode === "this-pc" ? (
+            <>
+              <span data-vigilia-host-display-count="">
+                {hostStatus?.displays ?? null}
+              </span>
+              <p
+                className="editor-shell-status-host"
+                role="status"
+                data-vigilia-host-status=""
+              >
+                {hostStatus?.status ?? null}
+              </p>
+            </>
+          ) : (
+            <>
+              <StatusReadout store={store} />
+              <Host node={hosts.status} />
+              <DiagnosticMessage canvas={store.bridge?.editor.canvas} />
+              <SaveState session={store.bridge?.session} />
+              {/* The host's own fact, beside the save state: an unknown host
+                  renders no mark rather than "not live". */}
+              <PublishIndicator store={hosting} />
+            </>
+          )}
         </footer>
       </div>
     );
