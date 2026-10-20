@@ -1,10 +1,10 @@
 import { Checkbox } from "@base-ui/react/checkbox";
 import { Popover } from "@base-ui/react/popover";
 import type * as React from "react";
-import { useState } from "react";
 import { wellClasses } from "../components/ui/control-well.js";
 import { CHECK_GLYPH, Glyph } from "../editor-shell/icons.js";
 import { uiCopy } from "../ui-copy.js";
+import type { FacetSelection } from "./local-source.js";
 
 /** One value a facet offers: what it is called, and how many themes carry it. */
 export interface FacetOption {
@@ -18,6 +18,30 @@ export interface Facet {
   readonly id: string;
   readonly name: string;
   readonly options: readonly FacetOption[];
+}
+
+/**
+ * The selection with one value toggled in one facet, as a pure function.
+ *
+ * It is exported rather than living inside the row because the row holds no
+ * state: the region owns the selection, and a test that mounts the row alone
+ * needs the same rule rather than a second copy of it. An emptied facet keeps
+ * its empty list rather than dropping the key, so "nothing chosen here" and "no
+ * such facet" are not the same reading — `matchesFacets` treats both as "any",
+ * and only one of them is a facet a person can see.
+ */
+export function toggleFacet(
+  chosen: FacetSelection,
+  facetId: string,
+  optionId: string,
+): FacetSelection {
+  const picked = chosen[facetId] ?? [];
+  return {
+    ...chosen,
+    [facetId]: picked.includes(optionId)
+      ? picked.filter((id) => id !== optionId)
+      : [...picked, optionId],
+  };
 }
 
 /** The ids one facet's controls carry, derived from the facet and the value the
@@ -148,34 +172,20 @@ function FacetOptionRow(props: {
  * popover of §5's checkbox choice rows.
  *
  * **It draws the values it is given and derives none.** The values come from
- * the facet record A.3 lands in `renderer-core`, which is the layer both the
- * host and the catalogue's Action can import — so this row takes them as props
- * and knows nothing about a theme, a binding or an artboard.
+ * the items — A.3's record is what a theme's facets are read off — so this row
+ * takes them as props and knows nothing about a theme, a binding or an artboard.
  *
- * **The chosen values live here, and are not yet read by anything.** A.4 and A.5
- * own what a query filters and pages; until then the row is the control and the
- * count is its own reading. It is the row's state rather than the region's for
- * the same reason: nothing outside it has a use for the set yet.
+ * **The chosen values are the region's, not the row's.** What is chosen filters
+ * the list and returns the pager to page one, and both of those belong to
+ * whoever holds the items (Task A.6) — so the row reports a toggle and holds no
+ * state of its own. Two copies of one selection is the state that drifts: the
+ * trigger's count would read from one and the filter from the other.
  */
 export function FacetRow(props: {
   readonly facets: readonly Facet[];
+  readonly chosen: FacetSelection;
+  readonly onToggle: (facetId: string, optionId: string) => void;
 }): React.JSX.Element {
-  const [chosen, setChosen] = useState<
-    Readonly<Record<string, readonly string[]>>
-  >({});
-
-  const toggle = (facetId: string, optionId: string): void => {
-    setChosen((current) => {
-      const picked = current[facetId] ?? [];
-      return {
-        ...current,
-        [facetId]: picked.includes(optionId)
-          ? picked.filter((id) => id !== optionId)
-          : [...picked, optionId],
-      };
-    });
-  };
-
   return (
     <div
       // `flex-wrap` is the whole of "a wrapped line, never a dropped control":
@@ -190,8 +200,8 @@ export function FacetRow(props: {
         <FacetButton
           key={facet.id}
           facet={facet}
-          chosen={chosen[facet.id] ?? []}
-          onToggle={(optionId) => toggle(facet.id, optionId)}
+          chosen={props.chosen[facet.id] ?? []}
+          onToggle={(optionId) => props.onToggle(facet.id, optionId)}
         />
       ))}
     </div>

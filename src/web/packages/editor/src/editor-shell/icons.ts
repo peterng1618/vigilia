@@ -42,6 +42,7 @@ import {
   TriangleRight,
   Type,
   Unlock,
+  X,
 } from "lucide-react";
 import type * as React from "react";
 import { createElement } from "react";
@@ -202,6 +203,11 @@ export const OPEN_ITEM_GLYPH: LucideIcon = Folder;
 export const ASSIGN_ITEM_GLYPH: LucideIcon = Monitor;
 export const EXPORT_ITEM_GLYPH: LucideIcon = Download;
 export const DELETE_ITEM_GLYPH: LucideIcon = Trash2;
+
+/** The way out of a surface that draws no title bar to put one in: the item
+ *  modal floats it over the stage's corner (`store-detail.html`), where an × is
+ *  the only mark that says "this closes" without a word beside it. */
+export const CLOSE_GLYPH: LucideIcon = X;
 
 /** The rail's four slot glyphs, from §7.2's table. Keyed by the rail's own slot
  *  union so a fifth slot is a compile error here rather than a slot with no

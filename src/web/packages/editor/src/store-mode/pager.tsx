@@ -165,12 +165,13 @@ export function Pager(props: {
       data-vigilia-store-pager=""
       className="flex flex-none items-center gap-[var(--space-12)] border-t border-edge px-[var(--space-16)] py-[var(--space-8)]"
     >
-      {/* §5's select, and the drawing's 76px well (`DESIGN.md` §5). The row is
-          that well's own 76px column, so the `Per page` label takes the line
-          above it rather than a 74px label column beside it — the well is what
-          the drawing fixes, and a field row's column would leave it the rest of
-          a bar instead. */}
-      <span className="w-[76px] flex-none">
+      {/* §5's select, and the drawing's 76px well. **The label sits beside the
+          well rather than above it**, which is what the drawing draws and what
+          the browser measures: the row is §5's 74px label column, §3's 8px gap
+          and the 76px well — 158px, the three values each already fixed, and the
+          one width this row needs rather than a 76px column that wraps the well
+          to a second line and makes the bar 61px against the drawing's 43. */}
+      <span className="w-[158px] flex-none">
         <ControlSelect
           id={PAGE_SIZE_ID}
           label={uiCopy.store.pager.perPage}

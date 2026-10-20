@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
+import {
+  type FabricThemeEnvelope,
+  facetRecordOf,
+} from "@vigilia/renderer-core";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
+import { DARK_GROUND } from "../../packages/editor/src/store-mode/item-fixture.js";
 import { openEveryGroup, openPane, paneBody } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
@@ -1395,4 +1400,258 @@ test("the themes mode draws the store's own header row, and no width drops a fac
     narrow.row.right,
     `the row overflows the window it is drawn in (${report})`,
   ).toBeLessThanOrEqual(720);
+});
+
+/**
+ * A stubbed library of thirty themes, as the host would answer `/api/themes`.
+ *
+ * **Thirty is what makes the pager real**: twelve to a page is three of them, so
+ * this case can move to a page that is neither the first nor the last. One of
+ * them is portrait and on page one, so a landscape item can be held against it
+ * in the same surface, and a second portrait item sits on the last page.
+ *
+ * The record is `facetRecordOf`'s own derivation of an envelope rather than a
+ * hand-written one, which is the trap A.4a's review found: a descriptor written
+ * by hand answers something the host never would.
+ */
+const STORE_LIBRARY = Array.from({ length: 30 }, (_unused, at) => {
+  const index = at + 1;
+  const label = String(index).padStart(2, "0");
+  const name = `Store theme ${label}`;
+  const portrait = index === 2 || index === 25;
+  const envelope: FabricThemeEnvelope = {
+    schemaVersion: 2,
+    fabricVersion: "7.4.0",
+    id: `store-${label}`,
+    artboard: {
+      width: portrait ? 1080 : 1920,
+      height: portrait ? 1920 : 1080,
+      background: { value: DARK_GROUND },
+    },
+    metadata: { name, themeLanguage: "en", author: "huyng" },
+    scene: { version: "7.4.0", objects: [] },
+  };
+  return {
+    id: envelope.id,
+    name,
+    author: "huyng",
+    updatedAt: "2026-10-14T00:00:00.000Z",
+    ground: DARK_GROUND,
+    facets: facetRecordOf(envelope),
+  };
+});
+
+/** The item's own surface, reached from the portalled popup rather than the
+ *  region: Base UI portals it to `body`. */
+const STORE_ITEM_STAGE = "[data-vigilia-store-item-stage]";
+const STORE_ITEM_PICTURE = "[data-vigilia-store-item-picture]";
+
+/**
+ * The store's body, as a rendered surface: the gallery, the pager and an item's
+ * own surface, against a stubbed library.
+ *
+ * **Nothing mounted any of these before A.6** — the region's body was empty — so
+ * what this case proves is the wiring rather than any one part: a listing the
+ * host answers reaches cells, a cell opens the item's own surface, and closing
+ * it comes back to the page, filter and sort it was opened from.
+ *
+ * **The stage's one height is measured here because jsdom cannot measure it.**
+ * The dom case reads the declarations that make it true; this reads the two
+ * boxes, one landscape and one portrait, and the theme's own ratio inside them.
+ *
+ * **The pager bar's reading is here** because it is a measurement and not a
+ * claim: `pager.tsx` says where the `Per page` label falls, and only a browser
+ * can say whether the bar reads as a labelled row or as a break.
+ */
+test("the store lists a library, opens an item, and comes back to the same page", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  // **A stub, not the real host.** The editor preview serves no `/api/themes` at
+  // all, and the local half lists through that route (`theme-library-client.ts`);
+  // `editor.spec.ts` stubs the same one for the library chooser.
+  await page.route("**/api/themes", (route) =>
+    route.fulfill({ json: { themes: STORE_LIBRARY } }),
+  );
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  // A page size another case left behind would make this case read that case's
+  // pages rather than the shell's own default.
+  await page.evaluate(() =>
+    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+  );
+  await page
+    .locator(".editor-shell-mode-switch")
+    .getByRole("button", { name: uiCopy.modes.themes, exact: true })
+    .click();
+
+  const region = page.locator("[data-vigilia-mode-region='themes']");
+  await expect(region, "the themes mode renders no region").toBeVisible();
+
+  const cells = region.locator("[data-vigilia-store-cell]");
+  const pager = region.locator("[data-vigilia-store-pager]");
+  const search = region.locator("[data-vigilia-store-search]");
+  /** The page in force, read off the numeral the pager marks as current. */
+  const currentPage = async (): Promise<string | null> =>
+    region
+      .locator("[data-vigilia-store-page][aria-current='page']")
+      .getAttribute("data-vigilia-store-page");
+
+  // **The gallery, which nothing mounted before A.6**: one page of a thirty-item
+  // library, and the pager says which page.
+  await expect(
+    cells,
+    "the region does not list the library's first page",
+  ).toHaveCount(12);
+  await expect(pager, "the store draws no pager").toBeVisible();
+  expect(await currentPage(), "the pager does not open on page one").toBe("1");
+
+  /**
+   * The stage's height and the picture's own box for one item, opened from its
+   * cell and closed again — so the two readings are taken the same way and the
+   * surface is not left open for the next one.
+   */
+  const drawn = async (
+    id: string,
+  ): Promise<{
+    readonly stage: number;
+    readonly picture: { readonly width: number; readonly height: number };
+  }> => {
+    await region
+      .locator(`[data-vigilia-store-cell='${id}']`)
+      .locator("[data-vigilia-store-cell-action='open']")
+      .click();
+    const stage = page.locator(STORE_ITEM_STAGE);
+    await expect(stage, "a cell opens no item surface").toBeVisible();
+    const box = await stage.boundingBox();
+    const picture = await page.locator(STORE_ITEM_PICTURE).boundingBox();
+    await page.locator("[data-vigilia-store-item-close]").click();
+    await expect(stage, "the item's surface does not close").toBeHidden();
+    if (box === null || picture === null) {
+      throw new Error(`the item's surface drew no box for ${id}`);
+    }
+    return {
+      stage: box.height,
+      picture: { width: picture.width, height: picture.height },
+    };
+  };
+
+  // **The stage is one height for two different shapes**, and the theme is drawn
+  // at its own ratio inside that height: a viewer must not have the box move as
+  // a person steps between items, and a portrait board must still be seen
+  // uncropped.
+  const landscape = await drawn("store-01");
+  const portrait = await drawn("store-02");
+  const itemReading = `store-item stage landscape ${landscape.stage} portrait ${portrait.stage}; picture ${landscape.picture.width}x${landscape.picture.height} and ${portrait.picture.width}x${portrait.picture.height}`;
+  console.log(itemReading);
+  testInfo.annotations.push({ type: "store-item", description: itemReading });
+  expect(
+    portrait.stage,
+    `the stage follows the item instead of holding one height (${itemReading})`,
+  ).toBe(landscape.stage);
+  expect(
+    Math.abs(landscape.picture.width / landscape.picture.height - 16 / 9),
+    `the landscape theme is not drawn at its own ratio (${itemReading})`,
+  ).toBeLessThan(0.02);
+  expect(
+    Math.abs(portrait.picture.width / portrait.picture.height - 9 / 16),
+    `the portrait theme is not drawn at its own ratio (${itemReading})`,
+  ).toBeLessThan(0.02);
+  expect(
+    portrait.picture.height,
+    `the picture is not contained in the stage's height (${itemReading})`,
+  ).toBeLessThan(portrait.stage);
+
+  // **A page that is neither the first nor the last**, and an item opened from
+  // it: closing the surface comes back to the page it was opened from.
+  await region.locator("[data-vigilia-store-page='3']").click();
+  await expect(
+    cells,
+    "the last page is not the six items left over",
+  ).toHaveCount(6);
+  await drawn("store-25");
+  expect(
+    await currentPage(),
+    "closing an item moved the page it was opened from",
+  ).toBe("3");
+
+  // **A changed filter returns to page one** (R123): a narrower result would
+  // otherwise leave the viewer on a page that no longer exists.
+  await search.fill("Store theme 2");
+  await expect(cells, "the search does not narrow the listing").toHaveCount(10);
+  expect(
+    await currentPage(),
+    "a changed filter left the viewer on the page it was on",
+  ).toBe("1");
+
+  // **The filter's empty state is its own sentence**, not the first-run one: a
+  // person with thirty themes is told that their filter matched nothing.
+  await search.fill("no theme is called this");
+  await expect(cells, "an empty result still draws cells").toHaveCount(0);
+  await expect(
+    region.locator("[data-vigilia-store-empty]"),
+    "an empty result says nothing at all",
+  ).toHaveText(uiCopy.store.empty.filter);
+  await search.fill("");
+  await expect(
+    cells,
+    "clearing the search does not restore the listing",
+  ).toHaveCount(12);
+
+  // **The pager bar's own reading**, which is the item A.5 carried.
+  const bar = await pager.evaluate((node) => {
+    const label = node.querySelector("label")?.getBoundingClientRect();
+    const well = node
+      .querySelector("[data-vigilia-store-page-size]")
+      ?.getBoundingClientRect();
+    return {
+      barHeight: node.getBoundingClientRect().height,
+      label:
+        label === undefined
+          ? null
+          : {
+              top: label.top,
+              bottom: label.bottom,
+              left: label.left,
+              width: label.width,
+            },
+      well:
+        well === undefined
+          ? null
+          : {
+              top: well.top,
+              bottom: well.bottom,
+              left: well.left,
+              width: well.width,
+            },
+    };
+  });
+  const barReading = `store-pager bar ${bar.barHeight}px label ${JSON.stringify(bar.label)} well ${JSON.stringify(bar.well)}`;
+  console.log(barReading);
+  testInfo.annotations.push({ type: "store-pager", description: barReading });
+  if (bar.label === null || bar.well === null) {
+    throw new Error(`the pager draws no labelled size well (${barReading})`);
+  }
+  // **The label and the well are one line**, which is what the drawing draws and
+  // what the row's own width buys: a row given only the well's 76px wraps the
+  // well to a second line, and the bar grows from the drawing's 43px to 61. The
+  // two boxes are read against each other rather than against a `top`, because
+  // one line means the label's own middle falls inside the well's box — the well
+  // is 27px tall and the label 14, so their tops differ by 6 with nothing wrong.
+  const labelMiddle = (bar.label.top + bar.label.bottom) / 2;
+  expect(
+    labelMiddle,
+    `the Per page label is not on the well's own line (${barReading})`,
+  ).toBeGreaterThan(bar.well.top);
+  expect(
+    labelMiddle,
+    `the Per page label is not on the well's own line (${barReading})`,
+  ).toBeLessThan(bar.well.bottom);
+  expect(
+    bar.well.left,
+    `the well overlaps the label it belongs to (${barReading})`,
+  ).toBeGreaterThanOrEqual(bar.label.left + bar.label.width);
 });

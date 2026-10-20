@@ -16,11 +16,17 @@
  * buttons are counted inside a really narrow region; what this file can say is
  * that no facet is conditionally rendered, so no width can drop one.
  */
-import { act, type ReactElement } from "react";
+import { act, type ReactElement, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
+import type {
+  ThemeLibraryClient,
+  ThemeLibraryEntry,
+} from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
-import { type Facet, FacetRow } from "./facet-row.js";
+import { type Facet, FacetRow, toggleFacet } from "./facet-row.js";
+import { DARK_GROUND, fixtureEntry, LIGHT_GROUND } from "./item-fixture.js";
+import type { CellAction, FacetSelection } from "./local-source.js";
 import { StoreModeRegion } from "./region.js";
 
 // Base UI's popup needs three browser APIs jsdom has none of: floating-ui
@@ -56,15 +62,30 @@ beforeAll(() => {
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
 
-afterEach(() => {
+/** The mounted region and its host, taken down together: the item modal is
+ *  portalled to `body`, so a root left mounted would leave a second surface in
+ *  the tree for the next read to find. */
+async function unmount(): Promise<void> {
   const mounted = root;
   root = undefined;
   host?.remove();
   host = undefined;
-  if (mounted !== undefined) act(() => mounted.unmount());
+  if (mounted !== undefined) await act(async () => mounted.unmount());
+}
+
+afterEach(async () => {
+  await unmount();
+});
+
+beforeEach(() => {
+  // The page size is the one thing this surface persists (`page-size.ts`), and
+  // jsdom's storage outlives a test: without this, a case that chooses 48
+  // changes how many pages the next one has.
+  window.localStorage.clear();
 });
 
 async function mount(element: ReactElement): Promise<HTMLDivElement> {
+  await unmount();
   const container = document.createElement("div");
   document.body.append(container);
   const mounted = createRoot(container);
@@ -245,7 +266,7 @@ it("opens a facet as a group of checkbox rows, and counts what is chosen", async
       ],
     },
   ];
-  const container = await mount(<FacetRow facets={facets} />);
+  const container = await mount(<FacetFixture facets={facets} />);
   const trigger = must(
     container.querySelector<HTMLButtonElement>("[data-vigilia-facet]"),
     "facet button",
@@ -300,4 +321,342 @@ it("renders no region for a mode that is not Themes", async () => {
   expect(container.textContent, "the store drew itself in the host mode").toBe(
     "",
   );
+});
+
+/**
+ * The row holds no state of its own — the region owns the selection, because
+ * what is chosen filters the list and returns the pager to page one — so a case
+ * that mounts the row alone supplies the region's own rule (`toggleFacet`)
+ * rather than a second copy of it.
+ */
+function FacetFixture(props: {
+  readonly facets: readonly Facet[];
+}): React.JSX.Element {
+  const [chosen, setChosen] = useState<FacetSelection>({});
+  return (
+    <FacetRow
+      facets={props.facets}
+      chosen={chosen}
+      onToggle={(facetId, optionId) =>
+        setChosen((current) => toggleFacet(current, facetId, optionId))
+      }
+    />
+  );
+}
+
+/** A client that answers one listing and refuses everything else: the region
+ *  reads `list()` and none of the library's other four members. */
+function clientListing(
+  entries: readonly ThemeLibraryEntry[],
+): ThemeLibraryClient {
+  return {
+    list: async () => entries,
+    open: () => Promise.reject(new Error("the store does not open a document")),
+    save: () => Promise.reject(new Error("the store does not save")),
+    assign: () => Promise.reject(new Error("the store does not assign")),
+    listDisplays: async () => ({ default: null, displays: [] }),
+  };
+}
+
+/** A listing of `count` themes, all 1920×1080 and dark, named so the sort has
+ *  something to order. */
+function listing(count: number): readonly ThemeLibraryEntry[] {
+  return Array.from({ length: count }, (_unused, index) =>
+    fixtureEntry({
+      id: `theme-${index + 1}`,
+      name: `Theme ${String(index + 1).padStart(2, "0")}`,
+      ground: DARK_GROUND,
+    }),
+  );
+}
+
+/** The region over one listing. */
+async function mountStore(
+  entries: readonly ThemeLibraryEntry[],
+): Promise<HTMLElement> {
+  return mount(
+    <StoreModeRegion mode="themes" client={clientListing(entries)} />,
+  );
+}
+
+/** The cells the gallery draws, in order. */
+function cells(): readonly HTMLElement[] {
+  return Array.from(
+    document.body.querySelectorAll<HTMLElement>("[data-vigilia-store-cell]"),
+  );
+}
+
+/** One cell's action button, pressed the way a person presses it. */
+async function pressCell(id: string, action: CellAction): Promise<void> {
+  const button = must(
+    document.body.querySelector<HTMLButtonElement>(
+      `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-action="${action}"]`,
+    ),
+    `${action} on ${id}`,
+  );
+  await act(async () => button.click());
+}
+
+/** The page the pager says is in force, or `undefined` when it draws none. */
+function currentPage(): number | undefined {
+  const shown = document.body.querySelector<HTMLElement>(
+    "[data-vigilia-store-page][aria-current]",
+  );
+  return shown === null
+    ? undefined
+    : Number(shown.getAttribute("data-vigilia-store-page"));
+}
+
+/** A search well, typed into the way React reads a controlled input: through the
+ *  native setter, which a plain `value =` write does not go through. */
+async function type(query: string): Promise<void> {
+  const well = must(
+    document.body.querySelector<HTMLInputElement>(
+      "[data-vigilia-store-search]",
+    ),
+    "search well",
+  );
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(well, query);
+    well.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+/**
+ * The region lists the items and opens one as its own surface.
+ *
+ * The gallery is the wiring's visible half: before this task the region's body
+ * was empty, so a cell drawn at all is the source reaching the grid — and the
+ * cell's `open` action is the one action this phase handles, which is what puts
+ * the item's own modal on screen.
+ */
+it("lists the items and opens one as its own surface", async () => {
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+    fixtureEntry({
+      id: "porch-strip",
+      name: "Porch strip",
+      ground: DARK_GROUND,
+    }),
+  ]);
+
+  expect(
+    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    "the region draws no cells for the items it listed",
+  ).toEqual(["living-room", "porch-strip"]);
+
+  await pressCell("porch-strip", "open");
+
+  expect(
+    document.body
+      .querySelector("[data-vigilia-store-item-name]")
+      ?.textContent?.trim(),
+    "the cell's open action did not open the item's own surface",
+  ).toBe("Porch strip");
+});
+
+/**
+ * **The two empties are two sentences, and not the same one twice** (R124). An
+ * empty library is not an empty filter result: the first says the library has
+ * nothing in it and what to do about it, and the second says the filters matched
+ * nothing. The first-run sentence would tell someone with forty themes to go and
+ * build one.
+ */
+it("offers the two different empty states, and not the same one twice", async () => {
+  await mountStore([]);
+
+  const empty = must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-empty]"),
+    "empty state",
+  );
+  expect(
+    empty.textContent,
+    "an empty library does not say the library is empty",
+  ).toContain(uiCopy.store.empty.library);
+  expect(
+    empty.textContent,
+    "an empty library offers the filter sentence",
+  ).not.toContain(uiCopy.store.empty.filter);
+
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+  ]);
+  await type("nothing matches this");
+
+  const filtered = must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-empty]"),
+    "empty state after a query",
+  );
+  expect(
+    filtered.textContent,
+    "a filter that matched nothing does not say so",
+  ).toContain(uiCopy.store.empty.filter);
+  expect(
+    filtered.textContent,
+    "a filter that matched nothing tells the reader to build a theme",
+  ).not.toContain(uiCopy.store.empty.library);
+});
+
+/**
+ * **A changed filter returns to page one** (R123), and it is the filter's rule
+ * rather than the pager's: a narrower result would otherwise leave the viewer on
+ * a page they were not looking for, which reads as a store that moved under them.
+ *
+ * **The filter leaves two pages standing**, which is what makes this the rule's
+ * own case rather than the clamp's: twenty-four of the thirty carry the word the
+ * query names, so page two still exists and still holds items when the query
+ * lands, and nothing but `toFirstPage()` can answer page one.
+ */
+it("returns to page one when a filter changes", async () => {
+  await mountStore(
+    Array.from({ length: 30 }, (_unused, at) =>
+      fixtureEntry({
+        id: `theme-${at + 1}`,
+        name: `${at < 24 ? "Themed" : "Plain"} ${String(at + 1).padStart(2, "0")}`,
+        ground: DARK_GROUND,
+      }),
+    ),
+  );
+
+  const second = must(
+    document.body.querySelector<HTMLButtonElement>(
+      "[data-vigilia-store-page='2']",
+    ),
+    "second page numeral",
+  );
+  await act(async () => second.click());
+  expect(currentPage(), "the pager did not move to page two").toBe(2);
+
+  await type("Themed");
+
+  expect(
+    document.body.querySelector("[data-vigilia-store-page='2']"),
+    "the filter left fewer pages than this case is about",
+  ).not.toBeNull();
+  expect(
+    currentPage(),
+    "a changed query left the viewer on the page they were on",
+  ).toBe(1);
+});
+
+/**
+ * **Opening the item does not disturb what is underneath it** (spec, "The item,
+ * and why `kind` is the seam"): the page, the query and the sort are where they
+ * were when the modal closes, so a person comes back to the list they left.
+ */
+it("closes back onto the same page, filter and sort", async () => {
+  await mountStore(listing(30));
+  await type("Theme");
+
+  const second = must(
+    document.body.querySelector<HTMLButtonElement>(
+      "[data-vigilia-store-page='2']",
+    ),
+    "second page numeral",
+  );
+  await act(async () => second.click());
+
+  const opened = String(cells()[0]?.getAttribute("data-vigilia-store-cell"));
+  await pressCell(opened, "open");
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        "[data-vigilia-store-item-close]",
+      ),
+      "close control",
+    ).click(),
+  );
+
+  expect(
+    document.body.querySelector("[data-vigilia-store-item]"),
+    "the item's own surface did not close",
+  ).toBeNull();
+  expect(currentPage(), "closing the item lost the page").toBe(2);
+  expect(
+    must(
+      document.body.querySelector<HTMLInputElement>(
+        "[data-vigilia-store-search]",
+      ),
+      "search well",
+    ).value,
+    "closing the item lost the query",
+  ).toBe("Theme");
+});
+
+/**
+ * **The facet values are the items' own readings** (R122). Three things are
+ * asserted, and each is a way a facet can lie: `unclassified` is not a value a
+ * person can ask for (it is reachable under "any" and under nothing else), a
+ * size exactly one theme declares is not offered (it would be a theme wearing a
+ * filter's clothes), and a size two themes declare is.
+ */
+it("derives the facet values from the items", async () => {
+  await mountStore([
+    fixtureEntry({ id: "dark", ground: DARK_GROUND }),
+    fixtureEntry({ id: "dark-two", ground: DARK_GROUND }),
+    fixtureEntry({ id: "light", ground: LIGHT_GROUND }),
+    // No ground at all, so the record cannot read a colour mode from it.
+    fixtureEntry({ id: "unclassified" }),
+    fixtureEntry({
+      id: "wide",
+      width: 2560,
+      height: 1440,
+      ground: DARK_GROUND,
+    }),
+  ]);
+
+  /** One facet's own popover, opened, and the values it offers — read inside
+   *  that popup rather than across `body`, so a case that opens two in turn
+   *  cannot read the first one's values and call them the second's. */
+  const openFacet = async (
+    facetId: string,
+    name: string,
+  ): Promise<readonly string[]> => {
+    await act(async () =>
+      must(
+        document.body.querySelector<HTMLButtonElement>(
+          `[data-vigilia-facet="${facetId}"]`,
+        ),
+        `${facetId} facet`,
+      ).click(),
+    );
+    const popup = must(
+      document.body.querySelector<HTMLElement>(`[aria-label="${name}"]`),
+      `${facetId} popover`,
+    );
+    return Array.from(
+      popup.querySelectorAll<HTMLElement>("[data-vigilia-facet-option-name]"),
+    ).map((option) => option.textContent?.trim() ?? "");
+  };
+
+  expect(
+    await openFacet("colour-mode", uiCopy.store.facets.colourMode),
+    "the colour facet offers a value nobody can ask for, or misses one",
+  ).toEqual([uiCopy.store.colourModes.dark, uiCopy.store.colourModes.light]);
+
+  const shape = await openFacet("shape", uiCopy.store.facets.shape);
+  expect(
+    shape,
+    "the shape facet offers a size exactly one theme declares",
+  ).not.toContain(uiCopy.store.size(2560, 1440));
+  expect(
+    shape,
+    "the shape facet does not offer the three groups' values, in the drawing's order",
+  ).toEqual([
+    uiCopy.store.orientations.landscape,
+    "16:9",
+    uiCopy.store.size(1920, 1080),
+  ]);
 });

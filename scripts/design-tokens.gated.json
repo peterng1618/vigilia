@@ -1,6 +1,6 @@
 {
   "remainderCeiling": 19,
-  "designLanguagePx": [2, 3, 11, 14, 26, 28, 30, 32, 36, 40, 46, 74, 76, 180, 246, 272, 276],
+  "designLanguagePx": [2, 3, 11, 14, 26, 28, 30, 32, 36, 40, 46, 74, 158, 180, 246, 272, 276, 420, 960],
   "gated": [
     "src/web/packages/editor/src/components/ui/control-well.tsx",
     "src/web/packages/editor/src/components/ui/control-text.tsx",
@@ -64,6 +64,7 @@
     "src/web/packages/editor/src/editor-shell/editor-shell.css",
     "src/web/packages/editor/src/store-mode/region.tsx",
     "src/web/packages/editor/src/store-mode/gallery.tsx",
-    "src/web/packages/editor/src/store-mode/pager.tsx"
+    "src/web/packages/editor/src/store-mode/pager.tsx",
+    "src/web/packages/editor/src/store-mode/item-modal.tsx"
   ]
 }

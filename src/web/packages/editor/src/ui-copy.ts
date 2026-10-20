@@ -6,7 +6,11 @@
  * so splitting it by namespace would file the same words across five tables
  * and buy the count nothing but a fifth owner of one convention. */
 
-import type { ChartFamily } from "@vigilia/renderer-core";
+import type {
+  ChartFamily,
+  ColourMode,
+  Orientation,
+} from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
 import type { ShortcutPrefix } from "./shortcut-manager/display.js";
 import type { CellAction } from "./store-mode/local-source.js";
@@ -457,7 +461,7 @@ export const uiCopy = {
     search: "Search themes",
     /** The five facets, in the order the row draws them — the spec's "Finding a
      *  theme: the five facets". The values each offers are derived from the
-     *  theme by A.3's record, so none of them is a word here. */
+     *  items, so the only words here are the ones a value cannot carry itself. */
     facets: {
       label: "Filter themes",
       author: "Author",
@@ -465,6 +469,63 @@ export const uiCopy = {
       sensors: "Sensors",
       shape: "Shape",
       style: "Style",
+    },
+    /** The facet values that are words rather than data: the two colour modes a
+     *  person can ask for, the three orientations, and the aspect bucket that is
+     *  a word. Everything else a facet offers is the record's own reading — an
+     *  author's name, a sensor's `label`, a ratio, a size — and reads as itself.
+     *
+     *  **`unclassified` is deliberately absent.** It is the absence of an answer
+     *  rather than one a person can ask for, so it is reachable under "any" and
+     *  under no other value (spec, "Finding a theme: the five facets", `R117`);
+     *  a chip for it would be a selection that matches nothing.
+     *
+     *  Typed from the record's own unions, so a colour mode or an orientation
+     *  added there without a word fails to compile here rather than printing an
+     *  identifier at a person. */
+    colourModes: {
+      light: "Light ground",
+      dark: "Dark ground",
+    } as const satisfies Record<Exclude<ColourMode, "unclassified">, string>,
+    orientations: {
+      landscape: "Landscape",
+      portrait: "Portrait",
+      square: "Square",
+    } as const satisfies Record<Orientation, string>,
+    /** The one aspect bucket that is a word rather than a ratio: the bucket a
+     *  theme lands in when it is further from every published ratio than the
+     *  tolerance, and every exact size is reachable under it. */
+    otherShape: "Other",
+    /** An exact artboard size as one reading. A multiplication sign rather than
+     *  the letter `x`, which is what the drawing prints and what keeps a size
+     *  from reading as the ratio written the same way. Keyed because the two
+     *  numbers are data. */
+    size: (width: number, height: number): string => `${width}×${height}`,
+    /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
+     *  and why `kind` is the seam"). */
+    item: {
+      close: "Close",
+    },
+    /** The modal's pill groups, which are the facet's own content under the name
+     *  the drawing gives it: the row names what a filter narrows by (*Sensors*,
+     *  *Colour mode*), and the modal names what the theme reads and how it is
+     *  shaped.
+     *
+     *  **Style is not here, and its group is not drawn.** The record carries no
+     *  tags until phase G, so the group would be a heading over nothing — which
+     *  is what §9 forbids and what `PillGroup` refuses to render. */
+    pillGroups: {
+      reads: "Reads",
+      shape: "Shape",
+    },
+    /** The two empties, which are two sentences because they have two answers: a
+     *  library with nothing in it is not a filter that matched nothing, and
+     *  telling someone with forty themes to go and build one is a lie the
+     *  surface avoids by having both (spec, "The gallery, and paging"). */
+    empty: {
+      library: "No themes are saved on this PC yet.",
+      libraryHint: "Build one in the editor, or import a package.",
+      filter: "No themes match these filters.",
     },
     /** The sort well, whose keys are per half because the two share none: the
      *  catalogue knows when an item was published and how often it was taken,

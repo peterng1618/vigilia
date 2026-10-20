@@ -211,3 +211,26 @@ export function matchesFacets(
   }
   return true;
 }
+
+/**
+ * Whether an item answers a query: what a person typed is matched against the
+ * two words the cell already prints — the name and the author — case-folded,
+ * with the query's own ends trimmed. An empty query is every item, which is what
+ * an untouched well means.
+ *
+ * **The author is read off the item and not off its record.** The two carry the
+ * same string today, and the facet's own rule reads `item.author`; a query that
+ * read the other one would be a second answer to one question.
+ *
+ * It lives beside `matchesFacets` rather than in the region, because it is the
+ * sixth filter: the surface applies the two together and owns neither, and the
+ * brief's "never a second predicate written here" is that same rule.
+ */
+export function matchesQuery(item: StoreItem, query: string): boolean {
+  const wanted = query.trim().toLowerCase();
+  if (wanted === "") return true;
+  return (
+    item.name.toLowerCase().includes(wanted) ||
+    (item.author ?? "").toLowerCase().includes(wanted)
+  );
+}

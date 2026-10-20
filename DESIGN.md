@@ -200,6 +200,15 @@ not watch the grid change shape. It is fixed by the drawing
 from, and the grid is `repeat(auto-fill, minmax(272px, 1fr))`: the column count
 follows the width, so no breakpoint is invented for it.
 
+**The store's item modal is 960px wide and its stage is 420px tall.** Both are the
+drawing's (`docs/design/mockups/current/store-detail.html`). The width is not the
+settings modal's: 560 is a text sheet's box and this one's subject is a picture —
+960 against 560, with the stage flush to the box's edges rather than inset by the
+sheet's padding. **The stage is one height for every item** and the theme is
+contained in it at its own ratio, letterboxed against a ground darker than the
+modal's own surface; a stage sized to the item would make the modal change height
+as a person steps between items, which is the one thing a viewer must not do.
+
 ### The header
 
 <!-- §7.1 -->
@@ -521,6 +530,13 @@ facet row beside it wraps to a second line.
 **The store's page-size well is 76px**, for the same reason and from the same
 drawing: the pager is a bar rather than a field row, so the per-page choice is
 sized by what the drawing fixes instead of by a field row's value cell.
+
+**The store's pager row is 158px wide, and the arithmetic is what fixes it.** The
+drawing draws the per-page label *beside* its well, not above it, so the row is
+§5's 74px label column, §3's 8px gap and the 76px well — 74 + 8 + 76 — and the
+label and the well share the bar's one line, as the drawing's own 43px bar has
+them. A row given only the well's 76px wraps the well to a second line and makes
+the bar 61px (`pager.tsx`).
 
 **The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
 carries an editable field now, so the 24×24 target below binds it: the control pads its wells with

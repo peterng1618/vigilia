@@ -1,7 +1,7 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import type * as React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type ControlOption,
   ControlSelect,
@@ -10,9 +10,33 @@ import {
   ControlWell,
   hitTargetClasses,
 } from "../components/ui/control-well.js";
+import {
+  createPageSizePreference,
+  type PageSize,
+} from "../editor-shell/page-size.js";
 import type { ShellMode } from "../editor-shell/shell-layout.js";
+import {
+  createThemeLibraryClient,
+  type ThemeLibraryClient,
+} from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
-import { type Facet, FacetRow } from "./facet-row.js";
+import {
+  type Facet,
+  type FacetOption,
+  FacetRow,
+  toggleFacet,
+} from "./facet-row.js";
+import { Gallery } from "./gallery.js";
+import { ItemModal } from "./item-modal.js";
+import {
+  type CellAction,
+  type FacetSelection,
+  localThemeSource,
+  matchesFacets,
+  matchesQuery,
+  type StoreItem,
+} from "./local-source.js";
+import { Pager } from "./pager.js";
 
 /**
  * The store's two halves. `local` is the host's own library — what the author
@@ -79,6 +103,235 @@ const DEFAULT_SORT: Readonly<Record<StoreTab, string>> = {
 };
 
 /**
+ * The orders the local half offers, keyed by the sort key the row declares.
+ *
+ * **A key with no order is the catalogue's.** Its items arrive with its own
+ * source (phase C), so this phase orders nothing by `created`, `downloads` or
+ * `favorites` rather than inventing an order for a list that is empty.
+ *
+ * "Updated" is newest first: the item that changed most recently is the one a
+ * person is looking for, and the date is an ISO instant, so the string order is
+ * the time order.
+ */
+const SORT_ORDERS: Readonly<
+  Record<string, (a: StoreItem, b: StoreItem) => number>
+> = {
+  name: (a, b) => a.name.localeCompare(b.name),
+  updatedAt: (a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
+};
+
+/**
+ * The browser's own storage, or nothing where the accessor itself refuses — a
+ * private window throws on the read. It is `shell-layout.tsx`'s `readStorage`
+ * answer, kept local because that file mounts this region: importing it would be
+ * a cycle.
+ */
+function browserStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * One facet's options, read off the items rather than invented here: each item
+ * contributes the readings it carries, an option's count is how many items carry
+ * it, and the value a person chooses is the reading itself — the author string,
+ * the colour mode, the sensor's `key`, the ratio, the size.
+ *
+ * **Ordered by how much is behind each value, then by name**, so the biggest
+ * group is where a person looks first and the order does not move while the
+ * library does not. The order is derived from the whole listing and never from
+ * the filtered one: an option that vanished as it was chosen could not be
+ * unchosen.
+ */
+function optionsFrom(
+  items: readonly StoreItem[],
+  readings: (item: StoreItem) => readonly {
+    readonly id: string;
+    readonly name: string;
+  }[],
+): readonly FacetOption[] {
+  const found = new Map<string, { name: string; count: number }>();
+  for (const item of items) {
+    for (const reading of readings(item)) {
+      const seen = found.get(reading.id);
+      if (seen === undefined) {
+        found.set(reading.id, { name: reading.name, count: 1 });
+      } else {
+        seen.count += 1;
+      }
+    }
+  }
+  return [...found.entries()]
+    .map(([id, { name, count }]) => ({ id, name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/** The two colour modes a person can ask for. `unclassified` is not one of them
+ *  (R117, R122): a theme that carries it is reachable under "any" and under no
+ *  other value, so a chip for it would be a selection that matches nothing. */
+function colourModeOptions(
+  items: readonly StoreItem[],
+): readonly FacetOption[] {
+  return optionsFrom(
+    items.filter((item) => item.facets.colourMode !== "unclassified"),
+    (item) => {
+      const mode = item.facets.colourMode;
+      return mode === "unclassified"
+        ? []
+        : [{ id: mode, name: uiCopy.store.colourModes[mode] }];
+    },
+  );
+}
+
+/** The sensors the items bind, labelled by the record's own `label` — the
+ *  descriptor's word and not the `key` the selection carries. */
+function sensorOptions(items: readonly StoreItem[]): readonly FacetOption[] {
+  return optionsFrom(items, (item) =>
+    item.facets.sensors.map((sensor) => ({
+      id: sensor.key,
+      name: sensor.label,
+    })),
+  );
+}
+
+/** The three shape groups the drawing's Shape popover offers, in its own order:
+ *  the orientation words, the aspect buckets, and the exact sizes. */
+function shapeOptions(items: readonly StoreItem[]): readonly FacetOption[] {
+  const orientations = optionsFrom(items, (item) => [
+    {
+      id: item.facets.orientation,
+      name: uiCopy.store.orientations[item.facets.orientation],
+    },
+  ]);
+  const buckets = optionsFrom(items, (item) => [
+    {
+      id: item.facets.aspect,
+      name:
+        item.facets.aspect === "other"
+          ? uiCopy.store.otherShape
+          : item.facets.aspect,
+    },
+  ]);
+  return [...orientations, ...buckets, ...sizeOptions(items)];
+}
+
+/**
+ * The sizes the facet offers: **those more than one theme declares**, largest
+ * first. A size exactly one theme declares is a theme wearing a filter's
+ * clothes, and every other size is reachable under `Other` (spec, "Finding a
+ * theme: the five facets"); the exact size is on the item's own modal either
+ * way, which is what makes that acceptable.
+ */
+function sizeOptions(items: readonly StoreItem[]): readonly FacetOption[] {
+  const counts = new Map<
+    string,
+    { width: number; height: number; count: number }
+  >();
+  for (const item of items) {
+    const { width, height } = item.facets;
+    const id = `${width}x${height}`;
+    const seen = counts.get(id);
+    if (seen === undefined) counts.set(id, { width, height, count: 1 });
+    else seen.count += 1;
+  }
+  return [...counts.entries()]
+    .filter(([, size]) => size.count > 1)
+    .map(([id, size]) => ({
+      id,
+      name: uiCopy.store.size(size.width, size.height),
+      count: size.count,
+      area: size.width * size.height,
+      width: size.width,
+    }))
+    .sort((a, b) => b.area - a.area || b.width - a.width)
+    .map(({ id, name, count }) => ({ id, name, count }));
+}
+
+/**
+ * The five facets, in the row's order, with the values the items carry.
+ *
+ * **Style has no values this phase** and its facet is drawn with none: the
+ * record carries no tags until phase G, and `matchesFacets` answers "nothing"
+ * for a style selection — so a Style chip would empty the list rather than
+ * narrow it.
+ */
+function storeFacets(items: readonly StoreItem[]): readonly Facet[] {
+  return [
+    {
+      id: "author",
+      name: uiCopy.store.facets.author,
+      options: optionsFrom(items, (item) =>
+        item.author === undefined
+          ? []
+          : [{ id: item.author, name: item.author }],
+      ),
+    },
+    {
+      id: "colour-mode",
+      name: uiCopy.store.facets.colourMode,
+      options: colourModeOptions(items),
+    },
+    {
+      id: "sensors",
+      name: uiCopy.store.facets.sensors,
+      options: sensorOptions(items),
+    },
+    {
+      id: "shape",
+      name: uiCopy.store.facets.shape,
+      options: shapeOptions(items),
+    },
+    {
+      id: "style",
+      name: uiCopy.store.facets.style,
+      options: [],
+    },
+  ];
+}
+
+/** How many pages a listing of `count` items is at `size` — one page when the
+ *  size is `all`, and **none when there is nothing to page**, so an empty result
+ *  never claims a page one. */
+function pageCount(count: number, size: PageSize): number {
+  if (count === 0) return 0;
+  return size === "all" ? 1 : Math.ceil(count / size);
+}
+
+/** The items one page holds. `size` is a whole number of items or everything. */
+function pageItems(
+  items: readonly StoreItem[],
+  page: number,
+  size: PageSize,
+): readonly StoreItem[] {
+  if (size === "all") return items;
+  const from = (page - 1) * size;
+  return items.slice(from, from + size);
+}
+
+/**
+ * What the region's body draws: the items, one of the two empties, or nothing.
+ *
+ * **"Nothing" is a state and not an oversight.** A listing that has not arrived
+ * yet draws nothing rather than the first-run sentence — a store that flashed
+ * "No themes are saved on this PC yet" before its own list landed would be lying
+ * for a frame — and the online half has no source until phase C, so it lists
+ * nothing rather than the library under another name.
+ *
+ * **The two empties are different sentences because they have different
+ * answers** (R124): a library with nothing in it is not a filter that matched
+ * nothing, and the first-run sentence would tell someone with forty themes to go
+ * and build one.
+ */
+type Body =
+  | { readonly kind: "none" }
+  | { readonly kind: "empty-library" }
+  | { readonly kind: "empty-filter" }
+  | { readonly kind: "items"; readonly items: readonly StoreItem[] };
+
+/**
  * The two halves, as §5's `Segmented` in its **bare** form — the well holding
  * the labels, the chosen one lifted to `--stage` with `--text`, and no row label
  * beside it (`docs/decisions/0074`). The header's mode switch is the same
@@ -119,6 +372,25 @@ function Halves(props: {
   );
 }
 
+/** One of the two empty sentences, as a centred pair of lines at §3's
+ *  empty-state breathing room. */
+function Empty(props: {
+  readonly lead: string;
+  readonly hint: string | undefined;
+}): React.JSX.Element {
+  return (
+    <div
+      data-vigilia-store-empty=""
+      className="flex flex-1 flex-col items-center justify-center gap-[var(--space-8)] px-[var(--space-32)] text-center"
+    >
+      <p className="text-sm text-muted">{props.lead}</p>
+      {props.hint === undefined ? null : (
+        <p className="text-xs text-faint">{props.hint}</p>
+      )}
+    </div>
+  );
+}
+
 /**
  * The Themes mode's region — the surface the shell's `[data-vigilia-mode-region]`
  * seam was left for.
@@ -135,28 +407,115 @@ function Halves(props: {
  * itself in Themes and in no other mode, rather than the shell deciding which
  * region to render.
  *
- * **What is deliberately not here.** The gallery's cells (A.4), paging (A.5), an
- * item's own surface (A.6), import (A.7) and the Host region (A.8). The facet
- * values are A.3's record to derive, so the five facets are drawn by name with
- * no values behind them yet, and the search and the sort hold their own values
- * and move nothing: A.4 and A.5 own what a query filters and pages.
+ * **`client` is for a test and for a surface that already has one.** The shell
+ * mounts this with none, and the region builds the client the library API is
+ * reached through — the same default `theme-library-dialog.tsx` takes.
  */
 export function StoreModeRegion(props: {
   readonly mode: ShellMode;
+  readonly client?: ThemeLibraryClient | undefined;
 }): React.JSX.Element | null {
-  return props.mode === "themes" ? <StoreRegion /> : null;
+  return props.mode === "themes" ? <StoreRegion client={props.client} /> : null;
 }
 
 /** The region's own state, in its own component so a mode that is not Themes
- *  holds none of it: the half, the search and the sort are the surface's, and
- *  they are not persisted — leaving the mode and coming back opens on the same
- *  row a fresh mount does. Whether a filter outlives the mode is A.5's. */
-function StoreRegion(): React.JSX.Element {
+ *  holds none of it: the half, the search, the sort and the facet selection are
+ *  the surface's, and none of them is persisted — leaving the mode and coming
+ *  back opens on the same row a fresh mount does. The **page size** is the one
+ *  exception, because it is a view preference rather than a query (spec, "The
+ *  gallery, and paging"). */
+function StoreRegion(props: {
+  readonly client?: ThemeLibraryClient | undefined;
+}): React.JSX.Element {
   const [tab, setTab] = useState<StoreTab>("local");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Record<StoreTab, string>>({
     ...DEFAULT_SORT,
   });
+  const [chosen, setChosen] = useState<FacetSelection>({});
+  const [page, setPage] = useState(1);
+  /** Which item's own surface is open, by id rather than by item: the listing is
+   *  the one owner of what an item is, so a re-listing cannot leave the modal
+   *  showing a copy of something that changed underneath it. */
+  const [openId, setOpenId] = useState<string | undefined>(undefined);
+  /** The listing, or `undefined` until it arrives. Nothing draws the first-run
+   *  sentence before then. */
+  const [items, setItems] = useState<readonly StoreItem[] | undefined>(
+    undefined,
+  );
+
+  // One client and one source for the life of the region: a client built per
+  // render would be a new one every time, and the listing would reach a host the
+  // session never talked to.
+  const [source] = useState(() =>
+    localThemeSource(props.client ?? createThemeLibraryClient()),
+  );
+  const [preference] = useState(() =>
+    createPageSizePreference(browserStorage()),
+  );
+  const [size, setSize] = useState<PageSize>(() => preference.read());
+
+  useEffect(() => {
+    let live = true;
+    source.list().then(
+      (listed) => {
+        if (live) setItems(listed);
+      },
+      () => {
+        // **A failed listing is not a fact about the library**, so nothing is
+        // drawn for it: `items` stays unset and the body stays empty rather than
+        // claiming the library is empty. The reason has no surface here — the
+        // shell's notices belong to the editor's error manager, which is reached
+        // through a canvas this region does not have.
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [source]);
+
+  // **The catalogue's own source is phase C's**, so the online half lists
+  // nothing rather than the library under another name.
+  const listed = tab === "local" ? items : undefined;
+  const matching = (listed ?? []).filter(
+    (item) => matchesFacets(item, chosen) && matchesQuery(item, query),
+  );
+  const sorted = [...matching].sort(SORT_ORDERS[sort.local] ?? (() => 0));
+  const total = pageCount(sorted.length, size);
+  const current = Math.min(Math.max(page, 1), Math.max(total, 1));
+
+  const body: Body =
+    listed === undefined
+      ? { kind: "none" }
+      : listed.length === 0
+        ? { kind: "empty-library" }
+        : sorted.length === 0
+          ? { kind: "empty-filter" }
+          : { kind: "items", items: pageItems(sorted, current, size) };
+
+  const openItem =
+    openId === undefined
+      ? undefined
+      : items?.find((item) => item.id === openId);
+
+  /**
+   * The one callback a cell's four actions and the modal's footer share.
+   *
+   * **Only `open` does anything here, and the rest are named rather than
+   * stubbed**: assign is A.9's, import is A.7's, and export and delete arrive
+   * with their own tasks. A call that goes nowhere would be a second place to
+   * remember, and this one names its owner.
+   */
+  const onAction = (action: CellAction, id: string): void => {
+    if (action !== "open") return;
+    setOpenId(id);
+  };
+
+  /** **A changed filter returns to page one** (R123). A narrower result would
+   *  otherwise leave the viewer on a page that no longer exists, which reads as
+   *  an empty store — and it is the filter's rule rather than the pager's, so
+   *  the pager is never asked to reset itself. */
+  const toFirstPage = (): void => setPage(1);
 
   return (
     <div data-vigilia-store-region="" className="flex min-h-0 flex-1 flex-col">
@@ -175,11 +534,21 @@ function StoreRegion(): React.JSX.Element {
             aria-label={uiCopy.store.search}
             placeholder={uiCopy.store.search}
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              toFirstPage();
+            }}
             className="h-full w-full bg-transparent text-sm text-text outline-none"
           />
         </ControlWell>
-        <FacetRow facets={STORE_FACETS} />
+        <FacetRow
+          facets={storeFacets(listed ?? [])}
+          chosen={chosen}
+          onToggle={(facetId, optionId) => {
+            setChosen((current) => toggleFacet(current, facetId, optionId));
+            toFirstPage();
+          }}
+        />
         {/* §5's select, which is a **labelled row** and stays one here: the set
             has one select and this is it, and a bare well with a chevron would
             be a second copy of its popup, its keyboard model and its `readOnly`
@@ -201,22 +570,42 @@ function StoreRegion(): React.JSX.Element {
           }}
         />
       </div>
+
+      {/* The gallery's own scroller, so the header and the pager stay still
+          while the grid moves — the pane body's model (§7.3). */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-[var(--space-16)]">
+        {body.kind === "empty-library" ? (
+          <Empty
+            lead={uiCopy.store.empty.library}
+            hint={uiCopy.store.empty.libraryHint}
+          />
+        ) : null}
+        {body.kind === "empty-filter" ? (
+          <Empty lead={uiCopy.store.empty.filter} hint={undefined} />
+        ) : null}
+        {body.kind === "items" ? (
+          <Gallery items={body.items} onAction={onAction} />
+        ) : null}
+      </div>
+
+      <Pager
+        current={current}
+        total={total}
+        size={size}
+        onPage={setPage}
+        onSize={(next) => {
+          setSize(next);
+          preference.write(next);
+        }}
+      />
+
+      {openItem === undefined ? null : (
+        <ItemModal
+          item={openItem}
+          onClose={() => setOpenId(undefined)}
+          onAction={onAction}
+        />
+      )}
     </div>
   );
 }
-
-/**
- * The five facets, in the row's order, with **no values** — A.3 owns the record
- * that derives them, and a value invented here would be a facet that filters by
- * something no theme said.
- *
- * The names are the row's own copy; the values arrive as props, so filling them
- * is a change to this constant and to nothing in `facet-row.tsx`.
- */
-const STORE_FACETS: readonly Facet[] = [
-  { id: "author", name: uiCopy.store.facets.author, options: [] },
-  { id: "colour-mode", name: uiCopy.store.facets.colourMode, options: [] },
-  { id: "sensors", name: uiCopy.store.facets.sensors, options: [] },
-  { id: "shape", name: uiCopy.store.facets.shape, options: [] },
-  { id: "style", name: uiCopy.store.facets.style, options: [] },
-];

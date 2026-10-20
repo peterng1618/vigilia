@@ -18,10 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Task A.5 is complete** (`dee3a046`, after `f8e4c762` and `159e99da`): the pager — a pure `pageNumbers`, a persisted page-size preference, and `Pager` built from §5's controls.
-- **A hole of one page is a numeral, not a gap** (R121): a gap stands only where it stands for two or more pages, on both arms, so `pageNumbers(5, 8)` shows every page and the plan's own invariant — "never a `gap` adjacent to a number it stands for" — holds.
-- **A page count that is not a whole number is refused** rather than truncated, and the 76px page-size well is a design-language value with `DESIGN.md` §5, `designLanguagePx` and the file's `gated` entry landing together.
-- **Evidence**: the two suites 19 passed exit 0 and the reviewer's own falsification sweep found zero invariant failures over total 1..80 × every current; red proofs on the final bytes for the gap rule and the integer guard, each restored byte-identical by `cmp`; `typecheck`, `biome check ..` (720 files), `status:check` and `design:md` exit 0; `design:check` at its `vg-626` baseline (remainder 20, no store-mode file in it).
+- **Task A.6 wires the region's body for the first time**: the gallery, the search and facet filters, the pager and the item's own surface (`store-mode/item-modal.tsx`), over `localThemeSource` and the persisted page size, with `matchesFacets` and the new `matchesQuery` the only predicates.
+- **The item's own surface is a viewer**: a 960px box whose stage is **one 420px height for every item**, the theme contained at its own ratio against `--vigilia-canvas-bg`, the close floating over the picture's corner, the facts as pills under Reads and Shape — no title bar, and no origin badge (R125).
+- **R123 lands where the filter is applied and R124 keeps two sentences**: a changed query or facet returns to page one, and a filter that matched nothing says so rather than telling someone with thirty themes to build one.
+- **The pager's `Per page` label now sits beside its well**: the browser read 61px with the label on the line above (A.5's carried item), so the row is 158px — 74 + 8 + 76, each value already fixed — and the bar is the drawing's 43px; `DESIGN.md` §5, `designLanguagePx` (76 dropped as unconsumed, 158 added) and the `gated` entries landed together.
+- **Evidence, and the one case that could not be written**: store suite 41 passed and the whole unit suite 282 files / 3832 tests exit 0; four red proofs on the final bytes (fixed stage, R123, the two empties, the pager's line) each restored byte-identical by `cmp`; the browser case exit 0 (stage 420 both items, bar 43px); `typecheck`, `biome check ..` (723 files), `status:check`, `docs:check`, `design:md` and `gates:self-test` exit 0; `design:check` at its `vg-626` baseline (remainder 20, no store-mode file in it); the brief's tag-proposal case has no producer until phase G (R122), so no `tags` field was invented and that case is unwritten.
 
 ## Next
 
