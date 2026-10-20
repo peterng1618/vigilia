@@ -52,6 +52,7 @@ import type { HostRecord } from "./settings/host-record.js";
 import type { Monitor } from "./settings/monitors.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
+import { createThumbnailStore } from "./themes/thumbnails.js";
 import { encodeThemeContent } from "./themes/wire.js";
 import { createSecureOrigin } from "./tls/authority.js";
 
@@ -139,6 +140,20 @@ function createValidPackage(
   const result = writeThemePackage({ envelope, assets: {} });
   if (!result.ok) throw new Error(result.message);
   return { envelope, assets: {} };
+}
+
+/** The bytes an author hands the picker, written by the format's own writer. */
+function packageBytes(
+  content: ThemeContent,
+  thumbnail?: Uint8Array,
+): Uint8Array {
+  const written = writeThemePackage({
+    envelope: content.envelope,
+    assets: content.assets,
+    ...(thumbnail === undefined ? {} : { thumbnail }),
+  });
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
 }
 
 function createPackageWithAsset(
@@ -423,6 +438,9 @@ describe("Host theme routes", () => {
       registry: new ProviderRegistry([]),
       bundles: { player: tmpDir, editor: tmpDir },
       themeStore: store,
+      // The picture's owner, so an import's thumbnail half is reachable here
+      // rather than only in the store's own suite.
+      thumbnails: createThumbnailStore(tmpDir),
     });
   });
 
@@ -902,6 +920,104 @@ describe("Host theme routes", () => {
     expect(
       (await request(hosted.server, "GET", "/api/themes/living-room")).status,
     ).toBe(200);
+  });
+
+  it("imports a package into the library, and never over a theme already there", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(createValidPackage("living-room", "Living Room, mine")),
+    );
+    const mineBefore = await fs.readFile(
+      path.join(tmpDir, "living-room", "theme.json"),
+    );
+
+    const imported = await request(
+      hosted.server,
+      "POST",
+      "/api/themes/import",
+      packageBytes(validEmptyAssetTheme),
+    );
+
+    expect(imported.status).toBe(200);
+    // The id it landed under, and not the taken one: an import is additive, so
+    // the second entry is visible where a replace would be silent.
+    expect(imported.json()).toEqual({ ok: true, id: "living-room-2" });
+    // The author's theme is the same bytes, not merely a document that parses.
+    expect(
+      await fs.readFile(path.join(tmpDir, "living-room", "theme.json")),
+    ).toEqual(mineBefore);
+
+    // And a package whose id is free lands under its own.
+    const fresh = await request(
+      hosted.server,
+      "POST",
+      "/api/themes/import",
+      packageBytes(createValidPackage("family-room", "Family Room")),
+    );
+    expect(fresh.json()).toEqual({ ok: true, id: "family-room" });
+    const list = (
+      await request(hosted.server, "GET", "/api/themes")
+    ).json() as {
+      themes: readonly { id: string }[];
+    };
+    expect(list.themes.map((entry) => entry.id)).toEqual([
+      "family-room",
+      "living-room",
+      "living-room-2",
+    ]);
+  });
+
+  it("imports a package's picture, and refuses one the reader will not read", async () => {
+    // A PNG, which is the only picture the library renders.
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02,
+    ]);
+    const withPicture = await request(
+      hosted.server,
+      "POST",
+      "/api/themes/import",
+      packageBytes(createValidPackage("family-room", "Family Room"), png),
+    );
+    expect(withPicture.json()).toEqual({ ok: true, id: "family-room" });
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/family-room/thumbnail"))
+        .status,
+    ).toBe(200);
+
+    // §141's refusal, carried out as its own words: nothing was written for it.
+    const refused = await request(
+      hosted.server,
+      "POST",
+      "/api/themes/import",
+      new Uint8Array([1, 2, 3]),
+    );
+    expect(refused.status).toBe(400);
+    expect(refused.text()).toBe("That file is not a readable theme package.");
+    const list = (
+      await request(hosted.server, "GET", "/api/themes")
+    ).json() as {
+      themes: readonly { id: string }[];
+    };
+    expect(list.themes.map((entry) => entry.id)).toEqual(["family-room"]);
+
+    // `import` is a route of its own, not a theme id the open route reads.
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/import")).status,
+    ).toBe(405);
+    // Importing adds to the library, so it is this PC's business like a save.
+    expect(
+      (
+        await request(
+          hosted.server,
+          "POST",
+          "/api/themes/import",
+          packageBytes(createValidPackage("other", "Other")),
+          { remoteAddress: "10.0.0.2" },
+        )
+      ).status,
+    ).toBe(403);
   });
 
   it("reports requested keys no provider answered through /api/health", async () => {

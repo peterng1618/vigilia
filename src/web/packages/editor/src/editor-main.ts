@@ -438,10 +438,7 @@ async function start(): Promise<void> {
     void file.arrayBuffer().then(async (buffer) => {
       // An import is a library write, not a document: the theme lands where it
       // survives the editor closing, and whatever is open stays open.
-      const imported = await importThemePackage(
-        new Uint8Array(buffer),
-        libraryClient,
-      );
+      const imported = await importThemePackage(new Uint8Array(buffer));
       status.textContent = imported.ok
         ? uiCopy.themeImport.landed(imported.id)
         : uiCopy.themeImport.refused(imported.message);

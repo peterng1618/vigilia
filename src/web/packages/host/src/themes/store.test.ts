@@ -15,6 +15,7 @@ import {
   ThemeAssetLimitError,
   ThemeConflictError,
   type ThemeContent,
+  ThemeIdTakenError,
   type ThemeStore,
   ThemeValidationError,
 } from "./store.js";
@@ -732,6 +733,95 @@ describe("ThemeStore", () => {
     expect((await store.list()).map((entry) => entry.name)).toEqual([
       "nameless",
     ]);
+  });
+
+  /**
+   * The free-id claim (`expectFree`), which an import makes so that its id
+   * decision and its write are one step. It is deliberately **not** the general
+   * write's guard: a base-less save onto a taken id still replaces (vg-642), and
+   * nothing here widens that.
+   */
+  describe("free-id claims", () => {
+    it("writes an id that is free when the save claims it", async () => {
+      const store = createThemeStore(tmpDir);
+
+      const entry = await store.write(
+        "living-room",
+        { envelope: envelopeFor("living-room", "Living Room"), assets: {} },
+        { expectFree: true },
+      );
+
+      expect(entry.id).toBe("living-room");
+    });
+
+    it("refuses an id the library already holds, and writes nothing", async () => {
+      const store = createThemeStore(tmpDir);
+      await store.write("living-room", {
+        envelope: envelopeFor("living-room", "Living Room"),
+        assets: {},
+      });
+      const before = await fs.readFile(
+        path.join(tmpDir, "living-room", "theme.json"),
+      );
+
+      await expect(
+        store.write(
+          "living-room",
+          {
+            envelope: envelopeFor("living-room", "Something Else"),
+            assets: {},
+          },
+          { expectFree: true },
+        ),
+      ).rejects.toThrow(ThemeIdTakenError);
+
+      // The stored theme is the same bytes, and no scratch folder was left
+      // behind: the claim is settled before anything is created on disk.
+      expect(
+        await fs.readFile(path.join(tmpDir, "living-room", "theme.json")),
+      ).toEqual(before);
+      expect(await fs.readdir(tmpDir)).toEqual(["living-room"]);
+    });
+
+    it("claims the folder, not a document it can read", async () => {
+      const store = createThemeStore(tmpDir);
+      // A theme the listing skips is still the author's work, so a save that
+      // claimed the id must refuse for it too.
+      await fs.mkdir(path.join(tmpDir, "broken"), { recursive: true });
+      await fs.writeFile(
+        path.join(tmpDir, "broken", "theme.json"),
+        JSON.stringify({ id: "broken" }),
+      );
+
+      await expect(
+        store.write(
+          "broken",
+          { envelope: envelopeFor("broken", "Broken"), assets: {} },
+          { expectFree: true },
+        ),
+      ).rejects.toThrow(ThemeIdTakenError);
+    });
+
+    it("still replaces when the save names a base instead of claiming a free id", async () => {
+      const store = createThemeStore(tmpDir);
+      const first = await store.write("living-room", {
+        envelope: envelopeFor("living-room", "Living Room"),
+        assets: {},
+      });
+
+      // The pair the general write already had, unchanged by `expectFree`: a
+      // base that matches is a save the store applies.
+      await expect(
+        store.write(
+          "living-room",
+          {
+            envelope: envelopeFor("living-room", "Living Room, edited"),
+            assets: {},
+          },
+          { base: first.base },
+        ),
+      ).resolves.toMatchObject({ id: "living-room" });
+    });
   });
 });
 

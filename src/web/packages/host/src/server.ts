@@ -65,6 +65,7 @@ import type { HostRecord } from "./settings/host-record.js";
 import { listMonitors, type Monitor } from "./settings/monitors.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
+import { importThemePackage } from "./themes/import.js";
 import {
   createThemeStore,
   isValidThemeId,
@@ -441,6 +442,31 @@ async function readBody(
   }
 
   return Buffer.concat(chunks).toString("utf8");
+}
+
+/** The bounded binary counterpart of {@link readBody}: a package is bytes, and
+ *  decoding them as text would destroy them. */
+async function readBytes(
+  request: http.IncomingMessage,
+  limit: number,
+): Promise<Uint8Array> {
+  const chunks: Buffer[] = [];
+  let received = 0;
+
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk)
+      ? chunk
+      : Buffer.from(chunk as string);
+    received += buffer.byteLength;
+
+    if (received > limit) {
+      throw new Error("That request body is too large.");
+    }
+
+    chunks.push(buffer);
+  }
+
+  return new Uint8Array(Buffer.concat(chunks));
 }
 
 function sendJson(
@@ -2107,6 +2133,50 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       sendText(response, 405, "Only GET and PUT are supported.");
+      return;
+    }
+
+    // A package the author brings in is a library write, not a document: the
+    // bytes land in the folder and the answer is the id they landed under, so
+    // the theme survives the editor closing and appears in the local list. The
+    // host reads the package — the browser posts bytes and maps the answer —
+    // because the id rule and the no-overwrite rule are the folder's rules
+    // (docs/decisions/0078).
+    //
+    // Matched before `/api/themes/:id`, which would otherwise read `import` as
+    // a theme id — the same reason `/api/themes/active` is answered above.
+    if (url.pathname === "/api/themes/import") {
+      if (request.method !== "POST") {
+        sendText(response, 405, "Only POST is supported.");
+        return;
+      }
+      // Importing is a theme modification: a paired phone reads themes, it does
+      // not add to the library.
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Theme modification is loopback only.");
+        return;
+      }
+
+      let body: Uint8Array;
+      try {
+        body = await readBytes(request, MAX_THEME_UPLOAD_BYTES);
+      } catch {
+        sendText(response, 413, "That package is too large to import.");
+        return;
+      }
+
+      const imported = await importThemePackage(body, {
+        store: themeStore,
+        ...(thumbnails === undefined ? {} : { thumbnails }),
+      });
+      if (!imported.ok) {
+        // The reader's own reason, carried out rather than replaced: it names
+        // which of the package's faults this is, and a sentence composed here
+        // would hide that. Nothing was written.
+        sendText(response, 400, imported.message);
+        return;
+      }
+      sendJson(response, 200, { ok: true, id: imported.id });
       return;
     }
 

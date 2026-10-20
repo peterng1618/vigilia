@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Fix round 2 on A.7d is complete** — the phone case's store-region assertion is deleted (F4): `openThemeFromStore` leaves the shell in Editor before the read, so the element was already absent and `toBeHidden()` passed for an element that was not there.
-- **The coverage note is declined rather than answered**: the fit reading is the assertion that carries the phone case (`opened.fitted` fails with the callback deleted), and clicking the cell before the helper's own mode switch would duplicate the desktop case for no new information.
-- **`shell-layout.tsx`'s comment is three lines** — the reason (a `hidden` body measures zero) and the consequence (a cancelled open leaves the author in the store) — so the length claimed in the report and here is now true.
-- **`shell-layout.dom.test.tsx`'s fetch stub is restored** at the end of its case with `vi.unstubAllGlobals()`, the file's own convention at its other two stub sites.
-- **Evidence**: the phone case stays green and stays discriminating — with `onAccepted?.()` deleted it fails on the fit assertion, printing `board 640×480 at 0,0` on the 86×771 canvas, and green again after a `cmp`-identical restore and rebuild at `{canvas 86×771, board 64.5×48.375 at 10.75,361.3125, fitted true}`; biome, typecheck and status:check exit 0, design:check exit 1 at its `vg-626` baseline.
+- **A.7 is re-done as the host's import**: `POST /api/themes/import` takes a package's bytes, `readThemePackage` runs on the host, and the answer is the id it landed under — the browser's half is a post and a mapping (`theme-import.ts`), and `THEME_ID_REGEX`'s export reverts.
+- **Import never overwrites**: `ThemeWriteOptions.expectFree` makes the free-id claim and the write one step (R136), refusing whenever the folder is occupied — a `theme.json` that does not validate included — so the theme already there stays byte-for-byte unchanged.
+- **The id rule is the host's** (R137), in the spec's order: the package's own id via `isValidThemeId`, else a slug of `metadata.name`, else `-2`, `-3`; a package the reader refuses writes nothing and reaches the author with the reader's own reason.
+- **Evidence**: 85 unit tests green across `themes/import.test.ts`, `themes/store.test.ts` and the editor's `theme-import.test.ts`, plus 157 in `server.test.ts`; red-proved by disabling the `expectFree` guard, where the taken-id case replaced `family-room` and printed `{ ok: true, id: 'family-room' }`, restored `cmp`-identical.
+- **`vg-642` stays open** — a base-less save onto a taken id still replaces silently, and `expectFree` closes that on the import path only; decision note `0078` claims `server.ts` before the first write to it.
 
 ## Next
 

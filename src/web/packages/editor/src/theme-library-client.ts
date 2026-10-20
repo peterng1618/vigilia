@@ -123,9 +123,9 @@ export interface ThemeLibraryClient {
   }>;
 }
 
-/** The shape of a library id. Exported because an import writes under an id it
- *  did not mint — a package's own — and the owner of the shape is here. */
-export const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
+/** The shape of a library id. The host owns the same shape for a package's own
+ *  id (`isValidThemeId`); this one is for the ids a client sends. */
+const THEME_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** Chunked because `String.fromCharCode` is applied to an argument list. */
 function toBase64(bytes: Uint8Array): string {

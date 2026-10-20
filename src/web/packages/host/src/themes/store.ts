@@ -92,6 +92,11 @@ interface ThemeWriteOptions {
   /** Apply the save whatever is stored. The one way past the guard, and only
    *  an author who was told their save was refused should reach for it. */
   readonly overwrite?: boolean;
+  /** The caller claims the id is unused, and the store refuses if it is not.
+   *  A listing followed by a save leaves a window in which a theme is replaced;
+   *  this closes it by making the claim and the write one step. Not expressed
+   *  through `overwrite`, which is the opposite claim. */
+  readonly expectFree?: boolean;
 }
 
 /** A save's outcome: the listing line, and the base the next save is made on. */
@@ -111,6 +116,20 @@ export class ThemeConflictError extends Error {
         "Reload it to take the newer version, or save again to replace it.",
     );
     this.name = "ThemeConflictError";
+  }
+}
+
+/**
+ * A save that claimed a free id was refused because the library already holds
+ * something under it. Nothing was written and what is there is untouched — the
+ * caller's next move is to land somewhere else, which is why this is its own
+ * error rather than the conflict above: a conflict is a document to reload,
+ * this is an id to re-mint.
+ */
+export class ThemeIdTakenError extends Error {
+  constructor(id: string) {
+    super(`"${id}" is already in the library.`);
+    this.name = "ThemeIdTakenError";
   }
 }
 
@@ -484,6 +503,21 @@ function contentId(document: string | Uint8Array): string {
   return createHash("sha256").update(document).digest("hex");
 }
 
+/**
+ * Whether anything already stands under this id in the library.
+ *
+ * A `stat`, not a read: a folder whose `theme.json` does not validate is still
+ * the author's work, so a save that claims a free id must refuse for it exactly
+ * as it refuses for a theme the listing would show. A plain file under the id
+ * counts too — it is somebody's, and not this save's to replace.
+ */
+async function occupied(library: string, id: string): Promise<boolean> {
+  return fs
+    .stat(path.join(library, id))
+    .then(() => true)
+    .catch(() => false);
+}
+
 /** The validated `theme.json` in a folder, and what those bytes identify. */
 interface StoredTheme {
   readonly envelope: FabricThemeEnvelope;
@@ -731,12 +765,22 @@ export function createThemeStore(
      * *matched* may leave one out, and only of the document it is replacing — an
      * `overwrite` stands the guard down and therefore carries the whole theme,
      * because what is on disk is then not the document this save came from.
+     *
+     * A save that claims a free id (`expectFree`) is refused here too, and
+     * before any of the above: the claim and the write are one step, so nothing
+     * can land between them.
      */
     async write(
       id: string,
       content: ThemeContent,
       options?: ThemeWriteOptions,
     ): Promise<ThemeStoreSave> {
+      // Before anything is created on disk, and before the base is compared:
+      // the claim is about the folder, not about a document, so it is settled
+      // by the folder's own existence.
+      if (options?.expectFree === true && (await occupied(directory, id))) {
+        throw new ThemeIdTakenError(id);
+      }
       const stored = await readStoredOrAbsent(directory, id);
       let reconstructFrom: StoredTheme | undefined;
       if (options?.overwrite !== true && options?.base !== undefined) {
