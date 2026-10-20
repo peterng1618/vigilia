@@ -94,7 +94,11 @@ more are this spec’s, argued from those rulings and from the survey.
    an interpolation space and CSS now defaults to Oklab, but **this repo’s
    renderer draws CSS gradient strings in sRGB through ECharts and Fabric**, so a
    control offering Oklab would promise something nothing honours — the failure
-   §5’s Don’t list names. It is recorded as an upgrade path, not built.
+   §5’s Don’t list names. It is recorded as an upgrade path, not built, and its
+   reference is [Oklab](https://bottosson.github.io/posts/oklab/) (Ottosson) —
+   noted by the user 2026-10-20, filed `vg-644`. The condition to build it
+   differs by renderer: a DOM gradient can carry `in oklab`, a canvas one
+   cannot, since `CanvasGradient.addColorStop` takes no colour space.
 7. **Stops keep free positions and duplicates are represented, not refused.**
    Figma, CSS and Illustrator all treat a position as a free value and a stacked
    stop as a deliberate hard edge. Refusing a non-ascending entry would silently
