@@ -389,9 +389,12 @@ export const uiCopy = {
    * **The words are `packages/host/public/settings.html`'s** — its hints, its
    * device labels, its status line — taken rather than rewritten, because they
    * are the same questions, and the checked drawing
-   * (`docs/design/mockups/current/host-settings.html`) says so. The one section
-   * that page has and this does not is Themes: that list is the store mode's
-   * local half now, and the assignment is made from a theme's own row.
+   * (`docs/design/mockups/current/host-settings.html`) says so. Two things
+   * diverge. That page no longer lists themes (A.10): the listing is the store
+   * mode's local half, and an assignment is made from a theme's own row. And
+   * its questions hint carries a sentence this one does not — which display the
+   * answers are for — because this surface has its own display selector and
+   * must not claim the page's default (R153).
    */
   hostSettings: {
     displays: {
