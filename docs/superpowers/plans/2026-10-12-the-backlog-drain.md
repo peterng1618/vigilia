@@ -4612,9 +4612,9 @@ schema's sync test for Task 23.3.
 **Interfaces:**
 - Produces: `vg-368` closed
 
-- [ ] **Step 1: Relocate the directory outside the tree**, so the filesystem skew ends for every scanner at once — a gitignore rule hides a directory from git, not from a walk.
-- [ ] **Step 2: The eight files — browser probes, screenshots and a vitest report that may be the only copy — are kept rather than deleted.**
-- [ ] **Step 3: Close it**, showing a filesystem walk no longer sees the directory.
+- [x] **Step 1: Relocate the directory outside the tree**, so the filesystem skew ends for every scanner at once — a gitignore rule hides a directory from git, not from a walk.
+- [x] **Step 2: The eight files — browser probes, screenshots and a vitest report that may be the only copy — are kept rather than deleted.**
+- [x] **Step 3: Close it**, showing a filesystem walk no longer sees the directory. **Done, discharged by `0bdfbfc4` before this session's resume** — the directory was already outside the tree and `vg-368` was already archived as `verified`, which the pre-flight scan found and deliberately did not re-open.
 
 ### Task 23.11: An over-large theme file is answered as absent
 
@@ -4626,9 +4626,9 @@ schema's sync test for Task 23.3.
 **Interfaces:**
 - Produces: `vg-409` closed
 
-- [ ] **Step 1: The cause is established and its landmarks were re-read at this task's authoring.** `readStored` (`:494`) returns `undefined` when the file exceeds `MAX_THEME_FILE_BYTES` (`:163`, 32 MiB) — before validation runs — and `readStoredOrAbsent` (`:522`) folds that into the same absence the listing and the write path use. So `bootTheme` returns `none` and the editor mounts the template under a success report over a theme it never opened: the visible defect `vg-110` fixed, one trigger over.
-- [ ] **Step 2: The size bound's own comment says the choice is deliberate** — "an over-large document is not a validation failure, and naming it one here would be a different decision" — so the fix is not to reclassify it as one. What the choice costs is that a refusal by size is indistinguishable from a file that is not there, and the task is to make the two distinguishable without changing which one it is.
-- [ ] **Step 3: Close it**, with a case that fails when the size branch is folded back into absence, and one browser reading of the editor booting against an over-large file.
+- [x] **Step 1: The cause is established and its landmarks were re-read at this task's authoring.** `readStored` (`:494`) returns `undefined` when the file exceeds `MAX_THEME_FILE_BYTES` (`:163`, 32 MiB) — before validation runs — and `readStoredOrAbsent` (`:522`) folds that into the same absence the listing and the write path use. So `bootTheme` returns `none` and the editor mounts the template under a success report over a theme it never opened: the visible defect `vg-110` fixed, one trigger over. **Done, and this step's own numbers were stale**: measured against the files, `readStored` is at `:553`, `MAX_THEME_FILE_BYTES` at `:207` and `readStoredOrAbsent` at `:581` — the size branch is `:563-565` and the quoted comment genuine at `:550-551`.
+- [x] **Step 2: The size bound's own comment says the choice is deliberate** — "an over-large document is not a validation failure, and naming it one here would be a different decision" — so the fix is not to reclassify it as one. What the choice costs is that a refusal by size is indistinguishable from a file that is not there, and the task is to make the two distinguishable without changing which one it is. **Done — the ruling taken was `vg-409`'s own first option, a third answer**: `ThemeTooLargeError` thrown by `readStored`'s size branch, never a `ThemeValidationError`, folded back into absence everywhere except the open path, which answers `413`. The fold could not have satisfied this step, because with `readStored` still answering `undefined` no layer above it can tell the two facts apart.
+- [x] **Step 3: Close it**, with a case that fails when the size branch is folded back into absence, and one browser reading of the editor booting against an over-large file. **Done** — both red proofs reproduced by the task reviewer from retained artifacts rather than taken from the report (`promise resolved "undefined" instead of rejecting`; `#status` reading `Editor ready`), the browser reading green after, `vg-409` archived as `verified`, and the write-side asymmetry it exposed filed as `vg-678`.
 
 ---
 
