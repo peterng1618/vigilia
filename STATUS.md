@@ -18,10 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The chart validator refuses at the envelope boundary (Task 23.4, `vg-348` closed)**: `renderer-core/src/theme/fabric-envelope-validate.ts` now reads `charts/settings-fields.ts`'s own `min` per scalar and the union of both descriptor tables as the allowed key set, so a v2 envelope carrying `windowSeconds: 0`, `maxPoints: -5`, a gauge or bar `min` at or above its `max`, a crossed pie radius pair, a non-finite fixed total or a non-object `settings` is refused where it loads rather than clamped where it renders (decision `0082`).
+- **The chart validator refuses at the envelope boundary (Task 23.4, `vg-348` and `vg-674` closed)**: `renderer-core/src/theme/fabric-envelope-validate.ts` now reads `charts/settings-fields.ts`'s own `min` per scalar and the union of both descriptor tables as the allowed key set, so a v2 envelope carrying `windowSeconds: 0`, `maxPoints: -5`, a `min` at or above its `max` on gauge, bar **or line**, a crossed pie radius pair, a non-finite fixed total or a non-object `settings` is refused where it loads rather than clamped where it renders (decision `0082`).
+- **The table's own header was made false by that change and is fixed with it**: `settings-fields.ts`'s section is now "The validator reads this table" — the `min`/`max` are the document's bounds, `bound` is not one, and the deleted-validator material is history — and `ADR-0028` gains a dated superseding pointer to `0082` rather than a rewritten record.
 - **The binding constraint is measured, not asserted**: all 18 `theme.json` documents on disk were re-validated with the real loader and every verdict is unchanged — the three chart-carrying ones still `ok: true`, and the four already red for `metadata.locale`/`artboard.barColor`/`backgroundMedia.fit` gain no chart-settings issue.
 - **Evidence**: the new refusal cases fail when the refusal is reverted (5 failed / 39 passed) and the restore was checked with `cmp`; the full suite is 904 files / 3918 tests green; `npm run typecheck` exits 0; `npm run gate` reaches `design:check` and stops there on the pre-existing `vg-626`.
-- **Owed to the next writer**: `charts/settings-fields.ts`'s header section *"Why the validator does not read this table"* is now false and was left standing, because Task 23.4 names that file read-only.
+- **Still asserting the old position, deliberately left**: `docs/superpowers/plans/archive/2026-10-06-the-per-kind-inspector.md` and `docs/superpowers/specs/2026-10-03-dashboard-authoring-design.md` both quote the header this round rewrote — dated records of what was decided then, not current truth.
 
 ## Next
 
