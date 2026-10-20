@@ -2,6 +2,11 @@
 
 Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before release.
 
+Row scope is the convention `THIRD-PARTY-NOTICES.md` states: **direct dependencies only**
+— one row per package a workspace `package.json` declares, never the installed
+closure. The tables here follow it, and the closure half is this file's own
+**Release rule** below.
+
 ## Declared dependencies
 
 | Package | Version/pin | Licence | Role |
