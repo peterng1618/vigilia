@@ -74,13 +74,6 @@ export class ThemeValidationError extends Error {
   }
 }
 
-/**
- * One row of the display map: a display and the theme it holds.
- *
- * The route also sends `kind` for the host page's own warning table, which is
- * the page's question and not this seam's. The default is not a row — it is the
- * theme a display holding none of its own falls to — so it travels beside these.
- */
 /** The key `assign` takes for the theme a display holding no choice of its own
  *  falls to. The host owns this literal — `packages/host/src/settings/displays.ts`'s
  *  `DEFAULT_DISPLAY` — and this package does not depend on that one, so this is
@@ -88,6 +81,13 @@ export class ThemeValidationError extends Error {
  *  the same key. */
 export const DEFAULT_DISPLAY_KEY = "default";
 
+/**
+ * One row of the display map: a display and the theme it holds.
+ *
+ * The route also sends `kind` for the host page's own warning table, which is
+ * the page's question and not this seam's. The default is not a row — it is the
+ * theme a display holding none of its own falls to — so it travels beside these.
+ */
 export interface ThemedDisplay {
   readonly id: string;
   readonly label: string;
