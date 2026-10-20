@@ -29,7 +29,7 @@ Found: the store **already has the convention this needs.** `ThemeConflictError`
 `ThemeIdTakenError`, `ThemeAssetLimitError` (`413`) and `ThemeValidationError` (`422`) are the family, each
 with a comment saying why it is not dressed as a `400`. `readStored` is the single owner of the size branch,
 so one edit covers every reader. `themeStore.read` has exactly **two** callers in `server.ts` —
-`readThemeOrAbsent` (`:883`) and the open route (`:2227`) — and the open route is the only one the two
+`readThemeOrAbsent` and the open route's own read — and the open route is the only one the two
 facts are different answers for, which is the same asymmetry `decisions/0043` found and relied on.
 `theme-package` enforces its own bounds (`MAX_ARCHIVE_BYTES`, `MAX_ENTRY_BYTES`) but reports them as a
 `fail("…")` string rather than a typed error, so it has nothing to reuse.
@@ -60,8 +60,9 @@ Searched: the repo for every `413` (host and editor, all `.ts`); npm and framewo
 map typed errors to statuses — `http-custom-errors`, `@jdpnielsen/http-error` (Boom-inspired),
 `aiohttp.web_exceptions`, `node-http-server`.
 
-Found: all four existing `413`s in this repo answer an over-large **request body** — thumbnail
-(`server.ts:2116`), package import (`:2164`), save body (`:2269`) and `ThemeAssetLimitError` (`:2303`). In
+Found: all four existing `413`s in this repo answer an over-large **request body** — the thumbnail route's
+own byte cap, the package-import body cap, the save route's body cap, and the `ThemeAssetLimitError` branch
+of that same save route. In
 the ecosystem every `413` is likewise named for request content: Boom's factory is `entityTooLarge` =
 "Request Entity Too Large"; `aiohttp`'s `HTTPRequestEntityTooLarge(max_size)` defaults its text to
 "Maximum request body size {max_size} exceeded"; `node-http-server`'s `413` is its body cap. **No library
