@@ -18,10 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The store mode's region lands, and its header row is the region's own** (A.2): `store-mode/region.tsx` draws the two halves as §5's bare `Segmented`, the search well, the five facets and the sort well inside the `[data-vigilia-mode-region]` section A.1 left empty, with nothing above that row — §7.2's no-second-bar rule is what makes the placement a decision rather than a detail.
-- **The sort keys are per half and the two share none** (`local`: name, updatedAt; `online`: created, updated, downloads, favorites), refused rather than written when the half's list does not name the value; `facet-row.tsx` draws the five facets from props and derives no value, because A.3 owns the record that fills them.
-- **`DESIGN.md` §5 gains the checkbox choice row** rather than exempting it locally: rule 7's radio group is one answer, and a facet is a set you may choose several of, so the row's semantics are a checkbox and the group owns no single checked bit.
-- **Evidence**: `region.dom.test.tsx` 5 passed exit 0; two red proofs (the facet row's `flex-wrap` removed → exit 1, the region rendered in every mode → `the store drew itself in the host mode` exit 1), each restored byte-identical by `cmp`; the browser case in `editor-rail.spec.ts` reads the row really drawn at 1280 and at 720 with all five facets still inside it — exit 0, 1 expected, 0 unexpected; `npm run typecheck` exit 0; `npx biome check` over the six paths exit 0.
+- **The facet record lands** (A.3): `renderer-core/src/theme/facet-record.ts` derives a theme's author, colour mode, sensors, orientation, aspect bucket and pixel size from the envelope alone, in the one layer both the host and a catalogue Action can import — nothing authored, nothing stored in `theme.json`.
+- **Colour mode is a perceptual band, not a threshold**: the ground is resolved by the document's own `resolveStyleValue`, read as WCAG luminance through CIE `L*`, with `L*` 40–60 `unclassified`; a gradient's stops are averaged in `L*`, so a black-to-white ground is `unclassified` rather than `light`.
+- **Aspect is bucketed in log space at 0.005** over the seven published ratios (portrait reads its landscape inversion), and a 2.35:1 artboard falls to `other` rather than 21:9; orientation is exact equality; unclassified is the answer for media behind the board, an undeclared reference and a colour `parseHex` rejects, never a guess.
+- **Evidence**: `facet-record.test.ts` 10 passed exit 0, red first (module absent, exit 1) and red twice with the fix disabled (tolerance 0.005→0.05 → `expected '21:9' to be 'other'`; the band widened to 0/100 → 3 cases), each restored green; `npm run typecheck` exit 0; `npx biome check ..` exit 0 after `--write`; decision `0077` records the seven rungs and claims `renderer-core/src/theme/`.
+- **Not wired, and not this task's**: A.2's `STORE_FACETS` still carries `options: []` — A.4/A.5 pass the record's values in, and the editor package is untouched here.
 
 ## Next
 

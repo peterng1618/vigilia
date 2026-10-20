@@ -282,6 +282,13 @@ export type {
 export { SUPPORTED_SCHEMA_VERSION } from "./theme/fabric-envelope.js";
 export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
+export type {
+  AspectBucket,
+  ColourMode,
+  FacetRecord,
+  Orientation,
+} from "./theme/facet-record.js";
+export { facetRecordOf } from "./theme/facet-record.js";
 export type { GlassTreatment } from "./theme/glass.js";
 // The reader, the property name, the guard and the bound are the external
 // contract. The guard is external because a control that decides the membership
