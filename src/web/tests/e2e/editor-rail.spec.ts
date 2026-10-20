@@ -1,12 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   type FabricThemeEnvelope,
   facetRecordOf,
 } from "@vigilia/renderer-core";
+import { writeThemePackage } from "@vigilia/theme-package";
 import { DARK_GROUND } from "../../packages/editor/src/store-mode/item-fixture.js";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
+import { answerDialogIfShown } from "./editor-canvas.js";
 import { openEveryGroup, openPane, paneBody } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -1793,6 +1796,80 @@ test("the store lists a library, opens an item, and comes back to the same page"
 });
 
 /**
+ * **The camera, read off the surface it draws on** (A.7d).
+ *
+ * The canvas element's own client box beside the artboard's rect inside it,
+ * both in canvas px — the same pair `sceneToClient` converts a scene point
+ * through, and the pair the nine cases this defect turned red depend on. A
+ * `isFitted()` flag on its own would answer "the camera thinks it is fitted";
+ * the box beside it answers what is on the canvas.
+ */
+async function boardOnCanvas(page: Page): Promise<{
+  readonly canvas: { readonly width: number; readonly height: number };
+  readonly board: {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+  };
+  readonly fitted: boolean;
+}> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            viewport: {
+              artboardScreenRect(): {
+                left: number;
+                top: number;
+                width: number;
+                height: number;
+              };
+              isFitted(): boolean;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      "#vigilia-fabric-editor canvas.upper-canvas",
+    );
+    const box = canvas?.getBoundingClientRect();
+    return {
+      canvas: { width: box?.width ?? 0, height: box?.height ?? 0 },
+      board: bridge.editor.viewport.artboardScreenRect(),
+      fitted: bridge.editor.viewport.isFitted(),
+    };
+  });
+}
+
+/** Whether the whole artboard is inside the canvas, in the reading above. Half
+ *  a px of slack for the rounding a contain fit lands on. */
+function boardIsInside(
+  read: Awaited<ReturnType<typeof boardOnCanvas>>,
+): boolean {
+  const slack = 0.5;
+  return (
+    read.board.left >= -slack &&
+    read.board.top >= -slack &&
+    read.board.left + read.board.width <= read.canvas.width + slack &&
+    read.board.top + read.board.height <= read.canvas.height + slack
+  );
+}
+
+/** Waits for a camera the mode change moved to have landed: a read taken before
+ *  the resize the newly-visible body triggers is a read of the old box. */
+async function settled(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+}
+
+/**
  * **The store's `open` action loads a library theme as the editor's document**
  * (R134), from the cell and from the item's own footer alike — the label the
  * drawing gives it is *Open in editor* — while **the cell's own surface is what
@@ -2069,7 +2146,47 @@ test("the store opens a library theme as the document, from the cell and its foo
     "the opened document claims no stored base, so its next save is ungated",
   ).toBe(fromCell.id);
 
-  // And from the item's own footer, which draws the same four actions.
+  // **The control's own promise is a surface, not an object** (A.7d). This
+  // reading used to be the document's id alone, and a document mounted behind
+  // the store's own mode satisfied it: the editor's body is `hidden` in every
+  // other mode, so the theme was measured into a zero-sized host, its own fit
+  // wrote nothing, and the camera stayed at 1:1 — which on a phone-sized
+  // window puts most of the artboard off the canvas. *Open in editor* means
+  // the editor is what the author is looking at, with the theme fitted into
+  // it.
+  await expect(
+    page.locator(".editor-shell-body"),
+    "Open in editor left the shell showing the store",
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-vigilia-mode-region='themes']"),
+    "the store's own region is still the surface showing",
+  ).toBeHidden();
+  await settled(page);
+  const opened = await boardOnCanvas(page);
+  const openedReading = `store open on the desktop ${JSON.stringify(opened)}`;
+  console.log(openedReading);
+  testInfo.annotations.push({ type: "store-open", description: openedReading });
+  expect(
+    opened.fitted,
+    `the opened theme is not fitted to the canvas: ${openedReading}`,
+  ).toBe(true);
+  expect(
+    boardIsInside(opened),
+    `the opened theme hangs off the canvas: ${openedReading}`,
+  ).toBe(true);
+
+  // And from the item's own footer, which draws the same four actions — on a
+  // surface the open above has just left, so the store is asked for again.
+  await page
+    .locator(".editor-shell-mode-switch")
+    .getByRole("button", { name: uiCopy.modes.themes, exact: true })
+    .click();
+  await answerDialogIfShown(page, "Discard", 1_000);
+  await expect(
+    region,
+    "the store does not come back after the open left the editor",
+  ).toBeVisible();
   await surfaceOf(fromFooter.id).click();
   await expect(modal, "the second cell opens no item's surface").toBeVisible();
   await page.locator("[data-vigilia-store-item-action='open']").click();
@@ -2085,4 +2202,64 @@ test("the store opens a library theme as the document, from the cell and its foo
     await publishedId(),
     "the second opened document claims no stored base",
   ).toBe(fromFooter.id);
+});
+
+/**
+ * **The same open, on the viewport where the defect is not cosmetic** (A.7d).
+ *
+ * The phone's editor canvas is 86px wide, so a 640x480 theme left at 1:1 has
+ * most of its artboard off the canvas — and that camera is what six of the nine
+ * cases this defect turned red convert their scene coordinates through before
+ * they click or sample. This case asserts the reading they depend on, directly:
+ * the shell is on the editor, and the whole artboard is inside the canvas.
+ *
+ * The library is `store-library.ts`'s stub, so this case and the nine it stands
+ * for reach their document through one route rather than two.
+ */
+test("opening a library theme fits it to the phone's own canvas", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    isDesktopSurface(testInfo),
+    "the phone's canvas is what this measures",
+  );
+
+  const written = writeThemePackage({
+    envelope: {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "store-open-phone",
+      artboard: { width: 640, height: 480 },
+      metadata: { name: "Phone theme", themeLanguage: "en" },
+      scene: { version: "7.4.0", objects: [] },
+    },
+    assets: {},
+  });
+  if (!written.ok) throw new Error(written.message);
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    "the editor did not mount",
+  ).toBeVisible();
+
+  await openThemeFromStore(page, storedThemeOfPackage(written.bytes));
+
+  await expect(
+    page.locator(".editor-shell-body"),
+    "Open in editor left the shell showing the store",
+  ).toBeVisible();
+  await settled(page);
+  const opened = await boardOnCanvas(page);
+  const openedReading = `store open on the phone ${JSON.stringify(opened)}`;
+  console.log(openedReading);
+  testInfo.annotations.push({ type: "store-open", description: openedReading });
+  expect(
+    opened.fitted,
+    `the opened theme is not fitted to the canvas: ${openedReading}`,
+  ).toBe(true);
+  expect(
+    boardIsInside(opened),
+    `the opened theme hangs off the canvas: ${openedReading}`,
+  ).toBe(true);
 });

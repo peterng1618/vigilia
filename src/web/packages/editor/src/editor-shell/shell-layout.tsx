@@ -611,10 +611,22 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 this render**: the region is mounted for the whole life of the
                 shell and a later document mount replaces the bridge, so a
                 callback holding this render's session would open a theme into
-                the document the shell had a moment ago. */}
+                the document the shell had a moment ago.
+
+                **The editor first, then the document** (A.7d). The editor's
+                body is `hidden` in every other mode, so a document mounted
+                behind it is measured into a zero-sized host, its own fit writes
+                nothing, and the resize that follows the mode switch then holds
+                the camera at 1:1 — a theme opened on a phone lands mostly off
+                the canvas. *Open in editor* names the editor, so the shell is
+                in it before the library is asked to read anything. The way in
+                asks nothing: `requestMode` asks the dirty question only when
+                *leaving* the editor, and the open asks it again through the
+                library's own `confirmReplacement`. */}
             <StoreModeRegion
               mode={mode}
               onOpenTheme={(id) => {
+                onModeChange("editor");
                 void store.bridge?.session.openLibraryTheme(id);
               }}
             />
