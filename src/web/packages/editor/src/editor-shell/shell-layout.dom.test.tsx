@@ -63,7 +63,8 @@ function facade(): EditorActionFacade {
   return {
     newDocument: vi.fn(async () => undefined),
     newFromStarter: vi.fn(async () => undefined),
-    openPackage: vi.fn(),
+    importPackage: vi.fn(),
+    openLibraryTheme: vi.fn(async () => undefined),
     savePackage: vi.fn(async () => undefined),
     releasePackage: vi.fn(async () => undefined),
     openLibrary: vi.fn(async () => undefined),
@@ -1340,14 +1341,16 @@ it("teaches a File row exactly the chord whose id runs the call that row runs", 
   // Each row's own id, and the pairing is the ruled one (vg-185): a chord is
   // taught where the `PRODUCT_SHORTCUTS` id reaches the same call the row
   // reaches, which for these three is one method on the same receiver —
-  // `file.save`/`savePackage` both end at `#document.save()`, and the same for
-  // `open` and `newDocument`. The four rows with no id stay chordless; the
+  // `file.save`/`savePackage` both end at `#document.save()`, `file.new` and
+  // `newDocument` at `#document.newDocument()`, and `file.open` and the
+  // *Import package* row at the session's own `importPackage()`, which is the
+  // package picker. The four rows with no id stay chordless; the
   // menu does not pair a chord by eye, which is how a menu starts teaching a
   // key that runs something else.
   const keyed = new Map<string, ProductShortcutId | undefined>([
     [uiCopy.file.newDocument, "file.new"],
     [uiCopy.file.newFromStarter, undefined],
-    [uiCopy.file.openPackage, "file.open"],
+    [uiCopy.file.importPackage, "file.open"],
     [uiCopy.file.savePackage, "file.save"],
     [uiCopy.file.releasePackage, undefined],
     [uiCopy.file.openLibrary, undefined],

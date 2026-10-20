@@ -99,8 +99,10 @@ interface EditorSessionOptions {
   readonly onNew: (answer: NewDocumentAnswer) => Promise<void>;
   /** Creates a document from the reference composition, as a template. */
   readonly onNewFromStarter: () => Promise<void>;
-  readonly onOpen?: () => void;
-  readonly onOpenPackage?: () => void;
+  /** Opens the package picker. **An import is a library write and not a
+   *  document**: the theme lands where it survives the editor closing, so
+   *  nothing is confirmed and nothing is forgotten on the way. */
+  readonly onImportPackage?: () => void;
   /** §7's `?` reference. The sheet is chrome and belongs to `createShellLayout`,
    *  and the dispatcher belongs to this session, so the gesture crosses back
    *  through the same door every other modal prompt uses. Optional, so the four
@@ -417,8 +419,10 @@ export class EditorSession {
     this.#shortcuts.register("file.save", () => {
       void this.#document.save();
     });
+    // The File menu's row carries this chord, and the row reads *Import
+    // package*: the chord does what the control it is printed beside does.
     this.#shortcuts.register("file.open", () => {
-      void this.#document.open();
+      options.onImportPackage?.();
     });
     this.#shortcuts.register("file.new", () => {
       void this.#document.newDocument();
@@ -537,10 +541,13 @@ export class EditorSession {
     return {
       newDocument: () => this.#document.newDocument(),
       newFromStarter: () => this.#document.newFromStarter(),
-      openPackage: () => this.#document.open(),
+      // The picker, and nothing of the document's: an import lands in the
+      // library while whatever is open stays open.
+      importPackage: () => options.onImportPackage?.(),
       savePackage: () => this.#document.save(),
       releasePackage: () => this.#document.release(),
       openLibrary: () => this.#document.openLibrary(),
+      openLibraryTheme: (id) => this.#document.openLibraryTheme(id),
       saveLibrary: () => this.#document.saveLibrary(),
       // The three constructions the shell dispatches are wrapped in the one
       // owner of a construction's refusal (`new-object-panel.ts`), because the

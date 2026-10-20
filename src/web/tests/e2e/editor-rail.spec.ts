@@ -1531,9 +1531,12 @@ test("the store lists a library, opens an item, and comes back to the same page"
     readonly stamp: string;
     readonly picture: { readonly width: number; readonly height: number };
   }> => {
+    // **The cell's own surface, not its `open` action**: the action names the
+    // library operation its label prints and loads a document, and the cell is
+    // what opens the item's own surface (A.7b).
     await region
       .locator(`[data-vigilia-store-cell='${id}']`)
-      .locator("[data-vigilia-store-cell-action='open']")
+      .locator("[data-vigilia-store-cell-surface]")
       .click();
     const stage = page.locator(STORE_ITEM_STAGE);
     await expect(stage, "a cell opens no item surface").toBeVisible();
@@ -1787,4 +1790,296 @@ test("the store lists a library, opens an item, and comes back to the same page"
     uiCopy.store.size(1920, 1080),
     uiCopy.store.size(1080, 1920),
   ]);
+});
+
+/**
+ * **The store's `open` action loads a library theme as the editor's document**
+ * (R134), from the cell and from the item's own footer alike — the label the
+ * drawing gives it is *Open in editor* — while **the cell's own surface is what
+ * opens the item's** (spec, "The item's own surface": *so a cell opens a
+ * modal*).
+ *
+ * **Nothing serves `/api/themes` at the editor preview**, so both routes are
+ * stubbed here: the case proves the route the store takes, not the host's store,
+ * whose own read is `theme-library-client`'s and is proved where a host is real.
+ * Two themes rather than one, because the second open has to be *seen* to
+ * happen: an open that replaced the document with the same document would read
+ * the same either way.
+ *
+ * **The base is read through the bridge, and it is the one browser-visible
+ * consequence of it travelling with the document** (`vg-642`).
+ * `publishableDocument` answers only for a document the library holds, so it is
+ * `undefined` over the template the editor boots with and names the theme once
+ * that theme is open — a save with no base is ungated, which no readout of the
+ * document's own identity would show.
+ */
+test("the store opens a library theme as the document, from the cell and its footer", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const CELL_NAME = "Cell theme";
+  const FOOTER_NAME = "Footer theme";
+  const themeOf = (id: string, name: string): FabricThemeEnvelope => ({
+    schemaVersion: 2,
+    fabricVersion: "7.4.0",
+    id,
+    // No artboard paint: a theme's background is a palette token or nothing
+    // (`fabric-envelope-validate.ts`), and a local literal here would be a
+    // document the editor refuses to open — which is what this case's own first
+    // run proved, by failing at the canvas with the validator's sentence.
+    artboard: { width: 1920, height: 1080 },
+    metadata: { name, themeLanguage: "en", author: "huyng" },
+    scene: { version: "7.4.0", objects: [] },
+  });
+  const fromCell = themeOf("store-from-cell", CELL_NAME);
+  const fromFooter = themeOf("store-from-footer", FOOTER_NAME);
+
+  // **No `updatedAt`, and that is load-bearing.** With no `?theme=` in the URL
+  // the editor boots on the author's most recent save, which it picks by that
+  // field (`boot-theme.ts`): a listing that carried one would open a theme
+  // before this case's first open, and the base's own reading below would start
+  // out true rather than false — proving nothing about the open that moved it.
+  // An entry with no time is a shape the wire really has (a template is not a
+  // stored file and has none), and the cells draw the byline without a date.
+  await page.route("**/api/themes", (route) =>
+    route.fulfill({
+      json: {
+        themes: [fromCell, fromFooter].map((envelope) => ({
+          id: envelope.id,
+          name: envelope.metadata?.name,
+          author: "huyng",
+          version: "1.4.0",
+          ground: DARK_GROUND,
+          facets: facetRecordOf(envelope),
+        })),
+      },
+    }),
+  );
+  for (const envelope of [fromCell, fromFooter]) {
+    await page.route(`**/api/themes/${envelope.id}`, (route) =>
+      route.fulfill({
+        json: { envelope, assets: {}, base: `base-${envelope.id}` },
+      }),
+    );
+  }
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  /** The open document's own name, read off the bridge the editor publishes:
+   *  `documentNameOf` falls back to the id, so a nameless document is still
+   *  identified rather than read as none. */
+  const documentName = async (): Promise<string | undefined> =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            vigiliaEditorBridge?: {
+              snapshot(): { readonly documentName: string | undefined };
+            };
+          }
+        ).vigiliaEditorBridge?.snapshot().documentName,
+    );
+  /** The id a display would fetch this document's assets from, or `undefined`
+   *  where the document descends from nothing the library holds. */
+  const publishedId = async (): Promise<string | undefined> =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            vigiliaEditorBridge?: {
+              session: {
+                publishableDocument(): { readonly id: string } | undefined;
+              };
+            };
+          }
+        ).vigiliaEditorBridge?.session.publishableDocument()?.id,
+    );
+
+  // The template the editor boots with descends from nothing: this is the
+  // reading the opens below have to move, and the base's own proof.
+  expect(
+    await documentName(),
+    "the editor did not boot on a document at all",
+  ).toBeDefined();
+  expect(
+    await documentName(),
+    "the editor boots on the theme this case means to open",
+  ).not.toBe(CELL_NAME);
+  expect(
+    await publishedId(),
+    "the document the editor boots with already claims a stored base",
+  ).toBeUndefined();
+
+  await page
+    .locator(".editor-shell-mode-switch")
+    .getByRole("button", { name: uiCopy.modes.themes, exact: true })
+    .click();
+  const region = page.locator("[data-vigilia-mode-region='themes']");
+  await expect(region, "the themes mode renders no region").toBeVisible();
+  await expect(
+    region.locator("[data-vigilia-store-cell]"),
+    "the store does not list the stubbed library",
+  ).toHaveCount(2);
+
+  const modal = page.locator("[data-vigilia-store-item]");
+  const cellOf = (id: string) =>
+    region.locator(`[data-vigilia-store-cell='${id}']`);
+  const surfaceOf = (id: string) =>
+    cellOf(id).locator("[data-vigilia-store-cell-surface]");
+
+  // **The cell's own bands are where the drawing puts them, and this is the
+  // reading that says so** (A.7b). The surface, the byline and the facts band
+  // are three elements now where they were one padded column, so the spacing
+  // between them is arithmetic a later edit can move without anything failing:
+  // the drawing's 10px inside the cell and 6px between the bands, which §3's
+  // step table owns as `--space-10` and `--space-6`. The 26px band is the third
+  // band's own height and is read here too, because it is what the drawing
+  // fixes and a wrapper that padded it would squash it.
+  //
+  // **Each reading is the box the air sits outside of.** A span's own rect
+  // includes its padding, so two padded bands abut however much air the padding
+  // puts between their text, and measuring the rects would report 0 for every
+  // gap — passing with the drawing's spacing deleted. The content box (the rect
+  // inside the border and the padding) is where the line really sits, so the
+  // padding is the gap again; and since every box here abuts the next, the
+  // arithmetic is the whole of it: a margin a later edit added would move a gap
+  // off its step and fail here.
+  const bands = await cellOf(fromCell.id).evaluate((cell) => {
+    const contentBox = (
+      element: Element | null | undefined,
+    ): { readonly top: number; readonly bottom: number } | undefined => {
+      if (element === null || element === undefined) return undefined;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        top:
+          rect.top +
+          Number.parseFloat(style.borderTopWidth) +
+          Number.parseFloat(style.paddingTop),
+        bottom:
+          rect.bottom -
+          Number.parseFloat(style.borderBottomWidth) -
+          Number.parseFloat(style.paddingBottom),
+      };
+    };
+    const name = contentBox(
+      cell.querySelector("[data-vigilia-store-cell-name]"),
+    );
+    const byline = contentBox(
+      cell.querySelector("[data-vigilia-store-cell-byline]"),
+    );
+    // The 26px band itself, not the wrapper that pads it and not one action
+    // inside it: the four controls are centred in the band, so a shorter one
+    // would read as a band that is shorter than the 26px the drawing fixes.
+    const band = cell
+      .querySelector("[data-vigilia-store-cell-action]")
+      ?.parentElement?.getBoundingClientRect();
+    const picture = cell
+      .querySelector("[data-vigilia-store-picture]")
+      ?.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+    return {
+      // The cell's own 1px edge is inside its box, so the 10px the drawing puts
+      // above it is measured from the border's inner edge.
+      cellInnerBottom:
+        cellRect.bottom -
+        Number.parseFloat(getComputedStyle(cell).borderBottomWidth),
+      pictureBottom: picture?.bottom ?? null,
+      nameTop: name?.top ?? null,
+      nameBottom: name?.bottom ?? null,
+      bylineTop: byline?.top ?? null,
+      bylineBottom: byline?.bottom ?? null,
+      bandTop: band?.top ?? null,
+      bandBottom: band?.bottom ?? null,
+    };
+  });
+  const bandReading = `store-cell bands ${JSON.stringify(bands)}`;
+  console.log(bandReading);
+  testInfo.annotations.push({ type: "store-cell", description: bandReading });
+  const gapOf = (
+    above: number | null,
+    below: number | null,
+    what: string,
+  ): number => {
+    if (above === null || below === null) {
+      throw new Error(`the cell drew no ${what} (${bandReading})`);
+    }
+    return Math.round(below - above);
+  };
+  expect(
+    gapOf(bands.pictureBottom, bands.nameTop, "name under the picture"),
+    `the name is not the drawing's 10px under the picture (${bandReading})`,
+  ).toBe(10);
+  expect(
+    gapOf(bands.nameBottom, bands.bylineTop, "byline"),
+    `the byline is not the drawing's 6px under the name (${bandReading})`,
+  ).toBe(6);
+  expect(
+    gapOf(bands.bylineBottom, bands.bandTop, "facts band"),
+    `the facts band is not the drawing's 6px under the byline (${bandReading})`,
+  ).toBe(6);
+  expect(
+    gapOf(bands.bandBottom, bands.cellInnerBottom, "band's own foot"),
+    `the facts band does not sit the drawing's 10px above the cell's edge (${bandReading})`,
+  ).toBe(10);
+  expect(
+    gapOf(bands.bandTop, bands.bandBottom, "band"),
+    `the facts band is not the 26px the drawing fixes (${bandReading})`,
+  ).toBe(26);
+
+  // **The cell's own surface opens the item's**, and the open control below is
+  // read from the surface the same gesture reaches.
+  await surfaceOf(fromCell.id).click();
+  await expect(
+    modal,
+    "the cell's own surface opens no item's surface",
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-vigilia-store-item-action='open']"),
+    "the item's own surface does not print the open action's own word",
+  ).toHaveText(uiCopy.store.cell.actions.open);
+  await page.locator("[data-vigilia-store-item-close]").click();
+  await expect(modal, "the item's own surface does not close").toBeHidden();
+  expect(
+    await documentName(),
+    "closing the item's own surface opened a document",
+  ).not.toBe(CELL_NAME);
+
+  // From the cell's own action.
+  await cellOf(fromCell.id)
+    .locator("[data-vigilia-store-cell-action='open']")
+    .click();
+  await expect(
+    page.locator("#status"),
+    "the cell's open action did not report the document it opened",
+  ).toContainText(CELL_NAME);
+  expect(
+    await documentName(),
+    "the cell's open action did not make that theme the document",
+  ).toBe(CELL_NAME);
+  expect(
+    await publishedId(),
+    "the opened document claims no stored base, so its next save is ungated",
+  ).toBe(fromCell.id);
+
+  // And from the item's own footer, which draws the same four actions.
+  await surfaceOf(fromFooter.id).click();
+  await expect(modal, "the second cell opens no item's surface").toBeVisible();
+  await page.locator("[data-vigilia-store-item-action='open']").click();
+  await expect(
+    page.locator("#status"),
+    "the item's own open action did not report the document it opened",
+  ).toContainText(FOOTER_NAME);
+  expect(
+    await documentName(),
+    "the item's own open action did not make that theme the document",
+  ).toBe(FOOTER_NAME);
+  expect(
+    await publishedId(),
+    "the second opened document claims no stored base",
+  ).toBe(fromFooter.id);
 });

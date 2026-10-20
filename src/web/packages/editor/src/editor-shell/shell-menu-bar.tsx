@@ -203,10 +203,10 @@ export function ShellMenuBar({
           "file.new",
         )}
         {item(uiCopy.file.newFromStarter, () => void session?.newFromStarter())}
-        {/* `file.open` → `#document.open()`. */}
+        {/* `file.open` → the package picker, and nothing of the document's. */}
         {item(
-          uiCopy.file.openPackage,
-          () => session?.openPackage(),
+          uiCopy.file.importPackage,
+          () => session?.importPackage(),
           false,
           "file.open",
         )}

@@ -12,10 +12,15 @@ export interface EditorActionFacade {
   newDocument(): Promise<void>;
   /** The reference composition as a template, not what `New` means. */
   newFromStarter(): Promise<void>;
-  openPackage(): void;
+  /** The package picker. An import writes into the library and leaves the open
+   *  document alone, so this replaces nothing. */
+  importPackage(): void;
   savePackage(): Promise<void>;
   releasePackage(): Promise<void>;
   openLibrary(): Promise<void>;
+  /** One theme the library already holds, by id: the store's own route, which
+   *  has read the theme's name off the listing it drew. */
+  openLibraryTheme(id: string): Promise<void>;
   saveLibrary(): Promise<void>;
   addText(): void;
   /** The canvas context menu's route to a primitive; the Add pane's own

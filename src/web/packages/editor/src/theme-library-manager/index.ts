@@ -172,13 +172,41 @@ export class ThemeLibraryManager {
         await options.onNewFromStarter();
         return;
       }
-      const opened = await client.open(choice.id);
-      if (options.onOpenTheme !== undefined) {
-        this.#base = libraryBase(opened.base, opened.envelope.assets ?? []);
-        await options.onOpenTheme(opened.envelope, opened.assets, opened.base);
-      }
+      await this.#openStored(client, choice.id);
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /**
+   * Opens one theme the library already holds, named rather than chosen.
+   *
+   * **The store's own route** (spec, "The store mode": the cell's **Open in
+   * editor**): a surface that has already read the theme's name has no chooser
+   * to draw, and it replaces the open document just as the chooser's own answer
+   * does — which is why the question and the base's bookkeeping are here rather
+   * than only on the road through `open()`.
+   */
+  async openById(id: string): Promise<void> {
+    const options = this.#options;
+    if (!(await options.confirmReplacement())) return;
+    try {
+      await this.#openStored(this.#client(), id);
+    } catch (error) {
+      options.onError?.(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** Reads one stored theme and hands it to whoever builds the session that
+   *  shows it. **The base travels with the document**: the session replacing
+   *  this one saves against what the library holds, and a base dropped on the
+   *  way would make that save ungated (`vg-642`). */
+  async #openStored(client: ThemeLibraryClient, id: string): Promise<void> {
+    const options = this.#options;
+    const opened = await client.open(id);
+    if (options.onOpenTheme !== undefined) {
+      this.#base = libraryBase(opened.base, opened.envelope.assets ?? []);
+      await options.onOpenTheme(opened.envelope, opened.assets, opened.base);
     }
   }
 

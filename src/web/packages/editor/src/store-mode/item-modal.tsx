@@ -46,6 +46,13 @@ import type { CellAction, StoreItem } from "./local-source.js";
  * are frequent (§8) and the modal shows them because this is the surface someone
  * is looking at when they have just read enough to decide. The words are the
  * cell's own (`uiCopy.store.cell.actions`), so the two cannot disagree.
+ *
+ * **`open` leaves this surface alone.** It loads the stored theme as the
+ * editor's document, which is a fact about the document rather than about the
+ * item's modal: the theme it opened is the one this surface is showing, and the
+ * surface the person is on is the store. Closing here would be this modal
+ * deciding something the region owns, and the region's `openId` is what says
+ * whether it is on screen.
  */
 const FOOTER_ACTIONS = [
   "delete",

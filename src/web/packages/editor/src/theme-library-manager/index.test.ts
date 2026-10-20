@@ -72,6 +72,9 @@ function harness(options: {
   readonly base?: string;
   readonly picture?: () => Promise<Uint8Array | undefined>;
   readonly client?: Partial<ThemeLibraryClient>;
+  /** The answer to the replacement question. `true` unless a case is about the
+   *  refusal, which is the one road that reads nothing. */
+  readonly confirm?: () => Promise<boolean>;
 }) {
   const save = vi.fn(async () => "base-after-save");
   const open = vi.fn(async () => ({
@@ -113,7 +116,7 @@ function harness(options: {
     markSaved,
     announceChange,
     errors,
-    confirmReplacement: async () => true,
+    confirmReplacement: options.confirm ?? (async () => true),
     onSaved,
     onNewFromStarter,
     client,
@@ -324,6 +327,47 @@ describe("ThemeLibraryManager", () => {
       "base-from-open",
     );
     expect(manager.isStored()).toBe(true);
+  });
+
+  it("opens one stored theme by id, under the base its own read came from", async () => {
+    // The store's own route: the theme is already named, so there is no chooser
+    // to draw — and the base still travels with the document, or the save that
+    // follows the open is ungated and replaces what the library holds (`vg-642`).
+    const open = vi.fn(async () => ({
+      envelope,
+      assets: { "assets/backdrop.png": PNG },
+      base: "base-from-open",
+    }));
+    const { manager, onOpenTheme } = harness({
+      client: { list: async () => [], open, save: async () => "base" },
+    });
+
+    await manager.openById("living-room");
+
+    expect(open).toHaveBeenCalledWith("living-room");
+    expect(selectionMock).not.toHaveBeenCalled();
+    expect(onOpenTheme).toHaveBeenCalledWith(
+      envelope,
+      { "assets/backdrop.png": PNG },
+      "base-from-open",
+    );
+    expect(manager.isStored()).toBe(true);
+  });
+
+  it("asks before replacing the open document, and a refusal reads nothing", async () => {
+    // Opening a library theme over the open document replaces it, so the
+    // question the picker used to be asked in front of is this route's — and a
+    // document that is not replaced is not read either.
+    const open = vi.fn(async () => ({ envelope, assets: {}, base: "base" }));
+    const { manager, onOpenTheme } = harness({
+      confirm: async () => false,
+      client: { list: async () => [], open, save: async () => "base" },
+    });
+
+    await manager.openById("living-room");
+
+    expect(open).not.toHaveBeenCalled();
+    expect(onOpenTheme).not.toHaveBeenCalled();
   });
 
   it("stores the picture beside the document, and a picture that fails does not fail the save", async () => {

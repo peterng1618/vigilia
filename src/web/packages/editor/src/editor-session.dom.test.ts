@@ -129,7 +129,8 @@ describe("EditorSession", () => {
       },
       cropManager: idleCrop(),
     };
-    const onOpenPackage = vi.fn();
+    const onImportPackage = vi.fn();
+    const onOpenTheme = vi.fn(async () => undefined);
     const onSaved = vi.fn();
     const mockClient = {
       list: vi.fn(async () => []),
@@ -158,7 +159,8 @@ describe("EditorSession", () => {
       libraryClient: mockClient,
       onNew: vi.fn(),
       onNewFromStarter: vi.fn(),
-      onOpenPackage,
+      onImportPackage,
+      onOpenTheme,
       onSaved,
     });
 
@@ -168,9 +170,17 @@ describe("EditorSession", () => {
     ).toBeNull();
     const session = extensions.actionFacade();
 
-    session.openPackage();
+    // An import is a library write and not a document: it reaches the picker
+    // and nothing of the document's.
+    session.importPackage();
     await Promise.resolve();
-    expect(onOpenPackage).toHaveBeenCalled();
+    expect(onImportPackage).toHaveBeenCalled();
+
+    // The store's own route: one theme the library already holds, by id, read
+    // back and handed to whoever mounts the session that shows it.
+    await session.openLibraryTheme("living-room");
+    expect(mockClient.open).toHaveBeenCalledWith("living-room");
+    expect(onOpenTheme).toHaveBeenCalledWith(envelope, {}, undefined);
 
     await session.savePackage();
     expect(onSaved).toHaveBeenCalled();

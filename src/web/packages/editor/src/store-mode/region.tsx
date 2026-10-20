@@ -476,8 +476,20 @@ function Empty(props: {
 export function StoreModeRegion(props: {
   readonly mode: ShellMode;
   readonly client?: ThemeLibraryClient | undefined;
+  /** Opens one of the library's themes as the editor's own document. The shell
+   *  hands the session's route; a surface with none — a dom case, or a mode
+   *  whose document is not this region's to replace — lists and reads items
+   *  without one. */
+  readonly onOpenTheme?: ((id: string) => void) | undefined;
 }): React.JSX.Element | null {
-  return props.mode === "themes" ? <StoreRegion client={props.client} /> : null;
+  return props.mode === "themes" ? (
+    <StoreRegion
+      client={props.client}
+      {...(props.onOpenTheme === undefined
+        ? {}
+        : { onOpenTheme: props.onOpenTheme })}
+    />
+  ) : null;
 }
 
 /** The region's own state, in its own component so a mode that is not Themes
@@ -488,6 +500,7 @@ export function StoreModeRegion(props: {
  *  gallery, and paging"). */
 function StoreRegion(props: {
   readonly client?: ThemeLibraryClient | undefined;
+  readonly onOpenTheme?: ((id: string) => void) | undefined;
 }): React.JSX.Element {
   const [tab, setTab] = useState<StoreTab>("local");
   const [query, setQuery] = useState("");
@@ -567,13 +580,18 @@ function StoreRegion(props: {
    * The one callback a cell's four actions and the modal's footer share.
    *
    * **Only `open` does anything here, and the rest are named rather than
-   * stubbed**: assign is A.9's, import is A.7's, and export and delete arrive
-   * with their own tasks. A call that goes nowhere would be a second place to
-   * remember, and this one names its owner.
+   * stubbed**: assign is A.9's, and export and delete arrive with their own
+   * tasks. A call that goes nowhere would be a second place to remember, and
+   * this one names its owner.
+   *
+   * **`open` opens a document and not this modal** (R134). Its label is *Open
+   * in editor*, and the library's own operation of that name loads the stored
+   * theme as the open document — which is what the cell's own surface is for
+   * instead: the item's modal, through `onOpenItem` below.
    */
   const onAction = (action: CellAction, id: string): void => {
     if (action !== "open") return;
-    setOpenId(id);
+    props.onOpenTheme?.(id);
   };
 
   /** **A changed filter returns to page one** (R123). A narrower result would
@@ -649,7 +667,11 @@ function StoreRegion(props: {
           <Empty lead={uiCopy.store.empty.filter} hint={undefined} />
         ) : null}
         {body.kind === "items" ? (
-          <Gallery items={body.items} onAction={onAction} />
+          <Gallery
+            items={body.items}
+            onAction={onAction}
+            onOpenItem={(id) => setOpenId(id)}
+          />
         ) : null}
       </div>
 

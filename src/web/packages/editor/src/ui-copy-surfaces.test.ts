@@ -469,8 +469,10 @@ async function mountStoreShell(themes: readonly ThemeLibraryEntry[]): Promise<{
       return found;
     },
     openItem: () => {
+      // The cell's own surface: the `open` action loads a document rather than
+      // opening this modal, so the walk reaches the item the way a person does.
       const open = document.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-cell-action='open']",
+        "[data-vigilia-store-cell-surface]",
       );
       if (open === null) throw new Error("the gallery drew no cell to open");
       act(() => open.click());
@@ -654,7 +656,8 @@ function selectionBridge(): EditorShellBridge {
     session: {
       newDocument: noop,
       newFromStarter: noop,
-      openPackage: noop,
+      importPackage: noop,
+      openLibraryTheme: noop,
       savePackage: noop,
       releasePackage: noop,
       openLibrary: noop,

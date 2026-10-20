@@ -148,6 +148,7 @@ it("draws the theme's own ground when it has no thumbnail", async () => {
     <Gallery
       items={[item({ thumbnailUrl: undefined })]}
       onAction={() => undefined}
+      onOpenItem={() => undefined}
     />,
   );
 
@@ -169,7 +170,11 @@ it("draws the theme's own ground when it has no thumbnail", async () => {
  */
 it("drops the picture a theme does not have, leaving its ground", async () => {
   const container = await mount(
-    <Gallery items={[item()]} onAction={() => undefined} />,
+    <Gallery
+      items={[item()]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
   );
   const box = pictureBox(container);
   const picture = must(box.querySelector("img"), "picture");
@@ -192,7 +197,11 @@ it("drops the picture a theme does not have, leaving its ground", async () => {
  */
 it("draws a picture again when the address changes after a failure", async () => {
   const container = await mount(
-    <Gallery items={[item()]} onAction={() => undefined} />,
+    <Gallery
+      items={[item()]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
   );
   const box = pictureBox(container);
 
@@ -205,6 +214,7 @@ it("draws a picture again when the address changes after a failure", async () =>
     <Gallery
       items={[item({ thumbnailUrl: "/api/themes/living-room/thumbnail-2" })]}
       onAction={() => undefined}
+      onOpenItem={() => undefined}
     />,
   );
 
@@ -222,7 +232,11 @@ it("draws a picture again when the address changes after a failure", async () =>
  */
 it("asks for the picture again only when the theme itself changed", async () => {
   const container = await mount(
-    <Gallery items={[item()]} onAction={() => undefined} />,
+    <Gallery
+      items={[item()]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
   );
   const box = pictureBox(container);
 
@@ -237,6 +251,7 @@ it("asks for the picture again only when the theme itself changed", async () => 
     <Gallery
       items={[item({ name: "Living room (renamed)" })]}
       onAction={() => undefined}
+      onOpenItem={() => undefined}
     />,
   );
   expect(
@@ -255,6 +270,7 @@ it("asks for the picture again only when the theme itself changed", async () => 
     <Gallery
       items={[item({ updatedAt: "2026-10-16T11:02:00.000Z" })]}
       onAction={() => undefined}
+      onOpenItem={() => undefined}
     />,
   );
 
@@ -274,7 +290,11 @@ it("asks for the picture again only when the theme itself changed", async () => 
 it("names its four actions and reports each one through the one callback", async () => {
   const onAction = vi.fn();
   const container = await mount(
-    <Gallery items={[item()]} onAction={onAction} />,
+    <Gallery
+      items={[item()]}
+      onAction={onAction}
+      onOpenItem={() => undefined}
+    />,
   );
 
   const buttons = Array.from(
@@ -305,6 +325,46 @@ it("names its four actions and reports each one through the one callback", async
 });
 
 /**
+ * **The cell's own surface is what opens the item's**, and it is not one of the
+ * four actions: the drawing's facts band draws those, and `open` among them
+ * names the library operation its own label prints (spec, "The item's own
+ * surface": *so a cell opens a modal*).
+ *
+ * It is a button rather than a handler on the `li`, because a cell a person can
+ * only reach with a mouse is a control the keyboard cannot use (§5's keyboard
+ * section), and a click on one of the four actions must not also open the item.
+ */
+it("opens the item from the cell's own surface rather than from an action", async () => {
+  const onAction = vi.fn();
+  const onOpenItem = vi.fn();
+  const container = await mount(
+    <Gallery items={[item()]} onAction={onAction} onOpenItem={onOpenItem} />,
+  );
+
+  const surface = must(
+    container.querySelector<HTMLButtonElement>(
+      "[data-vigilia-store-cell-surface]",
+    ),
+    "cell surface",
+  );
+  expect(
+    surface.tagName,
+    "the cell's own surface is not a control a keyboard can reach",
+  ).toBe("BUTTON");
+
+  await act(async () => surface.click());
+
+  expect(
+    onOpenItem.mock.calls,
+    "the cell's own surface did not open the item",
+  ).toEqual([["living-room"]]);
+  expect(
+    onAction,
+    "the cell's own surface ran one of the four actions as well",
+  ).not.toHaveBeenCalled();
+});
+
+/**
  * The byline is the drawing's mono line: the author with the `@`, the date, and
  * *No author* where the document declares none — a fact about the theme rather
  * than a missing reading.
@@ -321,6 +381,7 @@ it("writes the byline the drawing draws, and says so when there is no author", a
         }),
       ]}
       onAction={() => undefined}
+      onOpenItem={() => undefined}
     />,
   );
 

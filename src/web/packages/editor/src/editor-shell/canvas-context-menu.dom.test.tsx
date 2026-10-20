@@ -56,7 +56,8 @@ function facadeStub(): EditorActionFacade {
   return {
     newDocument: vi.fn(async () => undefined),
     newFromStarter: vi.fn(async () => undefined),
-    openPackage: vi.fn(),
+    importPackage: vi.fn(),
+    openLibraryTheme: vi.fn(async () => undefined),
     savePackage: vi.fn(async () => undefined),
     releasePackage: vi.fn(async () => undefined),
     openLibrary: vi.fn(async () => undefined),

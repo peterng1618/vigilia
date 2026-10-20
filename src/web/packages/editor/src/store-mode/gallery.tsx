@@ -55,6 +55,9 @@ const CELL_ACTION_GLYPHS: Readonly<Record<CellAction, LucideIcon>> = {
 export function Gallery(props: {
   readonly items: readonly StoreItem[];
   readonly onAction: (action: CellAction, id: string) => void;
+  /** Opens one item's own surface — the modal — which is the cell's own
+   *  gesture rather than one of its four actions. */
+  readonly onOpenItem: (id: string) => void;
 }): React.JSX.Element {
   return (
     <ul
@@ -62,7 +65,12 @@ export function Gallery(props: {
       className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-[var(--space-12)]"
     >
       {props.items.map((item) => (
-        <Cell key={item.id} item={item} onAction={props.onAction} />
+        <Cell
+          key={item.id}
+          item={item}
+          onAction={props.onAction}
+          onOpenItem={props.onOpenItem}
+        />
       ))}
     </ul>
   );
@@ -79,28 +87,54 @@ export function Gallery(props: {
 function Cell(props: {
   readonly item: StoreItem;
   readonly onAction: (action: CellAction, id: string) => void;
+  readonly onOpenItem: (id: string) => void;
 }): React.JSX.Element {
-  const { item, onAction } = props;
+  const { item, onAction, onOpenItem } = props;
 
   return (
     <li
       data-vigilia-store-cell={item.id}
       className="flex flex-col overflow-hidden rounded-lg border border-edge bg-panel-2"
     >
-      <Picture item={item} />
-      <div className="flex flex-col gap-[var(--space-6)] p-[var(--space-10)]">
+      {/* **The cell's own surface is a control** (spec, "The item's own
+          surface": *so a cell opens a modal*). A button rather than a handler
+          on the `li`, because the item's modal must be reachable without a
+          mouse (§5's keyboard section) — and because a press on one of the four
+          actions below must not open the item as well.
+
+          **It is the picture and the name, and the byline is its sibling.** A
+          button's own descendants are presentational, so a byline inside it
+          would be reachable only through the button's name; beside it, the
+          author and the date are still read, and the button's own name is the
+          theme's.
+
+          **The padding is the drawing's own arithmetic, kept exactly** now that
+          the surface, the byline and the facts band are three elements: the
+          name's box pads the picture on three sides and stops 6px short of the
+          byline, the byline stops 6 short of the band, and the band's wrapper
+          carries the rest — so the name, the byline and the 26px band sit where
+          they sat inside one padded column. */}
+      <button
+        type="button"
+        data-vigilia-store-cell-surface=""
+        onClick={() => onOpenItem(item.id)}
+        className="flex w-full flex-col text-left"
+      >
+        <Picture item={item} />
         <span
           data-vigilia-store-cell-name=""
-          className="truncate text-sm text-text"
+          className="truncate p-[var(--space-10)] pb-[var(--space-6)] text-sm text-text"
         >
           {item.name}
         </span>
-        <span
-          data-vigilia-store-cell-byline=""
-          className="truncate font-mono text-xs text-muted"
-        >
-          {byline(item)}
-        </span>
+      </button>
+      <span
+        data-vigilia-store-cell-byline=""
+        className="truncate px-[var(--space-10)] pb-[var(--space-6)] font-mono text-xs text-muted"
+      >
+        {byline(item)}
+      </span>
+      <div className="px-[var(--space-10)] pb-[var(--space-10)]">
         <span className="flex h-[26px] items-center gap-[var(--space-6)]">
           <span className="flex-1" />
           {CELL_ACTIONS.map((action) => (

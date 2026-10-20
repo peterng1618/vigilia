@@ -420,7 +420,12 @@ export const uiCopy = {
      *  product ships. `New` is the author's own blank document; this is the one
      *  they can open a copy of. */
     newFromStarter: "New from starter",
-    openPackage: "Open package",
+    /** **Import package**, which is the store mode's own action (`2026-10-12-
+     *  theme-store-design.md`, "The store mode") and what the row does: the
+     *  package is written into the library and the open document is untouched.
+     *  The row used to read *Open package* and open a document, which is the
+     *  route A.7 removed — the store's `open` action is that route now. */
+    importPackage: "Import package",
     savePackage: "Save package",
     releasePackage: "Release package",
     openLibrary: "Open library",

@@ -607,7 +607,17 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             className="editor-shell-mode"
             data-vigilia-mode-region={mode}
           >
-            <StoreModeRegion mode={mode} />
+            {/* **The session is read at the moment the action fires, not at
+                this render**: the region is mounted for the whole life of the
+                shell and a later document mount replaces the bridge, so a
+                callback holding this render's session would open a theme into
+                the document the shell had a moment ago. */}
+            <StoreModeRegion
+              mode={mode}
+              onOpenTheme={(id) => {
+                void store.bridge?.session.openLibraryTheme(id);
+              }}
+            />
           </section>
         )}
         {/* §7.6's strip: readouts only, the counts on the left and the save

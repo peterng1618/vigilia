@@ -18,10 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Task A.7 landed at `2c74bb2e`, and the controller withdrew its own ruling set**: R129–R132 were ruled from the plan's text, and the spec's Import section (`2026-10-12-theme-store-design.md:761-777`) rules the opposite — the **host** owns the import, the id rule is the package's own **when it is free** and a suffixed id otherwise, and **import never overwrites** (R133).
-- **Two holes it exposed are now tasks in the plan**: the store's `open` action opens a modal while `uiCopy` labels it "Open in editor", so A.7 leaves no route into a document at all (R134, **A.7b**); and fourteen e2e files reach a document through the picker, so the suite is red until they are re-pointed (R135, **A.7c**).
-- **R136/R137**: `ThemeWriteOptions` gains `expectFree`, so "never overwrite" is the store's guarantee rather than the route's, and the host reuses `isValidThemeId` rather than the editor's regex.
-- **The seat's own finding is filed, not fixed**: a base-less `save` onto a taken id replaces it silently, because `store.ts`'s `write` refuses only when a base was sent and mismatched.
+- **Task A.7b closes R134**: the store's `open` action loads a library theme as the open document, from the cell and from the item modal's footer alike, and **the cell's own surface** is what opens the modal (`2026-10-12-theme-store-design.md:712`, `:1064`).
+- **The document bookkeeping moved rather than being deleted**: `EditorDocument.open()` is gone, and its `confirmReplacement()` and `#library.forget()` sit on `ThemeLibraryManager.openById` — the route that really replaces a stored document — with the opened theme's base travelling with it, so its next save is gated (R136's other half).
+- **The File row reads Import package** (`ui-copy.ts`, `shortcut-manager/reference.ts`) and imports without touching the document; the session's `openPackage()` is now `importPackage()`, and the shell hands the store `session.openLibraryTheme(id)`.
+- **Four e2e specs are left red for A.7c, and they fail for two different reasons**: `composition-panel` and `author-journey-display` click the File row by its old name, while `clip-parity` and `inspector-sections` drive the file input directly and expect the old open-a-document result — they now read `Could not import: Could not save theme … (404)`, because the editor preview serves no `/api/themes`.
 
 ## Next
 

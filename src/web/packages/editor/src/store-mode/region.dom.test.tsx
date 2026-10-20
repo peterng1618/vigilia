@@ -345,13 +345,15 @@ function FacetFixture(props: {
 }
 
 /** A client that answers one listing and refuses everything else: the region
- *  reads `list()` and none of the library's other four members. */
+ *  reads `list()` and none of the library's other four members — opening a
+ *  theme is the shell's own route, through the session's client rather than
+ *  this one. */
 function clientListing(
   entries: readonly ThemeLibraryEntry[],
 ): ThemeLibraryClient {
   return {
     list: async () => entries,
-    open: () => Promise.reject(new Error("the store does not open a document")),
+    open: () => Promise.reject(new Error("the region lists; the shell opens")),
     save: () => Promise.reject(new Error("the store does not save")),
     assign: () => Promise.reject(new Error("the store does not assign")),
     listDisplays: async () => ({ default: null, displays: [] }),
@@ -370,12 +372,18 @@ function listing(count: number): readonly ThemeLibraryEntry[] {
   );
 }
 
-/** The region over one listing. */
+/** The region over one listing, with the shell's own route to a document where
+ *  a case has one to prove. */
 async function mountStore(
   entries: readonly ThemeLibraryEntry[],
+  onOpenTheme?: (id: string) => void,
 ): Promise<HTMLElement> {
   return mount(
-    <StoreModeRegion mode="themes" client={clientListing(entries)} />,
+    <StoreModeRegion
+      mode="themes"
+      client={clientListing(entries)}
+      {...(onOpenTheme === undefined ? {} : { onOpenTheme })}
+    />,
   );
 }
 
@@ -395,6 +403,35 @@ async function pressCell(id: string, action: CellAction): Promise<void> {
     `${action} on ${id}`,
   );
   await act(async () => button.click());
+}
+
+/** The cell's own surface — its picture and its name, not one of its four
+ *  actions — pressed the way a person presses it. */
+async function pressCellSurface(id: string): Promise<void> {
+  const surface = must(
+    document.body.querySelector<HTMLButtonElement>(
+      `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-surface]`,
+    ),
+    `${id}'s own surface`,
+  );
+  await act(async () => surface.click());
+}
+
+/** Whether the item's own surface is on screen, read where it portals to. */
+function itemIsOpen(): boolean {
+  return document.body.querySelector("[data-vigilia-store-item]") !== null;
+}
+
+/** The way out of the item's own surface, pressed. */
+async function closeItem(): Promise<void> {
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        "[data-vigilia-store-item-close]",
+      ),
+      "close control",
+    ).click(),
+  );
 }
 
 /** The page the pager says is in force, or `undefined` when it draws none. */
@@ -498,14 +535,15 @@ async function type(query: string): Promise<void> {
 }
 
 /**
- * The region lists the items and opens one as its own surface.
+ * The region lists the items, and **the cell's own surface is what opens the
+ * item's** (spec, "The item's own surface": *so a cell opens a modal*).
  *
- * The gallery is the wiring's visible half: before this task the region's body
- * was empty, so a cell drawn at all is the source reaching the grid — and the
- * cell's `open` action is the one action this phase handles, which is what puts
- * the item's own modal on screen.
+ * The gallery is the wiring's visible half: before A.6 the region's body was
+ * empty, so a cell drawn at all is the source reaching the grid. The cell is
+ * the control here rather than the `open` action, which names the library
+ * operation its label prints — *Open in editor* — and is the half below.
  */
-it("lists the items and opens one as its own surface", async () => {
+it("lists the items and opens one from the cell's own surface", async () => {
   await mountStore([
     fixtureEntry({
       id: "living-room",
@@ -524,14 +562,63 @@ it("lists the items and opens one as its own surface", async () => {
     "the region draws no cells for the items it listed",
   ).toEqual(["living-room", "porch-strip"]);
 
-  await pressCell("porch-strip", "open");
+  await pressCellSurface("porch-strip");
 
   expect(
     document.body
       .querySelector("[data-vigilia-store-item-name]")
       ?.textContent?.trim(),
-    "the cell's open action did not open the item's own surface",
+    "the cell's own surface did not open the item's own surface",
   ).toBe("Porch strip");
+});
+
+/**
+ * **The `open` action asks for a document and opens no modal**, from the cell
+ * and from the modal's own footer alike: the drawing labels it *Open in editor*
+ * and the library's existing operation is what the label names (R134).
+ *
+ * The two are one case because they are one route — the modal draws the cell's
+ * own four actions and reports them through the same callback — and the failure
+ * this owns was exactly the two disagreeing with the label.
+ */
+it("asks for the theme as a document from the cell's open action and the modal's", async () => {
+  const opened: string[] = [];
+  await mountStore(
+    [
+      fixtureEntry({
+        id: "porch-strip",
+        name: "Porch strip",
+        ground: DARK_GROUND,
+      }),
+    ],
+    (id) => opened.push(id),
+  );
+
+  await pressCell("porch-strip", "open");
+
+  expect(
+    itemIsOpen(),
+    "the cell's open action opened a modal instead of a document",
+  ).toBe(false);
+  expect(
+    opened,
+    "the cell's open action did not ask for the theme as a document",
+  ).toEqual(["porch-strip"]);
+
+  await pressCellSurface("porch-strip");
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        "[data-vigilia-store-item-action='open']",
+      ),
+      "the modal's open action",
+    ).click(),
+  );
+
+  expect(
+    opened,
+    "the modal's own open action does not take the route the cell's does",
+  ).toEqual(["porch-strip", "porch-strip"]);
 });
 
 /**
@@ -640,15 +727,8 @@ it("closes back onto the same page, filter and sort", async () => {
   await act(async () => second.click());
 
   const opened = String(cells()[0]?.getAttribute("data-vigilia-store-cell"));
-  await pressCell(opened, "open");
-  await act(async () =>
-    must(
-      document.body.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-item-close]",
-      ),
-      "close control",
-    ).click(),
-  );
+  await pressCellSurface(opened);
+  await closeItem();
 
   expect(
     document.body.querySelector("[data-vigilia-store-item]"),

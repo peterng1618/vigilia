@@ -69,8 +69,6 @@ interface EditorDocumentSource {
   readonly onNew: (answer: NewDocumentAnswer) => Promise<void>;
   /** Creates a document from the reference composition, as a template. */
   readonly onNewFromStarter: () => Promise<void>;
-  readonly onOpen?: () => void;
-  readonly onOpenPackage?: () => void;
   readonly onSaved: (message?: string) => void;
   readonly onError?: (message: string) => void;
   readonly onBindingsChange?: () => void;
@@ -253,18 +251,6 @@ export class EditorDocument {
     }
   }
 
-  async open(): Promise<void> {
-    if (!(await this.confirmReplacement())) return;
-    // A package is a file the author brought in, not a stored theme, so the
-    // next save is a first save and claims no base.
-    this.#library.forget();
-    if (this.#source.onOpenPackage !== undefined) {
-      this.#source.onOpenPackage();
-    } else if (this.#source.onOpen !== undefined) {
-      this.#source.onOpen();
-    }
-  }
-
   async newDocument(): Promise<void> {
     // The chooser first, then the replacement question: an author who opens
     // `New` and then thinks better of it must not be asked to confirm
@@ -333,6 +319,14 @@ export class EditorDocument {
   /** Opens a stored theme, or the reference composition as a template. */
   openLibrary(): Promise<void> {
     return this.#library.open();
+  }
+
+  /** Opens one theme the library already holds, by id: the store's own route,
+   *  which has read the theme's name off the listing it drew. The replacement
+   *  question and the base's bookkeeping are the library's, because this
+   *  replaces the open document with a stored one. */
+  openLibraryTheme(id: string): Promise<void> {
+    return this.#library.openById(id);
   }
 
   /** Saves into the host's library, which is the stored document's half of a
