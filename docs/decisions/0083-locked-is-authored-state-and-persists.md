@@ -167,8 +167,9 @@ does — the editor's plate sets `selectable: false, evented: false`
 (`editor-shell.ts:182-183`) but carries `excludeFromExport: true` (`:188`), and the
 grouping manager sets both while an author is inside a group and restores the
 author's own values on exit, as view state (`grouping-manager/index.ts:91-92`,
-`:236`, `:242-249`) — is a separate question `vg-366` does not answer and this note
-does not either. The list keeps all three; only `locked`'s entry is decided here.
+`:236`, `:242-249`), and the glass test stage sets both
+(`glass-test-stage.ts:89-90`) — is a separate question `vg-366` does not answer and
+this note does not either. The list keeps all three; only `locked`'s entry is decided here.
 
 ## What implements it
 
