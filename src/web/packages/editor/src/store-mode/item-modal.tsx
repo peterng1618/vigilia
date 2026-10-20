@@ -1,10 +1,12 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import type * as React from "react";
+import { Fragment } from "react";
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import { ACTION_BUTTON } from "../components/ui/dialog.js";
 import { CLOSE_GLYPH, Glyph } from "../editor-shell/icons.js";
 import { destructiveMarker } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
+import { CELL_ACTION_REASONS } from "./cell-actions.js";
 import type { CellAction, StoreItem } from "./local-source.js";
 
 /**
@@ -324,22 +326,43 @@ export function ItemModal(props: {
 
           <span className="flex items-center gap-[var(--space-8)] border-t border-edge px-[var(--space-24)] py-[var(--space-16)]">
             <span className="flex-1" />
-            {FOOTER_ACTIONS.map((action) => (
-              <button
-                key={action}
-                type="button"
-                data-vigilia-store-item-action={action}
-                {...(action === "delete" ? DESTRUCTIVE : {})}
-                onClick={() => onAction(action, item.id)}
-                className={
-                  action === "delete"
-                    ? "rounded-sm px-[var(--space-12)] py-[var(--space-6)] text-sm"
-                    : FOOTER_BUTTON
-                }
-              >
-                {uiCopy.store.cell.actions[action]}
-              </button>
-            ))}
+            {/* **The four are drawn and the two a build does not run are
+                disabled** (R164), with their reason in the tree beside them: a
+                disabled control is one the pointer cannot ask, so a tooltip
+                would reach nobody. Delete keeps its mark but paints `--faint`
+                rather than `--hot` — §4's rule for a destructive control that
+                cannot run, which the shell's own selector holds. */}
+            {FOOTER_ACTIONS.map((action) => {
+              const reason = CELL_ACTION_REASONS[action];
+              const controlId = `vigilia-store-item-${action}`;
+              return (
+                <Fragment key={action}>
+                  <button
+                    type="button"
+                    id={controlId}
+                    data-vigilia-store-item-action={action}
+                    {...(action === "delete" ? DESTRUCTIVE : {})}
+                    disabled={reason !== undefined}
+                    aria-describedby={
+                      reason === undefined ? undefined : `${controlId}-reason`
+                    }
+                    onClick={() => onAction(action, item.id)}
+                    className={
+                      action === "delete"
+                        ? "rounded-sm px-[var(--space-12)] py-[var(--space-6)] text-sm disabled:text-faint"
+                        : FOOTER_BUTTON
+                    }
+                  >
+                    {uiCopy.store.cell.actions[action]}
+                  </button>
+                  {reason === undefined ? null : (
+                    <span id={`${controlId}-reason`} className="sr-only">
+                      {reason}
+                    </span>
+                  )}
+                </Fragment>
+              );
+            })}
           </span>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>

@@ -5,7 +5,8 @@
  * **What this file owns.** The two claims the plan makes about the modal in
  * code — that the stage is one height for every item and the theme is contained
  * in it, and that the facts are pills in groups rather than a row per fact —
- * plus the caption line and the footer's four words.
+ * plus the caption line, the footer's four words, and the two of the four it
+ * draws disabled because no phase owns them (R164).
  *
  * **What it deliberately does not measure.** jsdom lays nothing out, so the
  * fixed stage is read off the declaration that fixes it and the picture's ratio
@@ -313,6 +314,64 @@ it("names the item on one caption line and writes its actions in words", async (
     uiCopy.store.cell.actions.assign,
     uiCopy.store.cell.actions.open,
   ]);
+});
+
+/**
+ * **The footer draws the four and only two of them run** (R164).
+ *
+ * Delete and Export package are drawn because the drawing draws them, and no
+ * task in this plan and no phase in the spec's landing order owns either — so
+ * they are disabled with their reason rather than answering a press with
+ * nothing. Every button is read through `must`, because a case that passed by
+ * finding nothing would prove nothing, and the two that run are pressed in the
+ * same pass: the disabled pair's silence is then a reading rather than a harness
+ * that never fired.
+ */
+it("runs the footer's two actions and disables the two it has not", async () => {
+  const ran: string[] = [];
+  await mount(
+    <ItemModal
+      item={fixtureItem(LANDSCAPE)}
+      onClose={() => {}}
+      onAction={(action) => ran.push(action)}
+    />,
+  );
+
+  /** One of the footer's four actions, or a failure naming which is missing. */
+  function actionButton(action: string): HTMLButtonElement {
+    return must(
+      document.body.querySelector<HTMLButtonElement>(
+        `[data-vigilia-store-item-action="${action}"]`,
+      ),
+      `${action} footer action`,
+    );
+  }
+
+  for (const action of ["delete", "export", "assign", "open"] as const) {
+    await act(async () => actionButton(action).click());
+  }
+
+  expect(
+    ran,
+    "the two actions this build runs did not both report, so the disabled pair's silence would prove nothing",
+  ).toEqual(["assign", "open"]);
+
+  // The pair that does not run: `disabled` is what makes a button unpressable,
+  // read off the control rather than inferred from a click that changed nothing,
+  // and the reason is a node in the tree rather than a tooltip.
+  for (const action of ["delete", "export"] as const) {
+    const button = actionButton(action);
+    expect(button.disabled, `${action} is drawn live`).toBe(true);
+    const describedBy = button.getAttribute("aria-describedby") ?? "";
+    expect(describedBy, `${action} states no reason`).not.toBe("");
+    expect(
+      must(
+        document.body.querySelector<HTMLElement>(`#${describedBy}`),
+        `${action}'s reason`,
+      ).textContent,
+      `${action}'s reason is not the copy table's`,
+    ).toBe(uiCopy.store.cell.unavailable);
+  }
 });
 
 /**

@@ -717,6 +717,13 @@ export const uiCopy = {
         export: "Export package",
         delete: "Delete",
       } satisfies Record<CellAction, string>,
+      /** Why an action this build does not run is disabled. The drawing gives
+       *  every cell four actions, so all four are drawn and the two no phase
+       *  owns are disabled with this reason rather than answering a press with
+       *  nothing (R164). It names no owner and promises no date, because the
+       *  only thing true of them is that no phase in the spec's landing order
+       *  has one. */
+      unavailable: "Not available yet",
       /** What each kind is called, keyed by its wire identifier. The cell draws
        *  no kind — the local half's drawing has no room for one and the online
        *  half's badge is not this cell — so this is the item's own surface's word

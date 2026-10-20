@@ -215,7 +215,7 @@ git commit -m "feat(store): add the store mode's region, its halves and its face
 **Files:**
 - Create: `src/web/packages/renderer-core/src/theme/facet-record.ts`
 - Create: `src/web/packages/renderer-core/src/theme/facet-record.test.ts`
-- Create: `docs/decisions/0075-the-facet-record-lives-in-renderer-core.md`
+- Create: `docs/decisions/0077-the-facet-record-lives-in-renderer-core.md`
 - Modify: `src/web/packages/renderer-core/src/theme/index.ts` (or the package's
   public barrel — check which file re-exports `document.ts`)
 
@@ -298,7 +298,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/renderer-core/src/theme/facet-record.ts src/web/packages/renderer-core/src/theme/facet-record.test.ts src/web/packages/renderer-core/src/theme/index.ts docs/decisions/0075-the-facet-record-lives-in-renderer-core.md
+git add src/web/packages/renderer-core/src/theme/facet-record.ts src/web/packages/renderer-core/src/theme/facet-record.test.ts src/web/packages/renderer-core/src/theme/index.ts docs/decisions/0077-the-facet-record-lives-in-renderer-core.md
 git commit -m "feat(renderer-core): derive a theme's facets from its envelope"
 ```
 

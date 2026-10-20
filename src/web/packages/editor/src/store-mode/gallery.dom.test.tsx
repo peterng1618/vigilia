@@ -5,8 +5,9 @@
  * **What this file owns.** The plan's own case — a theme with no picture is
  * filled from its own artboard rather than left empty — plus the claims the
  * brief's rulings add: the picture a theme does not have is dropped rather than
- * left broken and a replaced address draws again, the four actions travel
- * through the one `onAction` callback, and the byline is the drawing's.
+ * left broken and a replaced address draws again, the two actions a build runs
+ * travel through the one `onAction` callback while the two it does not are drawn
+ * disabled and say why (R164), and the byline is the drawing's.
  *
  * **What it deliberately does not measure.** jsdom lays nothing out, so the
  * grid's `272px` minimum and the picture's `2/1` are declarations read off the
@@ -281,13 +282,22 @@ it("asks for the picture again only when the theme itself changed", async () => 
 });
 
 /**
- * The four actions, named and reported through the one callback.
+ * The four actions are drawn, the two a build runs report through the one
+ * callback, and **the two it does not run are not actionable** (R164).
  *
- * The cell draws four, so `onAction` carries which one as well as which item —
- * the plan's `onOpen(id)` could not express the other three, and four separate
- * props would be four a caller can half-wire.
+ * The drawing gives every cell four actions, so all four stay drawn; the two no
+ * phase owns are disabled and state why, because a control that looks live and
+ * answers a press with nothing is the defect the ruling answers. The cell draws
+ * four, so `onAction` carries which one as well as which item — the plan's
+ * `onOpen(id)` could not express the other three, and four separate props would
+ * be four a caller can half-wire.
+ *
+ * **Every button is read through `must`**, so a locator that matched nothing
+ * fails rather than passing by absence, and the two that run are pressed in the
+ * same pass: the disabled pair's silence is then a reading rather than a harness
+ * that never fired.
  */
-it("names its four actions and reports each one through the one callback", async () => {
+it("draws its four actions, runs the two it has and disables the two it has not", async () => {
   const onAction = vi.fn();
   const container = await mount(
     <Gallery
@@ -297,11 +307,18 @@ it("names its four actions and reports each one through the one callback", async
     />,
   );
 
-  const buttons = Array.from(
-    container.querySelectorAll<HTMLButtonElement>(
-      "[data-vigilia-store-cell-action]",
-    ),
-  );
+  /** One of the cell's four actions, or a failure naming which is missing. */
+  function actionButton(action: string): HTMLButtonElement {
+    return must(
+      container.querySelector<HTMLButtonElement>(
+        `[data-vigilia-store-cell-action="${action}"]`,
+      ),
+      `${action} action`,
+    );
+  }
+
+  const actions = ["open", "assign", "export", "delete"] as const;
+  const buttons = actions.map(actionButton);
   expect(
     buttons.map((button) => button.getAttribute("aria-label")),
     "the cell does not name its four actions in the drawing's order",
@@ -316,12 +333,31 @@ it("names its four actions and reports each one through the one callback", async
     await act(async () => button.click());
   }
 
-  expect(onAction.mock.calls).toEqual([
+  expect(
+    onAction.mock.calls,
+    "the two actions this build runs did not both report, so the disabled pair's silence would prove nothing",
+  ).toEqual([
     ["open", "living-room"],
     ["assign", "living-room"],
-    ["export", "living-room"],
-    ["delete", "living-room"],
   ]);
+
+  // The pair that does not run. `disabled` is what makes a button unpressable,
+  // so it is read off the control rather than inferred from a click that
+  // changed nothing — and the reason is a node in the tree, not a tooltip a
+  // person without a pointer cannot reach.
+  for (const action of ["export", "delete"] as const) {
+    const button = actionButton(action);
+    expect(button.disabled, `${action} is drawn live`).toBe(true);
+    const describedBy = button.getAttribute("aria-describedby") ?? "";
+    expect(describedBy, `${action} states no reason`).not.toBe("");
+    expect(
+      must(
+        container.querySelector<HTMLElement>(`#${describedBy}`),
+        `${action}'s reason`,
+      ).textContent,
+      `${action}'s reason is not the copy table's`,
+    ).toBe(uiCopy.store.cell.unavailable);
+  }
 });
 
 /**

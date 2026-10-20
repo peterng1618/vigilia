@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import {
   ASSIGN_ITEM_GLYPH,
@@ -10,6 +10,7 @@ import {
   OPEN_ITEM_GLYPH,
 } from "../editor-shell/icons.js";
 import { uiCopy } from "../ui-copy.js";
+import { CELL_ACTION_REASONS } from "./cell-actions.js";
 import type { CellAction, StoreItem } from "./local-source.js";
 
 /**
@@ -28,6 +29,12 @@ const CELL_ACTIONS = [
   "export",
   "delete",
 ] as const satisfies readonly CellAction[];
+
+/** One cell action's control id, derived from the item and the action the way
+ *  `useControlIds` derives a control's — so the reason node beside a disabled
+ *  button is found from the button that describes itself by it. */
+const cellActionId = (itemId: string, action: CellAction): string =>
+  `vigilia-store-cell-${itemId}-${action}`;
 
 /** One glyph per action, as a **total** lookup: an action added to `CellAction`
  *  without a mark fails to compile here rather than drawing a nameless square. */
@@ -137,18 +144,41 @@ function Cell(props: {
       <div className="px-[var(--space-10)] pb-[var(--space-10)]">
         <span className="flex h-[26px] items-center gap-[var(--space-6)]">
           <span className="flex-1" />
-          {CELL_ACTIONS.map((action) => (
-            <ControlIconButton
-              key={action}
-              id={`vigilia-store-cell-${item.id}-${action}`}
-              label={uiCopy.store.cell.actions[action]}
-              destructive={action === "delete"}
-              data={{ "data-vigilia-store-cell-action": action }}
-              onClick={() => onAction(action, item.id)}
-            >
-              <Glyph icon={CELL_ACTION_GLYPHS[action]} size={14} />
-            </ControlIconButton>
-          ))}
+          {/* **All four are drawn and the two a build does not run are
+              disabled** (R164): the drawing gives every cell four, and a
+              control that looks live and answers a press with nothing is the
+              defect the ruling answers. The reason travels beside the button
+              rather than in a tooltip, because a disabled control is one the
+              pointer cannot ask. */}
+          {CELL_ACTIONS.map((action) => {
+            const reason = CELL_ACTION_REASONS[action];
+            const controlId = cellActionId(item.id, action);
+            return (
+              <Fragment key={action}>
+                <ControlIconButton
+                  id={controlId}
+                  label={uiCopy.store.cell.actions[action]}
+                  disabled={reason !== undefined}
+                  // `exactOptionalPropertyTypes` wants the prop omitted rather
+                  // than handed `undefined`, and a button with a reason of its
+                  // own must not describe itself by one it does not have.
+                  {...(reason === undefined
+                    ? {}
+                    : { describedById: `${controlId}-reason` })}
+                  destructive={action === "delete"}
+                  data={{ "data-vigilia-store-cell-action": action }}
+                  onClick={() => onAction(action, item.id)}
+                >
+                  <Glyph icon={CELL_ACTION_GLYPHS[action]} size={14} />
+                </ControlIconButton>
+                {reason === undefined ? null : (
+                  <span id={`${controlId}-reason`} className="sr-only">
+                    {reason}
+                  </span>
+                )}
+              </Fragment>
+            );
+          })}
         </span>
       </div>
     </li>

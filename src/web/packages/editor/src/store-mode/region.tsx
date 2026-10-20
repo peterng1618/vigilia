@@ -588,10 +588,12 @@ function StoreRegion(props: {
   /**
    * The one callback a cell's four actions and the modal's footer share.
    *
-   * **`open` and `assign` are the two that do something here, and the other two
-   * are named rather than stubbed**: export and delete arrive with their own
-   * tasks. A call that goes nowhere would be a second place to remember, and
-   * this one names its owner.
+   * **`open` and `assign` are the two a build runs.** Export and delete are
+   * drawn on every cell and in the item's footer and **no task in this plan and
+   * no phase in the spec's landing order owns either**, so they are drawn
+   * disabled with their reason rather than reaching this callback at all
+   * (`cell-actions.ts`, R164). A phase that takes one up moves it out of that
+   * map, and wires it here in the same change.
    *
    * **`open` opens a document and not this modal** (R134). Its label is *Open
    * in editor*, and the library's own operation of that name loads the stored

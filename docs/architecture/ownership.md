@@ -115,6 +115,7 @@ two apart is the judgement the map cannot make for itself.
 | Which theme a host displays | `host/src/settings/active-theme.ts` |
 | The consumer's clock zone | `host/src/settings/display.ts` |
 | Theme thumbnails — store, location in the theme folder, and route | `host/src/themes/thumbnails.ts` |
+| **The id an imported package lands under** — the slug, the suffix ladder, and the additive rule that never overwrites a theme already there | `host/src/themes/import.ts` |
 | Thumbnail capture in the editor | `editor/src/thumbnail-capture.ts` |
 | Shell chrome, rail and panes — the composition root: the persistent host nodes it builds and the `ShellLayout` API it returns | `editor/src/editor-shell/shell-layout.tsx` |
 | **The header's File, Edit and View menus** — the menubar and the Edit menu's own row table | `editor/src/editor-shell/shell-menu-bar.tsx` |
@@ -128,6 +129,8 @@ two apart is the judgement the map cannot make for itself.
 | **What a fresh object id looks like** — sanitising, truncation, and the `-N` bump past ids already in the document | `renderer-core/src/theme/widget.ts` (`createWidgetIdAllocator`) |
 | **Minting a new identity for one object** — choosing the prefix that says what kind of thing it is | the manager that creates the kind (`text-manager`, `chart-manager`, `image-manager`, `grouping-manager`, `new-object-panel`) |
 | **Minting ids for a *copy*** — object ids and binding ids together, minted past the destination | `renderer-core/src/theme/widget.ts` (`createWidgetIdAllocator`), used by `editor/src/card-library.ts` and `editor/src/clipboard-manager/` |
+| **The store surface** — the four things a cell can do and which of them a build runs, the five facets' filter rules, the query, the pager's page arithmetic, and the item's own surface | `editor/src/store-mode/` |
+| **The Host mode's surface, and the editor's seam to the host's settings** — the settings page rebuilt in React, and the routes it reads for this PC's devices, a display's preferences and one theme's answers | `editor/src/host-settings-mode/` |
 
 **The copy path and the fresh-object path are one job, not two, and only the copy
 path has been folded in.** "A copy is a copy, not a twin" needs an id the
@@ -156,6 +159,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Samples/status | `renderer-core/src/types.ts` |
 | Live presentation buffer | `renderer-core/src/data/live-source.ts` |
 | Theme semantic types/validation | `renderer-core/src/theme/` |
+| **What a theme *is*, read off its envelope rather than authored into it** — the colour-mode vocabulary, the aspect buckets and their tolerance, and the sensor readings the store's five facets filter on; the one layer the host's listing and a catalogue Action can both import | `renderer-core/src/theme/facet-record.ts` |
 | **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `renderer-core/src/theme/` (`paletteTokenOptions`) |
 | The authored `vigiliaGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
 | Theme ZIP layout and bounds | `theme-package/src/` |

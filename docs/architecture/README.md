@@ -48,6 +48,24 @@ changes. It never creates or mirrors Fabric objects — menus and dock dispatch
 through `editor-session.ts`'s action façade and `EditorInteraction`, and panels
 keep their own DOM, relocated into React-owned host nodes.
 
+**The shell has three modes, switched in the header** (`editor-shell/shell-layout.tsx`;
+`docs/decisions/0074`). **Editor** is the boundary above, and the only mode with a
+canvas. **Themes** is the store — a region that renders no canvas at all, whose
+local half lists the host's library and whose catalogue half is phase C's
+(`editor/src/store-mode/`). **Host** is `host/public/settings.html` rebuilt in
+React: the displays and the theme each shows, the devices and their names, the
+display settings, and the hardware the theme on the chosen display reads
+(`editor/src/host-settings-mode/`). A mode is shell state and not a route —
+nothing persists it, and each region renders in the content area in place of the
+editor's body. Both non-editor modes read the host through routes it already
+served: the store's `ThemeLibraryClient`, and `host-settings-mode/client.ts` for
+this PC's settings.
+
+Importing a package is a **host write**: the browser posts bytes to
+`/api/themes/import` (`editor/src/theme-import.ts`) and `host/src/themes/import.ts`
+reads the package, mints the id and writes it, so the browser never parses one and
+a package never overwrites a theme already in the library.
+
 ## Runtime data flow
 
 ```text
