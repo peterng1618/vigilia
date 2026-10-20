@@ -720,6 +720,21 @@ export const uiCopy = {
         Record<string, string>
       >,
     },
+    /** The display choice a cell's **Assign to display** opens. Its name is the
+     *  action's own word (`cell.actions.assign`), so the two cannot disagree. */
+    assign: {
+      /** The select's own label. Distinct from the action's word, which names
+       *  the dialog: a label repeating the title printed over the control reads
+       *  twice (`theme-library-dialog.tsx`). */
+      display: "Display",
+      /** The key the route gives the theme a display with no choice of its own
+       *  falls to. It is offered *beside* the displays and never as one of them
+       *  — a theme id is not a display id — and the host's own page calls it
+       *  *Default* (`theme-list.js`). */
+      default: "Default",
+      /** The way out of the choice, for a pointer or a touch screen reader. */
+      close: "Close",
+    },
     /** The pager (`2026-10-12-theme-store-design.md`, "The gallery, and
      *  paging"): the per-page well, the two steps and the numerals' names.
      *

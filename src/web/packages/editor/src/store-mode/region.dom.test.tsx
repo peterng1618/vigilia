@@ -19,9 +19,11 @@
 import { act, type ReactElement, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
-import type {
-  ThemeLibraryClient,
-  ThemeLibraryEntry,
+import {
+  createThemeLibraryClient,
+  type ThemedDisplay,
+  type ThemeLibraryClient,
+  type ThemeLibraryEntry,
 } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { type Facet, FacetRow, toggleFacet } from "./facet-row.js";
@@ -905,5 +907,408 @@ it("groups the sensors by the family the vocabulary files them under", async () 
     },
     // The key this build does not know, under no heading at all.
     { group: undefined, values: ["not.a.key"] },
+  ]);
+});
+
+/**
+ * The host `/api/themes/active` answers from: the two reads and the one write
+ * the display choice makes, and the requests it received.
+ *
+ * **The client under it is the real one over a stubbed transport.** A hand-made
+ * client would be a second implementation of `assign` and `listDisplays`, and
+ * what these cases are about is the path the store depends on — the body on the
+ * wire, and the words the host sends back — rather than the shape of a stub.
+ */
+interface ActiveThemeHost {
+  /** What `GET /api/themes/active` answers. */
+  answer: {
+    readonly default: string | null;
+    readonly displays: readonly ThemedDisplay[];
+  };
+  /** What the read answers with instead, when the host refuses it. */
+  readRefusal: { readonly status: number; readonly body: string } | undefined;
+  /** What the write answers with, when the host refuses it. */
+  writeRefusal: { readonly status: number; readonly body: string } | undefined;
+  /** Every `PUT` body the host received, in order. */
+  readonly writes: { readonly display?: unknown; readonly id?: unknown }[];
+  /** How many times the display list was read. **The surface's claim that it
+   *  keeps no list is exactly that this grows once per opening.** */
+  reads: number;
+}
+
+function hostServing(
+  overrides: Partial<ActiveThemeHost> = {},
+): ActiveThemeHost {
+  return {
+    answer: { default: null, displays: [] },
+    readRefusal: undefined,
+    writeRefusal: undefined,
+    writes: [],
+    reads: 0,
+    ...overrides,
+  };
+}
+
+/** The store's own client over that host, and the listing it serves. */
+function clientOver(
+  host: ActiveThemeHost,
+  themes: readonly ThemeLibraryEntry[],
+): ThemeLibraryClient {
+  return createThemeLibraryClient({
+    fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/themes") {
+        return new Response(JSON.stringify({ themes }), { status: 200 });
+      }
+      if (url !== "/api/themes/active") {
+        return new Response("Not found", { status: 404 });
+      }
+      if (init?.method === "PUT") {
+        host.writes.push(
+          JSON.parse(String(init.body)) as {
+            readonly display?: unknown;
+            readonly id?: unknown;
+          },
+        );
+        const refusal = host.writeRefusal;
+        return refusal === undefined
+          ? new Response(JSON.stringify({ ok: true }), { status: 200 })
+          : new Response(refusal.body, { status: refusal.status });
+      }
+      host.reads += 1;
+      const refusal = host.readRefusal;
+      return refusal === undefined
+        ? new Response(JSON.stringify(host.answer), { status: 200 })
+        : new Response(refusal.body, { status: refusal.status });
+    }) as unknown as typeof fetch,
+  });
+}
+
+/** One theme, mounted over a host that answers the display routes. */
+async function mountOver(host: ActiveThemeHost): Promise<void> {
+  await mount(
+    <StoreModeRegion
+      mode="themes"
+      client={clientOver(host, [
+        fixtureEntry({
+          id: "living-room",
+          name: "Living room",
+          ground: DARK_GROUND,
+        }),
+      ])}
+    />,
+  );
+}
+
+/**
+ * The display choice, read through its status node: it is mounted whether or not
+ * it says anything (`assign-display.tsx`), so its presence is the choice's.
+ */
+function assignIsOpen(): boolean {
+  return (
+    document.body.querySelector("[data-vigilia-store-assign-status]") !== null
+  );
+}
+
+/** What the choice is saying, in the host's own words. */
+function assignStatus(): string {
+  return (
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-assign-status]",
+      ),
+      "the display choice",
+    ).textContent?.trim() ?? ""
+  );
+}
+
+/** Opens one theme's display choice from its cell. */
+async function openAssign(themeId: string): Promise<void> {
+  await pressCell(themeId, "assign");
+}
+
+/** The choice's own select, which is drawn only once a read has arrived. */
+function assignSelect(): HTMLButtonElement {
+  return must(
+    document.body.querySelector<HTMLButtonElement>(
+      "[data-vigilia-store-assign-display]",
+    ),
+    "the display select",
+  );
+}
+
+/** What the choice's select reports as its value. */
+function assignValue(): string {
+  return (
+    must(
+      assignSelect().querySelector<HTMLElement>("[data-vigilia-value]"),
+      "the display select's value",
+    ).getAttribute("data-vigilia-value") ?? ""
+  );
+}
+
+/** Opens the choice's own select, which is how a display is reached. */
+async function openDisplays(): Promise<void> {
+  await act(async () => assignSelect().click());
+}
+
+/** Opens the choice and answers the displays it offers, as the ids it would
+ *  send — not the words beside them. */
+async function offeredDisplays(): Promise<readonly string[]> {
+  await openDisplays();
+  return Array.from(
+    document.body.querySelectorAll<HTMLElement>("[data-vigilia-option]"),
+  ).map((option) => option.getAttribute("data-vigilia-option") ?? "");
+}
+
+/** Presses one display inside the select that is open. **Base UI commits a list
+ *  item only when the press that precedes the click started on it**, so the
+ *  press is part of the interaction rather than a detail of the driver. */
+async function chooseDisplay(value: string): Promise<void> {
+  const option = must(
+    document.body.querySelector<HTMLElement>(
+      `[data-vigilia-option="${value}"]`,
+    ),
+    `the ${value} display`,
+  );
+  await act(async () =>
+    option.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerType: "mouse",
+        button: 0,
+      }),
+    ),
+  );
+  await act(async () =>
+    option.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }),
+    ),
+  );
+}
+
+/** A host holding the two displays the cases below choose between. */
+function twoDisplays(): ActiveThemeHost {
+  return hostServing({
+    answer: {
+      default: null,
+      displays: [
+        { id: "this-pc", label: "This PC", theme: null },
+        { id: "kitchen-tablet", label: "Kitchen tablet", theme: null },
+      ],
+    },
+  });
+}
+
+/**
+ * **The cell's third action assigns the theme to the display that was chosen,
+ * and to no other.** The request is the body the host reads: one `PUT` carrying
+ * the chosen display's key and this theme's id, which is the whole of what the
+ * act is.
+ */
+it("assigns the theme to the display that was chosen and to no other", async () => {
+  const host = twoDisplays();
+  await mountOver(host);
+
+  await openAssign("living-room");
+  await openDisplays();
+  await chooseDisplay("kitchen-tablet");
+
+  expect(
+    host.writes,
+    "the choice did not assign this theme to the display that was chosen, or assigned more than once",
+  ).toEqual([{ display: "kitchen-tablet", id: "living-room" }]);
+  expect(
+    assignIsOpen(),
+    "the choice stayed open after the assignment it made",
+  ).toBe(false);
+});
+
+/**
+ * **The default is offered beside the displays, never as one of them.** It is
+ * the key a display holding no choice of its own falls to — `assign("default",
+ * id)` is a call the host accepts — and it is not a display: a theme id is not a
+ * display id, which is why the host answers it as its own field and why the
+ * option is the key rather than the theme the default currently holds.
+ */
+it("offers the default beside the displays rather than as one of them", async () => {
+  const host = hostServing({
+    answer: {
+      // A default that currently holds a theme: the option must still be the
+      // key, because that is what `assign` takes.
+      default: "porch-strip",
+      displays: [
+        { id: "this-pc", label: "This PC", theme: null },
+        { id: "kitchen-tablet", label: "Kitchen tablet", theme: null },
+      ],
+    },
+  });
+  await mountOver(host);
+
+  await openAssign("living-room");
+  expect(
+    await offeredDisplays(),
+    "the choice does not offer the default first, beside the displays it was answered",
+  ).toEqual(["default", "this-pc", "kitchen-tablet"]);
+
+  await chooseDisplay("default");
+  expect(host.writes, "the default is not the key the route accepts").toEqual([
+    { display: "default", id: "living-room" },
+  ]);
+});
+
+/**
+ * **A refused assignment is the host's own words**, not a sentence this surface
+ * wrote about them: the reason is what says *which* of the two the host would
+ * not take, and a generic sentence throws that away. The choice stays where it
+ * is, so another display can be tried.
+ */
+it("reports the host's refusal in the host's own words", async () => {
+  const host = hostServing({
+    answer: {
+      default: null,
+      displays: [
+        { id: "kitchen-tablet", label: "Kitchen tablet", theme: null },
+      ],
+    },
+    writeRefusal: { status: 404, body: "No such display." },
+  });
+  await mountOver(host);
+
+  await openAssign("living-room");
+  await openDisplays();
+  await chooseDisplay("kitchen-tablet");
+
+  expect(assignStatus(), "the refusal is not the message the host sent").toBe(
+    "No such display.",
+  );
+  expect(assignIsOpen(), "a refused assignment closed the choice").toBe(true);
+});
+
+/**
+ * **A failed read is not an empty list.** The two look identical on screen and
+ * mean opposite things — no displays exist, against nobody having answered
+ * which do — so a read that failed draws no choice at all and says what the host
+ * said, rather than offering the default alone as though that were the answer.
+ */
+it("offers no choice at all when the read of the displays failed", async () => {
+  const host = hostServing({
+    readRefusal: {
+      status: 403,
+      body: "Settings are available on this PC only.",
+    },
+  });
+  await mountOver(host);
+
+  await openAssign("living-room");
+
+  expect(
+    assignStatus(),
+    "a failed read is not reported as the host's own refusal",
+  ).toBe("Settings are available on this PC only.");
+  expect(
+    document.body.querySelector("[data-vigilia-store-assign-display]"),
+    "a failed read was drawn as a choice with nothing in it",
+  ).toBeNull();
+});
+
+/**
+ * **The list is the host's answer, read when the choice opens and kept
+ * nowhere.** A list this surface held would be a second source of truth about
+ * which displays exist, and it would go stale the moment one paired or left — so
+ * a display that appears between two openings is offered by the second, and the
+ * read happens once per opening rather than once per region.
+ */
+it("reads the displays each time the choice opens rather than keeping a list", async () => {
+  const host = hostServing({
+    answer: {
+      default: null,
+      displays: [{ id: "this-pc", label: "This PC", theme: null }],
+    },
+  });
+  await mountOver(host);
+
+  await openAssign("living-room");
+  expect(await offeredDisplays()).toEqual(["default", "this-pc"]);
+  await chooseDisplay("this-pc");
+  expect(
+    host.reads,
+    "the choice read the displays more than once per opening",
+  ).toBe(1);
+
+  // The host paired a second display while the choice was closed.
+  host.answer = {
+    default: null,
+    displays: [
+      { id: "this-pc", label: "This PC", theme: null },
+      { id: "kitchen-tablet", label: "Kitchen tablet", theme: null },
+    ],
+  };
+
+  await openAssign("living-room");
+  expect(
+    await offeredDisplays(),
+    "the choice offered a display list it had kept rather than the host's answer",
+  ).toEqual(["default", "this-pc", "kitchen-tablet"]);
+  expect(host.reads, "the second opening did not read the displays again").toBe(
+    2,
+  );
+});
+
+/**
+ * **The value is where the theme already is**: the display whose own choice is
+ * this theme. It is the one reading this control can make truthfully before a
+ * choice is made, and `""` — no display holding it of its own — is not the same
+ * as the default, which is a choice of this control rather than a reading of it.
+ */
+it("reports where the theme already is as the choice's own value", async () => {
+  const host = hostServing({
+    answer: {
+      default: null,
+      displays: [
+        { id: "this-pc", label: "This PC", theme: "porch-strip" },
+        { id: "kitchen-tablet", label: "Kitchen tablet", theme: "living-room" },
+      ],
+    },
+  });
+  await mountOver(host);
+
+  await openAssign("living-room");
+
+  expect(
+    assignValue(),
+    "the choice does not report the display this theme is already on",
+  ).toBe("kitchen-tablet");
+});
+
+/**
+ * **The modal's footer assign is the same route as the cell's**, because the
+ * modal draws the cell's own four actions and reports them through the one
+ * callback. Two answers to "what does assign mean" is the state this case
+ * exists to keep out.
+ */
+it("opens the same choice from the modal's own assign action", async () => {
+  const host = twoDisplays();
+  await mountOver(host);
+
+  await pressCellSurface("living-room");
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        "[data-vigilia-store-item-action='assign']",
+      ),
+      "the modal's assign action",
+    ).click(),
+  );
+
+  expect(
+    assignIsOpen(),
+    "the modal's own assign action does not open the display choice",
+  ).toBe(true);
+  expect(await offeredDisplays()).toEqual([
+    "default",
+    "this-pc",
+    "kitchen-tablet",
   ]);
 });

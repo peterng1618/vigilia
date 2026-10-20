@@ -24,6 +24,7 @@ import {
   type ThemeLibraryClient,
 } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
+import { AssignDisplay } from "./assign-display.js";
 import {
   type Facet,
   type FacetOption,
@@ -513,6 +514,8 @@ function StoreRegion(props: {
    *  the one owner of what an item is, so a re-listing cannot leave the modal
    *  showing a copy of something that changed underneath it. */
   const [openId, setOpenId] = useState<string | undefined>(undefined);
+  /** Which item's display choice is open, by id for the same reason. */
+  const [assignId, setAssignId] = useState<string | undefined>(undefined);
   /** The listing, or `undefined` until it arrives. Nothing draws the first-run
    *  sentence before then. */
   const [items, setItems] = useState<readonly StoreItem[] | undefined>(
@@ -521,10 +524,12 @@ function StoreRegion(props: {
 
   // One client and one source for the life of the region: a client built per
   // render would be a new one every time, and the listing would reach a host the
-  // session never talked to.
-  const [source] = useState(() =>
-    localThemeSource(props.client ?? createThemeLibraryClient()),
-  );
+  // session never talked to. The client is kept as well as the source, because
+  // assigning a theme is the library's own operation rather than a second read
+  // of the listing — a client built for that alone would be a second path to the
+  // same host.
+  const [client] = useState(() => props.client ?? createThemeLibraryClient());
+  const [source] = useState(() => localThemeSource(client));
   const [preference] = useState(() =>
     createPageSizePreference(browserStorage()),
   );
@@ -575,12 +580,16 @@ function StoreRegion(props: {
     openId === undefined
       ? undefined
       : items?.find((item) => item.id === openId);
+  const assignItem =
+    assignId === undefined
+      ? undefined
+      : items?.find((item) => item.id === assignId);
 
   /**
    * The one callback a cell's four actions and the modal's footer share.
    *
-   * **Only `open` does anything here, and the rest are named rather than
-   * stubbed**: assign is A.9's, and export and delete arrive with their own
+   * **`open` and `assign` are the two that do something here, and the other two
+   * are named rather than stubbed**: export and delete arrive with their own
    * tasks. A call that goes nowhere would be a second place to remember, and
    * this one names its owner.
    *
@@ -588,10 +597,18 @@ function StoreRegion(props: {
    * in editor*, and the library's own operation of that name loads the stored
    * theme as the open document — which is what the cell's own surface is for
    * instead: the item's modal, through `onOpenItem` below.
+   *
+   * **`assign` opens the display choice**, from the cell and from the modal's
+   * footer alike, because the modal draws the cell's own four actions and
+   * reports them through this one callback. It reads the displays when it opens
+   * and keeps none of them (`assign-display.tsx`).
    */
   const onAction = (action: CellAction, id: string): void => {
-    if (action !== "open") return;
-    props.onOpenTheme?.(id);
+    if (action === "open") {
+      props.onOpenTheme?.(id);
+      return;
+    }
+    if (action === "assign") setAssignId(id);
   };
 
   /** **A changed filter returns to page one** (R123). A narrower result would
@@ -691,6 +708,14 @@ function StoreRegion(props: {
           item={openItem}
           onClose={() => setOpenId(undefined)}
           onAction={onAction}
+        />
+      )}
+
+      {assignItem === undefined ? null : (
+        <AssignDisplay
+          item={assignItem}
+          client={client}
+          onClose={() => setAssignId(undefined)}
         />
       )}
     </div>
