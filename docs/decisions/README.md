@@ -10,6 +10,12 @@ several tasks later that it was a rabbit hole someone had already mapped. It
 looks like progress while it compounds, and undoing it costs more than the
 search would have. These notes are the search, kept.
 
+**Numbering.** The files run 0001–0083 with **0006, 0034 and 0042 absent** (80
+files, measured 2026-10-21), so a citation to one of those numbers names
+nothing. These numbers are this directory's own: [`adr/`](../adr/) numbered from
+0001 too and closed at 0010, so **cite the directory** — `decisions/0004` against
+`adr/0004` — and a bare `0004` is ambiguous between the two.
+
 ## When one is required
 
 A task that touches a **mechanism boundary** — the watchlist in
