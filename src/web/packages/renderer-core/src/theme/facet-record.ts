@@ -213,6 +213,9 @@ function sensorsOf(
       const descriptor = describeSemanticKey(binding.semanticKey);
       sensors.push({
         key: binding.semanticKey,
+        // Not `labelForSemanticKey`, which reads `BY_KEY` alone and so hands a
+        // disk key (`disk.<id>.<quantity>`) back raw: the descriptor resolves
+        // that key through `describeDiskKey` and carries the real label.
         label: descriptor?.label ?? binding.semanticKey,
         family: descriptor?.family,
       });

@@ -94,10 +94,12 @@ Searched, in this session, with the queries and the results:
   `wcag-contrast` ("evaluate the wcag color contrast score for two colors"),
   its `@types`, and `relative-luminance` ("calculate relative luminance",
   2.0.1, last published 2018).
-- `npm search --searchlimit=8 "aspect ratio bucket classify"` — every hit is a
-  *rendering* helper: `@radix-ui/react-aspect-ratio`,
+- `npm search --searchlimit=8 "aspect ratio bucket classify"` — six hits, of which
+  the four about ratios are *rendering* helpers: `@radix-ui/react-aspect-ratio`,
   `@tailwindcss/aspect-ratio`, and a PostCSS plugin for `aspect-ratio` media
-  queries. Nothing classifies a ratio into a named bucket.
+  queries. The other two are a markdown character classifier and a splash-screen
+  package, neither about ratios at all. Nothing classifies a ratio into a named
+  bucket.
 
 What that says: **nobody has solved this shape.** The ecosystem solves "given two
 colours, what is the contrast ratio" and "given a ratio, size a box". Neither is

@@ -501,9 +501,12 @@ theme is the listing that can afford to derive from them.
 
 **Colour mode is derived, and may be absent.** The artboard's `background` token
 resolves to a `PalettePaint`, which is a solid or a gradient (`document.ts`), so: a
-solid takes its own relative luminance; a gradient takes the mean of its stops; a
+solid takes its own relative luminance, read as CIE `L*` — the perceptual scale the
+middle band below is stated in, which is what puts a mid-grey ground *in* the band
+instead of calling it light; a gradient takes the mean of its stops **in that
+scale**, which is what makes a black-to-white ground ambiguous rather than light; a
 theme with `artboard.backgroundMedia` is **unclassified**, because a picture is its
-ground and the token is not what a viewer sees. A luminance in the middle band is
+ground and the token is not what a viewer sees. A lightness in the middle band is
 unclassified too — that is the one place the answer is genuinely ambiguous, and a
 wrong *light* on a mid-grey theme is worse than no answer at all. **Unclassified
 themes are reachable under "any" and under no other value**, so the facet never

@@ -26,7 +26,7 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Next
 
-1. **Dispatch the theme store's phase A**, task A.1 first; its pre-flight scan needs re-running against the plan as it stands, because one finding arrived after it — `vg-633`.
+1. **A.1–A.3 are complete; dispatch A.4 next** (the local item source and the gallery), whose drawing fixes the grid's 272px minimum — a value the design language does not own yet, which is the wall A.2's search well hit and A.4 will meet.
 2. **Rule on `vg-633` before A.10 is dispatched**, not after: A.10 deletes `settings.html`'s theme list, which is the surface per-display's Task 4.3 rewrote and Task 4.8 annotated.
 3. Decide whether `vg-626` (the red `design:check`) runs alongside phase A or gates it; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 4. Resume the drain at Task 23.4 when the store plan stops; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
