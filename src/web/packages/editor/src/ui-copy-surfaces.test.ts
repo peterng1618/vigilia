@@ -26,6 +26,13 @@
  *
  * The table's own rules are `ui-copy.test.ts`, and the imperative panels and
  * the picker they mount are `ui-copy-panels.test.ts`.
+ *
+ * **The store mode is read in its own case, through the shell's mode switch**
+ * (A.6's fix round 1): the walks below mount the shell in the editor mode, where
+ * `StoreModeRegion` does not render, so its words were outside every net until
+ * that case landed. The mode is switched with the shell's own control rather
+ * than by mounting the region directly, because what a walk can read is what the
+ * product mounts.
  */
 import type { FacetRecord } from "@vigilia/renderer-core";
 import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
@@ -56,6 +63,7 @@ import { createSelectionInspector } from "./selection-inspector/index.js";
 // reads the Keyboard tab through its carve-out rather than demanding the copy
 // table own the shortcut registry.
 import { SHORTCUT_LABELS } from "./shortcut-manager/reference.js";
+import type { ThemeLibraryEntry } from "./theme-library-client.js";
 import { ThemeLibraryChooser } from "./theme-library-dialog.js";
 import { uiCopy } from "./ui-copy.js";
 import { copy, paragraphsOf, saidIn, spokenIn } from "./ui-copy-readers.js";
@@ -296,6 +304,157 @@ const READ_SURFACES: readonly ReadSurface[] = [
     },
   },
 ];
+
+/**
+ * **The store mode's own words, which this net did not reach** (A.6's fix
+ * round 1). The walk above mounts the shell through `createShellLayout`, whose
+ * mode starts as `"editor"`, and `StoreModeRegion` renders only when the mode is
+ * not — so every word A.6 wrote was outside the net: a literal in `region.tsx`
+ * or `item-modal.tsx` left this file green while `region.dom.test.tsx` went red,
+ * and the dom cases compare against `uiCopy` values, which a hardcoded string
+ * equal to the table also satisfies.
+ *
+ * **The mode is switched through the shell's own control**, not by mounting the
+ * region directly, because what a walk can read is what the product mounts. The
+ * listing is stubbed at `fetch` — the one thing the region asks the host for —
+ * so the gallery, the item's own surface and the two empty sentences are all
+ * reachable, and the walk reads each of them.
+ *
+ * **The item's own name is data, not copy**: the modal is named by the item it
+ * shows (`aria-label`), exactly as a token's name or a shortcut's action word is
+ * data elsewhere in this file, so it is carved out by the fixture's own values.
+ */
+it("reads the store mode's words, which the editor's walk never reached", async () => {
+  const owned = new Set(copy());
+  const itemName = "Living room";
+
+  const withOne = await mountStoreShell([
+    { id: "living-room", name: itemName, facets: FACETS },
+  ]);
+  try {
+    const said = saidIn(withOne.region());
+    expect(said, "the store mode said nothing at all").not.toEqual([]);
+    expect(
+      said.filter((text) => !owned.has(text) && !isItemWord(text)),
+      "the store region",
+    ).toEqual([]);
+
+    // The item's own surface, opened from the cell the way a person opens it:
+    // the modal portals to `body`, so it is read there.
+    withOne.openItem();
+    if (document.querySelector("[data-vigilia-store-item]") === null) {
+      throw new Error("the item's own surface did not open");
+    }
+    const modal = saidIn(document.body);
+    expect(modal, "the item's own surface said nothing").not.toEqual([]);
+    // The modal's own words are in the read rather than only the region's
+    // behind it: without this the case would pass on a modal that never opened.
+    expect(modal, "the item's own surface is not in the read at all").toContain(
+      uiCopy.store.item.close,
+    );
+    expect(
+      modal.filter((text) => !owned.has(text) && !isItemWord(text)),
+      "the item's own surface",
+    ).toEqual([]);
+  } finally {
+    withOne.destroy();
+  }
+
+  // The first-run sentence, which only a library with nothing in it draws — and
+  // which the region deliberately does not draw before its listing arrives.
+  const withNone = await mountStoreShell([]);
+  try {
+    const said = saidIn(withNone.region());
+    expect(said, "an empty library said nothing").not.toEqual([]);
+    expect(
+      said.filter((text) => !owned.has(text) && !isItemWord(text)),
+      "the empty library",
+    ).toEqual([]);
+  } finally {
+    withNone.destroy();
+  }
+});
+
+/** A theme's own words — its name — are the listing's data rather than the
+ *  table's, the way a shell palette's name and a shortcut's action word are. */
+function isItemWord(text: string): boolean {
+  return STORE_ITEM_NAMES.includes(text);
+}
+
+/** The names this walk's stub lists, so the carve-out above is over values the
+ *  walk really met rather than over a list that happens to be empty. */
+const STORE_ITEM_NAMES: readonly string[] = ["Living room"];
+
+/** A shell mounted in the store mode over a stubbed listing. */
+async function mountStoreShell(themes: readonly ThemeLibraryEntry[]): Promise<{
+  readonly region: () => HTMLElement;
+  readonly openItem: () => void;
+  readonly destroy: () => void;
+}> {
+  // **The one request the region makes.** `createThemeLibraryClient` binds
+  // `globalThis.fetch` when the region builds it, so the stub has to be in place
+  // before the mode switch mounts the region. Every other path is left to the
+  // fetch that was already there, so this walk's other surfaces behave exactly
+  // as they did.
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    if (url.includes("/api/themes")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ themes }),
+      } as unknown as Response;
+    }
+    return original(input, init);
+  }) as typeof fetch;
+
+  const root = document.createElement("div");
+  document.body.append(root);
+  const layout = createShellLayout(root);
+  layout.setBridge(selectionBridge(), undefined);
+
+  const segment = Array.from(
+    root.querySelectorAll<HTMLButtonElement>(
+      ".editor-shell-mode-switch button",
+    ),
+  ).find((button) => button.textContent?.trim() === uiCopy.modes.themes);
+  if (segment === undefined) {
+    throw new Error("the shell draws no Themes segment to switch with");
+  }
+  await act(async () => segment.click());
+  await flushTasks();
+
+  return {
+    region: () => {
+      const found = document.querySelector<HTMLElement>(
+        "[data-vigilia-mode-region='themes']",
+      );
+      if (found === null) throw new Error("the store mode rendered no region");
+      return found;
+    },
+    openItem: () => {
+      const open = document.querySelector<HTMLButtonElement>(
+        "[data-vigilia-store-cell-action='open']",
+      );
+      if (open === null) throw new Error("the gallery drew no cell to open");
+      act(() => open.click());
+    },
+    destroy: () => {
+      globalThis.fetch = original;
+      layout.destroy();
+      document.body.replaceChildren();
+    },
+  };
+}
 
 /** A mount point on `body`, which is where a portalled surface is read. */
 function host(): HTMLElement {

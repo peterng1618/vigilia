@@ -19,11 +19,12 @@ import type { CellAction, StoreItem } from "./local-source.js";
  * inside, so this is the one place a portrait artboard is seen uncropped and the
  * reason `Other` is an acceptable answer in the Shape facet.
  *
- * **There is no title bar.** The name, the author, the kind and the change date
- * are one caption line, and the close control floats over the stage's corner the
- * way a viewer's does — a 56px bar holding a name and a close is 56px of
- * picture. Escape closes it through Base UI's own dismissal, and focus returns
- * to the control that opened it.
+ * **There is no title bar.** The name, the author, the kind, the version and the
+ * change date are one caption line — the drawing's `1.4.0 · 2026-10-14`, from
+ * the listing rather than from a second read — and the close control floats over
+ * the stage's corner the way a viewer's does — a 56px bar holding a name and a
+ * close is 56px of picture. Escape closes it through Base UI's own dismissal,
+ * and focus returns to the control that opened it.
  *
  * **The facts are pills, not rows.** A row per sensor spends a 30px line and a
  * label column to say four words; pills under §2's eyebrow put the same facts in
@@ -169,6 +170,16 @@ function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
   // instant *are* its UTC day, so no reader sees a different one — a
   // locale-formatted date would give two readers two days (`gallery.tsx`).
   const day = item.updatedAt?.slice(0, 10);
+  // **The drawing's own pair, `1.4.0 · 2026-10-14`**, and the separator belongs
+  // to the pair rather than to either reading: a theme that declares no version
+  // draws no separator and no empty slot, and one with no change date draws its
+  // version alone. Composing the sentence here rather than in `uiCopy` is the
+  // caption's own punctuation — the `@` on the author is the same kind of mark,
+  // and neither is a word a person reads as one.
+  const stamp = [
+    item.version,
+    day === undefined || day === "" ? undefined : day,
+  ].filter((part) => part !== undefined && part !== "");
   return (
     <span className="flex flex-col gap-[var(--space-12)] px-[var(--space-24)] py-[var(--space-20)]">
       <span className="flex items-center gap-[var(--space-10)]">
@@ -196,12 +207,12 @@ function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
           {uiCopy.store.cell.kinds[item.kind] ?? item.kind}
         </span>
         <span className="flex-1" />
-        {day === undefined || day === "" ? null : (
+        {stamp.length === 0 ? null : (
           <span
             data-vigilia-store-item-date=""
             className="flex-none font-mono text-xs text-faint"
           >
-            {day}
+            {stamp.join(uiCopy.store.readingSeparator)}
           </span>
         )}
       </span>

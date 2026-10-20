@@ -18,6 +18,10 @@ export interface ThemeLibraryEntry {
   readonly updatedAt?: string;
   /** The document's author, when it declares one. */
   readonly author?: string;
+  /** The document's own version, when it declares one. Optional like `author`,
+   *  and absent for the same reason: a theme that declares no version draws no
+   *  version and no separator beside it. */
+  readonly version?: string;
   /** What the theme *is*, derived by the host from the document it listed —
    *  required, because every entry here is a stored theme and every stored
    *  theme has a document to derive it from. */

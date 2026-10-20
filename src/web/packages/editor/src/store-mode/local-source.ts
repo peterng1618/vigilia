@@ -29,6 +29,10 @@ export interface StoreItem {
   readonly kind: string;
   readonly name: string;
   readonly author: string | undefined;
+  /** The document's own version, or `undefined` when it declares none. The
+   *  caption line prints it beside the date (`1.4.0 · 2026-10-14`), and it
+   *  arrives on the listing for the same reason `ground` does: one pass. */
+  readonly version: string | undefined;
   readonly updatedAt: string | undefined;
   readonly thumbnailUrl: string | undefined;
   readonly ground: string | undefined;
@@ -78,6 +82,7 @@ export function localThemeSource(client: ThemeLibraryClient): ItemSource {
         kind: DASHBOARD_THEME_KIND,
         name: entry.name,
         author: entry.author,
+        version: entry.version,
         updatedAt: entry.updatedAt,
         thumbnailUrl: entry.thumbnailUrl,
         ground: entry.ground,

@@ -1,5 +1,9 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
+import {
+  type SemanticFamily,
+  semanticKeysByFamily,
+} from "@vigilia/renderer-core";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 import {
@@ -145,27 +149,46 @@ function browserStorage(): Storage | undefined {
  * library does not. The order is derived from the whole listing and never from
  * the filtered one: an option that vanished as it was chosen could not be
  * unchosen.
+ *
+ * **A reading may name the group it belongs to**, and this keeps it: the
+ * grouping is the caller's, because only the caller knows what the values are
+ * grouped *by*. Runs of one group are the caller's to keep together — the sort
+ * here is within what it is handed, and `sensorOptions` and `shapeOptions` each
+ * call it once per group so the count order cannot interleave two headings.
  */
 function optionsFrom(
   items: readonly StoreItem[],
   readings: (item: StoreItem) => readonly {
     readonly id: string;
     readonly name: string;
+    readonly group?: string;
   }[],
 ): readonly FacetOption[] {
-  const found = new Map<string, { name: string; count: number }>();
+  const found = new Map<
+    string,
+    { name: string; count: number; group?: string }
+  >();
   for (const item of items) {
     for (const reading of readings(item)) {
       const seen = found.get(reading.id);
       if (seen === undefined) {
-        found.set(reading.id, { name: reading.name, count: 1 });
+        found.set(reading.id, {
+          name: reading.name,
+          count: 1,
+          ...(reading.group === undefined ? {} : { group: reading.group }),
+        });
       } else {
         seen.count += 1;
       }
     }
   }
   return [...found.entries()]
-    .map(([id, { name, count }]) => ({ id, name, count }))
+    .map(([id, { name, count, group }]) => ({
+      id,
+      name,
+      count,
+      ...(group === undefined ? {} : { group }),
+    }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
@@ -187,23 +210,57 @@ function colourModeOptions(
 }
 
 /** The sensors the items bind, labelled by the record's own `label` — the
- *  descriptor's word and not the `key` the selection carries. */
+ *  descriptor's word and not the `key` the selection carries — and **grouped by
+ *  the family the vocabulary already files each key under**, which is the
+ *  grouping the spec asks for rather than a second reading of the key here.
+ *
+ *  **One pass per family, so the count order cannot interleave two headings**,
+ *  and the families come in the vocabulary's own order
+ *  (`semanticKeysByFamily`) rather than in a list of their own that would have
+ *  to be kept in step with it.
+ *
+ *  A key this build does not know carries no family, so it is offered under no
+ *  heading and last: an invented heading would be a word for something nothing
+ *  declared (§9). */
 function sensorOptions(items: readonly StoreItem[]): readonly FacetOption[] {
-  return optionsFrom(items, (item) =>
-    item.facets.sensors.map((sensor) => ({
-      id: sensor.key,
-      name: sensor.label,
-    })),
-  );
+  const readingsOf =
+    (family: SemanticFamily | undefined) =>
+    (
+      item: StoreItem,
+    ): readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly group?: string;
+    }[] =>
+      item.facets.sensors
+        .filter((sensor) => sensor.family === family)
+        .map((sensor) => ({
+          id: sensor.key,
+          name: sensor.label,
+          ...(family === undefined
+            ? {}
+            : { group: uiCopy.store.facets.sensorFamilies[family] }),
+        }));
+
+  return [
+    ...[...semanticKeysByFamily().keys()].flatMap((family) =>
+      optionsFrom(items, readingsOf(family)),
+    ),
+    ...optionsFrom(items, readingsOf(undefined)),
+  ];
 }
 
 /** The three shape groups the drawing's Shape popover offers, in its own order:
- *  the orientation words, the aspect buckets, and the exact sizes. */
+ *  the orientation words, the aspect buckets, and the exact sizes — each run
+ *  under the drawing's own heading, because the three are AND with each other
+ *  (R115) and a flat list is what hides it. */
 function shapeOptions(items: readonly StoreItem[]): readonly FacetOption[] {
+  const headings = uiCopy.store.facets.shapeGroups;
   const orientations = optionsFrom(items, (item) => [
     {
       id: item.facets.orientation,
       name: uiCopy.store.orientations[item.facets.orientation],
+      group: headings.orientation,
     },
   ]);
   const buckets = optionsFrom(items, (item) => [
@@ -213,6 +270,7 @@ function shapeOptions(items: readonly StoreItem[]): readonly FacetOption[] {
         item.facets.aspect === "other"
           ? uiCopy.store.otherShape
           : item.facets.aspect,
+      group: headings.aspect,
     },
   ]);
   return [...orientations, ...buckets, ...sizeOptions(items)];
@@ -243,11 +301,12 @@ function sizeOptions(items: readonly StoreItem[]): readonly FacetOption[] {
       id,
       name: uiCopy.store.size(size.width, size.height),
       count: size.count,
+      group: uiCopy.store.facets.shapeGroups.size,
       area: size.width * size.height,
       width: size.width,
     }))
     .sort((a, b) => b.area - a.area || b.width - a.width)
-    .map(({ id, name, count }) => ({ id, name, count }));
+    .map(({ id, name, count, group }) => ({ id, name, count, group }));
 }
 
 /**
@@ -282,6 +341,9 @@ function storeFacets(items: readonly StoreItem[]): readonly Facet[] {
     {
       id: "shape",
       name: uiCopy.store.facets.shape,
+      // The drawing's own sentence, above the three groups it explains: a theme
+      // must match every group, which is what makes the headings worth drawing.
+      hint: uiCopy.store.facets.shapeHint,
       options: shapeOptions(items),
     },
     {
@@ -480,7 +542,10 @@ function StoreRegion(props: {
   const matching = (listed ?? []).filter(
     (item) => matchesFacets(item, chosen) && matchesQuery(item, query),
   );
-  const sorted = [...matching].sort(SORT_ORDERS[sort.local] ?? (() => 0));
+  // **The half's own key**, not the library's: the catalogue's keys arrive with
+  // its source in phase C, and an order looked up under `local` would sort the
+  // catalogue by a key it never declared the moment that source lands.
+  const sorted = [...matching].sort(SORT_ORDERS[sort[tab]] ?? (() => 0));
   const total = pageCount(sorted.length, size);
   const current = Math.min(Math.max(page, 1), Math.max(total, 1));
 

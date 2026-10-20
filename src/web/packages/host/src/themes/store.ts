@@ -30,6 +30,13 @@ interface ThemeStoreEntry {
   readonly name: string;
   /** The envelope's author, when it declares one; the library shows it. */
   readonly author?: string;
+  /** The document's own version, when it declares one. Read from the same
+   *  envelope as `author` and for the same reason: the store's caption line
+   *  prints `1.4.0 · 2026-10-14`, and a listing that had to open a theme to
+   *  find its version would be the second pass over the library R114 refuses.
+   *  A theme that declares none has no key at all, so nothing draws a
+   *  separator with nothing after it. */
+  readonly version?: string;
   readonly updatedAt: string;
   /** What this theme will cost a display, read from the document this entry
    *  was already built from — the assignment surface says it before the press. */
@@ -590,11 +597,13 @@ async function entryFor(
   try {
     const stat = await fs.stat(path.join(library, id));
     const author = envelope.metadata?.author;
+    const version = envelope.metadata?.version;
     const ground = groundOf(envelope);
     return {
       id,
       name: envelope.metadata?.name ?? id,
       ...(author === undefined ? {} : { author }),
+      ...(version === undefined ? {} : { version }),
       updatedAt: stat.mtime.toISOString(),
       // From the envelope this entry was already handed, so the listing pays
       // nothing new for it: no asset is opened and no second read is made.

@@ -1,22 +1,29 @@
 import { Checkbox } from "@base-ui/react/checkbox";
 import { Popover } from "@base-ui/react/popover";
 import type * as React from "react";
+import { optionRuns } from "../components/ui/control-select.js";
 import { wellClasses } from "../components/ui/control-well.js";
 import { CHECK_GLYPH, Glyph } from "../editor-shell/icons.js";
 import { uiCopy } from "../ui-copy.js";
 import type { FacetSelection } from "./local-source.js";
 
-/** One value a facet offers: what it is called, and how many themes carry it. */
+/** One value a facet offers: what it is called, how many themes carry it, and
+ *  **the group it is filed under**, where the drawing draws one. The group is
+ *  the same kind of value `ControlOption.group` is, and the runs are read the
+ *  same way (`control-select.tsx`). */
 export interface FacetOption {
   readonly id: string;
   readonly name: string;
   readonly count: number;
+  readonly group?: string;
 }
 
-/** One facet of the row: its own name, and the values it offers. */
+/** One facet of the row: its own name, the sentence its popover says above the
+ *  options where the drawing draws one, and the values it offers. */
 export interface Facet {
   readonly id: string;
   readonly name: string;
+  readonly hint?: string;
   readonly options: readonly FacetOption[];
 }
 
@@ -104,15 +111,54 @@ function FacetButton(props: {
             aria-label={facet.name}
             className="flex max-h-[var(--available-height)] w-[16rem] flex-col gap-[var(--space-4)] overflow-y-auto rounded-xl border border-edge bg-panel p-[var(--space-8)] shadow-[var(--elev-2)]"
           >
-            {facet.options.map((option) => (
-              <FacetOptionRow
-                key={option.id}
-                facet={facet}
-                option={option}
-                checked={chosen.includes(option.id)}
-                onToggle={() => onToggle(option.id)}
-              />
-            ))}
+            {/* The sentence the drawing puts above the groups, where the facet
+                has one. It is the facet's own data rather than a Shape special
+                case: what makes Shape's groups worth labelling is that every one
+                of them has to hold, and a facet whose values are alternatives
+                would say something else. */}
+            {facet.hint === undefined ? null : (
+              <p
+                data-vigilia-facet-hint=""
+                className="px-[var(--space-8)] pt-[var(--space-4)] pb-[var(--space-8)] text-xs text-muted"
+              >
+                {facet.hint}
+              </p>
+            )}
+            {/* **The groups are drawn, not flattened** (`store-facets.html`):
+                each run of values sharing a group takes §2's eyebrow as its
+                heading, and a value filed under nothing — a sensor whose key
+                this build does not know — is drawn under no heading rather than
+                under an invented one (§9). The runs come from the select's own
+                rule, so the two lists cannot group differently. */}
+            {optionRuns(facet.options).map((run) => {
+              const rows = run.options.map((option) => (
+                <FacetOptionRow
+                  key={option.id}
+                  facet={facet}
+                  option={option}
+                  checked={chosen.includes(option.id)}
+                  onToggle={() => onToggle(option.id)}
+                />
+              ));
+              return run.group === undefined ? (
+                <span key="ungrouped" className="flex flex-col">
+                  {rows}
+                </span>
+              ) : (
+                <span
+                  key={run.group}
+                  role="group"
+                  aria-label={run.group}
+                  data-vigilia-facet-group={run.group}
+                  className="flex flex-col gap-[var(--space-4)]"
+                >
+                  <span className="px-[var(--space-8)] pt-[var(--space-6)] pb-[var(--space-2)] text-2xs font-semibold tracking-[0.11em] text-faint uppercase">
+                    {run.group}
+                  </span>
+                  {rows}
+                </span>
+              );
+            })}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

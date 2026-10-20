@@ -10,6 +10,7 @@ import type {
   ChartFamily,
   ColourMode,
   Orientation,
+  SemanticFamily,
 } from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
 import type { ShortcutPrefix } from "./shortcut-manager/display.js";
@@ -469,6 +470,38 @@ export const uiCopy = {
       sensors: "Sensors",
       shape: "Shape",
       style: "Style",
+      /** The Sensors facet's headings: one per family the vocabulary files a
+       *  semantic key under, so a person choosing values sees them grouped the
+       *  way `describeSemanticKey` groups them rather than in one flat list
+       *  (spec, "Finding a theme: the five facets").
+       *
+       *  Typed from `SemanticFamily`, so a family added to the vocabulary
+       *  without a word fails to compile here rather than printing an identifier
+       *  at a person. A key this build does not know has no family and is drawn
+       *  under no heading at all, which is the vocabulary's own answer. */
+      sensorFamilies: {
+        cpu: "CPU",
+        ram: "RAM",
+        gpu: "GPU",
+        vram: "VRAM",
+        disk: "Disk",
+        network: "Network",
+        time: "Time",
+        date: "Date",
+      } as const satisfies Record<SemanticFamily, string>,
+      /** The Shape facet's three headings, in the drawing's own order
+       *  (`store-facets.html`): the orientation words, the aspect buckets and
+       *  the exact pixel sizes. */
+      shapeGroups: {
+        orientation: "Orientation",
+        aspect: "Aspect ratio",
+        size: "Pixel size",
+      },
+      /** What the Shape popover says above its three groups, because choosing
+       *  in two of them is not an "either": a theme must match every group it
+       *  is asked about, which is R115's rule and the reason the groups are
+       *  labelled at all. */
+      shapeHint: "A theme must match every group.",
     },
     /** The facet values that are words rather than data: the two colour modes a
      *  person can ask for, the three orientations, and the aspect bucket that is
@@ -501,6 +534,11 @@ export const uiCopy = {
      *  from reading as the ratio written the same way. Keyed because the two
      *  numbers are data. */
     size: (width: number, height: number): string => `${width}×${height}`,
+    /** Between two readings on one mono line — the cell's author and date, the
+     *  caption's version and date. Punctuation rather than a word, because a
+     *  word here would read as part of the reading beside it, and it is drawn
+     *  only where both readings exist. */
+    readingSeparator: " · ",
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */
     item: {
@@ -554,10 +592,6 @@ export const uiCopy = {
        *  rather than a missing reading, which is why it is a word and not the
        *  gap's blank. */
       noAuthor: "No author",
-      /** Between the author and the date on the mono line, the way
-       *  `shortcuts.alternativeSeparator` sits between two chords. Punctuation,
-       *  because a word here would read as part of the name. */
-      authorSeparator: " · ",
       /** The four actions, as the drawing's facts band orders them. Spelled as
        *  the spec does — **Open in editor**, **Assign to display**, **Export
        *  package** and **Delete** — because each names the operation the library

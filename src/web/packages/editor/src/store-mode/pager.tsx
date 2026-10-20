@@ -171,7 +171,7 @@ export function Pager(props: {
           and the 76px well — 158px, the three values each already fixed, and the
           one width this row needs rather than a 76px column that wraps the well
           to a second line and makes the bar 61px against the drawing's 43. */}
-      <span className="w-[158px] flex-none">
+      <span data-vigilia-store-page-row="" className="w-[158px] flex-none">
         <ControlSelect
           id={PAGE_SIZE_ID}
           label={uiCopy.store.pager.perPage}

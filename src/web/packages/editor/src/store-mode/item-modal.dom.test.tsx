@@ -99,6 +99,7 @@ const LANDSCAPE: FixtureTheme = {
   id: "kitchen-strip",
   name: "Kitchen strip",
   author: "huyng",
+  version: "1.4.0",
   ground: DARK_GROUND,
   bindings: {
     "cpu-label": [{ id: "cpu", semanticKey: "cpu.load" }],
@@ -113,6 +114,16 @@ const PORTRAIT: FixtureTheme = {
   ground: DARK_GROUND,
   width: 1080,
   height: 1920,
+};
+
+/** The same document with **no version declared**, which is a fact about the
+ *  theme rather than a missing reading: the caption must draw its date alone
+ *  rather than a separator with nothing before it (R128). */
+const VERSIONLESS: FixtureTheme = {
+  id: "kitchen-strip",
+  name: "Kitchen strip",
+  author: "huyng",
+  ground: DARK_GROUND,
 };
 
 function modal(theme: FixtureTheme): ReactElement {
@@ -139,6 +150,14 @@ function picture(): HTMLElement {
       "[data-vigilia-store-item-picture]",
     ),
     "picture",
+  );
+}
+
+/** The modal's own box, which is the width `DESIGN.md` fixes at 960. */
+function box(): HTMLElement {
+  return must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-item]"),
+    "modal box",
   );
 }
 
@@ -173,16 +192,23 @@ function group(id: string): {
  * true: the stage carries the same fixed height for both items and no ratio of
  * its own, and the ratio is the picture's. That the two really draw the same
  * height is measured in the browser.
+ *
+ * **The two numbers are pinned, not the shape of a class.** `DESIGN.md` says
+ * the modal is 960px and its stage 420px because the drawing fixes them, and a
+ * case that accepted `h-<any>px` would pass a 100px stage — the fix round's own
+ * finding. The measured boxes are asserted in the browser case beside this one.
  */
 it("contains the theme in a fixed stage rather than sizing to its ratio", async () => {
   await mount(modal(LANDSCAPE));
   const landscape = {
+    box: box().className,
     stage: stage().className,
     ratio: picture().style.aspectRatio,
   };
 
   await mount(modal(PORTRAIT));
   const portrait = {
+    box: box().className,
     stage: stage().className,
     ratio: picture().style.aspectRatio,
   };
@@ -191,9 +217,14 @@ it("contains the theme in a fixed stage rather than sizing to its ratio", async 
     landscape.stage,
     "the stage is not a fixed height, so it would follow the theme",
   ).toBe(portrait.stage);
-  expect(landscape.stage, "the stage carries no fixed height at all").toMatch(
-    /\bh-\[\d+px\]/,
+  expect(
+    landscape.stage,
+    "the stage is not the 420px DESIGN.md fixes",
+  ).toContain("h-[420px]");
+  expect(landscape.box, "the modal is not the 960px DESIGN.md fixes").toContain(
+    "w-[960px]",
   );
+  expect(landscape.box, "the modal box moves with the item").toBe(portrait.box);
   expect(
     [landscape.ratio, portrait.ratio],
     "the picture does not carry the theme's own ratio",
@@ -237,12 +268,14 @@ it("draws the facts as pills in their groups rather than a row per fact", async 
 });
 
 /**
- * The caption is one line — the name, the author, the kind and the change date
- * — and the actions are written in words, in the drawing's own order.
+ * The caption is one line — the name, the author, the kind, the version and the
+ * change date — and the actions are written in words, in the drawing's own
+ * order.
  *
  * The kind is a badge rather than a title bar's word: what a kind is called is
  * `uiCopy.store.cell.kinds`, and a kind this build does not know prints its own
- * identifier rather than a name nobody chose.
+ * identifier rather than a name nobody chose. The version and the date are one
+ * reading pair, `1.4.0 · 2026-10-14`, with the separator between them.
  */
 it("names the item on one caption line and writes its actions in words", async () => {
   await mount(modal(LANDSCAPE));
@@ -263,8 +296,8 @@ it("names the item on one caption line and writes its actions in words", async (
     document.body
       .querySelector("[data-vigilia-store-item-date]")
       ?.textContent?.trim(),
-    "the caption does not say when the item changed",
-  ).toBe("2026-10-14");
+    "the caption does not pair the version with the date",
+  ).toBe(`1.4.0${uiCopy.store.readingSeparator}2026-10-14`);
 
   const actions = Array.from(
     document.body.querySelectorAll<HTMLElement>(
@@ -280,6 +313,22 @@ it("names the item on one caption line and writes its actions in words", async (
     uiCopy.store.cell.actions.assign,
     uiCopy.store.cell.actions.open,
   ]);
+});
+
+/**
+ * **A theme with no version draws no separator and no empty slot** (R128): the
+ * pair is drawn where both readings exist, and a document that declares none
+ * says its date alone rather than ` · 2026-10-14` or `0.0.0`.
+ */
+it("draws no version and no separator for a theme that declares none", async () => {
+  await mount(modal(VERSIONLESS));
+
+  expect(
+    document.body
+      .querySelector("[data-vigilia-store-item-date]")
+      ?.textContent?.trim(),
+    "a versionless theme draws a separator or an invented version",
+  ).toBe("2026-10-14");
 });
 
 /** The way out is the modal's own answer rather than a state it keeps: the

@@ -31,6 +31,10 @@ export interface FixtureTheme {
   readonly id: string;
   readonly name?: string;
   readonly author?: string;
+  /** The document's own version, which the caption line prints beside the date
+   *  (`1.4.0 · 2026-10-14`). Absent is a document that declares none, which is
+   *  the case that must draw no separator. */
+  readonly version?: string;
   readonly width?: number;
   readonly height?: number;
   /** The artboard's paint, as a document stores it. **Absent is a document with
@@ -58,6 +62,7 @@ export function fixtureEnvelope(theme: FixtureTheme): FabricThemeEnvelope {
       name: theme.name ?? theme.id,
       themeLanguage: "en",
       ...(theme.author === undefined ? {} : { author: theme.author }),
+      ...(theme.version === undefined ? {} : { version: theme.version }),
     },
     scene: { version: "7.4.0", objects: [] },
     ...(theme.bindings === undefined ? {} : { bindings: theme.bindings }),
@@ -70,6 +75,7 @@ export function fixtureEntry(theme: FixtureTheme): ThemeLibraryEntry {
     id: theme.id,
     name: theme.name ?? theme.id,
     ...(theme.author === undefined ? {} : { author: theme.author }),
+    ...(theme.version === undefined ? {} : { version: theme.version }),
     updatedAt: "2026-10-14T00:00:00.000Z",
     facets: facetRecordOf(fixtureEnvelope(theme)),
   };
@@ -83,6 +89,7 @@ export function fixtureItem(theme: FixtureTheme): StoreItem {
     kind: DASHBOARD_THEME_KIND,
     name: entry.name,
     author: entry.author,
+    version: entry.version,
     updatedAt: entry.updatedAt,
     thumbnailUrl: undefined,
     ground: theme.ground,

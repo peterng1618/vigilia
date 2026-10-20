@@ -11,6 +11,7 @@ import {
   DASHBOARD_THEME_KIND,
   localThemeSource,
   matchesFacets,
+  matchesQuery,
   type StoreItem,
 } from "./local-source.js";
 
@@ -40,6 +41,7 @@ function envelope(
       name: "Living room",
       themeLanguage: "en",
       author: "mira-k",
+      version: "1.4.0",
     },
     scene: { version: "7.4.0", objects: [] },
     bindings: { "cpu-label": [{ id: "cpu", semanticKey: "cpu.load" }] },
@@ -60,6 +62,9 @@ function entry(
     ...(document.metadata?.author === undefined
       ? {}
       : { author: document.metadata.author }),
+    ...(document.metadata?.version === undefined
+      ? {}
+      : { version: document.metadata.version }),
     updatedAt: "2026-10-15T09:31:00.000Z",
     thumbnailUrl: `/api/themes/${document.id}/thumbnail`,
     ...(ground === undefined ? {} : { ground }),
@@ -142,6 +147,31 @@ describe("the local half's items", () => {
     const items = await localThemeSource(client).list();
 
     expect(items[0]?.ground).toBeUndefined();
+  });
+
+  it("carries the document's version, and its absence as an absence", async () => {
+    // The caption line prints `1.4.0 · 2026-10-14` from the listing, so the
+    // version travels with the item exactly as the author does (R128) — and a
+    // document that declares none arrives with nothing rather than with a
+    // fabricated `0.0.0` or an empty string the caption would draw a separator
+    // beside.
+    const versioned = await localThemeSource(
+      clientOf([envelope()], GROUND),
+    ).list();
+    const bare = await localThemeSource(
+      clientOf(
+        [
+          envelope({
+            id: "bare",
+            metadata: { name: "Bare", themeLanguage: "en" },
+          }),
+        ],
+        GROUND,
+      ),
+    ).list();
+
+    expect(versioned[0]?.version).toBe("1.4.0");
+    expect(bare[0]?.version).toBeUndefined();
   });
 });
 
@@ -313,5 +343,69 @@ describe("narrowing by a facet", () => {
     expect(matchesFacets(one, { style: ["calm"] })).toBe(false);
     expect(matchesFacets(one, { nonsense: ["calm"] })).toBe(false);
     expect(matchesFacets(one, { style: [] })).toBe(true);
+  });
+});
+
+/**
+ * The query, which is the sixth filter and the one that is not a facet: what a
+ * person types is matched against the two words the cell already prints.
+ *
+ * **It is tested here rather than only through the region**, because it is a
+ * pure predicate and the region's cases read it a page at a time: a rule that
+ * matched the author but not the name, or that stopped trimming, would still
+ * leave a listing that looked right.
+ */
+describe("narrowing by a query", () => {
+  /** One item, built through the source so the case reads the item the predicate
+   *  is really handed. */
+  async function item(): Promise<StoreItem> {
+    const items = await localThemeSource(clientOf([envelope()], GROUND)).list();
+    const first = items[0];
+    if (first === undefined) throw new Error("the source listed nothing");
+    return first;
+  }
+
+  it("matches the name and the author, case-folded and trimmed", async () => {
+    const one = await item();
+
+    expect(matchesQuery(one, "Living room")).toBe(true);
+    expect(matchesQuery(one, "living")).toBe(true);
+    expect(matchesQuery(one, "LIVING ROOM")).toBe(true);
+    expect(matchesQuery(one, "  living  ")).toBe(true);
+    expect(matchesQuery(one, "mira-k")).toBe(true);
+    expect(matchesQuery(one, "MIRA")).toBe(true);
+    // A substring of neither word, which is the miss the net needs.
+    expect(matchesQuery(one, "kitchen")).toBe(false);
+    expect(matchesQuery(one, "1.4.0")).toBe(false);
+  });
+
+  it("answers every item for an empty query, which is an untouched well", async () => {
+    const one = await item();
+
+    expect(matchesQuery(one, "")).toBe(true);
+    expect(matchesQuery(one, "   ")).toBe(true);
+  });
+
+  it("reads a theme with no author without matching the word it is drawn with", async () => {
+    // The cell prints `No author` for a document that declares none. That word
+    // is `uiCopy`'s, not the item's, so a query for it must not find such a
+    // theme — the predicate reads the field, and the field is absent.
+    const items = await localThemeSource(
+      clientOf(
+        [
+          envelope({
+            id: "bare",
+            metadata: { name: "Bare", themeLanguage: "en" },
+          }),
+        ],
+        GROUND,
+      ),
+    ).list();
+    const bare = items[0];
+    if (bare === undefined) throw new Error("the source listed nothing");
+
+    expect(bare.author).toBeUndefined();
+    expect(matchesQuery(bare, "no author")).toBe(false);
+    expect(matchesQuery(bare, "bare")).toBe(true);
   });
 });

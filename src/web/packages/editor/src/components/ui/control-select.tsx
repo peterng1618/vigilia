@@ -25,14 +25,20 @@ export type ControlOption = {
 
 /** Runs of consecutive options sharing a group, in the order offered. A change
  *  of group starts a new run, so an ungrouped option after a grouped one is its
- *  own flat entry rather than joining the run above it. */
-function optionRuns(options: readonly ControlOption[]): {
+ *  own flat entry rather than joining the run above it.
+ *
+ *  Exported because the store's facet popover groups its values the same way and
+ *  draws them with a heading of its own: two implementations of "consecutive
+ *  values sharing a group render together under one label" is one too many. */
+export function optionRuns<T extends { readonly group?: string }>(
+  options: readonly T[],
+): {
   readonly group: string | undefined;
-  readonly options: readonly ControlOption[];
+  readonly options: readonly T[];
 }[] {
   const runs: {
     group: string | undefined;
-    options: ControlOption[];
+    options: T[];
   }[] = [];
   for (const option of options) {
     const last = runs.at(-1);

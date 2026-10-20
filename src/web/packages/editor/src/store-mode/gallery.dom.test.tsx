@@ -119,6 +119,7 @@ function item(overrides: Partial<StoreItem> = {}): StoreItem {
     kind: DASHBOARD_THEME_KIND,
     name: "Living room",
     author: "mira-k",
+    version: "1.4.0",
     updatedAt: "2026-10-15T09:31:00.000Z",
     thumbnailUrl: "/api/themes/living-room/thumbnail",
     ground: "midnightblue",

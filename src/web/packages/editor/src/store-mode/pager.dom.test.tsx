@@ -10,11 +10,11 @@
  * four entries, and the chosen treatment on the page in force.
  *
  * **What it deliberately does not measure.** jsdom lays nothing out, so the
- * 76px well, the 26px numeral and the 14px chevron are declarations read off the
- * class list rather than a reflow; the drawing fixes them and `DESIGN.md` §5
- * carries the well's width. Nothing mounts the pager until A.6 wires it into the
- * region (R120), so there is no page to inspect in a browser and no browser case
- * here.
+ * 26px numeral and the 14px chevron are declarations read off the class list
+ * rather than a reflow; the drawing fixes them. **The well's 76px and its row's
+ * 158px are read twice**: their class lists here, and the drawn boxes in the
+ * browser (`tests/e2e/editor-rail.spec.ts`), which is where the wrap that made
+ * the bar 61px instead of the drawing's 43 was measured.
  */
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -426,4 +426,36 @@ it("offers the four page sizes and reports the one chosen", async () => {
   await flush();
 
   expect(onSize).toHaveBeenCalledWith(24);
+});
+
+/**
+ * **The row the `Per page` label and its well share is 158px** — §5's 74px label
+ * column, §3's 8px gap and the drawing's 76px well, each already fixed — because
+ * a row given only the well's 76px wraps the well onto a second line, and the
+ * bar grows from the drawing's 43px to 61.
+ *
+ * The number is pinned here and the *boxes* are measured in the browser
+ * (`tests/e2e/editor-rail.spec.ts`): jsdom lays nothing out, so a case that
+ * asserted a label above a well would pass whatever the widths were, and a case
+ * that asserts only the class list cannot see the wrap. Both halves are read,
+ * and neither alone is the claim.
+ */
+it("gives the label and its well §5's own row width", async () => {
+  const container = await mount(pager({}));
+
+  const row = must(
+    container.querySelector<HTMLElement>("[data-vigilia-store-page-row]"),
+    "size row",
+  );
+  expect(
+    row.className,
+    "the per-page row is not the 158px its label and well need on one line",
+  ).toContain("w-[158px]");
+  expect(
+    must(
+      row.querySelector<HTMLElement>("[data-vigilia-store-page-size]"),
+      "size well",
+    ),
+    "the well is outside the row the label shares",
+  ).not.toBeNull();
 });

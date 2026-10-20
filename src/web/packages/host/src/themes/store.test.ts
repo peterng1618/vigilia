@@ -225,6 +225,45 @@ describe("ThemeStore", () => {
     expect(await store.read("theme-c")).toBeUndefined();
   });
 
+  /**
+   * The version travels with the entry the store already built (R128): the
+   * store's caption line prints `1.4.0 · 2026-10-14`, and a listing that opened
+   * each theme to find its version would be the second pass over the library
+   * R114 refuses.
+   *
+   * **A document that declares none has no key at all** rather than an empty
+   * string: the caption draws the separator only between two readings that
+   * exist, so an absence must be distinguishable from a version spelled "".
+   */
+  it("carries the document's version on the entry, and its absence as an absence", async () => {
+    const store = createThemeStore(tmpDir);
+    await store.write("versioned", {
+      envelope: {
+        ...envelopeFor("versioned", "Versioned"),
+        metadata: {
+          name: "Versioned",
+          themeLanguage: "en",
+          version: "1.4.0",
+        },
+      },
+      assets: {},
+    });
+    await store.write("bare", {
+      envelope: {
+        ...envelopeFor("bare", "Bare"),
+        metadata: { name: "Bare", themeLanguage: "en" },
+      },
+      assets: {},
+    });
+
+    const listed = new Map(
+      (await store.list()).map((item) => [item.id, item.version]),
+    );
+
+    expect(listed.get("versioned")).toBe("1.4.0");
+    expect(listed.get("bare")).toBeUndefined();
+  });
+
   it("carries each theme's costs on the entry it already built", async () => {
     const store = createThemeStore(tmpDir);
     // A video background, which is the one cost a listing can answer from the

@@ -1,5 +1,8 @@
 import { parseHex } from "../charts/fill.js";
-import { describeSemanticKey } from "../data/semantic-keys.js";
+import {
+  describeSemanticKey,
+  type SemanticFamily,
+} from "../data/semantic-keys.js";
 import { resolveStyleValue } from "../scene/plan.js";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
 
@@ -30,7 +33,11 @@ export interface FacetRecord {
   readonly sensors: readonly {
     readonly key: string;
     readonly label: string;
-    readonly family: string | undefined;
+    /** The family the vocabulary already files this key under, so a surface
+     *  grouping sensors groups them the way `describeSemanticKey` does rather
+     *  than by a second reading of the key. `undefined` for a key this build
+     *  does not know, which has no family to be filed under. */
+    readonly family: SemanticFamily | undefined;
   }[];
   readonly orientation: Orientation;
   readonly aspect: AspectBucket;
@@ -195,15 +202,17 @@ function aspectOf(width: number, height: number): AspectBucket {
 }
 
 /** Every key the theme binds, deduplicated, in the order they first appear. A key
-    this build's vocabulary does not know is still listed, labelled by its own key. */
+    this build's vocabulary does not know is still listed, labelled by its own key
+    and with no family — the vocabulary's own answer, and not a family invented
+    for it. */
 function sensorsOf(
   envelope: FabricThemeEnvelope,
-): { key: string; label: string; family: string | undefined }[] {
+): { key: string; label: string; family: SemanticFamily | undefined }[] {
   const seen = new Set<string>();
   const sensors: {
     key: string;
     label: string;
-    family: string | undefined;
+    family: SemanticFamily | undefined;
   }[] = [];
 
   for (const list of Object.values(envelope.bindings ?? {})) {

@@ -3,8 +3,8 @@ import {
   type FabricThemeEnvelope,
   facetRecordOf,
 } from "@vigilia/renderer-core";
-import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { DARK_GROUND } from "../../packages/editor/src/store-mode/item-fixture.js";
+import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { openEveryGroup, openPane, paneBody } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
@@ -1435,6 +1435,7 @@ const STORE_LIBRARY = Array.from({ length: 30 }, (_unused, at) => {
     id: envelope.id,
     name,
     author: "huyng",
+    version: "1.4.0",
     updatedAt: "2026-10-14T00:00:00.000Z",
     ground: DARK_GROUND,
     facets: facetRecordOf(envelope),
@@ -1510,14 +1511,20 @@ test("the store lists a library, opens an item, and comes back to the same page"
   expect(await currentPage(), "the pager does not open on page one").toBe("1");
 
   /**
-   * The stage's height and the picture's own box for one item, opened from its
-   * cell and closed again — so the two readings are taken the same way and the
-   * surface is not left open for the next one.
+   * The stage's height, the modal box and the caption's stamp for one item,
+   * opened from its cell and closed again — so every reading is taken the same
+   * way and the surface is not left open for the next one.
+   *
+   * **The boxes are measured because the numbers are design language now**:
+   * `DESIGN.md` fixes the modal at 960 and its stage at 420, and a case that
+   * asserted only that two stages were equal would pass a 100px stage.
    */
   const drawn = async (
     id: string,
   ): Promise<{
     readonly stage: number;
+    readonly box: number;
+    readonly stamp: string;
     readonly picture: { readonly width: number; readonly height: number };
   }> => {
     await region
@@ -1527,14 +1534,20 @@ test("the store lists a library, opens an item, and comes back to the same page"
     const stage = page.locator(STORE_ITEM_STAGE);
     await expect(stage, "a cell opens no item surface").toBeVisible();
     const box = await stage.boundingBox();
+    const modal = await page.locator("[data-vigilia-store-item]").boundingBox();
     const picture = await page.locator(STORE_ITEM_PICTURE).boundingBox();
+    const stamp =
+      (await page.locator("[data-vigilia-store-item-date]").textContent()) ??
+      "";
     await page.locator("[data-vigilia-store-item-close]").click();
     await expect(stage, "the item's surface does not close").toBeHidden();
-    if (box === null || picture === null) {
+    if (box === null || picture === null || modal === null) {
       throw new Error(`the item's surface drew no box for ${id}`);
     }
     return {
       stage: box.height,
+      box: modal.width,
+      stamp: stamp.trim(),
       picture: { width: picture.width, height: picture.height },
     };
   };
@@ -1545,13 +1558,25 @@ test("the store lists a library, opens an item, and comes back to the same page"
   // uncropped.
   const landscape = await drawn("store-01");
   const portrait = await drawn("store-02");
-  const itemReading = `store-item stage landscape ${landscape.stage} portrait ${portrait.stage}; picture ${landscape.picture.width}x${landscape.picture.height} and ${portrait.picture.width}x${portrait.picture.height}`;
+  const itemReading = `store-item box ${landscape.box}px stage landscape ${landscape.stage} portrait ${portrait.stage}; picture ${landscape.picture.width}x${landscape.picture.height} and ${portrait.picture.width}x${portrait.picture.height}; stamp "${landscape.stamp}"`;
   console.log(itemReading);
   testInfo.annotations.push({ type: "store-item", description: itemReading });
   expect(
     portrait.stage,
     `the stage follows the item instead of holding one height (${itemReading})`,
   ).toBe(landscape.stage);
+  expect(
+    landscape.stage,
+    `the stage is not the 420px DESIGN.md fixes (${itemReading})`,
+  ).toBe(420);
+  expect(
+    landscape.box,
+    `the modal is not the 960px DESIGN.md fixes (${itemReading})`,
+  ).toBe(960);
+  expect(
+    landscape.stamp,
+    `the caption does not pair the version with the date (${itemReading})`,
+  ).toBe(`1.4.0${uiCopy.store.readingSeparator}2026-10-14`);
   expect(
     Math.abs(landscape.picture.width / landscape.picture.height - 16 / 9),
     `the landscape theme is not drawn at its own ratio (${itemReading})`,
@@ -1607,8 +1632,12 @@ test("the store lists a library, opens an item, and comes back to the same page"
     const well = node
       .querySelector("[data-vigilia-store-page-size]")
       ?.getBoundingClientRect();
+    const row = node
+      .querySelector("[data-vigilia-store-page-row]")
+      ?.getBoundingClientRect();
     return {
       barHeight: node.getBoundingClientRect().height,
+      rowWidth: row?.width ?? null,
       label:
         label === undefined
           ? null
@@ -1629,12 +1658,16 @@ test("the store lists a library, opens an item, and comes back to the same page"
             },
     };
   });
-  const barReading = `store-pager bar ${bar.barHeight}px label ${JSON.stringify(bar.label)} well ${JSON.stringify(bar.well)}`;
+  const barReading = `store-pager bar ${bar.barHeight}px row ${bar.rowWidth}px label ${JSON.stringify(bar.label)} well ${JSON.stringify(bar.well)}`;
   console.log(barReading);
   testInfo.annotations.push({ type: "store-pager", description: barReading });
   if (bar.label === null || bar.well === null) {
     throw new Error(`the pager draws no labelled size well (${barReading})`);
   }
+  expect(
+    bar.rowWidth,
+    `the per-page row is not the 158px its label and well need (${barReading})`,
+  ).toBe(158);
   // **The label and the well are one line**, which is what the drawing draws and
   // what the row's own width buys: a row given only the well's 76px wraps the
   // well to a second line, and the bar grows from the drawing's 43px to 61. The
@@ -1654,4 +1687,51 @@ test("the store lists a library, opens an item, and comes back to the same page"
     bar.well.left,
     `the well overlaps the label it belongs to (${barReading})`,
   ).toBeGreaterThanOrEqual(bar.label.left + bar.label.width);
+
+  // **The Shape popover's groups, as a rendered popover** (R115). The three
+  // headings are the drawing's, the sentence above them is the one that says why
+  // they matter, and the values are the items' own readings — none of which a
+  // flat list would show.
+  await region.locator("[data-vigilia-facet='shape']").click();
+  const popup = page.locator(`[aria-label='${uiCopy.store.facets.shape}']`);
+  await expect(popup, "the Shape facet opens no popover").toBeVisible();
+  const groups = await popup.evaluate((node) => ({
+    hint: node.querySelector("[data-vigilia-facet-hint]")?.textContent?.trim(),
+    headings: Array.from(
+      node.querySelectorAll("[data-vigilia-facet-group]"),
+    ).map((group) => group.getAttribute("data-vigilia-facet-group")),
+    values: Array.from(
+      node.querySelectorAll("[data-vigilia-facet-option-name]"),
+    ).map((value) => value.textContent?.trim()),
+  }));
+  const groupReading = `store-facets hint "${groups.hint}" headings ${JSON.stringify(groups.headings)} values ${JSON.stringify(groups.values)}`;
+  console.log(groupReading);
+  testInfo.annotations.push({
+    type: "store-facets",
+    description: groupReading,
+  });
+  expect(
+    groups.hint,
+    `the Shape popover does not carry the drawing's sentence (${groupReading})`,
+  ).toBe(uiCopy.store.facets.shapeHint);
+  const headings = uiCopy.store.facets.shapeGroups;
+  expect(
+    groups.headings,
+    `the Shape popover does not draw the drawing's three labelled groups (${groupReading})`,
+  ).toEqual([headings.orientation, headings.aspect, headings.size]);
+  expect(
+    groups.values,
+    `the Shape values are not the items' own readings (${groupReading})`,
+  ).toEqual([
+    // Both orientations, because two of the thirty themes are portrait: an
+    // option is offered for what the listing holds and not for what a drawing
+    // imagines.
+    uiCopy.store.orientations.landscape,
+    uiCopy.store.orientations.portrait,
+    "16:9",
+    // Two sizes, because each is declared by more than one theme — the rule that
+    // keeps a size exactly one theme declares out of the facet.
+    uiCopy.store.size(1920, 1080),
+    uiCopy.store.size(1080, 1920),
+  ]);
 });

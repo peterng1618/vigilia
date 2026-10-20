@@ -194,5 +194,5 @@ function byline(item: StoreItem): string {
   const date = item.updatedAt?.slice(0, 10);
   return date === undefined || date === ""
     ? author
-    : `${author}${uiCopy.store.cell.authorSeparator}${date}`;
+    : `${author}${uiCopy.store.readingSeparator}${date}`;
 }

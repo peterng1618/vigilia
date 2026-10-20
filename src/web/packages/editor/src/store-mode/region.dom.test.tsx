@@ -407,6 +407,66 @@ function currentPage(): number | undefined {
     : Number(shown.getAttribute("data-vigilia-store-page"));
 }
 
+/** One run of a facet popover: the heading it is drawn under, or `undefined`
+ *  for values filed under none, and the values themselves. */
+interface FacetRun {
+  readonly group: string | undefined;
+  readonly values: readonly string[];
+}
+
+/**
+ * One facet's own popover, opened, and what it draws: the sentence above the
+ * options where the drawing has one, and the labelled runs of values.
+ *
+ * It is read **inside that popup** rather than across `body`, so a case that
+ * opens two in turn cannot read the first one's values and call them the
+ * second's. The runs are reconstructed from the rows' own owners rather than
+ * from a list of headings, so a heading drawn over no value, or a value under a
+ * heading that is not its own, is what the reading shows.
+ */
+async function openFacet(
+  facetId: string,
+  name: string,
+): Promise<{
+  readonly hint: string | undefined;
+  readonly runs: readonly FacetRun[];
+}> {
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        `[data-vigilia-facet="${facetId}"]`,
+      ),
+      `${facetId} facet`,
+    ).click(),
+  );
+  const popup = must(
+    document.body.querySelector<HTMLElement>(`[aria-label="${name}"]`),
+    `${facetId} popover`,
+  );
+
+  const runs: { group: string | undefined; values: string[] }[] = [];
+  for (const row of popup.querySelectorAll<HTMLElement>(
+    "[data-vigilia-facet-option]",
+  )) {
+    const owner = row.parentElement?.closest("[data-vigilia-facet-group]");
+    const group = owner?.getAttribute("data-vigilia-facet-group") ?? undefined;
+    const value =
+      row
+        .querySelector("[data-vigilia-facet-option-name]")
+        ?.textContent?.trim() ?? "";
+    const last = runs.at(-1);
+    if (last !== undefined && last.group === group) last.values.push(value);
+    else runs.push({ group, values: [value] });
+  }
+
+  return {
+    hint:
+      popup.querySelector("[data-vigilia-facet-hint]")?.textContent?.trim() ??
+      undefined,
+    runs,
+  };
+}
+
 /** A search well, typed into the way React reads a controlled input: through the
  *  native setter, which a plain `value =` write does not go through. */
 async function type(query: string): Promise<void> {
@@ -601,6 +661,11 @@ it("closes back onto the same page, filter and sort", async () => {
  * person can ask for (it is reachable under "any" and under nothing else), a
  * size exactly one theme declares is not offered (it would be a theme wearing a
  * filter's clothes), and a size two themes declare is.
+ *
+ * **The groups are read too** (R115): the drawing draws Shape's three groups as
+ * labelled runs under "A theme must match every group.", and a flat list is what
+ * hides the AND — a person who picks Landscape + 16:9 and gets no portrait 16:9
+ * theme has been told the opposite of what the filter does.
  */
 it("derives the facet values from the items", async () => {
   await mountStore([
@@ -617,46 +682,79 @@ it("derives the facet values from the items", async () => {
     }),
   ]);
 
-  /** One facet's own popover, opened, and the values it offers — read inside
-   *  that popup rather than across `body`, so a case that opens two in turn
-   *  cannot read the first one's values and call them the second's. */
-  const openFacet = async (
-    facetId: string,
-    name: string,
-  ): Promise<readonly string[]> => {
-    await act(async () =>
-      must(
-        document.body.querySelector<HTMLButtonElement>(
-          `[data-vigilia-facet="${facetId}"]`,
-        ),
-        `${facetId} facet`,
-      ).click(),
-    );
-    const popup = must(
-      document.body.querySelector<HTMLElement>(`[aria-label="${name}"]`),
-      `${facetId} popover`,
-    );
-    return Array.from(
-      popup.querySelectorAll<HTMLElement>("[data-vigilia-facet-option-name]"),
-    ).map((option) => option.textContent?.trim() ?? "");
-  };
-
+  const colour = await openFacet("colour-mode", uiCopy.store.facets.colourMode);
   expect(
-    await openFacet("colour-mode", uiCopy.store.facets.colourMode),
+    colour.runs,
     "the colour facet offers a value nobody can ask for, or misses one",
-  ).toEqual([uiCopy.store.colourModes.dark, uiCopy.store.colourModes.light]);
+  ).toEqual([
+    {
+      group: undefined,
+      values: [uiCopy.store.colourModes.dark, uiCopy.store.colourModes.light],
+    },
+  ]);
+  expect(
+    colour.hint,
+    "a facet the drawing draws without a sentence says one anyway",
+  ).toBeUndefined();
 
   const shape = await openFacet("shape", uiCopy.store.facets.shape);
   expect(
-    shape,
-    "the shape facet offers a size exactly one theme declares",
-  ).not.toContain(uiCopy.store.size(2560, 1440));
+    shape.hint,
+    "the shape popover does not carry the sentence the drawing draws",
+  ).toBe(uiCopy.store.facets.shapeHint);
+  const headings = uiCopy.store.facets.shapeGroups;
   expect(
-    shape,
-    "the shape facet does not offer the three groups' values, in the drawing's order",
+    shape.runs,
+    "the shape facet flattens the drawing's three labelled groups",
   ).toEqual([
-    uiCopy.store.orientations.landscape,
-    "16:9",
-    uiCopy.store.size(1920, 1080),
+    {
+      group: headings.orientation,
+      values: [uiCopy.store.orientations.landscape],
+    },
+    { group: headings.aspect, values: ["16:9"] },
+    // A size exactly one theme declares is not a value: it is a theme wearing a
+    // filter's clothes, and every other size is reachable under `Other`.
+    { group: headings.size, values: [uiCopy.store.size(1920, 1080)] },
+  ]);
+});
+
+/**
+ * **The sensors are grouped by the family the vocabulary already files them
+ * under**, which is the grouping the spec asks for and not a second reading of
+ * the key here.
+ *
+ * A key this build does not know has no family, so it is offered under no
+ * heading rather than under an invented one (§9) — and it is still offered,
+ * because a theme that binds it is a theme the library holds.
+ */
+it("groups the sensors by the family the vocabulary files them under", async () => {
+  await mountStore([
+    fixtureEntry({
+      id: "reads-two-families",
+      ground: DARK_GROUND,
+      bindings: {
+        "cpu-label": [{ id: "cpu", semanticKey: "cpu.load" }],
+        "disk-label": [{ id: "disk", semanticKey: "disk.used" }],
+        "unknown-label": [{ id: "unknown", semanticKey: "not.a.key" }],
+      },
+    }),
+  ]);
+
+  const sensors = await openFacet("sensors", uiCopy.store.facets.sensors);
+
+  expect(
+    sensors.runs,
+    "the sensor values are one flat list rather than the vocabulary's families",
+  ).toEqual([
+    {
+      group: uiCopy.store.facets.sensorFamilies.cpu,
+      values: ["CPU load"],
+    },
+    {
+      group: uiCopy.store.facets.sensorFamilies.disk,
+      values: ["Disk used"],
+    },
+    // The key this build does not know, under no heading at all.
+    { group: undefined, values: ["not.a.key"] },
   ]);
 });
