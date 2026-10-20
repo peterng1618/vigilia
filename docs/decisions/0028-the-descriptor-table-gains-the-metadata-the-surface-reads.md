@@ -1,7 +1,18 @@
 # 0028 — The descriptor table gains what the surface reads from it, rather than a second table or a form library
 
 - **Date:** 2026-10-06
-- **Status:** accepted
+- **Status:** accepted — **superseded in part, 2026-10-21**, by
+  [0082](0082-the-chart-envelope-refusal-reads-the-descriptor-table.md). The one
+  position reversed is recorded below, and it is the only one: this note's
+  *Decision* says the table's `min`/`max` are authoring bounds and that the
+  validator stays a separate invariant owner, on the plan's ruling that driving
+  validation from descriptor bounds was decided against (`:78-80`, and rung 6 at
+  `:273-276` records that equivalence as asserted rather than measured).
+  `vg-348`'s ruling of 2026-10-12 chose the other way, and 0082 lands it: the
+  envelope loader reads this table's bounds as the document's. Everything else
+  here — the metadata added to the descriptors, `path`/`visibleWhen`, the
+  rejections in rung 5 — stands. The history above and below is left as written
+  on 2026-10-06; only this pointer is new.
 - **Paths:** `src/web/packages/renderer-core/src/charts/settings-fields.ts`,
   `src/web/packages/renderer-core/src/charts/settings-path.ts`,
   `src/web/packages/renderer-core/src/theme/validate.ts`

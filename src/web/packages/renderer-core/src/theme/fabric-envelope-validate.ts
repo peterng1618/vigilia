@@ -686,16 +686,23 @@ function chartScalars(
 }
 
 /**
- * The two scalar pairs a family's own descriptors make impossible when equal or
- * crossed: a gauge's or bar's reading range, and a donut's inner and outer
- * radius.
+ * The scalar pairs a family's own descriptors make impossible when equal or
+ * crossed.
+ *
+ * A family that declares **both** a `min` and a `max` descriptor has a reading
+ * range, and it is crossed whichever family it is — gauge and bar draw a
+ * reading against it, line's two are its optional axis bounds, and all three
+ * are the table's own declaration rather than a family list kept here. The
+ * donut's radius pair has two names of its own, so it is named.
  */
 function scalarPairs(
   family: ChartFamily,
 ): readonly (readonly [string, string])[] {
   if (family === "pie") return [["innerRadiusPercent", "outerRadiusPercent"]];
-  if (family === "gauge" || family === "bar") return [["min", "max"]];
-  return [];
+  const properties = new Set(
+    CHART_SETTINGS_FIELDS[family].map((descriptor) => descriptor.property),
+  );
+  return properties.has("min") && properties.has("max") ? [["min", "max"]] : [];
 }
 
 /**

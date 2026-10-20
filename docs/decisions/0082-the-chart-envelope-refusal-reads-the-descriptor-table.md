@@ -204,11 +204,17 @@ Four rules the implementation settles, and why each is not the obvious reading:
 - **Absent is an authorable state.** `optional: true` and an absent key are
   legitimate — the renderer decides and an explicit value overrides it — so only
   a value that is **present** and out of range is refused.
-- **The pair is refused where the pair is complete.** `gauge`/`bar` `min` ≥ `max`
-  and pie `innerRadiusPercent` ≥ `outerRadiusPercent` are refused only when both
-  halves are present and numeric; a half on its own is not a range. This is the
-  same rule the deleted v1 validator held (`gauge`/`bar` `max > min`), read from
-  the family's own descriptors rather than restated.
+- **The pair is refused where the pair is complete.** A family that declares
+  **both** a `min` and a `max` descriptor has a crossed reading range, and it is
+  refused only when both halves are present and numeric; a half on its own is not
+  a range. That is `gauge`, `bar` **and `line`** — the table's own declaration
+  rather than a family list kept in the validator, which is Step 1's principle
+  applied to the pair — and pie's `innerRadiusPercent` ≥ `outerRadiusPercent` is
+  the one pair with two names of its own. `vg-348`'s ruling writes the `Y` of
+  "Y `min` above `max`" as a placeholder; the placeholder is filled by the table,
+  not by choosing families. (The deleted v1 validator held `gauge`/`bar`
+  `max > min` and said nothing about `line`; this is wider than that rule, and
+  the binding constraint below is what licensed the widening.)
 - **The allowed key set is derived, not listed.** A chart's settings keys are
   `(descriptor.path ?? [descriptor.property])[0]` over both tables — which is how
   `total` and `animation` (nested, dotted `property`) stay in the set without the
@@ -223,13 +229,18 @@ suite already asserts validates (the starter dashboard, the card library), is
 re-validated after the change and must still read `ok: true` — rung 6's sweep
 re-run, plus the existing tests that assert the starter and cards validate.
 
-**Two things this decision does not do.** It does not touch
-`charts/pie.ts`'s `clampPercent`: that stays as defence for the in-memory path
-that never passes through the envelope, and it stops being the *only* thing
-between an impossible document and a drawing. And it does not update
-`settings-fields.ts`'s header section *"Why the validator does not read this
-table"*, which this change makes false — that file is the read owner here and the
-correcting sentence is owed to it (see *Verified, and what is not*).
+**One thing this decision does not do.** It does not touch `charts/pie.ts`'s
+`clampPercent`: that stays as defence for the in-memory path that never passes
+through the envelope, and it stops being the *only* thing between an impossible
+document and a drawing.
+
+**Two limits, named rather than left to be discovered.** An unknown `family` is
+**skipped**, not refused: a family with no descriptors has nothing to read, and
+the loader is not the place to decide which families exist. And only
+`kind: "number"` descriptors are read, so a wrong-typed boolean or select — say
+`roundCap: "yes"` — still loads; the ruling is about scalar *ranges*, and
+widening to the other kinds is a separate call with its own binding-constraint
+check.
 
 ## What implements it
 
@@ -237,21 +248,30 @@ correcting sentence is owed to it (see *Verified, and what is not*).
   becomes the one pass that reads a chart's settings, paint and scalars together
   (no second traversal), reading `CHART_SETTINGS_FIELDS` and
   `CHART_PAINT_FIELDS` from `../charts/settings-fields.js`.
+- `renderer-core/src/charts/settings-fields.ts` — the header section
+  *"Why the validator does not read this table"* is replaced by
+  *"The validator reads this table"*, which states the document bounds, that
+  `bound` is not one of them, and that this reverses the earlier position; the
+  `validate.ts` / `validateSettingsRange` material is recast as the history it is.
+- `docs/decisions/0028-*.md` — a dated superseding pointer to this note, without
+  rewriting that ADR's 2026-10-06 record.
 - `renderer-core/src/theme/fabric-envelope-validate.test.ts` — the regression
-  cases: the six `vg-348` shapes refused, and the in-range and absent shapes
-  still accepted.
+  cases: the six `vg-348` shapes and the crossed `line` pair refused, and the
+  in-range, absent and nested shapes still accepted.
 
 ## Verified, and what is not
 
 - **The refusal**: the six measured shapes read `ok: false` after the change and
   `ok: true` before it, from the same probe (rung 6). The regression test fails
-  when the refusal is reverted.
+  when the refusal is reverted — 5 failed / 39 passed with the whole chart check
+  disabled, and the restore was confirmed with `cmp` rather than `git diff`.
 - **The binding constraint**: the on-disk sweep is green on every document that
-  was green before, and the four that were already red gain no chart-settings
-  issue. The starter dashboard and the card library keep their existing
-  `ok: true` assertions.
-- **Not done, and owed**: the header section in `charts/settings-fields.ts`
-  headed *"Why the validator does not read this table"* is now **false** and was
-  left standing, because Task 23.4's brief names that file as read-only. It is a
-  contradictory current doc, which `AGENTS.md` says to propagate with the change
-  — the correcting edit belongs in the file's owner and is the next writer's.
+  was green before — re-run with the `line` pair included, and every verdict is
+  unchanged: the three chart-carrying documents still `ok: true`, and the four
+  already red for `metadata.locale` / `artboard.barColor` / `backgroundMedia.fit`
+  gain no chart-settings issue. The starter dashboard and the card library keep
+  their existing `ok: true` assertions in the unit suite.
+- **Not verified, and accepted as such**: the on-disk sweep is a point-in-time
+  reading over untracked `.e2e-*` trees rather than a test in the gate, and there
+  is no browser evidence — a loader refusal changes nothing that is drawn, so the
+  evidence is the unit file plus the sweep.

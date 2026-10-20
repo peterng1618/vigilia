@@ -62,20 +62,29 @@ import { ANIMATION_EASINGS, type AnimationEasing } from "./animation.js";
  * `maxPoints`, `total.value`) carries neither, and is deliberately not a slider:
  * a track would offer a range the sample store or the data does not honour.
  *
- * ## Why the validator does not read this table
+ * ## The validator reads this table
  *
- * `min`/`max` below are **authoring bounds**: the range a control offers and the
- * range its option builder clamps to. `validate.ts`'s `validateSettingsRange`
- * holds **invariants an adapter cannot recover from** — a gauge whose `max` is
- * not above its `min`, a fixed pie total with no finite value. Driving validation
- * from this table was the obvious next step and it is **decided against**
- * (ADR-0028): the two bound sets answer different questions, so consuming these
- * would start refusing documents that validate today. That is a data decision,
- * not a tidy-up, so the duplication stays — by decision, not by neglect.
+ * `min`/`max` below are **the document's bounds**, not only the control's: the
+ * envelope loader refuses a present value outside them, and refuses a family's
+ * crossed `min`/`max` pair where both halves are present (decision 0082, from
+ * `vg-348`'s ruling of 2026-10-12). A change to a number here therefore changes
+ * what loads, not only what a control offers — the table is the one owner of
+ * that question, which is why the loader reads it instead of keeping a second
+ * list of the same numbers.
  *
- * The other half of the old note is closed: `validateSettingsRange` is now an
- * exhaustive `switch (family)` with a `never` default, so a fifth family is a
- * compile error rather than falling through to the pie block.
+ * `bound` is **not** a document bound. It names a ceiling only the drawn box
+ * knows — the chart's own box, halved for a radius — so a field carrying one
+ * contributes its numeric floor and no ceiling, and a field with a floor and no
+ * `bound` has no ceiling the envelope can name either.
+ *
+ * This reverses an earlier position recorded in this header, that driving
+ * validation from the table was decided against because the range a control
+ * offers and the invariants an adapter cannot recover from were held to be
+ * different questions. That equivalence was never measured — ADR-0028's own
+ * probe says so — and it is the reason the table rather than a second list owns
+ * the numbers. ADR-0028 carries the superseding pointer; the `validate.ts` /
+ * `validateSettingsRange` validator this header used to lean on was deleted
+ * before `vg-348` was filed.
  */
 
 /** How a settings field is edited. */

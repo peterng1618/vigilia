@@ -667,6 +667,9 @@ describe("Fabric theme envelope validation", () => {
     const bar = validateFabricThemeEnvelope(
       chartEnvelope("bar", { min: 100, max: 100 }),
     );
+    const line = validateFabricThemeEnvelope(
+      chartEnvelope("line", { min: 100, max: 0 }),
+    );
     const pie = validateFabricThemeEnvelope(
       chartEnvelope("pie", { innerRadiusPercent: 80, outerRadiusPercent: 20 }),
     );
@@ -675,6 +678,9 @@ describe("Fabric theme envelope validation", () => {
       { code: "out-of-range", path: "/scene/objects/0/settings/max" },
     ]);
     expect(issuesOf(bar)).toMatchObject([
+      { code: "out-of-range", path: "/scene/objects/0/settings/max" },
+    ]);
+    expect(issuesOf(line)).toMatchObject([
       { code: "out-of-range", path: "/scene/objects/0/settings/max" },
     ]);
     expect(issuesOf(pie)).toMatchObject([
