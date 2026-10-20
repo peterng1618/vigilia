@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The artboard paint left the canvas (0080, `vg-667`)**: it is the host's — behind the media layer, which is now what the reader sees — and the canvas is cleared, because a fill there sat above the media and hid it completely.
-- **The glass backdrop carries it instead**: `scene-fabric/src/artboard-backdrop.ts` composes the board's paint *under* its media with `destination-over`, so a panel samples the board rather than transparency and a frame the media cannot paint is still kept (0079).
-- **The editor's plate is dropped once the board declares media**, and both of its glass mounts and its capture path take the same composed backdrop; its pasteboard is unchanged, since the plate and the host carry the one paint.
-- **Browser A/B, one script both arms**: opaque `#101318` board — fixed reads the panel at alpha 255 over 1211 frames with `maxFrameDelta` 123 and a transparent canvas; pre-fix reads 0 over 1209 with the canvas at `[16,19,24,255]`.
-- **Checks**: `npm run gate` exit 1 at `design:check` only (the known `vg-626` red: remainder 20, ceiling 19, unchanged by this work); green alone — biome, `gates:self-test`, `status:check`, `docs:check`, `design:md` (367 citations), `typecheck`, and the whole unit suite 3913 passed / 0 failed.
+- **The scratch gate landed (0081)**: `scripts/scratch-gate.mjs` refuses a `Write`/`Edit` whose path is scratch-shaped — in the tree or outside the two sanctioned roots — and refuses a `Bash` command whose redirect or `--outputFile` resolves there; `--sweep` fails on ignored residue that is not a documented store, or a directory under `.claude/worktrees/` that `git worktree list` does not name.
+- **Wired where the loop already looks**: a `PreToolUse` entry beside `reuse-gate` on `Edit|Write|MultiEdit|NotebookEdit|Bash`, `scratch:check` chained into `gate` after `docs:check`, and the script's self-test chained into `gates:self-test`; CI runs `npm run gate`, so no workflow edit.
+- **The tree it found is now clean**: 3 stray entries (both `.playwright-mcp/` and `src/web/.agent-scratch/`) and 23 dead worktrees — `vg-368`'s 13 MB directory **relocated** to `C:\tmp\vigilia-residue-2026-10-21\` per that row's ruling rather than deleted, and the 22 junction-only skeletons plus a seat's npm-ci log removed with a delete proved not to follow a junction.
+- **The refusal is wired but not yet seen intercepting a live call**: no `PreToolUse` hook fired in the session that wrote it — the pre-existing `reuse-gate` one included — while `PreCompact` had, so the harness captures its hook set at session start; the same payloads piped to the script give exit 2 / 0 / 2.
+- **Checks**: `npm run gate` reaches `scratch:check` green and exits 1 at `design:check` only (the known `vg-626` red: remainder 20, ceiling 19, unchanged); run alone, `typecheck` exits 0 and the unit suite is 287 files / 3913 passed, 0 failed.
 
 ## Next
 
