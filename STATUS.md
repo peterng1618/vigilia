@@ -18,10 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Task A.7b closes R134**: the store's `open` action loads a library theme as the open document, from the cell and from the item modal's footer alike, and **the cell's own surface** is what opens the modal (`2026-10-12-theme-store-design.md:712`, `:1064`).
+- **Task A.7b is complete** — spec compliance PASS, code quality PASS, one fix round and a scoped re-review with all nine findings ADDRESSED: the store's `open` action loads a library theme as the open document, from the cell and from the item modal's footer alike, and **the cell's own surface** is what opens the modal (`2026-10-12-theme-store-design.md:712`, `:1064`), so R134 is closed.
 - **The document bookkeeping moved rather than being deleted**: `EditorDocument.open()` is gone, and its `confirmReplacement()` question now guards `ThemeLibraryManager.openById` — the route that really replaces a stored document — where the base is **replaced by the library's own** (`#openStored`), so the next save is gated (R136's other half). `forget()` stays where it belongs, on `newDocument` and `newFromStarter`: the two constructions with no stored document behind them.
 - **The File row reads Import package** (`ui-copy.ts`, `shortcut-manager/reference.ts`) and imports without touching the document; the session's `openPackage()` is now `importPackage()`, and the shell hands the store `session.openLibraryTheme(id)`.
 - **Four e2e specs are left red for A.7c, and they fail for two different reasons**: `author-journey-display` is the only one red **solely for the rename**, while `composition-panel` clicks the old name *and* asserts `#status` reads `Opened ${name}` — an import reports `Imported <id> to the library` and asks no dirty-document guard, so its contract comment is now false. `clip-parity` and `inspector-sections` drive the file input directly and expect the old open-a-document result, reading `Could not import: Could not save theme … (404)` because the editor preview serves no `/api/themes`.
+- **Evidence**: full suite 283 files / 3853 tests exit 0, `biome check ..` exit 0, `typecheck`/`status:check`/`docs:check` exit 0, `design:check` exit 1 at its `vg-626` baseline with none of these commits' files in the remainder, `editor-rail.spec.ts` 19 passed with A.6's recorded readings printed verbatim; every red proof restored `cmp`-identical, including the one that shows the geometry reading discriminates rather than passing with the spacing deleted.
 
 ## Next
 
