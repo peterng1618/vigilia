@@ -324,9 +324,10 @@ export class EditorDocument {
   /** Opens one theme the library already holds, by id: the store's own route,
    *  which has read the theme's name off the listing it drew. The replacement
    *  question and the base's bookkeeping are the library's, because this
-   *  replaces the open document with a stored one. */
-  openLibraryTheme(id: string): Promise<void> {
-    return this.#library.openById(id);
+   *  replaces the open document with a stored one — and `onAccepted` is when
+   *  that question is answered. */
+  openLibraryTheme(id: string, onAccepted?: () => void): Promise<void> {
+    return this.#library.openById(id, onAccepted);
   }
 
   /** Saves into the host's library, which is the stored document's half of a

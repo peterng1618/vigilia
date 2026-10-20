@@ -547,7 +547,8 @@ export class EditorSession {
       savePackage: () => this.#document.save(),
       releasePackage: () => this.#document.release(),
       openLibrary: () => this.#document.openLibrary(),
-      openLibraryTheme: (id) => this.#document.openLibraryTheme(id),
+      openLibraryTheme: (id, onAccepted) =>
+        this.#document.openLibraryTheme(id, onAccepted),
       saveLibrary: () => this.#document.saveLibrary(),
       // The three constructions the shell dispatches are wrapped in the one
       // owner of a construction's refusal (`new-object-panel.ts`), because the

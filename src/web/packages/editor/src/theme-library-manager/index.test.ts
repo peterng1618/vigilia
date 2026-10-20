@@ -370,6 +370,27 @@ describe("ThemeLibraryManager", () => {
     expect(onOpenTheme).not.toHaveBeenCalled();
   });
 
+  it("reports the accepted replacement between the question and the read", async () => {
+    // The store leaves its own mode on this callback (A.7d, F2), so its two
+    // halves are the claim: a cancelled question must move no surface, and an
+    // agreed one has to move it before the document is read — a mount that
+    // happens first measures a body that is still `hidden`.
+    const order: string[] = [];
+    const open = vi.fn(async () => {
+      order.push("read");
+      return { envelope, assets: {}, base: "base-from-open" };
+    });
+    const client = { list: async () => [], open, save: async () => "base" };
+
+    const refused = harness({ confirm: async () => false, client });
+    await refused.manager.openById("living-room", () => order.push("accepted"));
+    expect(order).toEqual([]);
+
+    const agreed = harness({ confirm: async () => true, client });
+    await agreed.manager.openById("living-room", () => order.push("accepted"));
+    expect(order).toEqual(["accepted", "read"]);
+  });
+
   it("stores the picture beside the document, and a picture that fails does not fail the save", async () => {
     const test = harness({ picture: async () => PNG });
     test.saveThumbnail.mockRejectedValueOnce(new Error("no room"));

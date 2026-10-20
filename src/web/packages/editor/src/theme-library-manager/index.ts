@@ -186,10 +186,15 @@ export class ThemeLibraryManager {
    * to draw, and it replaces the open document just as the chooser's own answer
    * does — which is why the question and the base's bookkeeping are here rather
    * than only on the road through `open()`.
+   *
+   * **`onAccepted` runs between the question and the read**, so the caller's own
+   * step — the store leaving its mode — happens only for an open that will
+   * happen, and a cancelled question moves nothing.
    */
-  async openById(id: string): Promise<void> {
+  async openById(id: string, onAccepted?: () => void): Promise<void> {
     const options = this.#options;
     if (!(await options.confirmReplacement())) return;
+    onAccepted?.();
     try {
       await this.#openStored(this.#client(), id);
     } catch (error) {

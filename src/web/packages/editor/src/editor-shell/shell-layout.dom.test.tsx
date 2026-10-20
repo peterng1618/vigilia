@@ -20,6 +20,7 @@ import {
   type ProductShortcutId,
   type ShortcutBinding,
 } from "../shortcut-manager/index.js";
+import { DARK_GROUND, fixtureEntry } from "../store-mode/item-fixture.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
@@ -1490,6 +1491,93 @@ it("offers the three modes and marks the active one", async () => {
   expect(root.querySelector<HTMLElement>(".editor-shell-body")?.hidden).toBe(
     false,
   );
+
+  layout.destroy();
+});
+
+/**
+ * **A declined open leaves the author where they were** (A.7d, F2).
+ *
+ * The mode moves on the callback the store's open is handed, and the library
+ * manager calls that callback between the replacement question and the read —
+ * so an author who cancels the discard prompt stays in the store, rather than
+ * being moved into the editor on their previous document. The second half is
+ * what makes the first a reading: the same click, on a session that reports the
+ * acceptance, does move the shell.
+ */
+it("moves the shell only when the open's replacement is accepted", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).startsWith("/api/themes")) {
+        return new Response(
+          JSON.stringify({
+            themes: [
+              fixtureEntry({
+                id: "store-open-declined",
+                name: "Declined theme",
+                ground: DARK_GROUND,
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          lan: false,
+          address: null,
+          port: null,
+          refusal: null,
+          sessions: [],
+        }),
+        { status: 200 },
+      );
+    }),
+  );
+
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  await act(async () => modeSegments(root)[1]?.click());
+  const openControl = (): HTMLButtonElement | null =>
+    root.querySelector<HTMLButtonElement>(
+      "[data-vigilia-store-cell-action='open']",
+    );
+  await vi.waitFor(() =>
+    expect(openControl(), "the store drew no cell to open").not.toBeNull(),
+  );
+  const press = async (): Promise<void> => {
+    const button = openControl();
+    if (button === null) throw new Error("the store drew no cell to open");
+    await act(async () => button.click());
+  };
+
+  // Declined: the session reports nothing, which is what `openById` does when
+  // the author cancels the replacement question.
+  const declining = facade();
+  layout.setBridge(bridgeStub({ session: declining }), viewStub());
+  await press();
+  expect(
+    declining.openLibraryTheme,
+    "the store's open never reached the session",
+  ).toHaveBeenCalled();
+  expect(
+    chosen(root),
+    "a declined open moved the shell out of the store",
+  ).toEqual(["false", "true", "false"]);
+
+  // Accepted: the same click, on a session that reports the answer.
+  const accepting = facade();
+  vi.mocked(accepting.openLibraryTheme).mockImplementation(
+    async (_id, accepted) => accepted?.(),
+  );
+  layout.setBridge(bridgeStub({ session: accepting }), viewStub());
+  await press();
+  expect(chosen(root), "an accepted open left the shell in the store").toEqual([
+    "true",
+    "false",
+    "false",
+  ]);
 
   layout.destroy();
 });

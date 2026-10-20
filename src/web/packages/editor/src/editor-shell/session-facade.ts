@@ -19,8 +19,10 @@ export interface EditorActionFacade {
   releasePackage(): Promise<void>;
   openLibrary(): Promise<void>;
   /** One theme the library already holds, by id: the store's own route, which
-   *  has read the theme's name off the listing it drew. */
-  openLibraryTheme(id: string): Promise<void>;
+   *  has read the theme's name off the listing it drew. `onAccepted` runs once
+   *  the replacement question is answered and before the theme is read, so a
+   *  caller that must move a surface moves it only for an open that happens. */
+  openLibraryTheme(id: string, onAccepted?: () => void): Promise<void>;
   saveLibrary(): Promise<void>;
   addText(): void;
   /** The canvas context menu's route to a primitive; the Add pane's own
