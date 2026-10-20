@@ -224,7 +224,8 @@ dependencies. Re-review their licences if Vigilia starts shipping them.
 Before publishing, audit the complete runtime/transitive graph and ship every
 required licence/NOTICE text. Verify new dependencies from primary/package
 metadata when adding them. This is the closure half of the scope stated at the
-top of this file: the tables and sections above are the direct-dependency
-inventory, and the transitive graph is enumerated at release by this rule and by
-the release rule in
+top of this file: the runtime/editor table and the build/test paragraph are the
+direct-dependency inventory, while the vendored-source, runtime-icon and
+bundled-asset sections are not dependencies and fall outside it. The transitive
+graph is enumerated at release by this rule and by the release rule in
 [`docs/engineering/dependencies.md`](docs/engineering/dependencies.md).

@@ -4,10 +4,11 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 
 Scope, stated in `THIRD-PARTY-NOTICES.md`: the packages a workspace
 `package.json` declares directly, never the installed closure, `@vigilia/`
-workspace packages excluded. Every package recorded below is one a manifest
-declares — nothing reached only transitively is listed, and not every declared
-package is listed here — and the closure half is this file's own **Release
-rule** below.
+workspace packages excluded. The **Declared dependencies** table below lists
+what the manifests declare — nothing reached only transitively is in it, and not
+every declared package is listed — while the **Vendored source** table is
+outside that scope, recording source copied into the tree that no manifest
+declares. The closure half is this file's own **Release rule** below.
 
 ## Declared dependencies
 
