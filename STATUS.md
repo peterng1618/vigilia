@@ -18,15 +18,15 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Fix round 2 on A.4b** (fixing `c8f4adf9`): `unclassified` is not a colour-mode value — an unclassified theme carries none, so it is reachable under "any" and under no other value, including a selection naming it (spec, "Finding a theme").
-- **The gallery's failed picture is keyed by the address *and* the theme's own `updatedAt`**, which is what a save changes: a save that stores a thumbnail now draws it, while a re-listing that changed nothing does not ask again.
-- **The host's ground has a gradient case**: `cssArtboardPaint`'s gradient branch is asserted through a palette entry, as `linear-gradient(90deg, #101014 0%, #2b2b3a 100%)`, where every earlier case reached only the solid branch.
-- **Evidence**: the three suites 78 passed exit 0; the F5 red proof (the old colour-mode carry put back) failed exactly the unclassified case, exit 1, restored byte-identical by `cmp`; `typecheck` and `biome check ..` (716 files) exit 0; `design:check` still the `vg-626` baseline (remainder 20); `status:check` exit 0.
-- **Two controller commits land R116 and its register move**: the plan's A.10 is amended to scope the removal to the section (`1897c11e`), and `vg-633` moves to the archive as `verified` with the check that proves it (`eefc38c9`); issue 43 closed naming both.
+- **Task A.4b is complete** (`9fda14c3`, after `c8f4adf9`): the local item source and the gallery — `localThemeSource` reads the listing with no `open()` call at all, and `Gallery` draws the drawing's cell.
+- **The facet predicate is the spec's, not R112's**: OR within a facet, AND across facets, **except Sensors and Shape, which are AND** (Shape's three groups AND with each other and OR within themselves), and `unclassified` is a colour mode nobody can ask for.
+- **The ground is derived where the envelope is** (R114): the host's `entryFor` fills it beside `facets` and `costs`, and a board with media behind it has an absent ground rather than the token's paint.
+- **The gallery's failed picture is keyed by the address *and* the theme's `updatedAt`**, which is what a save changes; and the host's ground has its first gradient case.
+- **Evidence**: three suites 78 passed exit 0 and the whole unit suite 279 files / 3804 tests exit 0, both from the re-review's own runs; red proofs for the flat OR, the latched picture, the per-item `open()` and the colour-mode carry, each restored byte-identical by `cmp`; `typecheck`, `biome check ..` (716 files) and `status:check` exit 0; `design:check` at its `vg-626` baseline (remainder 20).
 
 ## Next
 
-1. **A.1–A.4b have landed; A.4b is committed (`c8f4adf9`) and under scoped re-review**, and A.5 (paging) is next. A.4 met the wall A.2's search well hit and turned it into a design-language value (the grid's 272px minimum) rather than a raised ceiling.
+1. **A.1–A.4b are complete; dispatch A.5 (paging) next**, then A.6–A.10. A.4 met the wall A.2's search well hit and turned it into a design-language value (the grid's 272px minimum) rather than a raised ceiling.
 2. **`vg-633` is ruled (R116) and archived `verified`**, ahead of A.10 rather than after it: A.10 removes `/settings`'s Themes section only, `theme-list.js` is untouched so `/library` keeps the display column (per-display's Task 4.3) and the cost note (Task 4.8), and their spec cases move to a `/library` case instead of being deleted.
 3. Decide whether `vg-626` (the red `design:check`) runs alongside phase A or gates it; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 4. Resume the drain at Task 23.4 when the store plan stops; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
