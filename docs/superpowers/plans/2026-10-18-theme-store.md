@@ -690,10 +690,22 @@ git commit -m "feat(store): assign a theme to a display from its cell"
 - Consumes: nothing.
 - Produces: no exported interface.
 
+**The removal is `/settings`'s Themes section, and nothing else (R116, resolving
+`vg-633`).** `/library` is the host's own *Choose a theme* page and it renders the same
+list from the same `/settings/theme-list.js`, so `theme-list.js` is **not touched** and
+the per-display plan's display column (Task 4.3) and cost note (Task 4.8) stay on
+`/library` by construction. `host-settings.spec.ts` is the **only** spec asserting either
+of them (`#themes [data-display]`, `.theme-cost-note`), and this task edits that file —
+so those cases **move to a `/library` case rather than being deleted**, and the removal
+must not take the last test of a landed feature with it. The editor raises no cost
+warning (A.9).
+
 - [ ] **Step 1: Write the failing test**
 
 Browser proof: `/settings` renders no theme list, and `/library` still chooses a
-theme and still works in a plain browser with no editor open.
+theme and still works in a plain browser with no editor open — **including its display
+column, one row per display the host holds, and the cost note on the row of a theme
+that carries one.**
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -706,6 +718,11 @@ rebuilt bundles. Expected: FAIL — the theme list is still rendered.
 no editor open, can reach, so removing the list is not removing the path. What
 leaves is the duplicate listing: the store mode's local tab is where a theme is
 listed, opened, activated, exported or removed.
+
+**The list itself is not what is duplicate — the section is.** `/settings` and `/library`
+both call `themeList`, and what `/settings` loses is its *Themes* section, heading
+included. `theme-list.js` stays as it is: it is `/library`'s renderer, and the display
+column and cost note on its rows are `/library`'s too.
 
 - [ ] **Step 4: Run it to verify it passes**
 
