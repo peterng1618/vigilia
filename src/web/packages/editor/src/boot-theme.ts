@@ -3,6 +3,7 @@ import {
   type ThemeLibraryClient,
   type ThemeLibraryContent,
   type ThemeLibraryEntry,
+  ThemeTooLargeError,
   ThemeValidationError,
 } from "./theme-library-client.js";
 
@@ -42,12 +43,16 @@ import {
  * gets, so the editor mounted the template and reported success over a document
  * it never opened (`vg-110`); `Content | undefined` let every later reader drop
  * the report again. `invalid` carries the validator's own issues, and a caller
- * that ignores it will not compile (ADR-0043).
+ * that ignores it will not compile (ADR-0043). `too-large` is the same defect
+ * one trigger over — a stored document past the store's size bound — and it is
+ * its own kind rather than `none` for the same reason (`vg-409`,
+ * `decisions/0084`).
  */
 export type BootThemeOutcome =
   | { readonly kind: "opened"; readonly content: ThemeLibraryContent }
   | { readonly kind: "none" }
-  | { readonly kind: "invalid"; readonly issues: readonly ValidationIssue[] };
+  | { readonly kind: "invalid"; readonly issues: readonly ValidationIssue[] }
+  | { readonly kind: "too-large" };
 
 export async function bootTheme(
   search: string,
@@ -63,7 +68,8 @@ export async function bootTheme(
 /**
  * An id that cannot be opened is nothing to open, not a boot failure — but a
  * theme the host holds and refuses is its own answer: `invalid`, carrying the
- * reason, so the caller can say why instead of reporting a blank success.
+ * validator's reason, or `too-large`, so the caller can say why instead of
+ * reporting a blank success.
  */
 async function openTheme(
   client: ThemeLibraryClient,
@@ -72,9 +78,13 @@ async function openTheme(
   try {
     return { kind: "opened", content: await client.open(id) };
   } catch (error) {
-    return error instanceof ThemeValidationError
-      ? { kind: "invalid", issues: error.issues }
-      : { kind: "none" };
+    if (error instanceof ThemeValidationError) {
+      return { kind: "invalid", issues: error.issues };
+    }
+    if (error instanceof ThemeTooLargeError) {
+      return { kind: "too-large" };
+    }
+    return { kind: "none" };
   }
 }
 

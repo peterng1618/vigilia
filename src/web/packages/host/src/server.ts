@@ -72,6 +72,7 @@ import {
   ThemeAssetLimitError,
   ThemeConflictError,
   type ThemeStore,
+  ThemeTooLargeError,
   ThemeValidationError,
 } from "./themes/store.js";
 import { SHIPPED_TEMPLATES } from "./themes/templates.js";
@@ -873,18 +874,22 @@ export function createHostServer(options: HostServerOptions): HostServer {
   }
 
   /**
-   * The stored theme, with a document that exists but does not validate
-   * answered as the same absence one that is not there is. Every read that is
-   * not the open route wants this: a display, an asset lookup, the active-theme
-   * resolution and every existence check can serve neither, and a corrupt theme
+   * The stored theme, with a document that exists but cannot be served —
+   * one that does not validate, and one past the size bound — answered as the
+   * same absence one that is not there is. Every read that is not the open route
+   * wants this: a display, an asset lookup, the active-theme resolution and
+   * every existence check can serve neither, and a corrupt or oversized theme
    * must not turn a listing or a page into a 500. The open route reads the
-   * store directly so it can tell the two apart (ADR-0043).
+   * store directly so it can tell the three apart (decisions/0043, 0084).
    */
   async function readThemeOrAbsent(id: string): Promise<ThemeRecord> {
     try {
       return await themeStore.read(id);
     } catch (error) {
-      if (error instanceof ThemeValidationError) {
+      if (
+        error instanceof ThemeValidationError ||
+        error instanceof ThemeTooLargeError
+      ) {
         return undefined;
       }
       throw error;
@@ -2237,6 +2242,19 @@ export function createHostServer(options: HostServerOptions): HostServer {
               error: `Theme "${rawId}" is stored but does not validate.`,
               issues: error.issues,
             });
+            return;
+          }
+          // A stored document past the size the store will read is understood
+          // and too large to serve, which is the same 413 every other themes
+          // route answers an over-large thing with — and the author is told the
+          // theme is there, which is the half a 404 got wrong (vg-409,
+          // decisions/0043). RFC 9110 §15.5.14 frames 413 around *request*
+          // content and this is a stored document on a GET; the stretch is
+          // taken deliberately, because inventing a second size-ish status
+          // would be worse vocabulary than reusing this codebase's own
+          // (decisions/0084).
+          if (error instanceof ThemeTooLargeError) {
+            sendText(response, 413, error.message);
             return;
           }
           throw error;

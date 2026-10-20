@@ -172,6 +172,29 @@ export class ThemeValidationError extends Error {
 }
 
 /**
+ * A stored theme whose `theme.json` is past the size the store will read. Its
+ * own member of the family above rather than a {@link ThemeValidationError}:
+ * nothing about the document is invalid — the validator never runs, and the
+ * bound is the store's own, not the schema's — so dressing it as one would
+ * report a fault that does not exist. What it must not be either is the
+ * `undefined` an absent theme answers with, which is what told a reader a theme
+ * they can see on disk was not there (vg-409, decisions/0043).
+ *
+ * It carries no `issues`: there is no diagnosis to hand over, only the fact
+ * that the document is too large to open. The bound is named because shrinking
+ * below it is the one thing the author can do about it.
+ */
+export class ThemeTooLargeError extends Error {
+  constructor(id: string) {
+    super(
+      `"${id}" is stored but larger than the ${size(MAX_THEME_FILE_BYTES)} ` +
+        "the store will open.",
+    );
+    this.name = "ThemeTooLargeError";
+  }
+}
+
+/**
  * How a removal reaches the platform's trash. The default is the real one;
  * a test substitutes a rename so the store's own decisions can be told apart
  * from the operating system's.
@@ -543,12 +566,15 @@ function parseThemeDocument(id: string, bytes: Buffer): unknown {
 
 /**
  * The stored document, or `undefined` when the file is not there. A file that
- * *is* there and does not validate throws {@link ThemeValidationError} rather
- * than answering `undefined`: the two facts were indistinguishable to every
- * reader, and only the open path wants them apart (vg-110, ADR-0043).
+ * *is* there and cannot be read throws rather than answering `undefined`: the
+ * two facts were indistinguishable to every reader, and only the open path
+ * wants them apart (vg-110, vg-409, decisions/0043).
  *
- * The size bound still answers `undefined`: an over-large document is not a
- * validation failure, and naming it one here would be a different decision.
+ * Both refusals are typed and neither is the other: a document that does not
+ * validate is a {@link ThemeValidationError} carrying the validator's issues,
+ * and one past the size bound is a {@link ThemeTooLargeError}. The size bound is
+ * deliberately not a validation failure — the validator never sees the document
+ * — and it is deliberately not an absence either.
  */
 async function readStored(
   library: string,
@@ -561,7 +587,7 @@ async function readStored(
     return undefined;
   }
   if (bytes.byteLength > MAX_THEME_FILE_BYTES) {
-    return undefined;
+    throw new ThemeTooLargeError(id);
   }
   const validation = validateFabricThemeEnvelope(parseThemeDocument(id, bytes));
   if (!validation.ok) {
@@ -571,12 +597,12 @@ async function readStored(
 }
 
 /**
- * {@link readStored} with a present-but-invalid theme answered as the same
- * absence a missing one is. Every reader that treats "no theme I can serve" as
- * one answer uses this — the listing, a removal, and the previous document a
- * save is checked against. Only {@link ThemeStore.read} calls `readStored`
- * directly, because it is the one caller the two facts are different answers
- * for.
+ * {@link readStored} with a present-but-unreadable theme answered as the same
+ * absence a missing one is — a document that does not validate, and one past the
+ * size bound. Every reader that treats "no theme I can serve" as one answer uses
+ * this — the listing, a removal, and the previous document a save is checked
+ * against. Only {@link ThemeStore.read} calls `readStored` directly, because it
+ * is the one caller the two facts are different answers for.
  */
 async function readStoredOrAbsent(
   library: string,
@@ -585,7 +611,10 @@ async function readStoredOrAbsent(
   try {
     return await readStored(library, id);
   } catch (error) {
-    if (error instanceof ThemeValidationError) {
+    if (
+      error instanceof ThemeValidationError ||
+      error instanceof ThemeTooLargeError
+    ) {
       return undefined;
     }
     throw error;

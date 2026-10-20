@@ -74,6 +74,21 @@ export class ThemeValidationError extends Error {
   }
 }
 
+/**
+ * The host holds the theme and its stored document is past the size the store
+ * will read — a different answer from "no such theme", which is what the host
+ * used to give for both. The `413` the host answers carries no issues, because
+ * nothing about the document is invalid: the reason is its size, and that is
+ * the whole of it, so this is its own error rather than a validation failure
+ * (vg-409, decisions/0043, 0084).
+ */
+export class ThemeTooLargeError extends Error {
+  constructor(id: string) {
+    super(`"${id}" is stored but too large to open.`);
+    this.name = "ThemeTooLargeError";
+  }
+}
+
 /** The key `assign` takes for the theme a display holding no choice of its own
  *  falls to. The host owns this literal — `packages/host/src/settings/displays.ts`'s
  *  `DEFAULT_DISPLAY` — and this package does not depend on that one, so this is
@@ -223,6 +238,12 @@ export function createThemeLibraryClient(options?: {
             ? (body.issues as readonly ValidationIssue[])
             : [],
         );
+      }
+      // The theme is there and the reason is its size rather than its content,
+      // so it gets its own error instead of the not-found a dead id gets — the
+      // same half the 422 above fixed for validation (vg-409, decisions/0084).
+      if (response.status === 413) {
+        throw new ThemeTooLargeError(id);
       }
       if (!response.ok) {
         throw new Error(`Could not open theme "${id}" (${response.status}).`);

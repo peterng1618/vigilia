@@ -548,6 +548,45 @@ describe("Host theme routes", () => {
     expect(list.themes.map((entry) => entry.id)).not.toContain("broken");
   });
 
+  it("answers a stored theme past the size bound with 413, and keeps 404 for an absent one", async () => {
+    // vg-409: an over-large `theme.json` was answered as absence, so the author
+    // was told a theme they can see on disk does not exist and the editor
+    // reported success over it. The size refusal is its own answer now — 413,
+    // the status every other themes route gives an over-large thing — while
+    // every reader that can serve neither still sees the absence (0043, 0084).
+    const document = JSON.stringify(validEmptyAssetTheme.envelope);
+    await fs.mkdir(path.join(tmpDir, "oversized"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "oversized", "theme.json"),
+      document + " ".repeat(33 * 1024 * 1024 - document.length),
+    );
+
+    const oversized = await request(
+      hosted.server,
+      "GET",
+      "/api/themes/oversized",
+    );
+    expect(oversized.status).toBe(413);
+    // The refusal names the bound the author has to get under, which is the
+    // half a bare status would not carry.
+    expect(oversized.text()).toContain("33,554,432 bytes");
+
+    // A display's document route treats it as absent, like a corrupt theme: it
+    // can serve neither, and neither may turn a page into a 500.
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/oversized/document"))
+        .status,
+    ).toBe(404);
+
+    // And it is not a library line.
+    const list = (
+      await request(hosted.server, "GET", "/api/themes")
+    ).json() as {
+      themes: readonly { id: string }[];
+    };
+    expect(list.themes.map((entry) => entry.id)).not.toContain("oversized");
+  });
+
   it("refuses a save built from a document the stored theme has moved past", async () => {
     // Two tabs open the same theme; the first one saves an edit.
     const opened = await request(

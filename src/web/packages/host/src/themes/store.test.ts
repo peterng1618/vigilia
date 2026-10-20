@@ -17,6 +17,7 @@ import {
   type ThemeContent,
   ThemeIdTakenError,
   type ThemeStore,
+  ThemeTooLargeError,
   ThemeValidationError,
 } from "./store.js";
 
@@ -676,6 +677,41 @@ describe("ThemeStore", () => {
 
     // A theme that is not there is still `undefined`, not this error.
     expect(await store.read("not-there")).toBeUndefined();
+  });
+
+  it("throws the too-large error for a stored theme past the size bound", async () => {
+    // vg-409: an over-large `theme.json` answered the same `undefined` a missing
+    // file gets, so the open route said 404, `bootTheme` returned `none` and the
+    // editor mounted the template under "Editor ready" — over a document the
+    // author has on disk. It is the typed error now, its own member of the
+    // family above rather than a validation failure: the validator never sees
+    // this document, and the bound is the store's own (decisions/0043, 0084).
+    const store = createThemeStore(tmpDir);
+    await fs.mkdir(path.join(tmpDir, "oversized"), { recursive: true });
+    const document = JSON.stringify(envelopeFor("oversized", "Oversized"));
+    // Trailing whitespace keeps it valid JSON; the size is the whole point.
+    await fs.writeFile(
+      path.join(tmpDir, "oversized", "theme.json"),
+      document + " ".repeat(33 * 1024 * 1024 - document.length),
+    );
+
+    await expect(store.read("oversized")).rejects.toThrow(ThemeTooLargeError);
+
+    // The listing and the write base still see the absence they always did: a
+    // theme the store cannot serve is not a library line, and a save over one
+    // must not be refused for a document it is replacing.
+    expect((await store.list()).map((entry) => entry.id)).not.toContain(
+      "oversized",
+    );
+    await expect(
+      store.write("oversized", {
+        envelope: envelopeFor("oversized", "Shrunk"),
+        assets: {},
+      }),
+    ).resolves.toMatchObject({ id: "oversized" });
+    expect((await store.read("oversized"))?.envelope.metadata?.name).toBe(
+      "Shrunk",
+    );
   });
 
   it("keeps an invalid theme out of the listing, and answers a save over it", async () => {

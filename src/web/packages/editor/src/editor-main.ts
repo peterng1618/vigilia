@@ -545,6 +545,21 @@ async function start(): Promise<void> {
         .join(" ")}`;
       return;
     }
+    // A theme the URL named that is stored but past the size the host will read
+    // is not a blank success either: the author is told the saved theme is too
+    // large to open, over the template that stands in for the document they
+    // asked for (vg-409, decisions/0084).
+    case "too-large": {
+      const theme = createNewFabricTheme();
+      await mount({
+        input: envelopeInputFor(theme),
+        envelope: theme,
+        assets: await starterAssets(),
+      });
+      status.textContent =
+        "Could not open the saved theme: it is too large to open.";
+      return;
+    }
     case "none": {
       const theme = createNewFabricTheme();
       await mount({

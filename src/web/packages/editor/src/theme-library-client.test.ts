@@ -4,6 +4,7 @@ import {
   createThemeLibraryClient,
   ThemeConflictError,
   type ThemeLibraryClient,
+  ThemeTooLargeError,
   ThemeValidationError,
 } from "./theme-library-client.js";
 
@@ -347,6 +348,36 @@ describe("ThemeLibraryClient", () => {
     await expect(notFound.open("gone")).rejects.not.toThrow(
       ThemeValidationError,
     );
+  });
+
+  it("carries a stored theme past the size bound as its own error, not a validation failure", async () => {
+    // vg-409: the host answers 413 for a theme that is there and too large to
+    // read, where the 404 stays for one that is not. Its own error rather than
+    // the validation one above, because nothing about the document is invalid —
+    // the validator never sees it (decisions/0043, 0084).
+    const mockFetch = vi.fn(
+      async () =>
+        new Response('"huge" is stored but larger than 32 MB.', {
+          status: 413,
+        }),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    const refusal = client.open("huge");
+    await expect(refusal).rejects.toThrow(ThemeTooLargeError);
+    const error = await refusal.catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(ThemeTooLargeError);
+    expect(error).not.toBeInstanceOf(ThemeValidationError);
+
+    // The 404 is a different answer again, and neither of the two above.
+    const notFound = createThemeLibraryClient({
+      fetch: vi.fn(
+        async () => new Response("Not Found", { status: 404 }),
+      ) as unknown as typeof fetch,
+    });
+    await expect(notFound.open("gone")).rejects.not.toThrow(ThemeTooLargeError);
   });
 
   it("assigns to the display it was given, and to no other", async () => {

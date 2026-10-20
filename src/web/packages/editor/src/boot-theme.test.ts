@@ -4,6 +4,7 @@ import { bootTheme } from "./boot-theme.js";
 import {
   type ThemeLibraryClient,
   type ThemeLibraryContent,
+  ThemeTooLargeError,
   ThemeValidationError,
 } from "./theme-library-client.js";
 
@@ -144,6 +145,29 @@ describe("the editor on a URL that names a theme", () => {
     }
     expect(outcome.issues[0]?.message).toContain("schemaVersion is required");
     expect(client.open).toHaveBeenCalledExactlyOnceWith("broken-theme");
+  });
+
+  it("names an over-large saved theme instead of reporting a blank success", async () => {
+    // vg-409: the same defect as the case above, one trigger over. A stored
+    // `theme.json` past the host's size bound was answered as absence, so the
+    // editor mounted the template and wrote "Editor ready" over a document the
+    // author has on disk. The outcome is its own kind, not `none` — the caller
+    // must say the theme is too large rather than that nothing was asked for
+    // (decisions/0043, 0084).
+    const client: ThemeLibraryClient = {
+      list: vi.fn(async () => []),
+      open: vi.fn(async () => {
+        throw new ThemeTooLargeError("huge-theme");
+      }),
+      save: vi.fn(async () => "base-after-save"),
+      assign: vi.fn(async () => undefined),
+      listDisplays: vi.fn(async () => ({ default: null, displays: [] })),
+    };
+
+    const outcome = await bootTheme("?theme=huge-theme", client);
+
+    expect(outcome.kind).toBe("too-large");
+    expect(client.open).toHaveBeenCalledExactlyOnceWith("huge-theme");
   });
 
   it("opens nothing when the theme this host does not have", async () => {
