@@ -2,10 +2,12 @@
 
 Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before release.
 
-Row scope is the convention `THIRD-PARTY-NOTICES.md` states: **direct dependencies only**
-— one row per package a workspace `package.json` declares, never the installed
-closure. The tables here follow it, and the closure half is this file's own
-**Release rule** below.
+Scope, stated in `THIRD-PARTY-NOTICES.md`: the packages a workspace
+`package.json` declares directly, never the installed closure, `@vigilia/`
+workspace packages excluded. Every package recorded below is one a manifest
+declares — nothing reached only transitively is listed, and not every declared
+package is listed here — and the closure half is this file's own **Release
+rule** below.
 
 ## Declared dependencies
 

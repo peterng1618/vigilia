@@ -4,12 +4,15 @@ Vigilia is MIT licensed; see [LICENSE](LICENSE). This is the current development
 inventory, not a release-grade transitive audit. Provenance:
 [`docs/engineering/dependencies.md`](docs/engineering/dependencies.md).
 
-**The rows below list direct dependencies only** — one row per package a
-workspace `package.json` declares in `dependencies` or `devDependencies`, never
-the installed closure. A package reached only through another package's own
-dependencies has no row here, and its absence is not a missing notice; the
-closure is enumerated at release time, by the release rule in
-[`docs/engineering/dependencies.md`](docs/engineering/dependencies.md).
+**Scope: direct dependencies only — the packages a workspace `package.json`
+declares in `dependencies` or `devDependencies`, `@vigilia/` workspace packages
+excluded — never the installed closure.** A package reached only through another
+package's own dependencies has no entry here, and its absence is not a missing
+notice; the closure is enumerated at release time, by the release rule in
+[`docs/engineering/dependencies.md`](docs/engineering/dependencies.md). **The
+form varies by section, not by package**: a table for the runtime/editor
+dependencies and a paragraph for the build/test ones, so an entry is a row only
+where its section is one.
 
 ## Runtime/editor
 
@@ -221,5 +224,7 @@ dependencies. Re-review their licences if Vigilia starts shipping them.
 Before publishing, audit the complete runtime/transitive graph and ship every
 required licence/NOTICE text. Verify new dependencies from primary/package
 metadata when adding them. This is the closure half of the scope stated at the
-top of this file: the tables are the direct-dependency inventory, and the
-transitive graph is enumerated here, at release, and nowhere else.
+top of this file: the tables and sections above are the direct-dependency
+inventory, and the transitive graph is enumerated at release by this rule and by
+the release rule in
+[`docs/engineering/dependencies.md`](docs/engineering/dependencies.md).
