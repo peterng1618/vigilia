@@ -34,7 +34,7 @@ is the tension this note resolves.
 ## Rung 1 — Vigilia
 
 Searched: `theme/fabric-envelope-validate.ts` in full (`chartPaintReferences`,
-its `isRecord` guard, the six call sites in `validateFabricThemeEnvelope`);
+its `isRecord` guard, every check `validateFabricThemeEnvelope` calls);
 `charts/settings-fields.ts` in full (both descriptor interfaces,
 `CHART_SETTINGS_FIELDS`, `CHART_PAINT_FIELDS`, `settingsFieldsFor`,
 `chartPaintFieldsFor`, `settingsKeyFor`, and the header's own *"Why the validator
@@ -46,8 +46,9 @@ does not read this table"*); every non-test consumer of both accessors (`rg` ove
 (`charts/pie.ts` `clampPercent`, `data/store.ts`'s window floor);
 `schema/theme-document.schema.json`; the register row `vg-348`.
 
-Found: **the owner exists, the refusal does not.** The table declares 34 scalar
-descriptors and 9 paint descriptors across four families, and its `min`/`max` are
+Found: **the owner exists, the refusal does not.** The table declares 52 scalar
+descriptors (gauge 11, line 15, bar 13, pie 13) and 9 paint descriptors across
+four families, and its `min`/`max` are
 read today by one non-test consumer (`editor/src/chart-manager/panel.ts`) — the
 inspector's control bounds. No path reads them as a document contract. The v1
 validator that did (`theme/validate.ts`, `validateSettingsRange`) **is gone**:
@@ -83,7 +84,7 @@ installed set is `@biomejs/biome`, `@google/design.md`, `@playwright/mcp`,
 There is no `ajv`, no `zod`, no `valibot`, no `io-ts`, no `typebox`. The only
 shipped runtime dependency this package reaches is `fabric` and `echarts` (the
 option builders). Adding a validator would be a new shipped dependency for a
-check that is four `if`s over a table already in memory — which rung 5 rejects.
+check that is a handful of `if`s over a table already in memory — which rung 5 rejects.
 
 ## Rung 3 — platform
 
@@ -180,7 +181,7 @@ copies (`.e2e-host-app/themes/` and
 `metadata.locale` and a missing `themeLanguage`). Those five red documents are
 the control: the change must add no chart-settings issue to any of them, and it
 does not — every issue list is identical before and after. The remaining
-thirteen documents carry no chart. Every chart settings bag on disk is inside the
+fourteen documents carry no chart. Every chart settings bag on disk is inside the
 descriptor table's own key set and inside every descriptor's range — which is
 what the binding constraint below turns into a re-runnable check.
 
@@ -283,10 +284,13 @@ check.
   disabled, and the restore was confirmed with `cmp` rather than `git diff`.
 - **The binding constraint**: the on-disk sweep is green on every document that
   was green before — re-run with the `line` pair included, and every verdict is
-  unchanged: the three chart-carrying documents still `ok: true`, and the four
-  already red for `metadata.locale` / `artboard.barColor` / `backgroundMedia.fit`
-  gain no chart-settings issue. The starter dashboard and the card library keep
-  their existing `ok: true` assertions in the unit suite.
+  unchanged: of the **four** chart-carrying documents, the **two** that read
+  `ok: true` still do (`.e2e-display-app/themes/vigilia-new-theme`,
+  `.e2e-host-app/themes/e2e-chart`), and the **five** already red for
+  `metadata.locale` / `artboard.barColor` / `backgroundMedia.fit` — the two
+  `vigilia-demo-dashboard` copies among them — gain no chart-settings issue. The
+  starter dashboard and the card library keep their existing `ok: true`
+  assertions in the unit suite.
 - **Not verified, and accepted as such**: the on-disk sweep is a point-in-time
   reading over untracked `.e2e-*` trees rather than a test in the gate, and there
   is no browser evidence — a loader refusal changes nothing that is drawn, so the
