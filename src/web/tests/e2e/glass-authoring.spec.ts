@@ -10,6 +10,7 @@ import {
   glassStripesPng,
 } from "./glass-fixture.js";
 import { assertBlur, readGlass } from "./glass-probe.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
@@ -44,14 +45,7 @@ async function openFixture(page: Page): Promise<void> {
     throw new Error(`the glass fixture is invalid: ${fixture.message}`);
 
   await page.goto(EDITOR);
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name: "glass.vigilia-theme",
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(fixture.bytes),
-  });
-  await expect(page.locator("#status-message")).toHaveText(
-    "Opened glass.vigilia-theme",
-  );
+  await openThemeFromStore(page, storedThemeOfPackage(fixture.bytes));
 }
 
 function activeId(page: Page): Promise<string | undefined> {

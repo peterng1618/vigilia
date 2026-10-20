@@ -10,6 +10,7 @@ import {
   worldRightOf,
 } from "./editor-canvas.js";
 import { SNAPPING_ACCENT } from "./snapping-fixture.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 // Built editor E2E host, started by Playwright config.
@@ -139,12 +140,7 @@ async function openFixture(
   });
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error(result.message);
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name: `snapping-${kind}-${mode}.vigilia-theme`,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(result.bytes),
-  });
-  await expect(page.locator("#status")).toContainText("Opened snapping-");
+  await openThemeFromStore(page, storedThemeOfPackage(result.bytes));
 }
 
 /** The id of whatever the canvas currently has selected. */
@@ -1010,14 +1006,7 @@ async function openNestedFixture(page: Page): Promise<void> {
   });
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error(result.message);
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name: "snapping-part-level.vigilia-theme",
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(result.bytes),
-  });
-  await expect(page.locator("#status")).toContainText(
-    "Opened snapping-part-level",
-  );
+  await openThemeFromStore(page, storedThemeOfPackage(result.bytes));
 }
 
 /**

@@ -18,6 +18,7 @@ import {
   EDGE_OBJECT_FILL,
   REFERENCE_BADGE_SVG,
 } from "./reference-theme-fixture.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
@@ -306,17 +307,33 @@ async function savePackage(page: Page): Promise<{
   };
 }
 
-async function importPackage(
+/** Opens a package the case just exported, through the store's own control. */
+async function openPackage(page: Page, bytes: Uint8Array): Promise<void> {
+  await openThemeFromStore(page, storedThemeOfPackage(bytes));
+}
+
+/**
+ * Brings a file in through **File ▸ Import package**, the control an author has.
+ *
+ * An import is a library write, so a file that is not a package is refused and
+ * the open document is left alone — which is the property the case below
+ * measures. Driving the row and the chooser it opens, rather than the hidden
+ * input, is what makes the control reachable in the test as it is in the
+ * product.
+ */
+async function importFile(
   page: Page,
   name: string,
-  bytes: Buffer,
+  buffer: Buffer,
 ): Promise<void> {
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Import package" }).click();
+  await (await chooser).setFiles({
     name,
     mimeType: "application/octet-stream",
-    buffer: bytes,
+    buffer,
   });
-  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
 }
 
 function activeId(page: Page): Promise<string | undefined> {
@@ -492,7 +509,7 @@ test.describe("the reference composition, authored", () => {
     expect(reopened).not.toContain(authored);
 
     // **Reopen the saved document.** Its own composition, bounds and all.
-    await importPackage(page, "mine.vigilia-theme", saved.bytes);
+    await openPackage(page, saved.bytes);
     const restored = await sceneFacts(page);
     expect(idsOf(restored)).toEqual(expect.arrayContaining([...REFERENCE_IDS]));
     const restoredAuthored = restored.find((fact) => fact.id === authored);
@@ -698,7 +715,7 @@ test.describe("the reference composition, authored", () => {
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
-    await importPackage(page, "journey.vigilia-theme", saved.bytes);
+    await openPackage(page, saved.bytes);
     await expect
       .poll(async () => idsOf(await sceneFacts(page)), { timeout: 15_000 })
       .toEqual(ids);
@@ -736,20 +753,20 @@ test.describe("the reference composition, authored", () => {
     expect(before).toBeDefined();
 
     // **Not a package at all.**
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "broken.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from("this is not a zip archive"),
-    });
-    await expect(page.locator("#status")).toContainText("Could not open:");
+    await importFile(
+      page,
+      "broken.vigilia-theme",
+      Buffer.from("this is not a zip archive"),
+    );
+    await expect(page.locator("#status")).toContainText("Could not import:");
     expect(idsOf(await sceneFacts(page))).toContain(panelId);
 
     // **A package whose envelope the validator refuses.** Written without
     // `writeThemePackage`, so the bytes are a real zip around a bad document.
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "invalid.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from(
+    await importFile(
+      page,
+      "invalid.vigilia-theme",
+      Buffer.from(
         zipSync({
           "manifest.json": strToU8(
             JSON.stringify({
@@ -761,8 +778,8 @@ test.describe("the reference composition, authored", () => {
           "theme.json": strToU8(JSON.stringify({ schemaVersion: 2 })),
         }),
       ),
-    });
-    await expect(page.locator("#status")).toContainText("Could not open:");
+    );
+    await expect(page.locator("#status")).toContainText("Could not import:");
 
     // **The work is still there, still editable, and still saveable** — the
     // property "errors preserve recoverable work" actually means.
@@ -807,20 +824,13 @@ test.describe("the reference composition, authored", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await waitForBridge(page);
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "broken-font.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from(broken.bytes),
-    });
+    await openThemeFromStore(page, storedThemeOfPackage(broken.bytes));
     // **The face really was refused.** `loadFontAssets` catches the rejection
     // and the document opens regardless. What is missing is the *report*: the
-    // loader writes its message to the status line and the picker's
-    // `Opened <name>` overwrites it, so the author is told the package opened
+    // loader writes its message to the status line and the store's own
+    // `Opened <name>` overwrites it, so the author is told the theme opened
     // and nothing else. Measured for the report; the observable truth here is
     // that no face was registered.
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened broken-font.vigilia-theme",
-    );
     const faces = await page.evaluate(() =>
       [...document.fonts].map((face) => face.family),
     );
@@ -930,14 +940,7 @@ test.describe("the reference composition, authored", () => {
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "undeclared.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from(built.bytes),
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened undeclared.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(built.bytes));
     await waitForBridge(page);
 
     await openPane(page, "Composition");
@@ -1201,14 +1204,7 @@ async function openCaptureFixture(page: Page): Promise<Buffer> {
   await expect(
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name: "capture.vigilia-theme",
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(built.bytes),
-  });
-  await expect(page.locator("#status-message")).toHaveText(
-    "Opened capture.vigilia-theme",
-  );
+  await openThemeFromStore(page, storedThemeOfPackage(built.bytes));
   await waitForBridge(page);
   await page.waitForFunction(
     () => {

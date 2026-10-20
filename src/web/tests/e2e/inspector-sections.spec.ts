@@ -29,6 +29,7 @@ import {
   selectLayer,
 } from "./rebuild-driver.js";
 import { choosePalette } from "./shell-palette.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -404,17 +405,8 @@ async function savePackage(page: Page): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-async function openPackage(
-  page: Page,
-  name: string,
-  bytes: Buffer,
-): Promise<void> {
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: bytes,
-  });
-  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
+async function openPackage(page: Page, bytes: Buffer): Promise<void> {
+  await openThemeFromStore(page, storedThemeOfPackage(bytes));
 }
 
 /**
@@ -981,7 +973,7 @@ test.describe("the per-kind inspector column", () => {
     });
 
     const bytes = await savePackage(page);
-    await openPackage(page, "animation.vigilia-theme", bytes);
+    await openPackage(page, bytes);
     // By the name the author gave it: a reopened document's ids are the
     // document's own, so the tree row is the name the panel paints.
     await selectLayer(page, "line");

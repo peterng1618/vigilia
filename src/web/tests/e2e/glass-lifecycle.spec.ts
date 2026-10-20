@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
@@ -36,14 +37,7 @@ test.describe("glass lifecycle in the real editor", () => {
     if (!fixture.ok) throw new Error(fixture.message);
 
     await page.goto(EDITOR);
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "glass.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from(fixture.bytes),
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened glass.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(fixture.bytes));
     // The media must have real pixels, or a panel has no backdrop to blur and
     // the comparison below would be measuring an empty scene.
     await page.waitForFunction(

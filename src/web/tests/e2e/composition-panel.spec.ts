@@ -7,7 +7,6 @@ import {
 } from "./composition-panel-fixture.js";
 import {
   type ArtboardRect,
-  answerDialogIfShown,
   captureVisualReview,
   clientOfScene,
   enterLayer,
@@ -21,6 +20,7 @@ import {
 } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { rulePx } from "./shell-tokens.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -712,30 +712,17 @@ function packageBytes(
  * nobody can take. That is the failure `chooseAssetFile` was written about, met
  * from the other side.
  *
- * The route below is the one an author has: `File ▸ Open package` calls
- * `session.openPackage()`, which asks the dirty-document guard (the editor opens
- * on the starter, which nobody has saved) and then clicks the hidden
- * `input[accept=".vigilia-theme"]`. Answering the **chooser event** it opens,
- * rather than `setInputFiles` on the input, is what keeps the menu item and the
- * guard inside the path being measured.
+ * The route below is the one an author has: the store's own **Open in editor**
+ * control over a stubbed library, which is where the document route lives now
+ * that `File ▸ Import package` writes into the library instead. The milliseconds
+ * are the control's click to the status line — the same span the picker's own
+ * measurement covered.
  */
 async function openPackageWithTiming(
   page: Page,
-  name: string,
   bytes: Buffer,
 ): Promise<number> {
-  const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "File", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Open package" }).click();
-  await answerDialogIfShown(page, "Discard");
-  const started = Date.now();
-  await (await chooser).setFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: bytes,
-  });
-  await expect(page.locator("#status")).toContainText(`Opened ${name}`);
-  return msSince(started);
+  return openThemeFromStore(page, storedThemeOfPackage(bytes));
 }
 
 /** The editor on its own viewport, with nothing selected and nothing replaced. */
@@ -977,10 +964,8 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
   // it states its own viewport and measures under it.
   await openBareEditor(page);
 
-  const name = "two-hundred-loose-shapes.vigilia-theme";
   const msToOpened = await openPackageWithTiming(
     page,
-    name,
     packageBytes("two-hundred-loose-shapes", looseGrid(200)),
   );
 
@@ -1159,7 +1144,6 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
 
   await openPackageWithTiming(
     page,
-    "two-hundred-with-a-group.vigilia-theme",
     packageBytes(
       "two-hundred-with-a-group",
       [...looseGrid(199), partGroup("group-large", 700, 560)],

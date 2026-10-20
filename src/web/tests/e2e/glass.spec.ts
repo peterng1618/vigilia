@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { assertBlur, assertMediaOffset, readGlass } from "./glass-probe.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
@@ -37,14 +38,7 @@ test.describe("frosted glass in the editor", () => {
       throw new Error(`the glass fixture is invalid: ${fixture.message}`);
 
     await page.goto(EDITOR);
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "glass.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from(fixture.bytes),
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened glass.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(fixture.bytes));
 
     const reading = await readGlass(page);
     assertBlur(reading, "editor");

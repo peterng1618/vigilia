@@ -10,7 +10,6 @@ import {
   facetRecordOf,
 } from "@vigilia/renderer-core";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
-import { strToU8, zipSync } from "fflate";
 import { installFixedClock } from "./clock.js";
 import {
   choiceOf,
@@ -50,6 +49,7 @@ import {
 import { openPane } from "./editor-rail.js";
 import { openPosition } from "./rebuild-driver.js";
 import { choosePalette } from "./shell-palette.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** The theme the library stub lists, so the record below is the host's own
@@ -1226,14 +1226,7 @@ test.describe("Fabric editor route", () => {
     });
     expect(chart).not.toHaveProperty("option");
 
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "created-chart.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved.bytes,
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened created-chart.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
   });
 
   test("authors a panel from the Add panel, styles it by keyboard and pointer, and reopens it", async ({
@@ -1350,14 +1343,7 @@ test.describe("Fabric editor route", () => {
       (panel as { shadow?: { blur: number } }).shadow?.blur,
     ).toBeGreaterThan(0);
 
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "authored-panel.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved.bytes,
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened authored-panel.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
     // Reopened, the panel is still there with the same authored material.
     const reopened = (await saveEnvelope(page)) as {
       scene: { objects: ReadonlyArray<Readonly<Record<string, unknown>>> };
@@ -1600,14 +1586,7 @@ test.describe("Fabric editor route", () => {
     // cache the round trip dropped.
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "starter-cpu.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved.bytes,
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened starter-cpu.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
     const reopened = (await saveEnvelope(page)) as {
       scene: { objects: ReadonlyArray<Readonly<Record<string, unknown>>> };
       bindings?: Record<string, ReadonlyArray<{ semanticKey: string }>>;
@@ -2022,19 +2001,22 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await setUncheckedThemePackage(page, "literal-bars.vigilia-theme", {
-      schemaVersion: 2,
-      fabricVersion: "7.4.0",
-      id: "literal-bars",
-      metadata: { themeLanguage: "en" },
-      artboard: {
-        width: 1000,
-        height: 720,
-        background: { value: ARTBOARD_BACKGROUND_PAINT },
+    await setUncheckedThemePackage(
+      page,
+      {
+        schemaVersion: 2,
+        fabricVersion: "7.4.0",
+        id: "literal-bars",
+        metadata: { themeLanguage: "en" },
+        artboard: {
+          width: 1000,
+          height: 720,
+          background: { value: ARTBOARD_BACKGROUND_PAINT },
+        },
+        scene: { version: "7.4.0", objects: [] },
       },
-      scene: { version: "7.4.0", objects: [] },
-    });
-    await expect(page.locator("#status")).toContainText("Could not open");
+      /Invalid theme/,
+    );
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
@@ -2046,7 +2028,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await setThemePackage(page, "gradient-artboard.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "gradient-artboard",
@@ -2088,9 +2070,6 @@ test.describe("Fabric editor route", () => {
       },
       scene: { version: "7.4.0", objects: [] },
     });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened gradient-artboard.vigilia-theme",
-    );
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
@@ -2214,14 +2193,7 @@ test.describe("Fabric editor route", () => {
     await letterSpacing.press("Tab");
 
     const saved = await savePackage(page);
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "type-preset.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved.bytes,
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened type-preset.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
     // Reopening a package remounts the shell, so the pane is shut again.
     await openPane(page, "Tokens");
     await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
@@ -2666,7 +2638,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await setThemePackage(page, "live-text.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "live-text",
@@ -2883,18 +2855,16 @@ test.describe("Fabric editor route", () => {
       },
     };
 
-    await setThemePackage(page, "opened.vigilia-theme", envelope);
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened opened.vigilia-theme",
-    );
+    await setThemePackage(page, envelope);
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    await setThemePackage(page, "incompatible.vigilia-theme", {
-      ...envelope,
-      fabricVersion: "7.5.0",
-    });
+    await setThemePackage(
+      page,
+      { ...envelope, fabricVersion: "7.5.0" },
+      /incompatible/,
+    );
     await expect(page.locator("#status")).toContainText("incompatible");
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
@@ -2932,14 +2902,7 @@ test.describe("Fabric editor route", () => {
       envelope.scene?.objects?.find((object) => object.id === "wordmark")?.name,
     ).toBe("Brand mark");
 
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "renamed.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved.bytes,
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened renamed.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
 
     // The reopened document's own layer list must carry the name, not just the
     // bytes: a reader that never loaded the property would pass the assertion
@@ -2955,7 +2918,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await setThemePackage(page, "unnamed.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "unnamed",
@@ -2966,9 +2929,6 @@ test.describe("Fabric editor route", () => {
         objects: [{ type: "Rect", id: "panel", width: 100, height: 50 }],
       },
     });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened unnamed.vigilia-theme",
-    );
 
     // A scene with no name on the object still opens, still shows its id, and
     // still accepts a name typed into the same control.
@@ -2989,8 +2949,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    const picker = page.locator('input[accept=".vigilia-theme"]');
-    await setThemePackage(page, "source.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "source",
@@ -3001,9 +2960,6 @@ test.describe("Fabric editor route", () => {
         objects: [{ type: "Rect", id: "panel", width: 100, height: 50 }],
       },
     });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened source.vigilia-theme",
-    );
 
     const download = page.waitForEvent("download");
     await page.keyboard.press("Control+s");
@@ -3019,14 +2975,7 @@ test.describe("Fabric editor route", () => {
       expect.arrayContaining([expect.objectContaining({ id: "panel" })]),
     );
 
-    await picker.setInputFiles({
-      name: "roundtrip.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved,
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened roundtrip.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved));
   });
 
   test("imports and round-trips packaged images", async ({
@@ -3241,14 +3190,7 @@ test.describe("Fabric editor route", () => {
         }),
       ]),
     );
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "assets.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved.bytes,
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened assets.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
@@ -3302,7 +3244,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await setThemePackage(page, "movable.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "movable",
@@ -3341,9 +3283,6 @@ test.describe("Fabric editor route", () => {
         ],
       },
     });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened movable.vigilia-theme",
-    );
 
     // Scene points go through the camera (`artboardScreenRect`), never the canvas
     // box: the canvas is host-sized, so its box says nothing about the artboard.
@@ -3387,7 +3326,7 @@ test.describe("Fabric editor route", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "desktop surface");
     await page.goto(EDITOR);
-    await setThemePackage(page, "grouping.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "grouping",
@@ -3450,9 +3389,6 @@ test.describe("Fabric editor route", () => {
         ],
       },
     });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened grouping.vigilia-theme",
-    );
 
     // Points are derived from the camera, never from the canvas box: the canvas is
     // host-sized, so its box says nothing about where the artboard is.
@@ -3602,10 +3538,7 @@ test.describe("Fabric editor route", () => {
     // The same two rectangles the case above enters, with nothing else on the
     // canvas: one is the group's own part and one is what entering puts out of
     // reach, so the two pixels below are the whole of what the rule acts on.
-    await setThemePackage(page, "group-dim.vigilia-theme", groupDimEnvelope());
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened group-dim.vigilia-theme",
-    );
+    await setThemePackage(page, groupDimEnvelope());
 
     const untouched = await pixelAtObjectCentre(page, "outside");
     const insideUntouched = await pixelAtObjectCentre(page, "child");
@@ -3641,10 +3574,7 @@ test.describe("Fabric editor route", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "desktop surface");
     await page.goto(EDITOR);
-    await setThemePackage(page, "group-dim.vigilia-theme", groupDimEnvelope());
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened group-dim.vigilia-theme",
-    );
+    await setThemePackage(page, groupDimEnvelope());
 
     // Entered the way an author does: a double-click inside the group's part.
     const inside = await sceneToClient(page, 320, 55, 55);
@@ -3842,7 +3772,7 @@ test.describe("Fabric editor route", () => {
     // the property the fix actually covers. A test aimed at the plate alone
     // would pass while any other non-selectable object stayed draggable.
     await page.goto(EDITOR);
-    await setThemePackage(page, "unselectable.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "unselectable",
@@ -4009,16 +3939,19 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await setUncheckedThemePackage(page, "unrevivable.vigilia-theme", {
-      schemaVersion: 2,
-      fabricVersion: "7.4.0",
-      id: "unrevivable",
-      metadata: { themeLanguage: "en" },
-      artboard: { width: 320, height: 180 },
-      scene: { version: "7.4.0", objects: [{ type: "UnknownFabricObject" }] },
-    });
+    await setUncheckedThemePackage(
+      page,
+      {
+        schemaVersion: 2,
+        fabricVersion: "7.4.0",
+        id: "unrevivable",
+        metadata: { themeLanguage: "en" },
+        artboard: { width: 320, height: 180 },
+        scene: { version: "7.4.0", objects: [{ type: "UnknownFabricObject" }] },
+      },
+      /Invalid theme/,
+    );
 
-    await expect(page.locator("#status")).toContainText("Could not open");
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
@@ -4046,7 +3979,11 @@ test.describe("Fabric editor route", () => {
       editor?.canvas.item(1)?.set("left", 64);
       editor?.canvas.requestRenderAll();
     });
-    await page.keyboard.press("Control+o");
+    // **The File row, not `Control+o`.** That chord now prints beside, and
+    // drives, the *Import package* row — and an import replaces nothing, so it
+    // asks no question. The row that still opens a document is this one.
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Open library" }).click();
 
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();
@@ -4609,14 +4546,7 @@ test.describe("Fabric editor route", () => {
     // The package the editor just wrote, re-imported as bytes. Not
     // `setThemePackage`: that rebuilds a document from the envelope alone and
     // this scene carries a background asset, so the rebuilt one is refused.
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "resized-scaled-text.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: saved.bytes,
-    });
-    await expect(page.locator("#status")).toContainText(
-      "Opened resized-scaled-text.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
     const reopened = await textBoxState(page, textId);
 
     console.log(
@@ -5167,7 +5097,7 @@ test.describe("Fabric editor route", () => {
       originX: "left",
       originY: "top",
     });
-    await setThemePackage(page, "reorder.vigilia-theme", {
+    await setThemePackage(page, {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
       id: "reorder",
@@ -5189,9 +5119,6 @@ test.describe("Fabric editor route", () => {
         ],
       },
     });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened reorder.vigilia-theme",
-    );
     // **`child` is a row only once `grp` is open**, and a group opens the way an
     // author opens it. Without this the drag below waits out its 30 s budget on
     // a row that does not exist — which reads as a broken drag rather than as a
@@ -5601,41 +5528,36 @@ function groupDimEnvelope(): Parameters<
   };
 }
 
+/**
+ * Opens `envelope` through the store's own **Open in editor** control — the
+ * route a document comes through now that the picker is an import. The package
+ * is still written, so the fixture is refused here rather than at the editor;
+ * the status line reports the *document's* name, which `openThemeFromStore`
+ * asserts.
+ */
 async function setThemePackage(
   page: Page,
-  name: string,
   envelope: Parameters<typeof writeThemePackage>[0]["envelope"],
+  status?: string | RegExp,
 ): Promise<void> {
   const result = writeThemePackage({ envelope, assets: {} });
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error(result.message);
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(result.bytes),
-  });
+  await openThemeFromStore(page, storedThemeOfPackage(result.bytes), status);
 }
 
+/** The same, for a document the package writer would refuse: the stub serves
+ *  the envelope as it stands, so the editor's own validator is what is tested. */
 async function setUncheckedThemePackage(
   page: Page,
-  name: string,
   envelope: unknown,
+  status?: string | RegExp,
 ): Promise<void> {
-  const buffer = zipSync({
-    "manifest.json": strToU8(
-      JSON.stringify({
-        format: "vigilia-theme-package",
-        version: 1,
-        theme: "theme.json",
-      }),
-    ),
-    "theme.json": strToU8(JSON.stringify(envelope)),
-  });
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(buffer),
-  });
+  await openThemeFromStore(
+    page,
+    { envelope: envelope as FabricThemeEnvelope },
+    status,
+  );
 }
 
 /**

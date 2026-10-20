@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
@@ -46,23 +47,15 @@ function fixture(withMedia: boolean) {
 }
 
 /**
- * The **file name is the barrier**, and it has to be: both opens report the
- * same status text, so waiting on `#status-message` after the second open is satisfied
- * by the first open's text and returns immediately - measuring whatever canvas
- * happens to be mounted at that moment. Distinct names make the wait mean
- * something, and the media-layer count is asserted afterwards so the scene
- * under the next `curve()` is provably the one just opened.
+ * The **media-layer count is the barrier**, and it has to be: both documents
+ * carry the same theme name, so waiting on `#status-message` after the second
+ * open is satisfied by the first open's text and returns immediately - measuring
+ * whatever canvas happens to be mounted at that moment. The count is asserted
+ * after each open, so the scene under the next `curve()` is provably the one
+ * just opened.
  */
 async function open(page: Page, withMedia: boolean): Promise<void> {
-  const name = withMedia
-    ? "glass-with-media.vigilia-theme"
-    : "glass-no-media.vigilia-theme";
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(fixture(withMedia)),
-  });
-  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
+  await openThemeFromStore(page, storedThemeOfPackage(fixture(withMedia)));
   // Match set: the scene just opened is the one measured. A stale editor would
   // still have the media layer the no-media open is supposed to have dropped.
   await expect(page.locator("[data-vigilia-background-media] img")).toHaveCount(

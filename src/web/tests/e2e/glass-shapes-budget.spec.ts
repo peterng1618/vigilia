@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { GLASS_BAR, glassStripesPng } from "./glass-fixture.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 /**
  * The editor preview `playwright.config.ts` starts, as `glass.spec.ts` does.
@@ -176,13 +177,7 @@ function packageFor(kinds: readonly Kind[]): Uint8Array {
 }
 
 async function open(page: Page, kinds: readonly Kind[]): Promise<void> {
-  const name = `shapes-${kinds.join("-") || "none"}.vigilia-theme`;
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(packageFor(kinds)),
-  });
-  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
+  await openThemeFromStore(page, storedThemeOfPackage(packageFor(kinds)));
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(

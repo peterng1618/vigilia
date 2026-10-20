@@ -10,13 +10,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { readThemePackage } from "@vigilia/theme-package";
-import { answerDialogIfShown } from "./editor-canvas.js";
 import {
   buildComposition,
   importBackdrop,
   openBlankComposition,
 } from "./rebuild-composition.js";
 import { chooseToken, readObject, selectLayer } from "./rebuild-driver.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -67,8 +67,9 @@ const HOST = `http://127.0.0.1:${HOST_PORT}`;
  *
  * **Both halves are the point, and they are different formats.** The library
  * is a folder (ADR-0017), so the exported archive is unpacked here to make
- * one; the same file is then handed to the editor's own `Open package`
- * control, which is the export path the ruling keeps. A change that broke
+ * one — the host's own route, which the displays below read through; the same
+ * archive is read back by the editor through a stubbed library, so the editor
+ * frame is the product's own reading of the saved document. A change that broke
  * either would show up here rather than being assumed to work.
  */
 function seedLibraryFromPackage(packagePath: string): void {
@@ -213,24 +214,20 @@ test.describe("the rebuilt composition, on a display", () => {
 
     // ---- and the editor, showing the same package ----
     //
-    // Reopened through `File ▸ Open package`, the control a person clicks, so
-    // the editor frame is the product's own reading of the saved document rather
-    // than the composition that was still in memory. A difference between this
-    // and the player is a finding about the round trip; a difference between
-    // this and what was just on screen is a finding about the save.
+    // Reopened through the store's own **Open in editor** control over a stubbed
+    // library, which is where the document route lives now that
+    // `File ▸ Import package` writes into the library instead. The editor frame
+    // is still the product's own reading of the saved document rather than the
+    // composition that was still in memory. A difference between this and the
+    // player is a finding about the round trip; a difference between this and
+    // what was just on screen is a finding about the save.
     const reopened = await context.newPage();
     await reopened.goto("/");
     await reopened.waitForSelector("#canvas-host canvas");
-    const openPackage = reopened.waitForEvent("filechooser");
-    await reopened.getByRole("button", { name: "File", exact: true }).click();
-    await reopened.getByRole("menuitem", { name: "Open package" }).click();
-    // The dirty-document guard, and it is **correct**: the editor opens on the
-    // starter, which nobody has edited and which therefore counts as unsaved
-    // work. Without this the file chooser never opens and the step hangs until
-    // the test times out with no message saying why — the same shape as issue
-    // #7, met from the other side.
-    await answerDialogIfShown(reopened, "Discard");
-    await (await openPackage).setFiles(EXPORTED);
+    await openThemeFromStore(
+      reopened,
+      storedThemeOfPackage(new Uint8Array(readFileSync(EXPORTED))),
+    );
     await reopened.waitForTimeout(5_000);
     await reopened.screenshot({
       path: "test-results/display/editor-desktop.png",

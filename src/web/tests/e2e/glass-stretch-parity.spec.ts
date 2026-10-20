@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { assertBlur, readGlass } from "./glass-probe.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 /**
  * The browser proof that a panel's **own scale** decides how far it diffuses,
@@ -112,14 +113,7 @@ test.describe("a panel's blur follows its own scale", () => {
     page,
   }) => {
     await page.goto(EDITOR);
-    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-      name: "glass-stretch.vigilia-theme",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from(packageFor()),
-    });
-    await expect(page.locator("#status-message")).toHaveText(
-      "Opened glass-stretch.vigilia-theme",
-    );
+    await openThemeFromStore(page, storedThemeOfPackage(packageFor()));
 
     const readings = [] as Array<{ id: string; glass: number; media: number }>;
     for (const placement of PANELS) {

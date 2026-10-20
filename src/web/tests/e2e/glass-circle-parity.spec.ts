@@ -14,6 +14,7 @@ import {
   outlineDifference,
 } from "./frame-diff.js";
 import { GLASS_BAR, glassStripesPng } from "./glass-fixture.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 /**
  * The editor preview `playwright.config.ts` starts, as `glass.spec.ts` does.
@@ -243,13 +244,10 @@ async function open(
   scene: Scene,
   backdrop: Backdrop,
 ): Promise<void> {
-  const name = `probe-${scene}-${backdrop}.vigilia-theme`;
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(packageFor(scene, backdrop)),
-  });
-  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
+  await openThemeFromStore(
+    page,
+    storedThemeOfPackage(packageFor(scene, backdrop)),
+  );
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(

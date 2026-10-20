@@ -7,6 +7,7 @@ import {
   solidOf,
 } from "../../packages/editor/src/new-fabric-theme-globals.js";
 import { GLASS_BAR } from "./glass-fixture.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
 /** `solidOf` is a `Record<string, string>`, so a key read is `string | undefined`
  *  even though the map is a literal. The panel token is required here. */
@@ -206,13 +207,10 @@ async function open(
   fill: "panel" | "frost" | "none",
   withGlass: boolean,
 ): Promise<void> {
-  const name = `shapes-${fill}-${withGlass ? "frosted" : "bare"}.vigilia-theme`;
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(packageFor(fill, withGlass)),
-  });
-  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
+  await openThemeFromStore(
+    page,
+    storedThemeOfPackage(packageFor(fill, withGlass)),
+  );
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(

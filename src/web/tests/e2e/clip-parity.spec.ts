@@ -8,6 +8,7 @@ import {
   QUADRANTS_SVG,
 } from "./clip-parity-fixture.js";
 import { HOST_PORT } from "./host-theme.js";
+import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -21,8 +22,9 @@ import { isDesktopSurface } from "./surface.js";
  * measured it.**
  *
  * So this measures it. One scene, two clips, **one document** through both
- * surfaces: the editor opens the exported package through its own `Open package`
- * control, and a real host serves the same document to the player. The claim is
+ * surfaces: the editor opens the exported package through the store's own
+ * **Open in editor** control, and a real host serves the same document to the
+ * player. The claim is
  * not "both clip at the artboard". That was `host-bleed.spec.ts`'s, and it went
  * with the crop notice (`docs/decisions/0069`); the cases below read it on both
  * surfaces' own pixels now, and the player's mount of the clip is
@@ -466,14 +468,7 @@ async function openEditor(page: Page): Promise<void> {
   await expect(
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name: "clip-parity.vigilia-theme",
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(written.bytes),
-  });
-  await expect(page.locator("#status-message")).toHaveText(
-    "Opened clip-parity.vigilia-theme",
-  );
+  await openThemeFromStore(page, storedThemeOfPackage(written.bytes));
   await page.waitForFunction(
     () =>
       (window as unknown as { vigiliaEditorBridge?: unknown })
