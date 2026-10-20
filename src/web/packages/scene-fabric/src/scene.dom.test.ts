@@ -124,6 +124,51 @@ describe("mountFabricScene's artboard paint", () => {
     scene.dispose();
     element.remove();
   });
+
+  it("leaves the board's paint to the host, with or without media", () => {
+    // 0080. The host is behind the media layer, so its paint is the board's fill
+    // and the letterbox the reader sees around a `"theme"`-fitted layer; the
+    // canvas is *above* the media, so the same paint on it hides the media
+    // completely. Both arms are asserted because the rule is the same in both:
+    // a fill reappearing here is that defect returning in silence. What a glass
+    // panel samples instead is the backdrop, which composes this paint under the
+    // media — `artboard-backdrop.dom.test.ts` is where that is proved.
+    const plainHost = host();
+    const plain = mountFabricScene({
+      host: plainHost,
+      plan: plan({ background: "#101216" }),
+    });
+    expect(plain.canvas.backgroundColor, "the canvas never paints it").toBe("");
+    expect(
+      plainHost.style.background,
+      "the host is the board's fill and its letterbox",
+    ).toBe("rgb(16, 18, 22)");
+    plain.dispose();
+    plainHost.remove();
+
+    const mediaHost = host();
+    const withMedia = mountFabricScene({
+      host: mediaHost,
+      plan: plan({ background: "#101216" }),
+      artboard: {
+        width: 400,
+        height: 300,
+        backgroundMedia: { assetId: "loop", fit: "theme" },
+      },
+      assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    expect(
+      withMedia.canvas.backgroundColor,
+      "and not over the media either",
+    ).toBe("");
+    expect(
+      mediaHost.style.background,
+      "while the host still carries the colour",
+    ).toBe("rgb(16, 18, 22)");
+    withMedia.dispose();
+    mediaHost.remove();
+  });
 });
 
 describe("mountFabricScene's video repaint", () => {

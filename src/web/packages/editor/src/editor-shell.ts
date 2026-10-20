@@ -11,6 +11,7 @@ import {
 import {
   applyObjectPalettePaints,
   applyObjectTypePresets,
+  artboardBackdrop,
   artboardPaintKey,
   type BackdropMedia,
   type BackgroundMediaHandle,
@@ -221,7 +222,7 @@ function applyArtboardPaint(
   artboard: Artboard,
   globals: Globals | undefined,
   memo: PaintMemo,
-): void {
+): unknown {
   const issues: Parameters<typeof resolveStyleValue>[3] = [];
   const resolve = (value: Artboard["background"]): unknown => {
     return resolveStyleValue(value, globals ?? {}, "artboard", issues);
@@ -231,7 +232,21 @@ function applyArtboardPaint(
   // same memo the player keeps. The plate is rebuilt whenever it is missing,
   // because `loadFromJSON` clears the canvas it lived on.
   const paintKey = `${artboardPaintKey(background)}:${artboard.width}x${artboard.height}`;
-  if (
+  // **With background media declared there is no plate at all (0080).** The
+  // plate is on the canvas, which sits above the media layer, so it covers the
+  // media exactly as the player's canvas fill did; the host's background, set
+  // below, is the board's colour instead — and it is behind the layer, which is
+  // the order the reader needs.
+  const wantsPlate = artboard.backgroundMedia === undefined;
+  if (!wantsPlate) {
+    memo.background = undefined;
+    // `delete` rather than `= undefined`: the property is optional and
+    // `exactOptionalPropertyTypes` is on, and Fabric reads an absent
+    // `backgroundImage` exactly as it reads an undefined one.
+    if (editor.canvas.backgroundImage !== undefined) {
+      delete editor.canvas.backgroundImage;
+    }
+  } else if (
     paintKey !== memo.background ||
     !(editor.canvas.backgroundImage instanceof Rect)
   ) {
@@ -259,6 +274,9 @@ function applyArtboardPaint(
   });
   applyObjectTypePresets(editor.canvas, globals);
   editor.canvas.requestRenderAll();
+  // The caller keeps this: it is what the glass backdrop composes the media
+  // over, and re-resolving it there would put a second owner on the paint.
+  return background;
 }
 
 /** Whether `object` is the entered group or one of its direct children. Mirrors
@@ -455,6 +473,19 @@ export async function mountEditorShell({
       ...(resolveSceneAsset === undefined ? {} : { resolveSceneAsset }),
     });
     (window as unknown as Record<string, unknown>)[debugKey] = editor;
+    // The resolved artboard paint, kept because the glass backdrop composes it
+    // under the media (0080) and re-resolving it there would be a second owner
+    // of the paint. Every paint pass goes through here so it cannot go stale.
+    let artboardPaint: unknown;
+    const paintArtboard = (): void => {
+      artboardPaint = applyArtboardPaint(
+        editor,
+        host,
+        currentArtboard,
+        globals,
+        paintMemo,
+      );
+    };
     // No observer here: `createViewportManager` registers one on the host at
     // construction and owns the refit decision, reading the box the camera was
     // framed in before `setDimensions` overwrites it. A second one on the same
@@ -465,10 +496,7 @@ export async function mountEditorShell({
     // plate; the history manager's own post-revive signal is the point at which
     // the canvas is settled again. `canvas:cleared` fires too early — Fabric
     // re-applies the serialized background after it.
-    const restorePlate = (): void => {
-      applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
-    };
-    editor.canvas.on("editor:history-state-loaded" as never, restorePlate);
+    editor.canvas.on("editor:history-state-loaded" as never, paintArtboard);
 
     if (envelope !== undefined) {
       // The same warning channel the paint pass reports through, so a document
@@ -486,12 +514,13 @@ export async function mountEditorShell({
         ? undefined
         : createSceneAdapter({ canvas: editor.canvas });
 
-    // After the plan, because the adapter's own artboard paint is a canvas
-    // background and this shell owns the artboard region instead.
+    // After the plan, so the shell's own clip is the one left on the canvas:
+    // the adapter applies the plan's artboard too, and it paints no background
+    // of its own any more (0080).
     if (plan !== undefined) {
       scene?.apply(plan);
     }
-    applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+    paintArtboard();
     editor.viewport.zoomToFit();
 
     host.replaceChildren(container);
@@ -560,14 +589,26 @@ export async function mountEditorShell({
     editor.viewport.onChange(placeScreen);
     placeScreen();
 
+    const backdrop = (): BackdropMedia | undefined =>
+      artboardBackdrop({
+        background: artboardPaint,
+        width: currentArtboard.width,
+        height: currentArtboard.height,
+        media: media?.backdrop(),
+      });
+
     // After the media, because a glass panel samples that layer for its backdrop.
     // Always wired, never conditionally: the session replaces the layer through
     // `setBackgroundMedia` *after* this returns, so `media` is undefined here
     // even when the theme has a background. Omitting the option left the editor
     // sampling nothing at all.
+    //
+    // The backdrop composes the board's paint under the media (0080), which is
+    // what the plate used to do for the sampler — and it has to, because the
+    // plate is not drawn at all once the board declares media.
     const glass = createGlass({
       canvas: editor.canvas,
-      backdrop: () => media?.backdrop(),
+      backdrop,
       onGlassError: (message) => editor.errorManager.warn("glass", message),
     });
 
@@ -594,7 +635,7 @@ export async function mountEditorShell({
         // The camera frames the board; the authored fit mode belongs to the
         // player's letterbox, which the editor no longer draws.
         editor.viewport.zoomToFit();
-        applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+        paintArtboard();
         if (media !== undefined && mediaResolve !== undefined) {
           media.update({
             artboard: currentArtboard,
@@ -613,14 +654,14 @@ export async function mountEditorShell({
       },
       setGlobals(nextGlobals) {
         globals = nextGlobals;
-        applyArtboardPaint(editor, host, currentArtboard, globals, paintMemo);
+        paintArtboard();
       },
       setFitMode() {
         // The authoring view always frames the whole board; `cover` is the
         // player's crop of it, which the stage does not draw.
         editor.viewport.zoomToFit();
       },
-      backdrop: () => media?.backdrop(),
+      backdrop,
       destroy() {
         glass.dispose();
         media?.destroy();

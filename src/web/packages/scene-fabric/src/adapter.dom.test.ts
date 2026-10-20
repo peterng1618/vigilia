@@ -311,9 +311,15 @@ describe("creating a scene", () => {
     ]);
   });
 
-  it("clips to the artboard and paints its background", () => {
+  it("clips to the artboard and leaves the board's paint to the host", () => {
     // §53: content outside the artboard must not paint over the letterbox
     // bars, which are the host's background showing where the design is not.
+    //
+    // **The paint is deliberately absent here (0080).** This canvas sits above
+    // the media layer, so a fill on it hides the media and leaves the reader no
+    // letterbox; `scene.ts` owns the paint and applies it only when the theme
+    // declares no background media. Asserted as empty rather than left alone,
+    // because a fill reappearing here is that defect returning in silence.
     const { canvas, adapter } = mount();
 
     adapter.apply(
@@ -324,7 +330,7 @@ describe("creating a scene", () => {
       }),
     );
 
-    expect(canvas.backgroundColor).toBe("#123456");
+    expect(canvas.backgroundColor).toBe("");
     expect(canvas.clipPath).toBeInstanceOf(Rect);
     expect(canvas.clipPath).toMatchObject({
       width: 800,

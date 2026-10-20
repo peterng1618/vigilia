@@ -84,13 +84,17 @@ function mount() {
 }
 
 describe("reviving a hosted scene keeps the artboard", () => {
-  it("mounts with the artboard clip and paint installed", () => {
-    const { scene } = mount();
+  it("mounts with the artboard clip installed and the paint off the canvas", () => {
+    const { element, scene } = mount();
 
     // The premise the crop notice is built on. If this is not true, the notice
     // is describing a clip that is not there.
     expect(scene.canvas.clipPath).toBeTruthy();
-    expect(String(scene.canvas.backgroundColor)).toBe("#112233");
+    // 0080: the board's paint is the host's, which puts it behind the media
+    // layer; a fill on the canvas sits above that layer and hides it. A glass
+    // panel samples the backdrop instead, which composes the same paint.
+    expect(String(scene.canvas.backgroundColor)).toBe("");
+    expect(element.style.background).toBe("rgb(17, 34, 51)");
 
     scene.dispose();
   });
@@ -109,8 +113,8 @@ describe("reviving a hosted scene keeps the artboard", () => {
     ).toBeTruthy();
     expect(
       String(scene.canvas.backgroundColor),
-      "revival dropped the artboard paint",
-    ).toBe("#112233");
+      "a revived document's own fill covers the media layer",
+    ).toBe("");
 
     scene.dispose();
   });

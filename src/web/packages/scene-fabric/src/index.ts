@@ -18,10 +18,13 @@ export type {
 } from "@vigilia/renderer-core";
 export type { SceneAdapter, SceneAdapterOptions } from "./adapter.js";
 export { createSceneAdapter } from "./adapter.js";
+export type { ArtboardBackdropOptions } from "./artboard-backdrop.js";
+export { artboardBackdrop } from "./artboard-backdrop.js";
 export {
   artboardPaintKey,
   cssArtboardPaint,
   fabricArtboardPaint,
+  fillArtboardPaint,
 } from "./artboard-paint.js";
 export {
   type BackgroundMediaHandle,

@@ -130,11 +130,17 @@ export async function reviveScene(
 ): Promise<void> {
   disposeScene(canvas);
   // `loadFromJSON` assigns every canvas-level property the document omits, so
-  // the artboard clip and paint the mount installed are replaced with
-  // `undefined`. Both are artboard state rather than scene state, so a scene
-  // document never carries them and a revived display has no boundary at all:
-  // an object outside the artboard paints over the letterbox bars. Restored
-  // after the load, from the canvas's own pre-revival values.
+  // the artboard clip the mount installed is replaced with `undefined`. It is
+  // artboard state rather than scene state, so a scene document never carries
+  // it, and a revived display would have no boundary at all: an object outside
+  // the artboard paints over the letterbox bars. Restored after the load, from
+  // the canvas's own pre-revival values.
+  //
+  // The background fill is restored for the opposite reason (0080): nothing
+  // paints the artboard on the canvas any more — the host carries it, and the
+  // glass backdrop carries it — so a fill can only have arrived *from* the
+  // document, and left standing it covers the media layer all over again. The
+  // pre-revival value is the empty one the mount left, so this clears it.
   const clipPath = canvas.clipPath;
   const backgroundColor = canvas.backgroundColor;
   await canvas.loadFromJSON(resolveAssetSources(scene, resolveAsset));

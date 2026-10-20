@@ -181,6 +181,7 @@ adapter does not own catalog, preview or adoption semantics.
 | ScenePlan reconciliation | `scene-fabric/src/adapter.ts` |
 | Canvas/artboard mount | `scene-fabric/src/scene.ts` |
 | Backdrop-glass composition, and its attach/dispose lifecycle | `scene-fabric/src/glass.ts` (editor Canvas and player StaticCanvas share it) |
+| **What a panel samples** — the artboard's paint composed *under* its media, and the board rect a gradient is mapped to (0080) | `scene-fabric/src/artboard-backdrop.ts`, with the paint's third output form in `scene-fabric/src/artboard-paint.ts` |
 | Scene serialization/revival | `scene-fabric/src/persist.ts` |
 | `VigiliaChart` lifecycle | `scene-fabric/src/chart-object.ts` |
 | Chart repaint cadence | `scene-fabric/src/chart-refresh.ts` |

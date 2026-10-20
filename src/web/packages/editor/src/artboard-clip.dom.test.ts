@@ -355,6 +355,56 @@ describe("the clip does not change what the scene root means", () => {
   });
 });
 
+describe("the stage's artboard paint", () => {
+  it("drops the plate once the board declares background media", async () => {
+    // 0080. The plate is a `Rect` on the canvas, and the canvas sits above the
+    // media layer, so a plate covers the media exactly as the player's canvas
+    // fill did. The host's background — which the shell sets either way — is
+    // behind the layer instead, so it is the board's colour and the letterbox
+    // both. Both arms asserted, because a plate reappearing here is the defect
+    // returning in silence.
+    const artboard = {
+      ...ARTBOARD,
+      background: { value: { kind: "solid", color: "#112233" } },
+    };
+
+    const plainHost = stageHost();
+    const plain = await mountEditorShell({ host: plainHost, artboard });
+    expect(
+      plain.editor.canvas.backgroundImage,
+      "with no media, the plate is the board's paint",
+    ).toBeInstanceOf(Rect);
+    expect(plainHost.style.background).toBe("rgb(17, 34, 51)");
+    plain.destroy();
+    plainHost.remove();
+
+    const mediaHost = stageHost();
+    const withMedia = await mountEditorShell({
+      host: mediaHost,
+      artboard: {
+        ...artboard,
+        backgroundMedia: { assetId: "loop", fit: "theme" },
+      },
+      assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    expect(
+      withMedia.editor.canvas.backgroundImage,
+      "with media declared, nothing on the canvas may cover it",
+    ).toBeUndefined();
+    expect(
+      mediaHost.querySelector("[data-vigilia-background-media]"),
+      "and the layer it would have covered is mounted",
+    ).not.toBeNull();
+    expect(
+      mediaHost.style.background,
+      "while the host still carries the board's colour",
+    ).toBe("rgb(17, 34, 51)");
+    withMedia.destroy();
+    mediaHost.remove();
+  });
+});
+
 describe("the two clips that already exist still behave", () => {
   it("keeps the crop manager's authored per-image clip", async () => {
     // `vg-046` names this as the collision: a crop clip is an *object* clipPath,

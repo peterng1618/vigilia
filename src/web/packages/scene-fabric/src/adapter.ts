@@ -9,7 +9,6 @@ import {
   type StaticCanvas,
   Textbox,
 } from "fabric/es";
-import { artboardPaintKey, fabricArtboardPaint } from "./artboard-paint.js";
 import { VigiliaChart } from "./chart-object.js";
 import {
   createNodeObject,
@@ -268,27 +267,15 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   }
 }
 
-/** Apply artboard paint/clip; viewport transform belongs to `scene.ts`. The
- * paint memo lives per adapter because the same paint key is only interchangeable
- * for one canvas. */
+/** Apply the artboard **clip**; both the viewport transform and the board's
+ * paint belong elsewhere.
+ *
+ * **The paint is deliberately not applied here (0080).** This canvas sits above
+ * the media layer, so a fill on it hides the media completely and leaves the
+ * reader no letterbox. `scene.ts` owns the paint and applies it only when there
+ * is no media layer for it to cover. */
 function createApplyArtboard(canvas: StaticCanvas): (plan: ScenePlan) => void {
-  let lastPaintKey: string | undefined;
-
   return (plan: ScenePlan): void => {
-    // Every player render tick calls this; only rebuild the Gradient when the
-    // resolved paint actually changed.
-    const paintKey = artboardPaintKey(plan.artboard.background);
-
-    if (paintKey !== lastPaintKey) {
-      lastPaintKey = paintKey;
-      canvas.backgroundColor =
-        fabricArtboardPaint(
-          plan.artboard.background,
-          plan.artboard.width,
-          plan.artboard.height,
-        ) ?? "";
-    }
-
     const { width, height } = plan.artboard;
     const clip = canvas.clipPath;
 

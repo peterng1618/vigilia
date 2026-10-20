@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-20
+Updated: 2026-10-21
 Branch: `develop`
 
 ## Current objective
@@ -9,7 +9,7 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Active work
 
-- **No plan is active.** `2026-10-18-theme-store.md`'s **phase A is closed** — ten task reviews, the boundary, the final whole-branch review, one fix round (`b561dcaf`) and a scoped re-review returning **all four findings addressed, no new defects**. [plan](docs/superpowers/plans/2026-10-18-theme-store.md), [spec](docs/superpowers/specs/2026-10-12-theme-store-design.md), rulings **R1–R171** in `.superpowers/sdd/2026-10-18-theme-store/progress.md`, which is **kept rather than deleted** (R171).
+- **No plan is active.** `2026-10-18-theme-store.md`'s **phase A is closed** — ten task reviews, the boundary, the final whole-branch review, one fix round (`b561dcaf`) and a scoped re-review returning **all four findings addressed, no new defects**; the artboard-paint fix below landed on the fly under decision 0080 rather than under a plan. [plan](docs/superpowers/plans/2026-10-18-theme-store.md), [spec](docs/superpowers/specs/2026-10-12-theme-store-design.md), rulings **R1–R171** in `.superpowers/sdd/2026-10-18-theme-store/progress.md`, which is **kept rather than deleted** (R171).
 - **Completed and archived:** [per-display themes](docs/superpowers/plans/archive/2026-10-18-per-display-themes.md), [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md) — eight phases, the boundary's four browser claims with red proofs, the final review's seventeen acceptance conditions, and one fix round; rulings R1–R98 in `.superpowers/sdd/2026-10-18-per-display-themes/progress.md`. No seat is running.
 - **The close records two named exceptions, never a clean gate**: `design:check` is red on a player file this plan introduced (`vg-626`, issue 36), and the surface the spec hands to the store spec — creating a local display and turning on sign-in registration — exists in no shipped surface (`vg-628`, issue 38).
 - **The backlog drain is suspended, not closed**: `2026-10-12-the-backlog-drain.md` resumes at Task 23.4, and its Phase 23 stays mid-phase with no seat running.
@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The theme-store spec is current again**: it records that **phase A landed 2026-10-20 and B–G are unstarted**, and states that landing is not acceptance — `STATUS.md` alone accepts, and the user has not.
-- **A10's route fact is corrected in the spec**: the chooser is `library.html` **served at `/`**, not a `/library` route; `/settings` is a real alias, `/library` is no route at all (R161, verified against `server.ts`).
-- **Export package and Delete are recorded as drawn disabled with their reason** (R164): they have a library owner but no task in A and no phase in the landing order owns the wiring, and the spec now says so rather than claiming every action is wired.
-- **The spec's own "must be verified before this is planned" bullet on `requestVideoFrameCallback` cadence is answered by measurement**: 684 presented frames over 20 s carry 189 distinct intervals from 11 to 88 ms with 11% of frames dropped, so a variable frame rate really is a variable repaint rate and the envelope rule is not defensive without a reason.
-- **Checks**: `npm run docs:check` exit 0 (995 files), `design:md --cite` exit 0 (367 citations), `npm run status:check` exit 0.
+- **The artboard paint left the canvas (0080, `vg-667`)**: it is the host's — behind the media layer, which is now what the reader sees — and the canvas is cleared, because a fill there sat above the media and hid it completely.
+- **The glass backdrop carries it instead**: `scene-fabric/src/artboard-backdrop.ts` composes the board's paint *under* its media with `destination-over`, so a panel samples the board rather than transparency and a frame the media cannot paint is still kept (0079).
+- **The editor's plate is dropped once the board declares media**, and both of its glass mounts and its capture path take the same composed backdrop; its pasteboard is unchanged, since the plate and the host carry the one paint.
+- **Browser A/B, one script both arms**: opaque `#101318` board — fixed reads the panel at alpha 255 over 1211 frames with `maxFrameDelta` 123 and a transparent canvas; pre-fix reads 0 over 1209 with the canvas at `[16,19,24,255]`.
+- **Checks**: `npm run gate` exit 1 at `design:check` only (the known `vg-626` red: remainder 20, ceiling 19, unchanged by this work); green alone — biome, `gates:self-test`, `status:check`, `docs:check`, `design:md` (367 citations), `typecheck`, and the whole unit suite 3913 passed / 0 failed.
 
 ## Next
 
