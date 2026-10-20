@@ -20,10 +20,15 @@ eight actions is what it cost. **If you add a module that owns an enumeration,
 add the row in the same change.**
 
 `npm run ownership:sweep` checks the rule mechanically and reports candidates,
-not verdicts: it finds every module exporting an id vocabulary and reports any
-other module re-spelling two or more of those ids. **Adjudicate every hit** — a
-consumer and a second owner look the same to it, and roughly half of what it
-finds is a consumer. Its self-test runs in `npm run gates:self-test`.
+not verdicts. **It reads one shape of vocabulary and only one**: a `const` array
+or a `Readonly<Record<…>>` of three or more kebab-case ids, re-spelled by two or
+more of them in a second module. A vocabulary written any other way — a `type`
+union, or ids joined by dots rather than hyphens — is invisible to it, which is a
+different blind spot from the module that exports no vocabulary at all, which the
+copy-path paragraph below records.
+**Adjudicate every hit** — a consumer and a second owner look the same to it, and
+roughly half of what it finds is a consumer. Its self-test runs in
+`npm run gates:self-test`.
 
 ## Uniqueness is necessary, not sufficient
 
