@@ -58,6 +58,20 @@ export function toggleFacet(
 const facetTriggerId = (facetId: string): string =>
   `vigilia-store-facet-${facetId}`;
 
+/**
+ * One run of values, and the heading a grouped run takes over its rows.
+ *
+ * **The spacing belongs to the run and not to the grouping**: a facet whose
+ * values are alternatives draws one run and a facet with groups draws three, and
+ * a person reads both as the same list. The popup keeps its own gap for the
+ * sentence above the runs.
+ */
+const RUN_CLASSES = "flex flex-col gap-[var(--space-4)]";
+
+/** §2's eyebrow, over a run's rows. */
+const RUN_HEADING_CLASSES =
+  "px-[var(--space-8)] pt-[var(--space-6)] pb-[var(--space-2)] text-2xs font-semibold tracking-[0.11em] text-faint uppercase";
+
 const facetOptionId = (facetId: string, optionId: string): string =>
   `${facetTriggerId(facetId)}-${optionId}`;
 
@@ -109,6 +123,7 @@ function FacetButton(props: {
         <Popover.Positioner sideOffset={6} align="start" className="z-50">
           <Popover.Popup
             aria-label={facet.name}
+            data-vigilia-facet-popup={facet.id}
             className="flex max-h-[var(--available-height)] w-[16rem] flex-col gap-[var(--space-4)] overflow-y-auto rounded-xl border border-edge bg-panel p-[var(--space-8)] shadow-[var(--elev-2)]"
           >
             {/* The sentence the drawing puts above the groups, where the facet
@@ -129,36 +144,40 @@ function FacetButton(props: {
                 heading, and a value filed under nothing — a sensor whose key
                 this build does not know — is drawn under no heading rather than
                 under an invented one (§9). The runs come from the select's own
-                rule, so the two lists cannot group differently. */}
-            {optionRuns(facet.options).map((run) => {
-              const rows = run.options.map((option) => (
-                <FacetOptionRow
-                  key={option.id}
-                  facet={facet}
-                  option={option}
-                  checked={chosen.includes(option.id)}
-                  onToggle={() => onToggle(option.id)}
-                />
-              ));
-              return run.group === undefined ? (
-                <span key="ungrouped" className="flex flex-col">
-                  {rows}
-                </span>
-              ) : (
-                <span
-                  key={run.group}
-                  role="group"
-                  aria-label={run.group}
-                  data-vigilia-facet-group={run.group}
-                  className="flex flex-col gap-[var(--space-4)]"
-                >
-                  <span className="px-[var(--space-8)] pt-[var(--space-6)] pb-[var(--space-2)] text-2xs font-semibold tracking-[0.11em] text-faint uppercase">
-                    {run.group}
-                  </span>
-                  {rows}
-                </span>
-              );
-            })}
+                rule, so the two lists cannot group differently.
+
+                **One wrapper for both branches, so grouping adds a heading and
+                not a gap.** The rows were direct children of the popup before
+                the groups landed, which is where their spacing came from; two
+                branches each carrying their own would disagree the moment one
+                of them changed — as they did, drawing an ungrouped facet's rows
+                flush against a grouped one's 4px. */}
+            {optionRuns(facet.options).map((run) => (
+              <span
+                key={run.group ?? "ungrouped"}
+                {...(run.group === undefined
+                  ? {}
+                  : {
+                      role: "group" as const,
+                      "aria-label": run.group,
+                      "data-vigilia-facet-group": run.group,
+                    })}
+                className={RUN_CLASSES}
+              >
+                {run.group === undefined ? null : (
+                  <span className={RUN_HEADING_CLASSES}>{run.group}</span>
+                )}
+                {run.options.map((option) => (
+                  <FacetOptionRow
+                    key={option.id}
+                    facet={facet}
+                    option={option}
+                    checked={chosen.includes(option.id)}
+                    onToggle={() => onToggle(option.id)}
+                  />
+                ))}
+              </span>
+            ))}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

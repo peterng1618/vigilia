@@ -423,6 +423,10 @@ interface FacetRun {
  * second's. The runs are reconstructed from the rows' own owners rather than
  * from a list of headings, so a heading drawn over no value, or a value under a
  * heading that is not its own, is what the reading shows.
+ *
+ * `runClasses` is each run's own wrapper class, in the same order, so a case can
+ * pin the spacing a run gives its rows — jsdom lays nothing out, so a measured
+ * gap would be zero whatever the classes said.
  */
 async function openFacet(
   facetId: string,
@@ -430,6 +434,7 @@ async function openFacet(
 ): Promise<{
   readonly hint: string | undefined;
   readonly runs: readonly FacetRun[];
+  readonly runClasses: readonly string[];
 }> {
   await act(async () =>
     must(
@@ -444,11 +449,16 @@ async function openFacet(
     `${facetId} popover`,
   );
 
-  const runs: { group: string | undefined; values: string[] }[] = [];
+  const runs: {
+    group: string | undefined;
+    values: string[];
+    classes: string;
+  }[] = [];
   for (const row of popup.querySelectorAll<HTMLElement>(
     "[data-vigilia-facet-option]",
   )) {
-    const owner = row.parentElement?.closest("[data-vigilia-facet-group]");
+    const wrapper = must(row.parentElement, "a facet option's own run");
+    const owner = wrapper.closest("[data-vigilia-facet-group]");
     const group = owner?.getAttribute("data-vigilia-facet-group") ?? undefined;
     const value =
       row
@@ -456,14 +466,15 @@ async function openFacet(
         ?.textContent?.trim() ?? "";
     const last = runs.at(-1);
     if (last !== undefined && last.group === group) last.values.push(value);
-    else runs.push({ group, values: [value] });
+    else runs.push({ group, values: [value], classes: wrapper.className });
   }
 
   return {
     hint:
       popup.querySelector("[data-vigilia-facet-hint]")?.textContent?.trim() ??
       undefined,
-    runs,
+    runs: runs.map(({ group, values }) => ({ group, values })),
+    runClasses: runs.map((run) => run.classes),
   };
 }
 
@@ -716,6 +727,50 @@ it("derives the facet values from the items", async () => {
     // filter's clothes, and every other size is reachable under `Other`.
     { group: headings.size, values: [uiCopy.store.size(1920, 1080)] },
   ]);
+});
+
+/**
+ * **A run's spacing belongs to the run, not to the grouping** (A.6's fix round
+ * 2, G1). F5 gave the grouped branch a `gap-[var(--space-4)]` and left the flat
+ * one without, so Colour mode, Author and Style drew their rows flush while
+ * Shape's sat 4px apart — the spacing the rows had as direct children of the
+ * popup, lost to a branch that only meant to add a heading.
+ *
+ * **The class is pinned rather than a measured gap**, because jsdom lays nothing
+ * out: every `getBoundingClientRect` here is zeroes, so a case that measured
+ * would agree with any spacing at all. The one class string shared by every run
+ * is the invariant — two branches that each carried their own would be two
+ * strings — and the browser case measures the same gap for real.
+ */
+it("gives an ungrouped run's rows the spacing it gives a grouped one's", async () => {
+  await mountStore([
+    fixtureEntry({ id: "dark", ground: DARK_GROUND }),
+    fixtureEntry({ id: "light", ground: LIGHT_GROUND }),
+    fixtureEntry({
+      id: "wide",
+      width: 2560,
+      height: 1440,
+      ground: DARK_GROUND,
+    }),
+  ]);
+
+  const flat = await openFacet("colour-mode", uiCopy.store.facets.colourMode);
+  const grouped = await openFacet("shape", uiCopy.store.facets.shape);
+
+  expect(
+    flat.runs.length,
+    "the colour facet draws no run to space at all",
+  ).toBe(1);
+  expect(grouped.runs.length, "the shape facet draws no labelled run").toBe(3);
+  const classes = [...new Set([...flat.runClasses, ...grouped.runClasses])];
+  expect(
+    classes.length,
+    `an ungrouped run and a grouped one space their rows differently (${JSON.stringify(classes)})`,
+  ).toBe(1);
+  expect(
+    classes[0],
+    `the rows of a run are drawn flush (${JSON.stringify(classes)})`,
+  ).toContain("gap-[var(--space-4)]");
 });
 
 /**

@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **A.6's fix round closes the one blocking finding, and corrects a false claim**: `biome check ..` exited **1** at `75593f52` (the spec's two imports out of order) while both the A.6 report and this file said exit 0; it now exits 0 over 723 files, and the claim is corrected in the report's `## Fix round 1`.
-- **The copy net reaches the store mode for the first time**: `ui-copy-surfaces.test.ts` switches the shell into Themes through the mode switch and walks the region, the item's own surface and the empty-library sentence; an injected literal in `region.tsx` and one in `item-modal.tsx` each redden it (the popovers' option rows stay outside it, and the report says so).
-- **R128 lands where the envelope is**: `entryFor` derives `version` from the envelope already in hand, `ThemeLibraryEntry` and `StoreItem` declare it, and the caption draws `1.4.0 · 2026-10-14` — a theme with no version draws no separator and no empty slot.
-- **The drawing's groups are drawn, not flattened**: the Shape popover carries its hint and three labelled runs and the sensors group by `semanticKeysByFamily`; the modal's 960 and the stage's 420 are pinned in the dom case and the pager row's 158 in the browser, so a 100px stage can no longer pass.
-- **Evidence**: typecheck, `biome check ..` (723 files), `status:check` exit 0 and `design:check` at its `vg-626` baseline (remainder 20, no store-mode file in it); focused suite 8 files / 125 tests exit 0; the browser case exit 0 with the caption `1.4.0 · 2026-10-14` and headings `["Orientation","Aspect ratio","Pixel size"]`; four red proofs restored byte-identical by `cmp`.
+- **G1: the ungrouped facet popovers had lost their inter-row gap, and F5 lost it**: the grouped branch was given `gap-[var(--space-4)]` while the flat one kept none, so Colour mode, Author and Style drew their rows flush against Shape's 4px; both branches now draw **one wrapper**, pinned by a dom case on the class and by a browser measurement (0px with the fix disabled, 4px with it).
+- **G2: the facet popover's own words were outside the copy net** — `Popover.Portal` renders the popup on `body`, so the walk never met its sentence or its group headings; it now opens the Shape popover and reads it, and a literal in either word reddens the net.
+- **The previous inside/outside list was wrong and is corrected**: the popover's sentence and group headings are **inside**; the option rows stay outside, because a row prints a value beside a count and the shared reader carves them out by name (`ui-copy-readers.ts`).
+- **Evidence**: typecheck, `biome check ..` (723 files) and `status:check` exit 0; `design:check` still at its `vg-626` baseline (remainder 20, no store-mode file in it, no new violation); store and copy-net suite 6 files / 53 tests exit 0; the browser case exit 0 with the Author rows at 98–130 and 134–166 and the Shape headings unchanged.
+- **Three red proofs, each restored byte-identical by `cmp`**: the Shape hint literal, the group-heading literal, and the run's own gap — the last proved in the browser as a 0px reading as well as in jsdom.
 
 ## Next
 

@@ -32,7 +32,9 @@
  * `StoreModeRegion` does not render, so its words were outside every net until
  * that case landed. The mode is switched with the shell's own control rather
  * than by mounting the region directly, because what a walk can read is what the
- * product mounts.
+ * product mounts. **A facet popover is opened there too** (fix round 2): it
+ * portals to `body`, so its sentence and its group headings were outside the net
+ * as well, and a literal in either stayed green.
  */
 import type { FacetRecord } from "@vigilia/renderer-core";
 import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
@@ -356,6 +358,27 @@ it("reads the store mode's words, which the editor's walk never reached", async 
       modal.filter((text) => !owned.has(text) && !isItemWord(text)),
       "the item's own surface",
     ).toEqual([]);
+
+    // **The popover, which portals outside the region** (A.6's fix round 2).
+    // `Popover.Portal` renders the popup on `body`, so a walk that reads only
+    // the region never meets its sentence or its group headings — both copy, and
+    // both stayed green while a literal stood in for them. The popover's option
+    // *rows* are carved out of the shared reader instead (`ui-copy-readers.ts`):
+    // a row prints a value beside a count, neither of which is this table's.
+    withOne.openFacet("shape");
+    const opened = saidIn(withOne.popover());
+    expect(opened, "the Shape popover said nothing at all").not.toEqual([]);
+    expect(opened, "the Shape popover's sentence is not in the read").toContain(
+      uiCopy.store.facets.shapeHint,
+    );
+    expect(
+      opened,
+      "the Shape popover's group headings are not in the read",
+    ).toContain(uiCopy.store.facets.shapeGroups.orientation);
+    expect(
+      opened.filter((text) => !owned.has(text) && !isItemWord(text)),
+      "the Shape popover",
+    ).toEqual([]);
   } finally {
     withOne.destroy();
   }
@@ -389,6 +412,10 @@ const STORE_ITEM_NAMES: readonly string[] = ["Living room"];
 async function mountStoreShell(themes: readonly ThemeLibraryEntry[]): Promise<{
   readonly region: () => HTMLElement;
   readonly openItem: () => void;
+  /** Open one facet's popover, and read it where it landed — `body`, not the
+   *  region, because `Popover.Portal` puts it there. */
+  readonly openFacet: (facetId: string) => void;
+  readonly popover: () => HTMLElement;
   readonly destroy: () => void;
 }> {
   // **The one request the region makes.** `createThemeLibraryClient` binds
@@ -447,6 +474,21 @@ async function mountStoreShell(themes: readonly ThemeLibraryEntry[]): Promise<{
       );
       if (open === null) throw new Error("the gallery drew no cell to open");
       act(() => open.click());
+    },
+    openFacet: (facetId: string) => {
+      const trigger = document.querySelector<HTMLButtonElement>(
+        `[data-vigilia-facet='${facetId}']`,
+      );
+      if (trigger === null)
+        throw new Error(`the region drew no ${facetId} facet`);
+      act(() => trigger.click());
+    },
+    popover: () => {
+      const found = document.querySelector<HTMLElement>(
+        "[data-vigilia-facet-popup]",
+      );
+      if (found === null) throw new Error("no facet popover is open");
+      return found;
     },
     destroy: () => {
       globalThis.fetch = original;

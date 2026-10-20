@@ -163,6 +163,14 @@ export function spokenIn(element: Element): string[] {
       continue;
     if (button.querySelector("[data-vigilia-value]") !== null) continue;
     if (button.hasAttribute("aria-controls")) continue;
+    // A facet option's row prints a value beside the count of themes behind it:
+    // the value is the record's own reading for most facets — an author's name,
+    // a sensor's `label`, a ratio, a size — and the count is the library's, so
+    // neither is a word this table owns. Reading the row would mean a carve-out
+    // per facet shape and would make a ratio or a size an ownerless word. What
+    // the facet *says* is read: its name from the trigger, and its sentence and
+    // its group headings from the popup.
+    if (button.hasAttribute("data-vigilia-facet-option")) continue;
     // The readout's trigger prints the reading alone, so the button half has no
     // words of its own; the concept above is where its name is read.
     if (button.hasAttribute("data-vigilia-zoom")) continue;

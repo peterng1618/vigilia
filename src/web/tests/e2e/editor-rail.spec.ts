@@ -1419,6 +1419,10 @@ const STORE_LIBRARY = Array.from({ length: 30 }, (_unused, at) => {
   const label = String(index).padStart(2, "0");
   const name = `Store theme ${label}`;
   const portrait = index === 2 || index === 25;
+  // **Two authors, so the Author facet has two rows to space** (A.6's fix round
+  // 2, G1). A facet whose values are alternatives draws them as one ungrouped
+  // run, and a run of one row cannot show whether its rows are spaced at all.
+  const author = index % 3 === 0 ? "mei" : "huyng";
   const envelope: FabricThemeEnvelope = {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
@@ -1428,13 +1432,13 @@ const STORE_LIBRARY = Array.from({ length: 30 }, (_unused, at) => {
       height: portrait ? 1920 : 1080,
       background: { value: DARK_GROUND },
     },
-    metadata: { name, themeLanguage: "en", author: "huyng" },
+    metadata: { name, themeLanguage: "en", author },
     scene: { version: "7.4.0", objects: [] },
   };
   return {
     id: envelope.id,
     name,
-    author: "huyng",
+    author,
     version: "1.4.0",
     updatedAt: "2026-10-14T00:00:00.000Z",
     ground: DARK_GROUND,
@@ -1687,6 +1691,55 @@ test("the store lists a library, opens an item, and comes back to the same page"
     bar.well.left,
     `the well overlaps the label it belongs to (${barReading})`,
   ).toBeGreaterThanOrEqual(bar.label.left + bar.label.width);
+
+  // **An ungrouped popover's rows are spaced, which no class assertion can
+  // show** (A.6's fix round 2, G1): F5 gave the grouped branch the gap and left
+  // the flat one without, so Author, Colour mode and Style drew flush. The two
+  // rows are read as boxes because the regression was a zero between them, and
+  // the gap is asserted non-zero rather than equal to a number so a token
+  // change is not this case's business.
+  await region.locator("[data-vigilia-facet='author']").click();
+  const authorPopup = page.locator(
+    `[aria-label='${uiCopy.store.facets.author}']`,
+  );
+  await expect(authorPopup, "the Author facet opens no popover").toBeVisible();
+  const rows = await authorPopup
+    .locator("[data-vigilia-facet-option]")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const box = node.getBoundingClientRect();
+        return {
+          top: box.top,
+          bottom: box.bottom,
+          left: box.left,
+          right: box.right,
+        };
+      }),
+    );
+  const gapReading = `store-facet-rows ${JSON.stringify(rows)}`;
+  console.log(gapReading);
+  testInfo.annotations.push({
+    type: "store-facet-rows",
+    description: gapReading,
+  });
+  expect(
+    rows.length,
+    `the Author facet offers fewer than two rows (${gapReading})`,
+  ).toBeGreaterThan(1);
+  const first = rows[0];
+  const second = rows[1];
+  if (first === undefined || second === undefined) {
+    throw new Error(`the Author facet drew no second row (${gapReading})`);
+  }
+  expect(
+    second.left,
+    `the two Author rows are not stacked (${gapReading})`,
+  ).toBe(first.left);
+  expect(
+    second.top - first.bottom,
+    `an ungrouped facet's rows are drawn flush (${gapReading})`,
+  ).toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
 
   // **The Shape popover's groups, as a rendered popover** (R115). The three
   // headings are the drawing's, the sentence above them is the one that says why
