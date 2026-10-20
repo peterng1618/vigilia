@@ -18,10 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **A.9 fix round 1 makes the display choice and the item modal never coexist**: pressing *Assign to display* from the modal's footer closes that modal as the choice opens, so the two React-sibling dialogs can no longer each read as topmost — one Escape closed both and two scrims stacked.
-- **The host's `default` is read rather than discarded**: the choice opens on `"default"` when the host names this theme as its default, and on `""` only when no display holds it and it is not the default — two states that had rendered identically.
-- **`DEFAULT_DISPLAY_KEY` is the editor's one copy of the host's `"default"`**, in `theme-library-client.ts` beside the interface that documents the key; the editor does not depend on `packages/host`, so the two cannot be one constant.
-- **Evidence**: 21 cases in `region.dom.test.tsx` (20 before), 75 across `store-mode/` and `theme-library-client.test.ts`, 2071 across `packages/editor` — all green; three red proofs failed their case and each was restored `cmp`-identical. No browser run: the served bundles predate `4f82fcc3`.
+- **A.8 fix round 2 gives the clock's save sentence one owner again**: it moves back into `ui-copy.ts` as `hostSettings.status.savedZone`, so `ui-copy.test.ts`'s `\p{S}` walk and copy review reach it — a literal in `region.tsx` was outside both — and the region reads the key.
+- **The Host mode's status line no longer outlives its visit**: the region withdraws it as it unmounts (`onStatus(undefined)`), so re-entering This PC mounts the footer's live region empty rather than holding the previous visit's count and sentence.
+- **Evidence**: 58 cases green — `shell-layout.dom.test.tsx` 37, `region.dom.test.tsx` 12, `ui-copy.test.ts` 5, `ui-copy-surfaces.test.ts` 4; both fixes red-proved and each restored `cmp`-identical; `biome check` and `typecheck` exit 0; `design:check` stays red at its `vg-626` baseline with none of this round's files in its list. No browser run: the served bundles predate `49df4b24`.
 
 ## Next
 

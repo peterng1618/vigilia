@@ -244,17 +244,17 @@ const DEVICES: DeviceSettings = {
 /** The region over one run's answers, with both seams handed in. `published` is
  *  every status line the region handed the shell, in order: §7.6's strip is the
  *  shell's, so this is what the region *says* about the run rather than a bar it
- *  draws. */
+ *  draws. A `undefined` entry is the region withdrawing the line as it leaves. */
 async function mountHost(
   fixture: Fixture,
   refuse?: { readonly devices?: string; readonly answers?: string },
 ): Promise<{
   readonly container: HTMLDivElement;
   readonly wrote: Written;
-  readonly published: HostStatusLine[];
+  readonly published: (HostStatusLine | undefined)[];
 }> {
   const settings = hostSettings(fixture, refuse);
-  const published: HostStatusLine[] = [];
+  const published: (HostStatusLine | undefined)[] = [];
   const container = await mount(
     <HostSettingsRegion
       mode="this-pc"
@@ -267,11 +267,15 @@ async function mountHost(
 }
 
 /** The line the shell's strip is showing: the last one published, or a defect
- *  this file names rather than a `null` a later assertion reports as a value. */
-function statusLine(published: readonly HostStatusLine[]): HostStatusLine {
+ *  this file names rather than a `null` a later assertion reports as a value.
+ *  A run's own reads happen while the region is mounted, so the last entry
+ *  during a case is a line — a withdrawal here means the region left. */
+function statusLine(
+  published: readonly (HostStatusLine | undefined)[],
+): HostStatusLine {
   const last = published.at(-1);
   if (last === undefined) {
-    throw new Error("the region published no status line");
+    throw new Error("the region published no status line, or withdrew it");
   }
   return last;
 }
@@ -733,4 +737,26 @@ it("answers a zone write in its own words, not the device save's", async () => {
   } finally {
     copy.savedDevices = pageSentence;
   }
+});
+
+/**
+ * **A line belongs to the visit that published it.** The region exists only
+ * while the Host mode is showing, so its unmount *is* the mode moving — and the
+ * line goes with it. Left standing in the shell, the next visit's strip would
+ * mount already holding this visit's count and sentence: a count no read in that
+ * visit answered, and a live region whose text was there before it was.
+ */
+it("withdraws its line when the region leaves, so the next visit paints none", async () => {
+  const { published } = await mountHost(TWO_DISPLAYS);
+  expect(
+    statusLine(published).displays,
+    "the visit published no line to withdraw",
+  ).toBe(uiCopy.hostSettings.status.displays(2));
+
+  await unmount();
+
+  expect(
+    published.at(-1),
+    "the region left its line standing for the next visit",
+  ).toBeUndefined();
 });

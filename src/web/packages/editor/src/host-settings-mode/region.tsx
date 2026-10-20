@@ -142,15 +142,6 @@ function Group(props: {
 }
 
 /**
- * The clock's own answer. It reads the same as the device save's sentence — the
- * page this absorbs spells one sentence for two writes — but they are two
- * writes, and a single key named for the device save made an edit to either one
- * change what the other says. It lives here rather than beside the others in
- * `ui-copy.ts`, which another task holds this round.
- */
-const savedZone = "Saved. Displays update on their next frame.";
-
-/**
  * The two halves of §7.6's strip while the Host mode is showing, already spelled:
  * the display count on the left, the last write's answer on the right.
  *
@@ -159,6 +150,12 @@ const savedZone = "Saved. Displays update on their next frame.";
  * region publishes these strings rather than drawing a second bar — and the
  * shell draws them rather than re-reading the host, which would be a second
  * owner of the same fetch.
+ *
+ * **A line belongs to the visit that published it**, so `undefined` is what the
+ * region hands back when it leaves: the shell's state is the region's answer and
+ * has no life of its own, and a line left standing would be painted by the next
+ * visit's strip — a live region mounted already holding the last visit's
+ * sentence, and a count no read in that visit answered.
  */
 export interface HostStatusLine {
   /** How many displays the host holds, or `null` when no read answered. A
@@ -185,7 +182,7 @@ export function HostSettingsRegion(props: {
   readonly mode: ShellMode;
   readonly client?: ThemeLibraryClient | undefined;
   readonly settings?: HostSettingsClient | undefined;
-  readonly onStatus?: ((line: HostStatusLine) => void) | undefined;
+  readonly onStatus?: ((line: HostStatusLine | undefined) => void) | undefined;
 }): React.JSX.Element | null {
   return props.mode === "this-pc" ? (
     <HostSettings
@@ -203,7 +200,7 @@ export function HostSettingsRegion(props: {
 function HostSettings(props: {
   readonly client?: ThemeLibraryClient | undefined;
   readonly settings?: HostSettingsClient | undefined;
-  readonly onStatus?: ((line: HostStatusLine) => void) | undefined;
+  readonly onStatus?: ((line: HostStatusLine | undefined) => void) | undefined;
 }): React.JSX.Element {
   // One client of each for the life of the region: a client built per render
   // would be a new one every time, and a write would reach a host the read never
@@ -323,6 +320,14 @@ function HostSettings(props: {
       status: status ?? uiCopy.hostSettings.status.ready,
     });
   }, [publish, countLine, status]);
+
+  /** **Leaving the mode takes the line with it.** The region exists only while
+   *  the Host mode is showing, so its unmount *is* the mode moving: withdrawing
+   *  here is the same reset the shell would have to watch `mode` for, done by
+   *  the owner of the line rather than by a second reader of the mode. Without
+   *  it the shell holds the last visit's strings, and the next visit's strip —
+   *  a freshly mounted live region — paints them before the region answers. */
+  useEffect(() => () => publish?.(undefined), [publish]);
 
   // **The questions belong to the display the region is showing for, and to the
   // theme that display has** — which is its own, or the default's. A read that
@@ -597,7 +602,7 @@ function HostSettings(props: {
                         measurement:
                           preferences.settings.measurement ?? "metric",
                       },
-                      savedZone,
+                      uiCopy.hostSettings.status.savedZone,
                     )
                   }
                 />

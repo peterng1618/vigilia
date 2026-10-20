@@ -290,7 +290,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      *  is the shell's in every mode, so the content is the region's and the
      *  placement is this strip's — the shell draws these two strings rather than
      *  reading the host a second time. `undefined` until the region answers, and
-     *  nothing is drawn for it: a count no read answered is not a zero. */
+     *  nothing is drawn for it: a count no read answered is not a zero. The
+     *  region withdraws the line when it unmounts, so this state is one visit's
+     *  and never outlives it — otherwise the next visit's strip would mount
+     *  holding the last visit's sentence. */
     const [hostStatus, setHostStatus] = useState<HostStatusLine | undefined>(
       undefined,
     );

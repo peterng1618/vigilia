@@ -477,6 +477,10 @@ export const uiCopy = {
       ready: "Changes apply to every display immediately.",
       saving: "Saving…",
       savedDevices: "Saved. Displays update on their next frame.",
+      /** The clock's own write, and it reads as the device save's because the
+       *  page this absorbs spells one sentence for both — but they are two
+       *  writes, so a key named for one cannot answer the other. */
+      savedZone: "Saved. Displays update on their next frame.",
       /** The units are read once, when a display loads, so the sentence says
        *  which screens the change has not reached yet — the page's own. */
       savedUnits:

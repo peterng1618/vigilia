@@ -1968,3 +1968,106 @@ it("puts the Host mode's line in the status strip, and the editor's readouts els
 
   layout.destroy();
 });
+
+/**
+ * **The strip's line belongs to the visit that read it.** The `this-pc` branch
+ * is a different element tree from the editor's, so coming back to the Host mode
+ * mounts a fresh `<p role="status">` — and a live region mounted *holding* text
+ * is the pattern the removed strip's own comment called the less reliably
+ * announced one. A line left in the shell would be painted there before the
+ * region answered: a count no read in that visit answered.
+ *
+ * **The stale line is not in the finished DOM to be read**: React commits the
+ * mode change and flushes the region's mount publish inside one task, so a case
+ * that reads the DOM after either of them sees the corrected line. The evidence
+ * is therefore the mutation record of the visit's own live region, and the
+ * comment beside it says what that record distinguishes.
+ */
+it("paints no line from the previous visit when the Host mode is re-entered", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/themes/active")) {
+        return new Response(
+          JSON.stringify({
+            default: null,
+            displays: [{ id: "this-pc", label: "This PC", theme: null }],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith("/api/themes")) {
+        return new Response(JSON.stringify({ themes: [], templates: [] }), {
+          status: 200,
+        });
+      }
+      if (url.startsWith("/api/devices")) {
+        return new Response(
+          JSON.stringify({
+            available: { gpus: [], disks: [] },
+            assigned: { assigned: {}, names: {} },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ settings: {}, zones: [] }), {
+        status: 200,
+      });
+    }),
+  );
+
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  layout.setBridge(bridgeStub(), viewStub());
+  await act(async () => {});
+
+  const count = (): string | undefined =>
+    root
+      .querySelector<HTMLElement>("#status")
+      ?.querySelector("[data-vigilia-host-display-count]")?.textContent ??
+    undefined;
+
+  await act(async () => modeSegments(root)[2]?.click());
+  await act(async () => {});
+  expect(count(), "the first visit published no count to leave behind").toBe(
+    uiCopy.hostSettings.status.displays(1),
+  );
+
+  await act(async () => modeSegments(root)[0]?.click());
+
+  // **What is asserted is the moment the strip's live region is created**, and
+  // not a later read of the DOM. React commits the mode change and flushes the
+  // region's own mount publish inside one task — measured: the footer is still
+  // the editor's immediately after the click, and a microtask later the
+  // region's line is already in place — so no read of the finished DOM can see
+  // the stale line. Mutation records can: a `<p>` inserted *holding* text
+  // leaves no record of that text, while one inserted empty and filled
+  // afterwards shows the text arriving inside it. The line is the region's, so
+  // it has to arrive that way.
+  const mutations: MutationRecord[] = [];
+  const observer = new MutationObserver((batch) => mutations.push(...batch));
+  observer.observe(root, { childList: true, subtree: true });
+  await act(async () => modeSegments(root)[2]?.click());
+  await Promise.resolve();
+  observer.disconnect();
+
+  expect(
+    mutations
+      .filter(
+        (record) =>
+          record.target instanceof Element &&
+          record.target.hasAttribute("data-vigilia-host-status"),
+      )
+      .flatMap((record) => [...record.addedNodes])
+      .filter((node) => node instanceof Text),
+    "the re-entered strip mounted its live region holding the previous visit's line",
+  ).toHaveLength(1);
+  expect(
+    count(),
+    "the re-entered strip was painted with the previous visit's count",
+  ).toBe(uiCopy.hostSettings.status.displays(1));
+  await act(async () => {});
+
+  layout.destroy();
+});
