@@ -134,10 +134,12 @@ from Node — no browser, because nothing visible changes.
 
 - **Fabric's `stateProperties`**, read at runtime from `fabric/dist/index.mjs`: 15
   entries, and `locked`, `selectable` and `evented` are each absent from it.
-- **`SCENE_PERSISTED_PROPERTIES`**, parsed from `persist.ts`:
-  `["id","provenance","selectable","evented","locked"]` — all three flags are in it
-  and none is in Fabric's list, so each is persisted only because this list names
-  it.
+- **`SCENE_PERSISTED_PROPERTIES`**, read from `persist.ts:58-76`: ten entries — five
+  string literals, `["id","provenance","selectable","evented","locked"]`, and the
+  five `VIGILIA_*` constants at `:61-65`. The three flags are among the literals and
+  none is in Fabric's list, so each is persisted only because this list names it.
+  (The probe collected string literals only, which is why the printed list is the
+  five and not the ten.)
 - **Writers**, over every non-test `.ts`/`.tsx` under `packages/` and `tests/`:
   exactly one `.set("locked", …)`, at `object-lock-manager/index.ts:79`. The
   `selectable`/`evented` writers are the grouping manager's reachability pass
