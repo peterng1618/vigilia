@@ -754,10 +754,12 @@ git commit -m "feat(shell): show this PC as a mode of its own"
 
 ### Task A.9: Assign a theme to a display from its cell
 
-**Files:**
-- Modify: `src/web/packages/editor/src/store-mode/gallery.tsx`
+**Files** (corrected after the task landed, from its review's finding 3 — see the note
+at the end of this task):
 - Modify: `src/web/packages/editor/src/store-mode/region.tsx`
-- Test: `src/web/packages/editor/src/store-mode/gallery.dom.test.tsx`
+- Create: `src/web/packages/editor/src/store-mode/assign-display.tsx`
+- Modify: `src/web/packages/editor/src/ui-copy.ts`
+- Test: `src/web/packages/editor/src/store-mode/region.dom.test.tsx`
 
 **Interfaces:**
 - Consumes: `ThemeLibraryClient.assign`, `listDisplays` (the per-display plan's
@@ -780,7 +782,7 @@ it("reports the host's refusal in the host's own words", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run packages/editor/src/store-mode/gallery.dom.test.tsx`
+Run: `npx vitest run packages/editor/src/store-mode/region.dom.test.tsx`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement**
@@ -805,15 +807,29 @@ nothing.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/editor/src/store-mode/gallery.dom.test.tsx`
+Run: `npx vitest run packages/editor/src/store-mode/region.dom.test.tsx`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
+Commit with the pathspec form, which never reads the index for other paths (R144 — a
+controller commit already swallowed a seat's staged work in this plan):
+
 ```bash
-git add src/web/packages/editor/src/store-mode/gallery.tsx src/web/packages/editor/src/store-mode/gallery.dom.test.tsx src/web/packages/editor/src/store-mode/region.tsx
-git commit -m "feat(store): assign a theme to a display from its cell"
+git commit -F <msgfile> -- src/web/packages/editor/src/store-mode/region.tsx src/web/packages/editor/src/store-mode/assign-display.tsx src/web/packages/editor/src/ui-copy.ts src/web/packages/editor/src/store-mode/region.dom.test.tsx
 ```
+
+**What landed, and the three places this task's own text was wrong** (the review's
+finding 3; the plan is corrected rather than the work):
+
+- **`gallery.tsx` needed no change.** It already drew all four actions and reported them
+  through the one callback, so the missing piece was only where `assign` leads. The
+  Files list named it, and the task is the seam rather than the cell.
+- **The cases live in `region.dom.test.tsx`, not `gallery.dom.test.tsx`**, because that
+  is where the client harness is — the test followed the harness rather than the file
+  the plan guessed at, and Step 2's and Step 4's commands now name the right one.
+- **`assign-display.tsx` is a new file and `ui-copy.ts` gained the strings**, because
+  `region.tsx` reached 698 lines. The Files list named neither.
 
 ### Task A.10: `settings.html` stops listing themes
 
