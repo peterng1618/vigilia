@@ -1,9 +1,4 @@
-import {
-  type FabricThemeEnvelope,
-  type FacetRecord,
-  resolveStyleValue,
-} from "@vigilia/renderer-core";
-import { cssArtboardPaint } from "@vigilia/scene-fabric";
+import type { FacetRecord, Orientation } from "@vigilia/renderer-core";
 import type { ThemeLibraryClient } from "../theme-library-client.js";
 
 /**
@@ -21,11 +16,13 @@ import type { ThemeLibraryClient } from "../theme-library-client.js";
  * reads: what a kind is called is `uiCopy`'s, and a client older than the kind
  * prints the identifier rather than inventing a name for it.
  *
- * `ground` is the theme's own artboard paint, resolved here because
- * `FacetRecord` carries no paint and the cell draws it in place of a picture a
- * theme does not have. It is a CSS paint string — a colour, or a
- * `linear-gradient(...)` — or `undefined` when the document resolves to no
- * paint at all.
+ * `ground` is the theme's own artboard paint — a CSS paint string, a colour or a
+ * `linear-gradient(...)` — and it arrives on the listing, derived by the host
+ * from the envelope it already parsed. `FacetRecord` carries no paint, and the
+ * cell draws the ground in place of a picture a theme does not have, so it is
+ * read here rather than resolved: a reader that opened every listed theme to
+ * find one paint string would be the second pass over the library the spec
+ * refuses.
  */
 export interface StoreItem {
   readonly id: string;
@@ -66,96 +63,134 @@ export const DASHBOARD_THEME_KIND = "dashboard-theme";
 /**
  * The host's own library as an `ItemSource`.
  *
- * **The listing carries the facets; the ground needs the document.** A.4a's
- * `ThemeLibraryEntry` derives `facets` in the host from the envelope it already
- * parsed, so filtering never opens a theme — but the artboard's paint is not on
- * that record, so `list()` opens each theme once to resolve it. A theme whose
- * open fails fails the listing rather than arriving with a picture box nothing
- * can fill: the host answered a listing naming it, so a document it will not
- * hand back is a fault, not a theme without a ground.
+ * **One listing, and no second read.** Everything a cell needs — the facets, the
+ * author, the picture's address and the ground — is on the entry the host
+ * derived from the document it already parsed, so `list()` maps what it is
+ * handed and opens nothing.
  */
 export function localThemeSource(client: ThemeLibraryClient): ItemSource {
   return {
     kind: DASHBOARD_THEME_KIND,
     async list(): Promise<readonly StoreItem[]> {
       const entries = await client.list();
-      return Promise.all(
-        entries.map(async (entry) => {
-          const { envelope } = await client.open(entry.id);
-          return {
-            id: entry.id,
-            kind: DASHBOARD_THEME_KIND,
-            name: entry.name,
-            author: entry.author,
-            updatedAt: entry.updatedAt,
-            thumbnailUrl: entry.thumbnailUrl,
-            ground: groundOf(envelope),
-            facets: entry.facets,
-          };
-        }),
-      );
+      return entries.map((entry) => ({
+        id: entry.id,
+        kind: DASHBOARD_THEME_KIND,
+        name: entry.name,
+        author: entry.author,
+        updatedAt: entry.updatedAt,
+        thumbnailUrl: entry.thumbnailUrl,
+        ground: entry.ground,
+        facets: entry.facets,
+      }));
     },
   };
 }
 
 /**
- * The artboard's paint, read the document's own way and converted at the CSS
- * boundary. `resolveStyleValue` is the resolver the plan and the player both
- * read, so a reference is resolved here exactly as it is on the artboard; a
- * reference nothing declares resolves to `undefined`, which is the same absence
- * as no paint at all.
+ * One facet's own rule, handed only the values chosen in that facet: the rules
+ * differ per facet, and the difference is the spec's one deliberate exception
+ * rather than a detail of the loop.
  */
-function groundOf(envelope: FabricThemeEnvelope): string | undefined {
-  return cssArtboardPaint(
-    resolveStyleValue(
-      envelope.artboard.background,
-      envelope.globals ?? {},
-      "artboard",
-      [],
-    ),
-  );
+type FacetMatcher = (item: StoreItem, chosen: readonly string[]) => boolean;
+
+/**
+ * Shape's three groups, in the order the drawing's Shape popover offers them.
+ * Each is read off the item's own record, so a group's reading and the value a
+ * person chooses come from one vocabulary.
+ */
+const SHAPE_GROUPS: readonly ((item: StoreItem) => string)[] = [
+  (item) => item.facets.orientation,
+  (item) => item.facets.aspect,
+  (item) => `${item.facets.width}x${item.facets.height}`,
+];
+
+/** The orientation group's whole vocabulary, typed from the record's own union
+ *  so the two cannot be spelled differently. */
+const SHAPE_ORIENTATIONS: readonly Orientation[] = [
+  "landscape",
+  "portrait",
+  "square",
+];
+
+/** A bucket's form — `16:9`, `1:1`, `32:9` — and the one bucket that is a word
+ *  rather than a ratio. Recognised by form rather than by a second copy of the
+ *  record's bucket list, which would be a list to keep in step for no gain. */
+const SHAPE_RATIO = /^\d+:\d+$/;
+
+/** An exact size's form: `1920x1080`. */
+const SHAPE_SIZE = /^\d+x\d+$/;
+
+/**
+ * Which of the three groups a chosen shape value names, or `undefined` for a
+ * value that names none — and a value naming no group can be satisfied by no
+ * theme, so it is not a value that simply fails to match.
+ */
+function shapeGroupOf(value: string): number | undefined {
+  if (SHAPE_ORIENTATIONS.some((orientation) => orientation === value)) return 0;
+  if (value === "other" || SHAPE_RATIO.test(value)) return 1;
+  if (SHAPE_SIZE.test(value)) return 2;
+  return undefined;
 }
 
 /**
- * The values a facet may be chosen by, read off one item. The ids are the
- * record's own readings, so there is no second vocabulary to keep in step: an
- * author is the author string, a colour mode is the record's word, a sensor is
- * a `semanticKey`, and a shape is three groups in one facet — the orientation,
- * the aspect bucket and the exact size — which is the drawing's own three-group
- * Shape popover.
- *
- * **`style` carries no values this phase.** The record holds no tags until
- * phase G, so a style selection matches nothing rather than everything: an
- * empty set is the truth about a facet nothing has been tagged for.
+ * Shape is the one facet with groups inside it: **every group the selection
+ * names has to hold, and within one group the values are alternatives** — the
+ * ordinary rule one level down. So `landscape 16:9` is one shape, not three
+ * alternatives, and a portrait board cannot answer a landscape selection just
+ * because the bucket it reads (`16:9`) is also the one chosen.
  */
-const FACET_VALUES: Readonly<
-  Record<string, (item: StoreItem) => readonly string[]>
-> = {
-  author: (item) => (item.author === undefined ? [] : [item.author]),
-  "colour-mode": (item) => [item.facets.colourMode],
-  sensors: (item) => item.facets.sensors.map((sensor) => sensor.key),
-  shape: (item) => [
-    item.facets.orientation,
-    item.facets.aspect,
-    `${item.facets.width}x${item.facets.height}`,
-  ],
-  style: () => [],
+function matchesShape(item: StoreItem, chosen: readonly string[]): boolean {
+  const groups: string[][] = [[], [], []];
+  for (const value of chosen) {
+    const group = shapeGroupOf(value);
+    if (group === undefined) return false;
+    groups[group]?.push(value);
+  }
+
+  return groups.every((values, index) => {
+    if (values.length === 0) return true;
+    const reading = SHAPE_GROUPS[index]?.(item);
+    return reading !== undefined && values.includes(reading);
+  });
+}
+
+/**
+ * One rule per facet, keyed by the facet ids the region's row draws.
+ *
+ * **Within a facet the values are OR, across facets they are AND — except
+ * Sensors and Shape, where they are AND** (spec, "Finding a theme: the five
+ * facets"). Two facets ask a question only *all* of a selection can answer: a
+ * theme must read every sensor asked for, so "CPU and GPU" cannot answer with a
+ * CPU-only theme, and it must have every shape property asked for, which
+ * `matchesShape` holds a level down.
+ */
+const FACET_MATCHERS: Readonly<Record<string, FacetMatcher>> = {
+  author: (item, chosen) => chosen.some((value) => value === item.author),
+  "colour-mode": (item, chosen) => chosen.includes(item.facets.colourMode),
+  sensors: (item, chosen) =>
+    chosen.every((value) =>
+      item.facets.sensors.some((sensor) => sensor.key === value),
+    ),
+  shape: matchesShape,
+  // No values this phase: the record carries no tags until phase G, so a style
+  // selection matches nothing rather than everything.
+  style: () => false,
 };
 
 /**
  * Whether an item survives what is chosen, and it is pure so a page can narrow a
  * list it already holds without asking a source again.
  *
- * **Within a facet the chosen values are alternatives; across facets they all
- * have to hold.** A facet with nothing chosen is "any" and matches everything,
- * which is what keeps a theme that binds no sensor reachable: nothing is asked
- * of a facet nobody chose in, so a theme with an empty answer is excluded by a
- * sensor selection and kept by no selection at all — never by a facet that
- * silently treats it as matching.
+ * A facet with nothing chosen is "any" and matches everything, which is what
+ * keeps a theme that binds no sensor reachable: nothing is asked of a facet
+ * nobody chose in, so a theme with an empty answer is excluded by a sensor
+ * selection and kept by no selection at all — never by a facet that silently
+ * treats it as matching.
  *
- * A facet id this build does not know carries no values, so a selection in one
- * matches nothing. That is the same answer `style` gives, and for the same
- * reason: a filter over a vocabulary nothing populates cannot be satisfied.
+ * A facet id this build does not know has no rule, so a selection in one matches
+ * nothing. That is the same answer `style` gives, and for the same reason: a
+ * filter over a vocabulary nothing populates cannot be satisfied.
  */
 export function matchesFacets(
   item: StoreItem,
@@ -163,8 +198,8 @@ export function matchesFacets(
 ): boolean {
   for (const [facet, values] of Object.entries(chosen)) {
     if (values.length === 0) continue;
-    const carried = FACET_VALUES[facet]?.(item) ?? [];
-    if (!values.some((value) => carried.includes(value))) return false;
+    const matcher = FACET_MATCHERS[facet];
+    if (matcher === undefined || !matcher(item, values)) return false;
   }
   return true;
 }

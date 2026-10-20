@@ -8,9 +8,11 @@ import {
   facetRecordOf,
   type PerformanceCost,
   performanceCostsOf,
+  resolveStyleValue,
   type ValidationIssue,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
+import { cssArtboardPaint } from "@vigilia/scene-fabric";
 import { moveToTrash } from "./trash.js";
 
 /**
@@ -36,6 +38,11 @@ interface ThemeStoreEntry {
    *  the same envelope, so a reader filtering the library never opens a theme
    *  to ask. Required, because every entry here was built from a document. */
   readonly facets: FacetRecord;
+  /** The artboard's paint as CSS, for a gallery cell with no picture to show.
+   *  Derived from the same envelope and for the same reason as `facets`: the
+   *  reader must not open a theme to find one paint string. Absent when there is
+   *  no paint to read, media behind the board included. */
+  readonly ground?: string;
 }
 
 interface ThemeStoreRecord extends ThemeStoreEntry {
@@ -552,6 +559,28 @@ async function readEnvelope(
   return (await readStoredOrAbsent(library, id))?.envelope;
 }
 
+/**
+ * The artboard's paint, read the document's own way and converted at the CSS
+ * boundary — the resolver the plan and the player both read, so a reference is
+ * resolved here exactly as it is on the artboard.
+ *
+ * **Media behind the board is `undefined`, not the token's paint.** With a
+ * background media layer a picture is the ground and the token is not what a
+ * viewer sees, which is the same reason `facetRecordOf` answers `unclassified`
+ * for that document.
+ */
+function groundOf(envelope: FabricThemeEnvelope): string | undefined {
+  if (envelope.artboard.backgroundMedia !== undefined) return undefined;
+  return cssArtboardPaint(
+    resolveStyleValue(
+      envelope.artboard.background,
+      envelope.globals ?? {},
+      "artboard",
+      [],
+    ),
+  );
+}
+
 /** One library line: what the document says, and when the folder changed. */
 async function entryFor(
   library: string,
@@ -561,6 +590,7 @@ async function entryFor(
   try {
     const stat = await fs.stat(path.join(library, id));
     const author = envelope.metadata?.author;
+    const ground = groundOf(envelope);
     return {
       id,
       name: envelope.metadata?.name ?? id,
@@ -570,6 +600,7 @@ async function entryFor(
       // nothing new for it: no asset is opened and no second read is made.
       costs: performanceCostsOf(envelope),
       facets: facetRecordOf(envelope),
+      ...(ground === undefined ? {} : { ground }),
     };
   } catch {
     return undefined;

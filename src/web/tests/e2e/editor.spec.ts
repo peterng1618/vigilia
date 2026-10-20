@@ -5,6 +5,10 @@ import {
   type TestInfo,
   test,
 } from "@playwright/test";
+import {
+  type FabricThemeEnvelope,
+  facetRecordOf,
+} from "@vigilia/renderer-core";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 import { installFixedClock } from "./clock.js";
@@ -48,19 +52,26 @@ import { openPosition } from "./rebuild-driver.js";
 import { choosePalette } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
+/** The theme the library stub lists, so the record below is the host's own
+ *  derivation rather than a descriptor written by hand: `describeSemanticKey`
+ *  produces `{label: "CPU load", family: "cpu"}`, and a hand-written
+ *  `{label: "CPU", family: "system"}` is a stub that answers something the host
+ *  never would — the trap A.4a's review found in this file. */
+const LISTED_THEME: FabricThemeEnvelope = {
+  schemaVersion: 2,
+  fabricVersion: "7.4.0",
+  id: "graphite-desk",
+  artboard: { width: 1920, height: 1080 },
+  metadata: { name: "Graphite desk", themeLanguage: "en" },
+  scene: { version: "7.4.0", objects: [] },
+  bindings: { "cpu-label": [{ id: "cpu", semanticKey: "cpu.load" }] },
+};
+
 /** The facet record the host derives for every theme it lists (A.4). The store
  *  mode reads it, so a stub that answers a theme without one renders a filter
  *  over nothing — and `route.fulfill({ json })` is untyped, so nothing but this
  *  constant makes that a compile error. */
-const LISTED_THEME_FACETS = {
-  author: undefined,
-  colourMode: "dark",
-  sensors: [{ key: "cpu.load", label: "CPU", family: "system" }],
-  orientation: "landscape",
-  aspect: "16:9",
-  width: 1920,
-  height: 1080,
-} as const;
+const LISTED_THEME_FACETS = facetRecordOf(LISTED_THEME);
 
 /** Clicks one primitive in the Add pane's shape group.
  *

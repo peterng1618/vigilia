@@ -131,13 +131,20 @@ function Cell(props: {
  * that fails is dropped rather than left showing a browser's broken mark. With
  * no address at all the box is the ground alone.
  *
+ * **What failed is the address, not the box.** The state is the address that
+ * failed rather than a flag, so a cell whose picture is replaced — a save that
+ * stores a thumbnail, a listing refreshed — draws the new picture instead of
+ * the neutral box the old one left behind. A latched flag would be a cell that
+ * never shows a picture again for as long as it is mounted.
+ *
  * The image is `alt=""` because the cell names the theme beside it: a picture
  * repeating the name is read twice.
  */
 function Picture(props: { readonly item: StoreItem }): React.JSX.Element {
   const { item } = props;
-  const [failed, setFailed] = useState(false);
-  const showPicture = item.thumbnailUrl !== undefined && !failed;
+  const [broken, setBroken] = useState<string | undefined>(undefined);
+  const showPicture =
+    item.thumbnailUrl !== undefined && item.thumbnailUrl !== broken;
 
   return (
     <span
@@ -153,7 +160,7 @@ function Picture(props: { readonly item: StoreItem }): React.JSX.Element {
           src={item.thumbnailUrl}
           alt=""
           className="size-full object-cover"
-          onError={() => setFailed(true)}
+          onError={() => setBroken(item.thumbnailUrl)}
         />
       ) : null}
     </span>

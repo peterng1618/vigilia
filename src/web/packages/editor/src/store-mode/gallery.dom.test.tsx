@@ -3,9 +3,10 @@
  * The gallery's cells: what one cell draws, and what its actions report.
  *
  * **What this file owns.** The plan's own case — a theme with no picture is
- * filled from its own artboard rather than left empty — plus the two claims the
+ * filled from its own artboard rather than left empty — plus the claims the
  * brief's rulings add: the picture a theme does not have is dropped rather than
- * left broken, and the four actions travel through the one `onAction` callback.
+ * left broken and a replaced address draws again, the four actions travel
+ * through the one `onAction` callback, and the byline is the drawing's.
  *
  * **What it deliberately does not measure.** jsdom lays nothing out, so the
  * grid's `272px` minimum and the picture's `2/1` are declarations read off the
@@ -14,6 +15,8 @@
  * into the region, so there is no page to inspect in a browser and no browser
  * case here.
  */
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { facetRecordOf } from "@vigilia/renderer-core";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
@@ -74,12 +77,38 @@ async function mount(element: ReactElement): Promise<HTMLDivElement> {
   return container;
 }
 
+/** Render again into the mount, which is how a listing refresh reaches a cell
+ *  that is already on screen. */
+async function rerender(element: ReactElement): Promise<void> {
+  const mounted = root;
+  if (mounted === undefined) throw new Error("nothing is mounted");
+  await act(async () => {
+    mounted.render(element);
+  });
+}
+
 /** A missing element is a defect this file names, rather than a `null` a later
  *  assertion reports as a wrong value. */
 function must<T extends Element>(found: T | null, what: string): T {
   if (found === null) throw new Error(`the gallery drew no ${what}`);
   return found;
 }
+
+/**
+ * The document an item describes, so the fixture's record is the derivation the
+ * host would emit rather than a descriptor invented here — the trap A.4a's
+ * review found in the e2e stub, where a hand-written `{label: "CPU", family:
+ * "system"}` named a descriptor `describeSemanticKey` never produces.
+ */
+const DOCUMENT: FabricThemeEnvelope = {
+  schemaVersion: 2,
+  fabricVersion: "7.4.0",
+  id: "living-room",
+  artboard: { width: 1920, height: 1080 },
+  metadata: { name: "Living room", themeLanguage: "en", author: "mira-k" },
+  scene: { version: "7.4.0", objects: [] },
+  bindings: { "cpu-label": [{ id: "cpu", semanticKey: "cpu.load" }] },
+};
 
 /** One item as the source hands it: a named theme with a stored picture and a
  *  ground. `midnightblue` rather than a hex, because a fixture in a gated file
@@ -93,15 +122,7 @@ function item(overrides: Partial<StoreItem> = {}): StoreItem {
     updatedAt: "2026-10-15T09:31:00.000Z",
     thumbnailUrl: "/api/themes/living-room/thumbnail",
     ground: "midnightblue",
-    facets: {
-      author: "mira-k",
-      colourMode: "dark",
-      sensors: [{ key: "cpu.load", label: "CPU", family: "system" }],
-      orientation: "landscape",
-      aspect: "16:9",
-      width: 1920,
-      height: 1080,
-    },
+    facets: facetRecordOf(DOCUMENT),
     ...overrides,
   };
 }
@@ -161,6 +182,35 @@ it("drops the picture a theme does not have, leaving its ground", async () => {
     "the cell kept the picture the host does not have",
   ).toBeNull();
   expect(box.style.background).toBe("midnightblue");
+});
+
+/**
+ * What failed is the **address**, not the box: a cell whose picture is replaced
+ * draws the new one. A latched flag would leave the neutral box on screen for as
+ * long as the cell is mounted, however good the picture that arrived afterwards.
+ */
+it("draws a picture again when the address changes after a failure", async () => {
+  const container = await mount(
+    <Gallery items={[item()]} onAction={() => undefined} />,
+  );
+  const box = pictureBox(container);
+
+  await act(async () => {
+    must(box.querySelector("img"), "picture").dispatchEvent(new Event("error"));
+  });
+  expect(box.querySelector("img")).toBeNull();
+
+  await rerender(
+    <Gallery
+      items={[item({ thumbnailUrl: "/api/themes/living-room/thumbnail-2" })]}
+      onAction={() => undefined}
+    />,
+  );
+
+  expect(
+    must(box.querySelector("img"), "picture").getAttribute("src"),
+    "the cell kept drawing the box the old address left behind",
+  ).toBe("/api/themes/living-room/thumbnail-2");
 });
 
 /**

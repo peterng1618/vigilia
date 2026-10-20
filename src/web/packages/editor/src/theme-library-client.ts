@@ -22,6 +22,12 @@ export interface ThemeLibraryEntry {
    *  required, because every entry here is a stored theme and every stored
    *  theme has a document to derive it from. */
   readonly facets: FacetRecord;
+  /** The artboard's paint as CSS, derived by the host from the same document,
+   *  for a gallery cell with no picture to show. **Optional, and the absence is
+   *  the truth**: a document with no paint — or with media behind the board,
+   *  where the picture is the ground and the token is not — has no key at all on
+   *  the wire, exactly as `author` has none for a theme that declares none. */
+  readonly ground?: string;
   /** Where the theme's picture is served, built here because this is what
    *  knows the host's base URL. Absent from a producer that has no host. */
   readonly thumbnailUrl?: string;
