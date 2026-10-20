@@ -434,6 +434,51 @@ export const uiCopy = {
     create: "Create",
     cancel: "Cancel",
   },
+  /**
+   * The Themes mode's own words — the store surface, whose region's header row
+   * is its own rather than the shell's (`2026-10-12-theme-store-design.md`,
+   * "The store mode").
+   */
+  store: {
+    /** The store's two halves, which the region's own `Segmented` names.
+     *  `label` is the group's name: the two labels inside are the options, so a
+     *  group with no name announces "Local, pressed" with nothing saying what is
+     *  being chosen. Local first, because the host's own library is what an
+     *  author already has. */
+    halves: {
+      label: "Theme halves",
+      local: "Local",
+      online: "Online",
+    },
+    /** The search well's name and the word it shows while empty, as one string:
+     *  a placeholder that could disagree with the name would be a second copy of
+     *  one fact. What a query filters and pages is A.4's and A.5's. */
+    search: "Search themes",
+    /** The five facets, in the order the row draws them — the spec's "Finding a
+     *  theme: the five facets". The values each offers are derived from the
+     *  theme by A.3's record, so none of them is a word here. */
+    facets: {
+      label: "Filter themes",
+      author: "Author",
+      colourMode: "Colour mode",
+      sensors: "Sensors",
+      shape: "Shape",
+      style: "Style",
+    },
+    /** The sort well, whose keys are per half because the two share none: the
+     *  catalogue knows when an item was published and how often it was taken,
+     *  and the host's library knows only what the author wrote. */
+    sort: {
+      label: "Sort themes",
+      local: { name: "Name", updatedAt: "Updated" },
+      online: {
+        created: "Created",
+        updated: "Updated",
+        downloads: "Downloads",
+        favorites: "Favorites",
+      },
+    },
+  },
   /** The library chooser. Its two groups say which kind of thing a row is: a
    *  template the product offers, or a theme the author made and can delete. */
   library: {

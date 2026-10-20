@@ -1256,3 +1256,143 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     `the canvas came back painted as something else (${drawnBefore} before, ${drawnAfter} after)`,
   ).toBeLessThan(0.1);
 });
+
+/**
+ * The store mode's own header row, as a rendered row.
+ *
+ * §7.2 forbids a second bar under the header, so what the store draws is the
+ * *region's* first row rather than a strip between the header and the content.
+ * This case reads the row really drawn — both halves, the search well, five
+ * facet buttons and the sort well, all inside the region — and reads the
+ * editor's own body as hidden from the other side of A.1's invariant.
+ *
+ * **The narrow pass is the wrap.** jsdom lays nothing out, so the dom case can
+ * only say that no facet is conditional; this says that a window too narrow for
+ * the row takes a second line rather than losing a control — every facet is
+ * still drawn, still inside the row's own box, and the row is taller than the
+ * one line it draws at 1280. A row that stayed one line tall while a button fell
+ * outside it would pass a drawn/not-drawn reading alone, which is why both are
+ * read.
+ *
+ * **The asserted narrow width is 720, not the width that forces the facet row
+ * itself to wrap.** That width is about 380px, which is not an arrangement this
+ * shell is a desktop surface in; at 720 the row takes its second line and every
+ * facet is still drawn inside it. The facet row's own wrap is read structurally
+ * in `region.dom.test.tsx`, where the row's declaration is what is asserted,
+ * and was measured once at 380 while this case was written: the fifth facet
+ * moved to the next line and none was lost.
+ */
+test("the themes mode draws the store's own header row, and no width drops a facet", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  await page
+    .locator(".editor-shell-mode-switch")
+    .getByRole("button", { name: uiCopy.modes.themes, exact: true })
+    .click();
+
+  const region = page.locator("[data-vigilia-mode-region='themes']");
+  await expect(region, "the themes mode renders no region").toBeVisible();
+  await expect(
+    page.locator(".editor-shell-body"),
+    "the editor's body was not hidden",
+  ).toBeHidden();
+
+  const header = region.locator("[data-vigilia-store-header]");
+  await expect(header, "the region draws no header row").toBeVisible();
+
+  // The two halves, named and opening on Local — §5's Segmented, which is what
+  // the region's own header row carries rather than a second mode switch.
+  const halves = header.locator("[data-vigilia-store-halves] button");
+  await expect(halves).toHaveCount(2);
+  await expect(halves.nth(0)).toHaveText(uiCopy.store.halves.local);
+  await expect(halves.nth(1)).toHaveText(uiCopy.store.halves.online);
+  await expect(halves.nth(0)).toHaveAttribute("aria-pressed", "true");
+
+  await expect(
+    header.locator("[data-vigilia-store-search]"),
+    "the region draws no search well",
+  ).toBeVisible();
+  const facets = header.locator("[data-vigilia-facet]");
+  await expect(facets, "the region does not draw the five facets").toHaveCount(
+    5,
+  );
+  await expect(
+    header.locator("[data-vigilia-store-sort]"),
+    "the region draws no sort well",
+  ).toBeVisible();
+
+  // Nothing sits above the region's own first row: the header row is the
+  // region element's first child, which is what makes it the region's row
+  // rather than a bar the switch was moved into.
+  expect(
+    await header.evaluate(
+      (node) => node === node.parentElement?.firstElementChild,
+    ),
+    "something sits above the region's own header row",
+  ).toBe(true);
+
+  // ── The narrow pass ───────────────────────────────────────────────────────
+  /** The row and the five facets, as rendered boxes. */
+  const measure = async (): Promise<{
+    readonly row: { left: number; right: number; height: number };
+    readonly boxes: readonly {
+      left: number;
+      right: number;
+      width: number;
+      height: number;
+    }[];
+  }> => ({
+    row: await header.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+        height: Math.round(rect.height),
+      };
+    }),
+    boxes: await facets.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        };
+      }),
+    ),
+  });
+
+  const wide = await measure();
+  await page.setViewportSize({ width: 720, height: 720 });
+  const narrow = await measure();
+  const report = JSON.stringify({ wide, narrow });
+  console.log(`store-facets ${report}`);
+  testInfo.annotations.push({ type: "store-facets", description: report });
+
+  expect(
+    narrow.boxes.every((box) => box.width > 0 && box.height > 0),
+    `a facet is not drawn at a narrow width (${report})`,
+  ).toBe(true);
+  expect(
+    narrow.boxes.every(
+      (box) =>
+        box.left >= narrow.row.left - 1 && box.right <= narrow.row.right + 1,
+    ),
+    `a facet falls outside the row at a narrow width (${report})`,
+  ).toBe(true);
+  expect(
+    narrow.row.height,
+    `the row did not wrap, so a control is out of reach (${report})`,
+  ).toBeGreaterThan(wide.row.height);
+  expect(
+    narrow.row.right,
+    `the row overflows the window it is drawn in (${report})`,
+  ).toBeLessThanOrEqual(720);
+});

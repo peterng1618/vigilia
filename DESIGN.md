@@ -478,6 +478,7 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 | **Labelled button** | A label in `--text-sm` on the `--vigilia-control-bg` fill, 1px `--edge`, `--radius-md`, `6px 12px` padding | You can answer the surface that raised it; it is chrome around an answer, not a control in a panel |
 | **Rail slot** | A 36px square at `--radius-lg`, glyph only | One of §7.2's four panes; at most one is open |
 | **Choice row** | A `--radius-md` row at `--panel-2` carrying a swatch and a name; the chosen row is lifted to `--stage` with the accent border | One member of a closed set where each member has its own colour |
+| **Checkbox choice row** | The choice row, with a 14px box and a count in place of the swatch; the chosen row is lifted to `--stage` with a `--text` check | One member of a set you may choose **several** of |
 
 **`Segmented` has a bare form, and the header's mode switch is it.** §7.1's
 switch is the well this table describes — `--panel-2` inside a 1px `--edge` at
@@ -490,6 +491,24 @@ primitive with header-local paint rather than a fourth row shape grown for one
 caller. Rule 5 below is met by the group's own name rather than by a label column,
 and by the group's and each segment's id, derived from the mode the way
 `useControlIds` derives one (`docs/decisions/0074`).
+
+**The checkbox choice row is rule 7's shape where the set admits more than one
+answer.** Rule 7 gives a set too large for `Segmented` as a list of choice rows,
+each a **radio** in one labelled `radiogroup` — one answer, and the group owns
+which. A set you may choose several of is not that shape: the row's semantics are
+a checkbox, the group is a plain group, and the group therefore owns no single
+checked bit. Everything else is the choice row's — the `--radius-md` row at
+`--panel-2`, the row as the whole target, the chosen row lifted to `--stage`, and
+a mark whose ink is `--text` rather than the accent, because §4 rations accent to
+one filled element per region. The store mode's facet popover is where it is
+drawn; its trigger is the well with chevron, and the count beside a value is how
+many items are behind it.
+
+**The store's search well is 180px.** A well otherwise fills its field row's value
+cell (§5 rule 2), and the store's header row is a bar rather than a field row, so
+this one is sized by the drawing that fixes it
+(`docs/design/mockups/current/store-themes.html`) and holds that width while the
+facet row beside it wraps to a second line.
 
 **The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
 carries an editable field now, so the 24×24 target below binds it: the control pads its wells with

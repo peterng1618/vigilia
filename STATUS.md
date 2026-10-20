@@ -18,9 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **The half that reads the page is covered now, not only the ladder's parameter** (review finding 1 on `9fc0adaf`): `main-https.dom.test.ts` runs the player at an `https://` URL and asserts the probes the ladder builds are https — hard-coding `http` in `main.ts` reddens that one file and leaves the rest green, which is `vg-623` restored.
-- **Two stale citations and one stale framing corrected**: `server.test.ts` said "the link the host prints and the QR carries is `http://<lan-ip>:<port>`" (false since 0076, and its case is more load-bearing now), `host-player.spec.ts` cited the retired two-argument `originFor`, and the plain-origin e2e case now opens by naming the fallback's shape rather than the pre-0076 one.
-- **Evidence**: `npx vitest run` over host-refind, `main.dom`, `main-https.dom`, boundaries, hosting-client and publish-control.dom — 6 files, 50 passed, exit 0; red proof `1 failed | 21 passed` with `main.ts` hard-coded to `http`; `npm run typecheck` exit 0; `npx biome check` on the touched paths exit 0; the banner, curl probes and `publish-header` browser run are the first commit's.
+- **The store mode's region lands, and its header row is the region's own** (A.2): `store-mode/region.tsx` draws the two halves as §5's bare `Segmented`, the search well, the five facets and the sort well inside the `[data-vigilia-mode-region]` section A.1 left empty, with nothing above that row — §7.2's no-second-bar rule is what makes the placement a decision rather than a detail.
+- **The sort keys are per half and the two share none** (`local`: name, updatedAt; `online`: created, updated, downloads, favorites), refused rather than written when the half's list does not name the value; `facet-row.tsx` draws the five facets from props and derives no value, because A.3 owns the record that fills them.
+- **`DESIGN.md` §5 gains the checkbox choice row** rather than exempting it locally: rule 7's radio group is one answer, and a facet is a set you may choose several of, so the row's semantics are a checkbox and the group owns no single checked bit.
+- **Evidence**: `region.dom.test.tsx` 5 passed exit 0; two red proofs (the facet row's `flex-wrap` removed → exit 1, the region rendered in every mode → `the store drew itself in the host mode` exit 1), each restored byte-identical by `cmp`; the browser case in `editor-rail.spec.ts` reads the row really drawn at 1280 and at 720 with all five facets still inside it — exit 0, 1 expected, 0 unexpected; `npm run typecheck` exit 0; `npx biome check` over the six paths exit 0.
 
 ## Next
 

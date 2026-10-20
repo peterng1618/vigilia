@@ -14,6 +14,7 @@ import {
   type ShortcutOverrides,
   setActiveShortcuts,
 } from "../shortcut-manager/bindings.js";
+import { StoreModeRegion } from "../store-mode/region.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
@@ -596,14 +597,18 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
         {/* The mode's own region — the seam a non-editor surface fills. A task
             that lands one replaces this element's body and nothing around it:
             the switch, the header, the status bar and the editor's own body are
-            the shell's, and a region is what a mode adds. Empty until then,
-            because a mode with no surface yet is a mode with nothing to draw
-            rather than a placeholder standing in for one (§9). */}
+            the shell's, and a region is what a mode adds. A mode with no surface
+            yet renders an empty section, because a mode with nothing to draw is
+            that rather than a placeholder standing in for one (§9) — and each
+            region is handed the mode rather than the shell choosing between
+            them, so A.8's Host region mounts beside this one. */}
         {mode === "editor" ? null : (
           <section
             className="editor-shell-mode"
             data-vigilia-mode-region={mode}
-          />
+          >
+            <StoreModeRegion mode={mode} />
+          </section>
         )}
         {/* §7.6's strip: readouts only, the counts on the left and the save
             state and live mark on the right. The message span sits between the
