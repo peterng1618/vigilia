@@ -143,6 +143,14 @@ interface Panel {
   }) => void;
   surface: HTMLCanvasElement | undefined;
   context: CanvasRenderingContext2D | undefined;
+  /** The media **alone**, as it last painted, kept apart from the scratch so a
+   *  frame the media cannot paint reuses it instead of compositing the panel
+   *  over transparency (0079). */
+  backdrop: HTMLCanvasElement | undefined;
+  backdropContext: CanvasRenderingContext2D | undefined;
+  /** The region `backdrop` was painted for. A region that has moved puts the
+   *  backdrop at the wrong offset, which is worse than having none. */
+  backdropRegion: DeviceRect | undefined;
 }
 
 export function createGlass(options: GlassOptions): GlassHandle {
@@ -210,6 +218,16 @@ export function createGlass(options: GlassOptions): GlassHandle {
     }
     panel.surface = undefined;
     panel.context = undefined;
+    // The kept backdrop is a second surface per panel, so it is held to the
+    // same release contract; a reference dropped without zeroing leaves its
+    // backing store alive until the element is collected.
+    if (panel.backdrop !== undefined) {
+      panel.backdrop.width = 0;
+      panel.backdrop.height = 0;
+    }
+    panel.backdrop = undefined;
+    panel.backdropContext = undefined;
+    panel.backdropRegion = undefined;
   };
 
   /** The panel itself and every group above it, nearest first. */
@@ -268,6 +286,9 @@ export function createGlass(options: GlassOptions): GlassHandle {
       object,
       surface: undefined,
       context: undefined,
+      backdrop: undefined,
+      backdropContext: undefined,
+      backdropRegion: undefined,
       onBeforeRender: ({ ctx }) => {
         render(panel, ctx);
       },
@@ -407,17 +428,14 @@ export function createGlass(options: GlassOptions): GlassHandle {
     const scratchContext = scratch.context;
 
     // The media is a DOM sibling below the canvas, so the canvas alone misses
-    // the wallpaper; it goes down first and the scene composites over it. Its
-    // rect is the one the layer actually covered, in artboard units, through
-    // the same matrix the objects use.
-    const media = options.backdrop?.();
-    if (media !== undefined) {
-      media.paint(scratchContext, region, {
-        left: plane[4] + media.rect.left * plane[0],
-        top: plane[5] + media.rect.top * plane[3],
-        width: media.rect.width * plane[0],
-        height: media.rect.height * plane[3],
-      });
+    // the wallpaper; it goes down first and the scene composites over it. It
+    // lands in a surface of its own rather than straight into the scratch, so
+    // that a frame it cannot paint reuses the last one it did (0079). The
+    // scratch is still rebuilt from nothing every frame, which is what keeps
+    // the canvas half fresh.
+    const backdrop = backdropFor(panel, region, options.backdrop?.(), plane);
+    if (backdrop !== undefined) {
+      scratchContext.drawImage(backdrop, 0, 0);
     }
     scratchContext.drawImage(
       target,
@@ -503,6 +521,73 @@ export function createGlass(options: GlassOptions): GlassHandle {
       // the clip or the draw threw.
       ctx.restore();
     }
+  }
+
+  /** Whether a backdrop painted for `before` still sits where `region` is. */
+  function sameRegion(
+    before: DeviceRect | undefined,
+    region: DeviceRect,
+  ): boolean {
+    return (
+      before !== undefined &&
+      before.left === region.left &&
+      before.top === region.top &&
+      before.width === region.width &&
+      before.height === region.height
+    );
+  }
+
+  /**
+   * The media **alone**, painted for `region` — or the last one that painted,
+   * when the media has no frame to give. Undefined when neither exists.
+   *
+   * A video's `readyState` drops below `HAVE_CURRENT_DATA` at every loop wrap,
+   * and `drawImage` refuses it there — that is the platform's own precondition,
+   * so loosening the check is not open. Clearing the surface first would leave
+   * the panel compositing over transparency, which is the one frame the reader
+   * sees the raw video through, because the media is a DOM sibling *below* the
+   * canvas. The window is 20-35 ms every ~3.6 s, so one surface and no history
+   * is enough. The media fills its own layer box whatever its intrinsic size,
+   * so painting over the last one cannot leave it showing through.
+   */
+  function backdropFor(
+    panel: Panel,
+    region: DeviceRect,
+    media: BackdropMedia | undefined,
+    plane: Matrix,
+  ): HTMLCanvasElement | undefined {
+    // No media at all is not the same as media with no frame: a backdrop kept
+    // from a previous layer would be a picture of something no longer there.
+    if (media === undefined) {
+      panel.backdropRegion = undefined;
+      return undefined;
+    }
+    const element = panel.backdrop ?? document.createElement("canvas");
+    // Resizing clears the surface, which is the invalidation this wants.
+    if (element.width !== region.width) element.width = region.width;
+    if (element.height !== region.height) element.height = region.height;
+    const context =
+      panel.backdropContext ?? element.getContext("2d") ?? undefined;
+    if (context === undefined) return undefined;
+    panel.backdrop = element;
+    panel.backdropContext = context;
+
+    // A region that moved is the one case where the kept pixels sit at the
+    // wrong offset, so it is the one case that has to start from nothing.
+    const unmoved = sameRegion(panel.backdropRegion, region);
+    if (!unmoved) context.clearRect(0, 0, region.width, region.height);
+
+    const painted = media.paint(context, region, {
+      left: plane[4] + media.rect.left * plane[0],
+      top: plane[5] + media.rect.top * plane[3],
+      width: media.rect.width * plane[0],
+      height: media.rect.height * plane[3],
+    });
+    if (painted) {
+      panel.backdropRegion = region;
+      return element;
+    }
+    return unmoved ? element : undefined;
   }
 
   function surfaceFor(

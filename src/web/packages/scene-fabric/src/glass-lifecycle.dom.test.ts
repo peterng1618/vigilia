@@ -312,4 +312,96 @@ describe("glass lifecycle", () => {
     expect(new Set(stillHolding).size).toBe(1);
     expect(stillHolding[0]).toBe(0);
   });
+
+  it("keeps the last backdrop across a frame the media cannot paint", () => {
+    // A looping video's `readyState` drops below `HAVE_CURRENT_DATA` at every
+    // wrap and `drawImage` refuses it there, so the media paints nothing for
+    // 20-35 ms every few seconds (0079, measured). Clearing the scratch first
+    // would composite the panel over transparency for that frame - and because
+    // the media is a DOM sibling *below* the canvas, the reader sees the raw
+    // video through the tint where they normally see the blurred one.
+    let canPaint = true;
+    const s = stage({
+      texture: false,
+      backdrop: () => ({
+        paint: (ctx, region) => {
+          if (!canPaint) return false;
+          ctx.fillStyle = "#ff00ff";
+          ctx.fillRect(0, 0, region.width, region.height);
+          return true;
+        },
+      }),
+    });
+    s.canvas.add(panel({ width: 60, height: 60 }));
+    s.canvas.renderAll();
+    const painted = s.pixel(110, 110);
+    expect(painted[0], "the media reached the panel").toBe(255);
+    expect(painted[2]).toBe(255);
+    expect(painted[3], "and it is opaque there").toBe(255);
+
+    // The seam: the media is asked again and refuses, which is what a video
+    // below HAVE_CURRENT_DATA does.
+    const asked = s.regions.length;
+    canPaint = false;
+    s.canvas.renderAll();
+    expect(
+      s.regions.length,
+      "the media was asked again, so the refusal was exercised",
+    ).toBeGreaterThan(asked);
+
+    expect(
+      s.pixel(110, 110),
+      "the frame that could not paint shows what the last one did",
+    ).toEqual(painted);
+
+    // A region that moved is the one case that must NOT reuse it: the kept
+    // pixels would sit at the wrong offset, which is worse than having none.
+    (s.canvas.getObjects()[0] as Rect).set({ left: 40, top: 40 });
+    s.canvas.renderAll();
+    expect(
+      s.pixel(70, 70),
+      "a moved panel does not reuse a backdrop from the old offset",
+    ).not.toEqual(painted);
+  });
+
+  it("releases the kept backdrop with the scratch", () => {
+    // The backdrop is a second surface per panel (0079), so it is held to the
+    // same release contract: a reference dropped without zeroing leaves its
+    // backing store alive until the element is collected.
+    const created: HTMLCanvasElement[] = [];
+    const original = document.createElement.bind(document);
+    (document as unknown as { createElement: typeof original }).createElement =
+      ((name: string, options?: ElementCreationOptions) => {
+        const element = original(name, options);
+        if (name === "canvas") created.push(element as HTMLCanvasElement);
+        return element;
+      }) as typeof original;
+    try {
+      const s = stage({
+        texture: false,
+        backdrop: () => ({ paint: () => true }),
+      });
+      const before = created.length;
+      const mine = s.canvas.lowerCanvasEl;
+      s.canvas.add(panel());
+      s.canvas.renderAll();
+
+      const surfaces = created.slice(before).filter((e) => e !== mine);
+      // The scratch and the kept backdrop, both with a backing store.
+      expect(surfaces.length).toBeGreaterThanOrEqual(2);
+      expect(surfaces.filter((e) => e.width > 0).length).toBeGreaterThanOrEqual(
+        2,
+      );
+
+      s.glass.dispose();
+      expect(
+        surfaces.filter((e) => e.width > 0),
+        "dispose releases the backdrop's backing store too",
+      ).toHaveLength(0);
+    } finally {
+      (
+        document as unknown as { createElement: typeof original }
+      ).createElement = original;
+    }
+  });
 });
