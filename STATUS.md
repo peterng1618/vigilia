@@ -18,11 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Task A.6 is complete** (`469b5d94`, after `20df6e05` and `75593f52`): the store mode's body is wired — the gallery, the facet filter, the pager and the item's own surface all mount for the first time, and this is the plan's first task with a browser case.
-- **The region lists through `localThemeSource` and filters through `matchesFacets`**, with no second predicate written in it; paging is A.5's; the modal opens from the gallery's one `onAction` callback.
-- **The facet options are derived from the items** (R122): `unclassified` is not a value anyone can ask for, a size exactly one theme declares is not offered, and the drawing's labelled groups are kept so Shape's AND is visible.
-- **The caption carries the version** (R128), derived in the host's `entryFor` from `metadata.version` — the envelope already in hand — and the modal's 960px width, 420px stage and the pager's 158px row are pinned so a wrong number fails a test.
-- **Evidence**: `biome check ..` exit 0 (the item that was red at the task commit), `typecheck`, `status:check` and `build` exit 0; `design:check` at its `vg-626` baseline (remainder 20, no store-mode file in it); store and copy-net suite 6 files / 53 tests exit 0; the browser case exit 0 with the modal measured at 960, both stages 420, the pager bar 43px and the Shape hint and its three headings present; every red proof restored byte-identical by `cmp`.
+- **Task A.7 is complete**: the package picker is a library write — the new `theme-import.ts` composes `parseThemePackage` and `ThemeLibraryClient.save`, and `editor-main.ts` keeps only the input, the `change` listener, the status line and the call, so an import no longer replaces the open document (R129).
+- **The id is the package's own**, checked against `theme-library-client.ts`'s now-exported `THEME_ID_REGEX` with no fallback slug (R130); the write sends neither `overwrite` nor `base`, every refusal carries the reader's or `save`'s own words through the new `uiCopy.themeImport` pair (R131), and no invalidation channel was built (R132).
+- **Evidence**: `npx vitest run packages/editor/src/theme-import.test.ts` exit 0 (6 cases), the full suite exit 0 (283 files / 3848 tests), `npx biome check ..` exit 0, `typecheck` exit 0, `status:check` exit 0, `design:check` at its `vg-626` baseline (remainder 20); the red proof disabled the write, ran red, and was restored byte-identical by `cmp`.
+- **A.7 breaks the browser suite as ruled and this commit does not fix it** — issue 47: no route opens a package as a document any more, 14 e2e files drive the picker, 25 assertions wait for `Opened <file>.vigilia-theme`, and `clip-parity.spec.ts` was measured red (`npx playwright test … --project=desktop-chromium` exit 1).
 
 ## Next
 

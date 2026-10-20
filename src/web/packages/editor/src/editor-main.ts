@@ -35,10 +35,10 @@ import {
   createBlankFabricTheme,
   createNewFabricTheme,
 } from "./new-fabric-theme.js";
-import { parseThemePackage } from "./persist.js";
 import { createPublisher, type PublishSwitch } from "./publish-client.js";
 import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { loadStarterBackdrop } from "./starter-backdrop.js";
+import { importThemePackage } from "./theme-import.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
 import { captureCanvas } from "./thumbnail-capture.js";
 import { uiCopy } from "./ui-copy.js";
@@ -436,25 +436,15 @@ async function start(): Promise<void> {
     picker.value = "";
     if (file === undefined) return;
     void file.arrayBuffer().then(async (buffer) => {
-      const bytes = new Uint8Array(buffer);
-      const parsed = parseThemePackage(bytes);
-      if (!parsed.ok) {
-        status.textContent = `Could not open: ${parsed.message}`;
-        return;
-      }
-      try {
-        await mount({
-          input: envelopeInputFor(parsed.envelope),
-          envelope: parsed.envelope,
-          assets: parsed.assets,
-          ...(parsed.thumbnail === undefined
-            ? {}
-            : { thumbnail: parsed.thumbnail }),
-        });
-        status.textContent = `Opened ${file.name}`;
-      } catch (error) {
-        status.textContent = `Could not open: ${error instanceof Error ? error.message : String(error)}`;
-      }
+      // An import is a library write, not a document: the theme lands where it
+      // survives the editor closing, and whatever is open stays open.
+      const imported = await importThemePackage(
+        new Uint8Array(buffer),
+        libraryClient,
+      );
+      status.textContent = imported.ok
+        ? uiCopy.themeImport.landed(imported.id)
+        : uiCopy.themeImport.refused(imported.message);
     });
   });
 

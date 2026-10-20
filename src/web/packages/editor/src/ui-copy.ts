@@ -650,6 +650,15 @@ export const uiCopy = {
       cancel: "Keep editing",
     },
   },
+  /** The package the picker brings in. Its landing word says what happened — a
+   *  package written into the library — because the same line used to report a
+   *  document opened, and only one of those two is true now. A refusal carries
+   *  the reader's or the host's own reason: what the author acts on is the
+   *  reason, not this sentence. */
+  themeImport: {
+    landed: (id: string): string => `Imported ${id} to the library`,
+    refused: (reason: string): string => `Could not import: ${reason}`,
+  },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */
   replaceDocument: {
