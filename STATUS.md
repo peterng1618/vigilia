@@ -18,10 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Task A.5 is complete**: the pager's pure `pageNumbers`, the persisted page-size preference and the `Pager` component — `editor-shell/page-size.ts`, `store-mode/pager.tsx` and their two test files. **Nothing mounts it yet**; A.6 wires it into the region and owns "a changed filter returns to page one".
-- **A gap is drawn only where it stands for pages** (R119): the window slides rather than shrinks, so `pageNumbers(5, 8)` ends `…, 7, 8` and never `…, 7, "gap", 8`.
-- **The 76px size well is a design-language value, not a local literal** (R118): `DESIGN.md` §5 states it, `designLanguagePx` carries `76`, and `pager.tsx` joins the gated list — all three in this commit, and `remainderCeiling` untouched.
-- **Evidence**: the two suites 18 passed exit 0; red proofs for the gap rule (R119's own case reddens) and for the preference's unreadable-value default, each restored byte-identical by `cmp`; `typecheck`, `biome check ..` (720 files) and `status:check` exit 0; `design:check` unchanged at its `vg-626` baseline (remainder 20, no store-mode file in it, zero violations).
+- **A.5 fix round 1**: a gap stands for **two or more** pages on both arms, so a one-page hole is drawn as that page's numeral — `pageNumbers(5, 8)`, `(4, 8)` and `(5, 9)` now show every page. R119's own example is withdrawn; the ruling's prose and the plan's "never a gap adjacent to a number it stands for" govern.
+- **The rest of A.5 is as landed at `159e99da`**: the five-page window, the clamped current, the empty listing, the preference, the 76px design-language value, the copy and the component are unchanged.
+- **Concern 2 is carried to A.6, not fixed** (ruled): the labelled-row shape stands, and A.6's browser case must look at the pager's bar and say what it sees.
+- **Evidence**: the two suites 18 passed exit 0; a red proof on the final bytes (the old gap conditions restored) reddens the two corrected cases and restores byte-identical by `cmp`; `typecheck`, `biome check ..` (720 files) and `status:check` exit 0; `design:check` unchanged at its `vg-626` baseline (remainder 20, no store-mode file in it, zero violations).
 
 ## Next
 

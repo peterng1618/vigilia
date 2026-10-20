@@ -4,7 +4,7 @@
  * region hands it.
  *
  * **What this file owns.** `pageNumbers` — the pure decision, with the plan's
- * two cases, the near-end shapes R119 rules and the invariants over every
+ * two cases, the near-end shapes fix round 1 rules and the invariants over every
  * current page of every total up to two dozen — and the component: the numeral
  * that reports its own page, the two steps and where they stop, the size well's
  * four entries, and the chosen treatment on the page in force.
@@ -155,27 +155,39 @@ it("shows the five pages nearest the current one", () => {
 /**
  * Seven or fewer is where the numbers *are* the list, so every one is drawn and
  * no gap can stand between them.
+ *
+ * It is not the *only* shape that shows every page: with the one-page-hole rule
+ * a total of 8 or 9 shows them all from some positions too (`pageNumbers(5, 8)`
+ * is every page). This case is about `NO_GAP_TOTAL`, and it stays true as the
+ * plan writes it.
  */
 it("shows every page when there are seven or fewer", () => {
   expect(pageNumbers(2, 7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
 });
 
 /**
- * R119's near-end shapes. The window slides rather than shrinks, so at the end
- * of a listing the page beside the window is drawn rather than replaced by a
- * gap that would stand for nothing.
+ * The near-end shapes, as fix round 1 rules them (R119's own example is
+ * withdrawn). The window slides rather than shrinks, so a hole beside it is
+ * often one page wide — and **a hole of one page is drawn as that page's
+ * numeral**, because a gap standing for one page sits adjacent to a number it
+ * stands for, which the plan forbids.
  */
-it("draws a gap only where it stands for pages", () => {
-  expect(pageNumbers(5, 8)).toEqual([1, "gap", 3, 4, 5, 6, 7, 8]);
+it("draws a gap only where it stands for two or more pages", () => {
+  expect(pageNumbers(5, 8)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  expect(pageNumbers(4, 8)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  // Both arms at once: the holes are pages 2 and 8, one page each.
+  expect(pageNumbers(5, 9)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   expect(pageNumbers(1, 12)).toEqual([1, 2, 3, 4, 5, "gap", 12]);
   expect(pageNumbers(11, 12)).toEqual([1, "gap", 8, 9, 10, 11, 12]);
   expect(pageNumbers(12, 12)).toEqual([1, "gap", 8, 9, 10, 11, 12]);
 });
 
 /**
- * The three invariants the plan states, over every current page of every
- * listing this half can hold: no duplicate, the first and the last always
- * reachable, and no gap standing for a page it could have drawn.
+ * The invariants the plan states, over every current page of every listing this
+ * half can hold: no duplicate, the first and the last always reachable, the
+ * current page always drawn, and no gap adjacent to a number it stands for —
+ * which is the same claim as "a gap stands for two or more pages", read off the
+ * two numerals around it.
  *
  * The case is derived rather than pinned to the shapes above, because a rule
  * that held at 12 pages and broke at 13 is exactly what a fixed list of cases
@@ -207,8 +219,8 @@ it("keeps every page reachable and every gap honest, at every total", () => {
           throw new Error(`the gap at ${where} has no numbers around it`);
         expect(
           after - before,
-          `the gap at ${where} stands for no page at all`,
-        ).toBeGreaterThan(1);
+          `the gap at ${where} stands for one page, which is drawn instead`,
+        ).toBeGreaterThan(2);
       });
     }
   }

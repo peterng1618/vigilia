@@ -63,12 +63,14 @@ function pagesIn(from: number, to: number): number[] {
  * current page is always one of the five, and a total of seven or fewer shows
  * every page.
  *
- * **A gap is drawn only where it stands for pages.** A skipped run of one page
- * is drawn as that page: a gap beside the number it stands for, or one standing
- * for nothing between two adjacent numbers, is a mark an author reads as "there
- * is something here" when there is not. That is why `pageNumbers(5, 8)` ends
- * `…, 7, 8` rather than `…, 7, "gap", 8`, and why the near end of
- * `pageNumbers(11, 12)` begins `1, "gap", 8, …`.
+ * **A gap is drawn only where it stands for two or more pages** (R119's prose,
+ * and the plan's own "never a gap adjacent to a number it stands for"): a hole
+ * of exactly one page is drawn as that page's numeral, because a gap standing
+ * for one page sits between two numerals it claims, and a gap an author reads as
+ * "there is something here" when the number is right there is a mark that says
+ * nothing. So `pageNumbers(5, 8)` is every page from 1 to 8 — the hole beside
+ * the window is page 2 alone — while `pageNumbers(11, 12)` still begins
+ * `1, "gap", 8, …`, because that hole is three pages wide.
  *
  * It is pure and total: a page outside the listing is clamped into it, so a
  * number a filter left behind still numbers something, and a listing with no
@@ -86,13 +88,16 @@ export function pageNumbers(
   const end = start + PAGE_WINDOW - 1;
 
   const shown: (number | "gap")[] = [];
-  // The window's own first page is drawn below, so the page before it is the
-  // only one that can be missing here — and it is drawn rather than gapped.
-  if (start === 2) shown.push(1);
-  else if (start > 2) shown.push(1, "gap");
+  // The pages between the first and the window: one page is drawn, two or more
+  // are the gap. `start` is at least 1, so `pagesIn(1, start - 1)` is empty when
+  // the window already holds page 1 and holds exactly one page when `start` is 2
+  // or 3 — the hole of one, which is drawn.
+  if (start > 3) shown.push(1, "gap");
+  else shown.push(...pagesIn(1, start - 1));
   shown.push(...pagesIn(start, end));
-  if (end < total - 1) shown.push("gap");
-  if (end < total) shown.push(total);
+  // The pages between the window and the last, by the same rule.
+  if (end < total - 2) shown.push("gap", total);
+  else shown.push(...pagesIn(end + 1, total));
   return shown;
 }
 
