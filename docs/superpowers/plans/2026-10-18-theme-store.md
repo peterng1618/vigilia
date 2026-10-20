@@ -836,12 +836,33 @@ so those cases **move to a `/library` case rather than being deleted**, and the 
 must not take the last test of a landed feature with it. The editor raises no cost
 warning (A.9).
 
+**Removing the section also removes this page's only display selector (R153, filed
+`vg-649`).** `selected` (`settings.html:137`) is the display the Questions section answers
+for, read as `?display=` at `:248`, and its **only** writer is the `onSelect` callback the
+page hands to `themeList` — the display column, which lives inside `themeList`'s own output
+and so cannot be kept while the list goes. **Ruled: the Questions section stays, answers for
+the default display, and the page says which display it is answering for.** The capability
+that costs — answering for a display other than the default on a page with no editor open —
+is recorded in `vg-649` for the user rather than decided here.
+
+**The spec's blast radius is wider than "the cases asserting the column and the note".**
+All ten cases navigate to `/settings` and seven drive its theme UI through `chooseTheme`
+(`host-settings.spec.ts:136-146`), which clicks `#themes [data-display="…"]` on whatever page
+is loaded. **Ruled, and carried in this task's brief:** the two cases whose subject is the
+list (`:182` the display column, `:477` the cost note) **move to `/library`**, which renders
+the same rows into the same `#themes`; the four that use `chooseTheme` only as a precondition
+(`:155`, `:359`, `:457`, `:529`) **set the theme through `PUT /api/themes/active` via the
+`request` fixture** and stay on `/settings`; and `:417`, whose subject is the selector itself,
+has nowhere to move and is re-pointed to what R153 leaves, with its per-display half resting
+on `vg-649`.
+
 - [ ] **Step 1: Write the failing test**
 
 Browser proof: `/settings` renders no theme list, and `/library` still chooses a
 theme and still works in a plain browser with no editor open — **including its display
 column, one row per display the host holds, and the cost note on the row of a theme
-that carries one.**
+that carries one.** Plus: `/settings`'s Questions section still answers, for the default
+display, and the page says so (R153).
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -868,9 +889,11 @@ counts.
 
 - [ ] **Step 5: Commit**
 
+Commit with the pathspec form, which never reads the index for other paths (R144 — a
+controller commit already swallowed a seat's staged work in this plan):
+
 ```bash
-git add src/web/packages/host/public/settings.html src/web/tests/e2e/host-settings.spec.ts
-git commit -m "feat(host): one surface lists themes, and the host pages keep working"
+git commit -F <msgfile> -- src/web/packages/host/public/settings.html src/web/tests/e2e/host-settings.spec.ts
 ```
 
 ---
