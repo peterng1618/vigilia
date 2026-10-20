@@ -837,20 +837,33 @@ finding 3; the plan is corrected rather than the work):
 - Modify: `src/web/packages/host/public/settings.html`
 - Test: `src/web/tests/e2e/host-settings.spec.ts` (the existing spec covering the
   host's own pages)
+- Test: `src/web/packages/host/src/settings-page.dom.test.ts` and
+  `src/web/packages/host/src/editor-link.dom.test.ts` — both run this page's own script
 
 **Interfaces:**
 - Consumes: nothing.
 - Produces: no exported interface.
 
 **The removal is `/settings`'s Themes section, and nothing else (R116, resolving
-`vg-633`).** `/library` is the host's own *Choose a theme* page and it renders the same
-list from the same `/settings/theme-list.js`, so `theme-list.js` is **not touched** and
-the per-display plan's display column (Task 4.3) and cost note (Task 4.8) stay on
-`/library` by construction. `host-settings.spec.ts` is the **only** spec asserting either
-of them (`#themes [data-display]`, `.theme-cost-note`), and this task edits that file —
-so those cases **move to a `/library` case rather than being deleted**, and the removal
-must not take the last test of a landed feature with it. The editor raises no cost
-warning (A.9).
+`vg-633`).** The host's own *Choose a theme* page is the document `library.html`, and it
+renders the same list from the same `/settings/theme-list.js`, so `theme-list.js` is
+**not touched** and the per-display plan's display column (Task 4.3) and cost note
+(Task 4.8) stay on the chooser by construction. `host-settings.spec.ts` is the **only**
+spec asserting either of them (`#themes [data-display]`, `.theme-cost-note`), and this
+task edits that file — so those cases **move to a chooser case rather than being
+deleted**, and the removal must not take the last test of a landed feature with it. The
+editor raises no cost warning (A.9).
+
+**The chooser has no `/library` route, and the first draft of this task said it did
+(R161).** `library.html` is served by one `serveStatic` inside the display-resolution
+branch (`packages/host/src/server.ts:2554-2562`), reached only when the request is for
+`/` and the theme resolves to nothing; everything else falls through to the player
+bundle, so `/library` is a 404. The chooser is therefore **`/`**, and it is **one-shot
+for the caller's own screen**: `displayKeyFor` answers `this-pc` for a loopback browser,
+so a write that gives this PC a theme makes the next `/` resolve a theme and serve that
+screen's dashboard instead. A case that must stay on the chooser after a write therefore
+presses **another display's** row — which leaves the write path for this PC's own screen
+asserted nowhere in this file (`vg-653`).
 
 **Removing the section also removes this page's only display selector (R153, filed
 `vg-649`).** `selected` (`settings.html:137`) is the display the Questions section answers
@@ -865,8 +878,8 @@ is recorded in `vg-649` for the user rather than decided here.
 All ten cases navigate to `/settings` and seven drive its theme UI through `chooseTheme`
 (`host-settings.spec.ts:136-146`), which clicks `#themes [data-display="…"]` on whatever page
 is loaded. **Ruled, and carried in this task's brief:** the two cases whose subject is the
-list (`:182` the display column, `:477` the cost note) **move to `/library`**, which renders
-the same rows into the same `#themes`; the four that use `chooseTheme` only as a precondition
+list (`:182` the display column, `:477` the cost note) **move to the chooser at `/`**, which
+renders the same rows into the same `#themes`; the four that use `chooseTheme` only as a precondition
 (`:155`, `:359`, `:457`, `:529`) **set the theme through `PUT /api/themes/active` via the
 `request` fixture** and stay on `/settings`; and `:417`, whose subject is the selector itself,
 has nowhere to move and is re-pointed to what R153 leaves, with its per-display half resting
@@ -874,11 +887,12 @@ on `vg-649`.
 
 - [ ] **Step 1: Write the failing test**
 
-Browser proof: `/settings` renders no theme list, and `/library` still chooses a
+Browser proof: `/settings` renders no theme list, and the chooser at `/` still chooses a
 theme and still works in a plain browser with no editor open — **including its display
 column, one row per display the host holds, and the cost note on the row of a theme
 that carries one.** Plus: `/settings`'s Questions section still answers, for the default
-display, and the page says so (R153).
+display, and the page says so (R153). A case that must still be the chooser after a
+write presses another display's row (R161).
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -892,10 +906,15 @@ no editor open, can reach, so removing the list is not removing the path. What
 leaves is the duplicate listing: the store mode's local tab is where a theme is
 listed, opened, activated, exported or removed.
 
-**The list itself is not what is duplicate — the section is.** `/settings` and `/library`
-both call `themeList`, and what `/settings` loses is its *Themes* section, heading
-included. `theme-list.js` stays as it is: it is `/library`'s renderer, and the display
-column and cost note on its rows are `/library`'s too.
+**The list itself is not what is duplicate — the section is.** `/settings` and the
+chooser both call `themeList`, and what `/settings` loses is its *Themes* section, heading
+included. `theme-list.js` stays as it is: it is the chooser's renderer, and the display
+column and cost note on its rows are the chooser's too.
+
+**Two jsdom files read this page and the task's Files list must name them.**
+`packages/host/src/settings-page.dom.test.ts` and `packages/host/src/editor-link.dom.test.ts`
+both run `settings.html`'s own script, so the removal breaks them and `npm run gate`
+chains `npm test` — leaving them red would close the task with the gate red.
 
 - [ ] **Step 4: Run it to verify it passes**
 

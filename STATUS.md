@@ -18,17 +18,17 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **A.10 lands, and with it phase A: `/settings` stops listing themes.** The Themes section, `renderThemes`, `loadThemes`, `chooseTheme` and the `themes`/`templates`/`displays` state are gone, and the page's import of `theme-list.js` with them; the listing is the chooser's (`/`) and the store mode's local half.
+- **A.10 lands: `/settings` stops listing themes.** The Themes section, `renderThemes`, `loadThemes`, `chooseTheme` and the `themes`/`templates`/`displays` state are gone, and the page's import of `theme-list.js` with them; the listing is the chooser's (`/`) and the store mode's local half. **Its task review has not run, so phase A is not closed.**
 - **R153's coupling is resolved as ruled**: that list was also the page's only display selector, so the Questions section stays, answers for the default display, and its hint now says which display it is answering for; `vg-649` records the capability that costs.
 - **The spec's theme-UI cases were re-pointed rather than deleted**: the display column and the cost note moved to the chooser's page, four preconditions are now `PUT /api/themes/active` through the `request` fixture, and the selector's own case answers for the default.
-- **Evidence**: 10 cases pass against **rebuilt** bundles (`--workers=1`, its JSON report kept, both rendered pages inspected); four red proofs — the pre-fix page, the display sentence removed, the column not drawn, the note never drawn — each failed and were restored with `cp`/`cmp`; `biome`, `typecheck` and `status:check` exit 0, `design:check` stays red at its `vg-626` baseline, and the unit suite is 3902 cases / 286 files exit 0.
+- **Evidence**: the spec passes against **rebuilt** bundles (`--workers=1`, its JSON report kept, both rendered pages inspected); each red proof failed and was restored with `cp`/`cmp` — the pre-fix page, the display sentence, the column not drawn, the note never drawn, the page's display key and the editor link; `biome`, `typecheck` and `status:check` exit 0, `design:check` stays red at its `vg-626` baseline, and the unit suite exits 0.
 - **The brief's premise that `/library` is a route is wrong**, and the two moved cases were built around the real one: the chooser is served at `/` and only while nothing is chosen, so a write that gives this browser's own screen a theme hands it to that dashboard — they press another display's row to stay on the chooser, and the cost note's "survives its own re-render" half has no page left to assert it on.
 
 ## Next
 
-1. **Phase A is complete; the store plan's B–G each need their own plan** (G before C), and the phase boundary's own browser proof still needs rebuilt bundles — the served ones predate `d8571786` and the host's `dist/main.js` was rebuilt for this task's run.
-2. **`vg-633` is ruled (R116) and archived `verified`**: A.10 removed `/settings`'s Themes section only, `theme-list.js` is untouched, and the display column (Task 4.3) and cost note (Task 4.8) are now the chooser's page alone.
-3. Decide whether `vg-626` (the red `design:check`) runs alongside phase A or gates it; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
+1. **A.10's task review, then phase A's boundary**: `npm run gate` with its exit code read from a file, plus the boundary's own browser proof against rebuilt bundles — an imported package appearing in the list and surviving a restart, an assignment reaching a display, a mode switch with an unsaved document losing nothing, and the grid at 1280×720, 1440×900 and 200% zoom.
+2. **`vg-633` is ruled (R116) and archived `verified`**: A.10 removed `/settings`'s Themes section only, `theme-list.js` is untouched, and the display column (Task 4.3) and cost note (Task 4.8) are now the chooser's page alone. **R161 corrects A.10's route fact**: the chooser is `library.html` served at `/`, not a `/library` route.
+3. Decide whether `vg-626` (the red `design:check`) gates the phase-A boundary or runs beside it; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 4. Resume the drain at Task 23.4 when the store plan stops; resume Phase 21 after font-picker spec approval and Phase 12 after settings-pane spec review.
 5. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
 
