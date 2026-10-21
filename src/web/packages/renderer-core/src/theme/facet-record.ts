@@ -23,8 +23,10 @@ export type AspectBucket =
   | "3:2"
   | "16:10"
   | "16:9"
+  | "19.5:9"
   | "21:9"
   | "32:9"
+  | "4:1"
   | "other";
 
 export interface FacetRecord {
@@ -63,8 +65,9 @@ const EPSILON = 216 / 24389;
 const KAPPA = 24389 / 27;
 
 /** The published buckets, as `max/min` ratios so a portrait artboard reads its
-    landscape inversion's label — the comparison treats 16:9 and 9:16 as one. */
-const ASPECT_BUCKETS: readonly {
+    landscape inversion's label — the comparison treats 16:9 and 9:16 as one.
+    Ascending order is load-bearing: `aspectOf` returns the first match. */
+export const ASPECT_BUCKETS: readonly {
   readonly bucket: AspectBucket;
   readonly ratio: number;
 }[] = [
@@ -73,8 +76,10 @@ const ASPECT_BUCKETS: readonly {
   { bucket: "3:2", ratio: 3 / 2 },
   { bucket: "16:10", ratio: 16 / 10 },
   { bucket: "16:9", ratio: 16 / 9 },
+  { bucket: "19.5:9", ratio: 19.5 / 9 },
   { bucket: "21:9", ratio: 21 / 9 },
   { bucket: "32:9", ratio: 32 / 9 },
+  { bucket: "4:1", ratio: 4 },
 ];
 
 /**

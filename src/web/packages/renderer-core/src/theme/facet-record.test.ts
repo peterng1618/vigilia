@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
-import { facetRecordOf } from "./facet-record.js";
+import { ASPECT_BUCKETS, facetRecordOf } from "./facet-record.js";
 
 /** The smallest envelope a record can be read from; each case states only the
     part of the document it is about. */
@@ -15,6 +15,11 @@ function envelope(
     scene: {},
     ...overrides,
   } as FabricThemeEnvelope;
+}
+
+/** The same envelope at another artboard size, which is all a shape case states. */
+function shaped(width: number, height: number): FabricThemeEnvelope {
+  return envelope({ artboard: { width, height } });
 }
 
 /** A ground written as a literal, which is the shape the editor saves. */
@@ -128,18 +133,12 @@ describe("facetRecordOf", () => {
   it("calls 1000x1001 portrait and 1001x1000 landscape, never square", () => {
     // Near-equal, and never square: exact equality is the rule, so each side of
     // the pair reads its own way.
-    const shaped = (width: number, height: number): FabricThemeEnvelope =>
-      envelope({ artboard: { width, height } });
-
     expect(facetRecordOf(shaped(1000, 1001)).orientation).toBe("portrait");
     expect(facetRecordOf(shaped(1001, 1000)).orientation).toBe("landscape");
     expect(facetRecordOf(shaped(1000, 1000)).orientation).toBe("square");
   });
 
   it("buckets the ratio in log space and answers other past the tolerance", () => {
-    const shaped = (width: number, height: number): FabricThemeEnvelope =>
-      envelope({ artboard: { width, height } });
-
     expect(facetRecordOf(shaped(1920, 1080)).aspect).toBe("16:9");
     expect(facetRecordOf(shaped(1920, 1200)).aspect).toBe("16:10");
     // 0.1% from square, and inside any tolerance that keeps 1920x1080 at 16:9.
@@ -149,6 +148,37 @@ describe("facetRecordOf", () => {
     // 2.35:1 is 0.7% from 21:9 — past the tolerance, so it falls to `other`
     // rather than being filed under the nearest wrong bucket.
     expect(facetRecordOf(shaped(2350, 1000)).aspect).toBe("other");
+  });
+
+  it("buckets the two shapes the owner ruled", () => {
+    expect(facetRecordOf(shaped(3840, 960)).aspect).toBe("4:1");
+    expect(facetRecordOf(shaped(2340, 1080)).aspect).toBe("19.5:9");
+  });
+
+  it("refuses to file a 2.35:1 artboard under its nearest bucket", () => {
+    expect(facetRecordOf(shaped(2350, 1000)).aspect).toBe("other");
+  });
+
+  it("has exactly one entry for every published bucket", () => {
+    // Extendability is the requirement, not the two values: a bucket added to the
+    // union without its entry (or with a second one) must fail here.
+    expect(ASPECT_BUCKETS.map((e) => e.bucket).sort()).toEqual(
+      (
+        [
+          "1:1",
+          "4:3",
+          "3:2",
+          "16:10",
+          "16:9",
+          "19.5:9",
+          "21:9",
+          "32:9",
+          "4:1",
+        ] as const
+      )
+        .slice()
+        .sort(),
+    );
   });
 
   it("carries the author and the exact pixel size the document declares", () => {
