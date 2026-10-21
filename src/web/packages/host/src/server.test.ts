@@ -1308,6 +1308,54 @@ describe("Host theme routes", () => {
       ).toBe(405);
     });
 
+    it("refuses a cross-origin POST before it downloads anything", async () => {
+      let downloads = 0;
+      const bytes = packageBytes(
+        createValidPackage("family-room", "Family Room"),
+      );
+      answer = () => {
+        downloads += 1;
+        return new Response(new Uint8Array(bytes));
+      };
+
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        installBody(),
+        {
+          headers: {
+            origin: "https://evil.example",
+            host: "127.0.0.1:5173",
+          },
+        },
+      );
+
+      expect(res.status).toBe(403);
+      expect(downloads, "a cross-origin request reached the download").toBe(0);
+      const listing = (
+        await request(installing.server, "GET", "/api/themes")
+      ).json() as { themes: readonly unknown[] };
+      expect(listing.themes).toEqual([]);
+    });
+
+    it("accepts a POST whose origin is the request's own host", async () => {
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        installBody(),
+        {
+          headers: {
+            origin: "http://127.0.0.1:5173",
+            host: "127.0.0.1:5173",
+          },
+        },
+      );
+
+      expect(res.status).toBe(200);
+    });
+
     it("answers 500 when the origin could not be recorded", async () => {
       const bytes = packageBytes(
         createValidPackage("family-room", "Family Room"),

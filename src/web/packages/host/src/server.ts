@@ -284,6 +284,29 @@ function isLoopbackRemote(address: string | undefined): boolean {
   return normalized === "127.0.0.1" || normalized === "::1";
 }
 
+/**
+ * Whether a request states an origin other than its own.
+ *
+ * A page in another origin can reach a loopback route with a `text/plain` POST
+ * that needs no preflight, and the browser's own `Origin` header is the one
+ * fact that page cannot forge. An absent `Origin` stays allowed: curl, the
+ * host's tooling and a same-origin navigation all send none, and every other
+ * route treats that as the same-origin case.
+ */
+function isForeignOrigin(request: http.IncomingMessage): boolean {
+  const origin = request.headers.origin;
+  if (origin === undefined) return false;
+
+  const host = request.headers.host;
+  if (host === undefined) return true;
+
+  try {
+    return new URL(origin).host.toLowerCase() !== host.toLowerCase();
+  } catch {
+    return true;
+  }
+}
+
 /** A request's credential, from a header (fetch) or query (EventSource cannot
  *  set request headers, so the stream carries it in the URL). */
 function tokenFor(request: http.IncomingMessage, url: URL): string | undefined {
@@ -2231,6 +2254,12 @@ export function createHostServer(options: HostServerOptions): HostServer {
       // not add to the library.
       if (!isLoopbackRemote(request.socket.remoteAddress)) {
         sendText(response, 403, "Theme modification is loopback only.");
+        return;
+      }
+      // A loopback address is not the same origin: any page can POST here with
+      // a body no preflight covers, and this route replaces a library copy.
+      if (isForeignOrigin(request)) {
+        sendText(response, 403, "That request is from another origin.");
         return;
       }
       // No origin owner, no install: the record is half of what this route
