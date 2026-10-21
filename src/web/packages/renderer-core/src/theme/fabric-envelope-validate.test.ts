@@ -1343,6 +1343,15 @@ describe("a theme's style tags", () => {
     ).toBe(true);
   });
 
+  it("accepts a tag no vocabulary holds yet, which is the only way it can join one", () => {
+    // The spec's own sentence, as a case: a tag the vocabulary does not yet know
+    // has to be writable before the vocabulary can grow to include it. This fails
+    // the moment anyone adds an enum `dystopian` is not in (docs/decisions/0087).
+    expect(validateFabricThemeEnvelope(withTags(["dystopian"]))).toMatchObject({
+      ok: true,
+    });
+  });
+
   it("refuses an uppercase tag", () => {
     expect(issuesOf(validateFabricThemeEnvelope(withTags(["Retro"])))).toEqual([
       tagIssue("Retro"),

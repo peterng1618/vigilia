@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { BACKGROUND_MEDIA_FITS } from "./document.js";
+import {
+  BACKGROUND_MEDIA_FITS,
+  MAX_TAGS,
+  TAG_PATTERN,
+} from "./document.js";
 import { SUPPORTED_SCHEMA_VERSION } from "./fabric-envelope.js";
 import { GLASS_TYPES, MAX_GLASS_BLUR_RADIUS } from "./glass.js";
 import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
@@ -214,6 +218,29 @@ describe("published Fabric theme schema", () => {
     )["name"]!;
 
     expect(name).toEqual({ type: "string", minLength: 1, maxLength: 200 });
+  });
+
+  it("publishes the tag shape the validator enforces, and no vocabulary with it", () => {
+    // The pattern and the cap are stated twice — in `document.ts` and in this
+    // file — so they are compared against the constants rather than against
+    // copied literals, for the reason the glass and object-name bounds above
+    // give: a theme accepted by one side and refused by the other is silent.
+    const tags = (
+      schema().$defs["metadata"]!["properties"] as Record<
+        string,
+        Record<string, unknown>
+      >
+    )["tags"]!;
+    const items = tags["items"] as Record<string, unknown>;
+
+    expect(tags["type"]).toBe("array");
+    expect(tags["maxItems"]).toBe(MAX_TAGS);
+    expect(items["pattern"]).toBe(TAG_PATTERN.source);
+    // And no vocabulary in the format, on either level. This is the decision's
+    // whole content (docs/decisions/0087): an enum here would make a style the
+    // catalogue does not yet have wait for a schema release.
+    expect(tags["enum"]).toBeUndefined();
+    expect(items["enum"]).toBeUndefined();
   });
 
   it("discriminates fully declared WOFF2 font assets from other assets", () => {

@@ -152,7 +152,7 @@ Measured 2026-10-21 in this checkout, before the change.
    metadata has no \"tags\" property. Did you mean \"name\"?" }` — the
    `additionalProperties: false` consequence the spec names, and the typo diagnostic
    that is the reason `KNOWN_KEYS.metadata` gains the key while the values get
-   nothing. Measured as the red run of the seven cases this change adds
+   nothing. Measured as the red run of the cases this change adds
    (`npx vitest run packages/renderer-core/src/theme/fabric-envelope-validate.test.ts`
    from `src/web/`: 7 failed, 44 passed, every failure `unknown-field` at
    `/metadata/tags`); the consequence is accepted rather than softened, so no
@@ -165,8 +165,11 @@ that already exist for exactly this: `document.ts` owns the pattern and the cap
 (exported, so the editor's control and the validator refuse the same values from one
 constant), `fabric-envelope-validate.ts` reads them, `envelope-keys.ts` gains the key
 so a typo diagnostic can suggest it, and the schema publishes the same two keywords.
-The tag *values* get no enum in any of the four — that absence is the decision, and a
-test asserts it rather than a comment.
+The tag *values* get no enum in any of the four — that absence is the decision, and
+two cases assert it rather than a comment: `a theme's style tags` accepts a theme
+carrying `dystopian`, a word no vocabulary in this repo holds, which fails the moment
+an enum is added without it; and `published Fabric theme schema` reads the published
+`tags` node and requires that neither it nor its `items` carries an `enum`.
 
 ## Decision
 
