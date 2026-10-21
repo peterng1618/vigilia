@@ -28,6 +28,7 @@ import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
 import { createDisplayStore } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
+import { createGithubTokenStore } from "./settings/github-token.js";
 import { acquireHostLock } from "./settings/host-lock.js";
 import { readOrMintHostRecord } from "./settings/host-record.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
@@ -186,6 +187,9 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Which curated font trios this author reaches for. Author preference about
   // this PC, so it sits with the other settings and never in a theme folder.
   const fontFavorites = createFontFavoritesStore(settingsDir);
+  // The GitHub identity the author signed in as, beside the other records this
+  // machine keeps. The browser never reads it; the host uses it to submit.
+  const githubToken = createGithubTokenStore(settingsDir);
   // Which host this app folder is, read or minted after the lock so a second
   // host cannot answer with the same identity: `GET /api/host` gives it to
   // anyone who asks, and it is what a display stores to re-find this host after
@@ -272,6 +276,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     // this machine's own record about a theme, like what a consumer answered
     // for it — not part of the author's folder.
     themeOrigins: createThemeOriginsStore(settingsDir),
+    githubToken,
     displays,
     pairingCodes,
     devices: deviceSettings,

@@ -49,6 +49,7 @@ import {
   LOCAL_DISPLAY_ID,
 } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
+import { createGithubTokenStore } from "./settings/github-token.js";
 import type { HostRecord } from "./settings/host-record.js";
 import type { Monitor } from "./settings/monitors.js";
 import { createThemeOriginsStore } from "./settings/theme-origins.js";
@@ -1491,6 +1492,219 @@ describe("Host theme routes", () => {
 
       expect(res.status).toBe(502);
       expect(res.text()).toContain("404");
+    });
+  });
+
+  describe("The GitHub identity routes", () => {
+    const CLIENT_ID = "client-from-the-registry";
+    const DEVICE_ENDPOINT = "https://github.com/login/device/code";
+    const TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token";
+    const USER_ENDPOINT = "https://api.github.com/user";
+    const SECRET = "ghs_the-access-token";
+
+    let library: string;
+    let settings: string;
+    let signing: ReturnType<typeof createHostServer>;
+    let token: ReturnType<typeof createGithubTokenStore>;
+    let calls: { url: string; method: string; authorization: string | null }[];
+    let tokenAnswer: () => Record<string, unknown>;
+
+    function json(body: unknown): Response {
+      return new Response(JSON.stringify(body), {
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    beforeEach(async () => {
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-github-ui-"));
+      settings = await fs.mkdtemp(
+        path.join(os.tmpdir(), "vigilia-github-settings-ui-"),
+      );
+      token = createGithubTokenStore(settings);
+      calls = [];
+      tokenAnswer = () => ({ error: "authorization_pending" });
+      signing = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        githubToken: token,
+        githubClientId: CLIENT_ID,
+        // No network: the flow is driven by this answer, and every call is
+        // recorded so a case can show what the host sent and what it did not.
+        fetch: async (input, init) => {
+          const url = String(input);
+          calls.push({
+            url,
+            method: init?.method ?? "GET",
+            authorization: new Headers(init?.headers).get("authorization"),
+          });
+          if (url === DEVICE_ENDPOINT) {
+            return json({
+              device_code: "the-device-code",
+              user_code: "ABCD-1234",
+              verification_uri: "https://github.com/login/device",
+              expires_in: 900,
+              interval: 5,
+            });
+          }
+          if (url === TOKEN_ENDPOINT) return json(tokenAnswer());
+          if (url === USER_ENDPOINT) return json({ login: "aurora-author" });
+          return new Response("unknown", { status: 404 });
+        },
+      });
+    });
+
+    afterEach(async () => {
+      await signing.close();
+      await fs.rm(library, { recursive: true, force: true });
+      await fs.rm(settings, { recursive: true, force: true });
+    });
+
+    it("starts a sign-in and answers only the code the author types", async () => {
+      const res = await request(signing.server, "POST", "/api/github/device");
+
+      expect(res.status).toBe(200);
+      expect(res.json()).toEqual({
+        userCode: "ABCD-1234",
+        verificationUri: "https://github.com/login/device",
+        expiresIn: 900,
+        interval: 5,
+      });
+      // The device code is what redeems the token. It stays in host memory.
+      expect(res.text()).not.toContain("the-device-code");
+    });
+
+    it("polls pending, then ok with the login, and stores the identity", async () => {
+      await request(signing.server, "POST", "/api/github/device");
+
+      const pending = await request(
+        signing.server,
+        "POST",
+        "/api/github/device/poll",
+      );
+      expect(pending.status).toBe(200);
+      expect(pending.json()).toEqual({ state: "pending" });
+
+      tokenAnswer = () => ({ access_token: SECRET, scope: "public_repo" });
+
+      const done = await request(
+        signing.server,
+        "POST",
+        "/api/github/device/poll",
+      );
+      expect(done.status).toBe(200);
+      expect(done.json()).toEqual({ state: "ok", login: "aurora-author" });
+      // The browser learns who signed in, and nothing else.
+      expect(done.text()).not.toContain(SECRET);
+
+      const userCall = calls.find((call) => call.url === USER_ENDPOINT);
+      expect(userCall?.authorization).toBe(`Bearer ${SECRET}`);
+
+      expect(await token.read()).toMatchObject({
+        accessToken: SECRET,
+        scope: "public_repo",
+        login: "aurora-author",
+      });
+    });
+
+    it("does not answer a second poll once the flow has finished", async () => {
+      await request(signing.server, "POST", "/api/github/device");
+      tokenAnswer = () => ({ access_token: SECRET, scope: "public_repo" });
+      await request(signing.server, "POST", "/api/github/device/poll");
+
+      expect(
+        (await request(signing.server, "POST", "/api/github/device/poll"))
+          .status,
+      ).toBe(409);
+    });
+
+    it("signs out by deleting the stored token", async () => {
+      await token.write({
+        accessToken: SECRET,
+        scope: "public_repo",
+        login: "aurora-author",
+        obtainedAt: new Date().toISOString(),
+      });
+
+      const res = await request(signing.server, "DELETE", "/api/github/token");
+
+      expect(res.status).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+      expect(await token.read()).toBeUndefined();
+    });
+
+    it("refuses every route from another origin", async () => {
+      const routes = [
+        ["POST", "/api/github/device"],
+        ["POST", "/api/github/device/poll"],
+        ["DELETE", "/api/github/token"],
+      ] as const;
+
+      for (const [method, urlPath] of routes) {
+        const res = await request(signing.server, method, urlPath, undefined, {
+          headers: {
+            origin: "https://evil.example",
+            host: "127.0.0.1:5173",
+          },
+        });
+        expect(res.status, `${method} ${urlPath}`).toBe(403);
+      }
+    });
+
+    it("refuses a name that only resolves to this machine", async () => {
+      const res = await request(
+        signing.server,
+        "POST",
+        "/api/github/device",
+        undefined,
+        {
+          headers: {
+            origin: "http://evil.example:5173",
+            host: "evil.example:5173",
+          },
+        },
+      );
+
+      expect(res.status).toBe(403);
+    });
+
+    it("refuses every route from off loopback", async () => {
+      const routes = [
+        ["POST", "/api/github/device"],
+        ["POST", "/api/github/device/poll"],
+        ["DELETE", "/api/github/token"],
+      ] as const;
+
+      for (const [method, urlPath] of routes) {
+        const res = await request(signing.server, method, urlPath, undefined, {
+          remoteAddress: "10.0.0.2",
+        });
+        expect(res.status, `${method} ${urlPath}`).toBe(403);
+      }
+    });
+
+    it("answers 503 naming registration when no client id is configured", async () => {
+      const saved = process.env.VIGILIA_GITHUB_CLIENT_ID;
+      delete process.env.VIGILIA_GITHUB_CLIENT_ID;
+      const unregistered = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        githubToken: token,
+      });
+
+      try {
+        const res = await request(
+          unregistered.server,
+          "POST",
+          "/api/github/device",
+        );
+        expect(res.status).toBe(503);
+        expect(res.text().toLowerCase()).toContain("register");
+      } finally {
+        await unregistered.close();
+        if (saved !== undefined) process.env.VIGILIA_GITHUB_CLIENT_ID = saved;
+      }
     });
   });
 

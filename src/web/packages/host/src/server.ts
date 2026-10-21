@@ -61,11 +61,17 @@ import {
   normalizePatch,
 } from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
+import type { GithubTokenStore } from "./settings/github-token.js";
 import type { HostRecord } from "./settings/host-record.js";
 import { listMonitors, type Monitor } from "./settings/monitors.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeOriginsStore } from "./settings/theme-origins.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
+import {
+  fetchLogin,
+  pollDeviceToken,
+  requestDeviceCode,
+} from "./themes/github-oauth.js";
 import { importThemePackage } from "./themes/import.js";
 import {
   type InstallRequest,
@@ -162,6 +168,13 @@ export interface HostServerOptions {
   /** The fetcher the install route uses. Omitted uses the global; supplied so a
    *  route test can install without a network. */
   readonly fetch?: typeof fetch;
+  /** The OAuth app the device flow signs in through. Omitted falls back to
+   *  `VIGILIA_GITHUB_CLIENT_ID`; without either, the start route answers that
+   *  registration is missing rather than pretending a sign-in can start. */
+  readonly githubClientId?: string;
+  /** Where the signed-in GitHub identity is kept. Omitted when the host keeps
+   *  none; the routes then say so rather than signing in to nowhere. */
+  readonly githubToken?: GithubTokenStore;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
   readonly activeTheme?: ActiveThemeStore;
   /** The consumer's display preferences. Omit when the host stores none. */
@@ -823,6 +836,12 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const published = options.published ?? createPublishedStore();
   const caCertificate = options.caCertificate;
   const hostRecord = options.host;
+  const githubClientId =
+    options.githubClientId ?? process.env.VIGILIA_GITHUB_CLIENT_ID;
+  const githubToken = options.githubToken;
+  /** The single device flow this host is waiting on. The browser sends nothing
+   *  that could name another, so there is one value rather than a map. */
+  let pendingDevice: string | undefined;
 
   /**
    * The move a PUT asked for, run once that PUT's answer is on the wire. Its
@@ -2340,6 +2359,113 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
       sendJson(response, 200, { ok: true, id: installed.id });
+      return;
+    }
+
+    // The device-flow sign-in. The browser starts it, polls it and signs out;
+    // it never sees the access token, which is written straight to the settings
+    // directory. Same guards as the install route, in the same order: these
+    // routes act as the author's GitHub account.
+    if (
+      url.pathname === "/api/github/device" ||
+      url.pathname === "/api/github/device/poll" ||
+      url.pathname === "/api/github/token"
+    ) {
+      const method = url.pathname === "/api/github/token" ? "DELETE" : "POST";
+      if (request.method !== method) {
+        sendText(response, 405, `Only ${method} is supported.`);
+        return;
+      }
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "GitHub sign-in is local to this PC only.");
+        return;
+      }
+      if (isForeignOrigin(request)) {
+        sendText(response, 403, "That request is from another origin.");
+        return;
+      }
+      if (githubClientId === undefined || githubClientId.trim() === "") {
+        sendText(
+          response,
+          503,
+          "This host has no GitHub OAuth client id; register an OAuth app and set VIGILIA_GITHUB_CLIENT_ID.",
+        );
+        return;
+      }
+      if (githubToken === undefined) {
+        sendText(response, 503, "This host keeps no GitHub token.");
+        return;
+      }
+
+      if (url.pathname === "/api/github/device") {
+        const code = await requestDeviceCode(
+          githubClientId,
+          fetcher === undefined ? undefined : { fetch: fetcher },
+        );
+        if ("error" in code) {
+          sendText(response, 502, code.error);
+          return;
+        }
+        // The device code stays here: it is the half of the flow that redeems
+        // the token, and only the user code is the browser's to show.
+        pendingDevice = code.deviceCode;
+        sendJson(response, 200, {
+          userCode: code.userCode,
+          verificationUri: code.verificationUri,
+          expiresIn: code.expiresIn,
+          interval: code.interval,
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/github/device/poll") {
+        if (pendingDevice === undefined) {
+          sendText(response, 409, "No GitHub sign-in is in progress.");
+          return;
+        }
+        const outcome = await pollDeviceToken(
+          githubClientId,
+          pendingDevice,
+          fetcher === undefined ? undefined : { fetch: fetcher },
+        );
+        if ("error" in outcome) {
+          sendText(response, 502, outcome.error);
+          return;
+        }
+        if (outcome.state === "pending" || outcome.state === "slow_down") {
+          sendJson(response, 200, { state: outcome.state });
+          return;
+        }
+        // The flow is over in every other case, and a code that already
+        // answered is not one the browser gets to poll again.
+        pendingDevice = undefined;
+        if (outcome.state !== "ok") {
+          sendJson(response, 200, { state: outcome.state });
+          return;
+        }
+
+        const account = await fetchLogin(
+          outcome.accessToken,
+          fetcher === undefined ? undefined : { fetch: fetcher },
+        );
+        if ("error" in account) {
+          // A token whose account could not be read is one this host cannot
+          // name, so it is not written. The message carries no token.
+          sendText(response, 502, account.error);
+          return;
+        }
+        await githubToken.write({
+          accessToken: outcome.accessToken,
+          scope: outcome.scope,
+          login: account.login,
+          obtainedAt: new Date(now()).toISOString(),
+        });
+        sendJson(response, 200, { state: "ok", login: account.login });
+        return;
+      }
+
+      await githubToken.clear();
+      sendJson(response, 200, { ok: true });
       return;
     }
 
