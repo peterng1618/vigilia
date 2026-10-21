@@ -14,6 +14,7 @@ import {
   matchesFacets,
   matchesQuery,
   type StoreItem,
+  settledTags,
 } from "./local-source.js";
 
 /**
@@ -73,6 +74,15 @@ function entry(
     ...(origin === undefined ? {} : { origin }),
     facets: facetRecordOf(document),
   };
+}
+
+/** A theme carrying these style tags, which is the one thing a style case
+ *  states — and it keeps the document's binding of one sensor. */
+function tagged(...tags: readonly string[]): FabricThemeEnvelope {
+  return envelope({
+    id: `tagged-${tags.join("-")}`,
+    metadata: { name: "Tagged", themeLanguage: "en", tags },
+  });
 }
 
 /** The ground the host derives for the fixture document, and the value the
@@ -217,15 +227,6 @@ describe("narrowing by a facet", () => {
       bindings: Object.fromEntries(
         keys.map((key) => [`${key}-label`, [{ id: key, semanticKey: key }]]),
       ),
-    });
-  }
-
-  /** A theme carrying these style tags, which is the one thing a style case
-   *  states — and it keeps the document's binding of one sensor. */
-  function tagged(...tags: readonly string[]): FabricThemeEnvelope {
-    return envelope({
-      id: `tagged-${tags.join("-")}`,
-      metadata: { name: "Tagged", themeLanguage: "en", tags },
     });
   }
 
@@ -432,6 +433,29 @@ describe("narrowing by a facet", () => {
     expect(matchesFacets(one, { nonsense: ["calm"] })).toBe(false);
     expect(matchesFacets(one, { nonsense: [] })).toBe(true);
   });
+
+  it("matches nothing for a facet id that names a prototype member", async () => {
+    // The table is a plain object, so a bare `FACET_MATCHERS[id]` read answers
+    // `Object.prototype`'s member for these names: one that matches everything
+    // (`constructor`), one that is not a function at all (`__proto__`) and one
+    // that throws when called with these arguments (`valueOf`). A facet id the
+    // table does not hold has no rule, whichever name it borrows — and the
+    // reading is a *guard*, because these are legal keys on the wire rather than
+    // hypotheticals (phase C's facets arrive from a listing).
+    const one = await item(envelope());
+
+    for (const id of [
+      "constructor",
+      "toString",
+      "hasOwnProperty",
+      "valueOf",
+      "__proto__",
+    ]) {
+      const chosen = { [id]: ["calm"] };
+      expect(() => matchesFacets(one, chosen), id).not.toThrow();
+      expect(matchesFacets(one, chosen), id).toBe(false);
+    }
+  });
 });
 
 /**
@@ -495,5 +519,59 @@ describe("narrowing by a query", () => {
     expect(bare.author).toBeUndefined();
     expect(matchesQuery(bare, "no author")).toBe(false);
     expect(matchesQuery(bare, "bare")).toBe(true);
+  });
+});
+
+/**
+ * **What a style pill's "proposed" is read against**: the seed, plus the tags the
+ * listing's *other* themes carry.
+ *
+ * It is a reading of the listing rather than of one item, which is why it lives
+ * beside the predicates rather than in the modal — and it is why the facet's own
+ * options cannot answer the question: those are the tags the items carry, this
+ * item included, so its own tag is always among them.
+ */
+describe("the style vocabulary one item is read against", () => {
+  /** One listing's items, read through the source the way every case here does. */
+  async function listed(
+    ...documents: readonly FabricThemeEnvelope[]
+  ): Promise<readonly StoreItem[]> {
+    return localThemeSource(clientOf(documents, GROUND)).list();
+  }
+
+  async function only(document: FabricThemeEnvelope): Promise<StoreItem> {
+    const [first] = await listed(document);
+    if (first === undefined) throw new Error("the source listed nothing");
+    return first;
+  }
+
+  it("holds the seed's words, and not a tag this theme is the first to use", async () => {
+    const mine = await only(tagged("retro-diner"));
+
+    const settled = settledTags([mine], mine);
+
+    // A word in the seed is settled however few themes carry it, and this
+    // theme's own tag is the one the vocabulary does not hold — which is exactly
+    // what makes it proposed rather than the facet having failed to match.
+    expect(settled).toContain("retro");
+    expect(settled).not.toContain("retro-diner");
+  });
+
+  it("holds a tag another theme carries, and never the item's own", async () => {
+    const items = await listed(tagged("retro-diner"), {
+      ...tagged("neon-2"),
+      id: "neighbour",
+    });
+    const [mine, other] = items;
+    if (mine === undefined || other === undefined) {
+      throw new Error("the source listed one theme of two");
+    }
+
+    // Read for each item in turn: each is the first use of its own tag, and the
+    // other theme is the only thing that settles it.
+    expect(settledTags(items, mine)).toContain("neon-2");
+    expect(settledTags(items, mine)).not.toContain("retro-diner");
+    expect(settledTags(items, other)).toContain("retro-diner");
+    expect(settledTags(items, other)).not.toContain("neon-2");
   });
 });

@@ -133,9 +133,23 @@ function modal(theme: FixtureTheme): ReactElement {
 }
 
 /** The same surface over an item built here rather than from a fixture theme —
- *  the origin record has no document behind it to derive. */
-function modalFor(item: StoreItem): ReactElement {
-  return <ItemModal item={item} onClose={() => {}} onAction={() => {}} />;
+ *  the origin record has no document behind it to derive.
+ *
+ *  `vocabulary` is the listing's own reading and the region builds it
+ *  (`settledTags`), so the default here is the empty one a fixture with no tags
+ *  is read against; the style case below hands the set it is about. */
+function modalFor(
+  item: StoreItem,
+  vocabulary: readonly string[] = [],
+): ReactElement {
+  return (
+    <ItemModal
+      item={item}
+      vocabulary={vocabulary}
+      onClose={() => {}}
+      onAction={() => {}}
+    />
+  );
 }
 
 /** Where a theme came from, as the host records it: the catalogue item and the
@@ -277,6 +291,71 @@ it("draws the facts as pills in their groups rather than a row per fact", async 
   ]);
 });
 
+/** One pill's class list, by the id it is drawn with — the only way to read a
+ *  treatment, since jsdom lays nothing out. */
+function pillClass(id: string): string {
+  return must(
+    document.body.querySelector<HTMLElement>(
+      `[data-vigilia-store-item-pill="${id}"]`,
+    ),
+    `the ${id} pill`,
+  ).className;
+}
+
+/**
+ * **The third group the spec names, and the pill that says its word is new**
+ * (spec, "The facts are pills, not rows": *a style pill one tag, with a proposed
+ * tag saying so on its own pill rather than being indistinguishable from a
+ * settled one*).
+ *
+ * The vocabulary is the listing's and arrives as a prop, so this case hands the
+ * set it is about rather than deriving one: what the modal owns is reading a tag
+ * against it. Both halves of the drawing's mark are read — the words
+ * (`<tag> · proposed`) and the dashed edge — because either alone would pass a
+ * pill that was indistinguishable from a settled one in the other respect.
+ */
+it("draws the Style group, and marks the tag the vocabulary does not hold", async () => {
+  const tagged: FixtureTheme = {
+    ...LANDSCAPE,
+    id: "tagged",
+    tags: ["retro", "retro-diner"],
+  };
+  await mount(modalFor(fixtureItem(tagged), ["retro"]));
+
+  const style = group("style");
+  expect(style.name, "the style pills sit under no eyebrow").toBe(
+    uiCopy.store.pillGroups.style,
+  );
+  expect(
+    style.pills,
+    "the style pills are not the document's own tags, with the proposed one marked",
+  ).toEqual(["retro", uiCopy.panels.tagsProposed("retro-diner")]);
+
+  expect(
+    pillClass("retro"),
+    "a tag the vocabulary holds is drawn as a proposed one",
+  ).not.toContain("border-dashed");
+  expect(
+    pillClass("retro-diner"),
+    "a tag the vocabulary does not hold is drawn as a settled one",
+  ).toContain("border-dashed");
+});
+
+/**
+ * **A theme that declares no tag draws no Style group**, which is the rule the
+ * group's heading shares with the Reads group: a heading over nothing is a word
+ * that says nothing (§9), and every theme in the library was untagged before the
+ * format carried the field.
+ */
+it("draws no Style group for a theme that declares no tags", async () => {
+  await mount(modal(LANDSCAPE));
+
+  expect(
+    document.body.querySelector('[data-vigilia-store-item-group="style"]'),
+    "a theme with no tags draws a Style heading over nothing",
+  ).toBeNull();
+});
+
 /**
  * The caption is one line — the name, the author, the kind, the version and the
  * change date — and the actions are written in words, in the drawing's own
@@ -341,6 +420,7 @@ it("runs the footer's two actions and disables the two it has not", async () => 
   await mount(
     <ItemModal
       item={fixtureItem(LANDSCAPE)}
+      vocabulary={[]}
       onClose={() => {}}
       onAction={(action) => ran.push(action)}
     />,
@@ -442,6 +522,7 @@ it("reports its own close rather than closing itself", async () => {
   await mount(
     <ItemModal
       item={fixtureItem(LANDSCAPE)}
+      vocabulary={[]}
       onClose={() => closed.push(1)}
       onAction={() => {}}
     />,

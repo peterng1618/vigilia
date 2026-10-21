@@ -3,6 +3,7 @@ import type {
   ThemeLibraryClient,
   ThemeOrigin,
 } from "../theme-library-client.js";
+import { THEME_TAG_SEED } from "../theme-tag-seed.js";
 
 /**
  * The local half's items, behind the one hop that makes a second kind cheap.
@@ -221,7 +222,13 @@ export function matchesFacets(
 ): boolean {
   for (const [facet, values] of Object.entries(chosen)) {
     if (values.length === 0) continue;
-    const matcher = FACET_MATCHERS[facet];
+    // `Object.hasOwn`, not a bare read of the table: a facet id naming a
+    // prototype member (`constructor`, `valueOf`, `__proto__`) would otherwise
+    // be answered with that member rather than with no rule — one that matches
+    // everything, one that throws, one that is not a function at all.
+    const matcher = Object.hasOwn(FACET_MATCHERS, facet)
+      ? FACET_MATCHERS[facet]
+      : undefined;
     if (matcher === undefined || !matcher(item, values)) return false;
   }
   return true;
@@ -248,4 +255,27 @@ export function matchesQuery(item: StoreItem, query: string): boolean {
     item.name.toLowerCase().includes(wanted) ||
     (item.author ?? "").toLowerCase().includes(wanted)
   );
+}
+
+/**
+ * The style tags the vocabulary holds for one item: the shipped seed, plus every
+ * tag the listing's **other** themes carry.
+ *
+ * **This is what "proposed" is read against, and the obvious rule cannot be
+ * used.** The Style facet's options are read off this same listing, and the item
+ * is one of its entries, so its own tag is always among them — nothing would
+ * ever read as proposed. A tag is settled when the vocabulary holds it, from the
+ * seed or from another theme's use, and proposed only when this theme is its
+ * first use, which is the drawing's own phrase (`store-detail.html`).
+ */
+export function settledTags(
+  items: readonly StoreItem[],
+  item: StoreItem,
+): readonly string[] {
+  const settled = new Set<string>(THEME_TAG_SEED);
+  for (const other of items) {
+    if (other.id === item.id) continue;
+    for (const tag of other.facets.tags) settled.add(tag);
+  }
+  return [...settled];
 }

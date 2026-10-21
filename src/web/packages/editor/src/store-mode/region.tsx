@@ -40,6 +40,7 @@ import {
   matchesFacets,
   matchesQuery,
   type StoreItem,
+  settledTags,
 } from "./local-source.js";
 import { Pager } from "./pager.js";
 
@@ -730,6 +731,9 @@ function StoreRegion(props: {
       {openItem === undefined ? null : (
         <ItemModal
           item={openItem}
+          // The vocabulary is the listing's, built here because the listing is
+          // this surface's: the modal reads the set and never the items.
+          vocabulary={settledTags(items ?? [], openItem)}
           onClose={() => setOpenId(undefined)}
           onAction={onAction}
         />

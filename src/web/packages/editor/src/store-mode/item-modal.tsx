@@ -79,18 +79,23 @@ const FOOTER_BUTTON = `${ACTION_BUTTON} disabled:text-faint`;
 
 /** One pill: the drawing's `--panel-2` inside a 1px `--edge` at a full radius.
  *  `mono` is the size's own treatment — two numbers read as one measurement
- *  rather than as a word. */
+ *  rather than as a word — and **a proposed pill is that same box dashed and in
+ *  `--muted`**, which is the drawing's mark for a word the vocabulary does not
+ *  hold yet (`store-detail.html`). */
 function Pill(props: {
   readonly id: string;
   readonly name: string;
   readonly mono: boolean;
+  readonly proposed: boolean;
 }): React.JSX.Element {
   return (
     <span
       data-vigilia-store-item-pill={props.id}
-      className={`rounded-full border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-4)] text-xs text-text ${
-        props.mono ? "font-mono" : ""
-      }`}
+      className={`rounded-full border bg-panel-2 px-[var(--space-10)] py-[var(--space-4)] text-xs ${
+        props.proposed
+          ? "border-dashed border-edge text-muted"
+          : "border-edge text-text"
+      } ${props.mono ? "font-mono" : ""}`}
     >
       {props.name}
     </span>
@@ -107,6 +112,7 @@ function PillGroup(props: {
     readonly id: string;
     readonly name: string;
     readonly mono: boolean;
+    readonly proposed: boolean;
   }[];
 }): React.JSX.Element | null {
   if (props.pills.length === 0) return null;
@@ -123,18 +129,28 @@ function PillGroup(props: {
       </span>
       <span className="flex flex-wrap gap-[var(--space-6)]">
         {props.pills.map((pill) => (
-          <Pill key={pill.id} id={pill.id} name={pill.name} mono={pill.mono} />
+          <Pill
+            key={pill.id}
+            id={pill.id}
+            name={pill.name}
+            mono={pill.mono}
+            proposed={pill.proposed}
+          />
         ))}
       </span>
     </span>
   );
 }
 
-/** One reading on a pill: the id a driver reads and the word a person does. */
+/** One reading on a pill: the id a driver reads and the word a person does.
+ *  `proposed` is the vocabulary's answer rather than the reading's own, and it
+ *  is `false` everywhere a facet word settles the value — Style is the one group
+ *  whose values an author can invent. */
 interface Reading {
   readonly id: string;
   readonly name: string;
   readonly mono: boolean;
+  readonly proposed: boolean;
 }
 
 /**
@@ -153,29 +169,67 @@ function shapeReadings(item: StoreItem): readonly Reading[] {
       id: colourMode,
       name: uiCopy.store.colourModes[colourMode],
       mono: false,
+      proposed: false,
     });
   }
   readings.push({
     id: orientation,
     name: uiCopy.store.orientations[orientation],
     mono: false,
+    proposed: false,
   });
   readings.push({
     id: aspect,
     name: aspect === "other" ? uiCopy.store.otherShape : aspect,
     mono: false,
+    proposed: false,
   });
   readings.push({
     id: `${width}x${height}`,
     name: uiCopy.store.size(width, height),
     mono: true,
+    proposed: false,
   });
   return readings;
 }
 
+/**
+ * The Style group's readings: one pill per tag the document declares, and the
+ * tag the vocabulary does not hold says so **on its own pill** rather than being
+ * indistinguishable from a settled one (spec, "The facts are pills, not rows").
+ *
+ * `vocabulary` is the settled set the region hands down (`settledTags`), not a
+ * second reading of the listing: the facet's own options are the tags the items
+ * carry, this theme included, so a pill read against those could never be
+ * proposed.
+ */
+function styleReadings(
+  item: StoreItem,
+  vocabulary: readonly string[],
+): readonly Reading[] {
+  const settled = new Set(vocabulary);
+  return item.facets.tags.map((tag) => {
+    const proposed = !settled.has(tag);
+    return {
+      id: tag,
+      // The pill's own words are the field's, because the drawing draws one
+      // proposed pill in both places: a second composer would be a second owner
+      // of the word (`ui-copy.ts`).
+      name: proposed ? uiCopy.panels.tagsProposed(tag) : tag,
+      mono: false,
+      proposed,
+    };
+  });
+}
+
 /** The caption band: what the item is called and who made it, then the pills.
  *  Nothing in it is a row. */
-function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
+function Caption(props: {
+  readonly item: StoreItem;
+  /** The style tags the vocabulary holds, which is what the Style group's
+   *  proposed pill is read against (`settledTags`). */
+  readonly vocabulary: readonly string[];
+}): React.JSX.Element {
   const { item } = props;
   // The cell's own reading of a date: the first ten characters of an ISO-8601
   // instant *are* its UTC day, so no reader sees a different one — a
@@ -238,12 +292,21 @@ function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
             id: sensor.key,
             name: sensor.label,
             mono: false,
+            proposed: false,
           }))}
         />
         <PillGroup
           id="shape"
           name={uiCopy.store.pillGroups.shape}
           pills={shapeReadings(item)}
+        />
+        {/* The third group the spec names, and the one a theme may have none of:
+            `PillGroup` draws no heading over no pills, so an untagged theme
+            draws two groups rather than an empty third. */}
+        <PillGroup
+          id="style"
+          name={uiCopy.store.pillGroups.style}
+          pills={styleReadings(item, props.vocabulary)}
         />
       </span>
       {/* **The provenance line, which is what a cell has no room for**: where the
@@ -274,6 +337,10 @@ function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
 
 export function ItemModal(props: {
   readonly item: StoreItem;
+  /** The style tags the vocabulary holds, built from the listing by the surface
+   *  that owns it (`settledTags`) — this modal reads the set and never the
+   *  listing, so it cannot become a second source of truth about the library. */
+  readonly vocabulary: readonly string[];
   readonly onClose: () => void;
   /** The one callback the cell's four actions travel through. The modal draws
    *  the same four, so it reports them the same way rather than owning a second
@@ -346,7 +413,7 @@ export function ItemModal(props: {
             </span>
           </span>
 
-          <Caption item={item} />
+          <Caption item={item} vocabulary={props.vocabulary} />
 
           <span className="flex items-center gap-[var(--space-8)] border-t border-edge px-[var(--space-24)] py-[var(--space-16)]">
             <span className="flex-1" />

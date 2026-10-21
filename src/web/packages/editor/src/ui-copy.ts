@@ -672,15 +672,18 @@ export const uiCopy = {
     },
     /** The modal's pill groups, which are the facet's own content under the name
      *  the drawing gives it: the row names what a filter narrows by (*Sensors*,
-     *  *Colour mode*), and the modal names what the theme reads and how it is
-     *  shaped.
+     *  *Colour mode*), and the modal names what the theme reads, how it is shaped
+     *  and what style it carries.
      *
-     *  **Style is not here, and its group is not drawn.** The record carries no
-     *  tags until phase G, so the group would be a heading over nothing — which
-     *  is what §9 forbids and what `PillGroup` refuses to render. */
+     *  **Style is drawn only where the theme declares a tag.** `PillGroup`
+     *  refuses to render a heading over nothing (§9), so a library of untagged
+     *  themes draws two groups rather than an empty third. The word its proposed
+     *  pill carries is the field's own (`panels.tagsProposed`), because the
+     *  drawing draws that pill on the modal and in the field alike. */
     pillGroups: {
       reads: "Reads",
       shape: "Shape",
+      style: "Style",
     },
     /** The two empties, which are two sentences because they have two answers: a
      *  library with nothing in it is not a filter that matched nothing, and

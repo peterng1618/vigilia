@@ -164,7 +164,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Samples/status | `renderer-core/src/types.ts` |
 | Live presentation buffer | `renderer-core/src/data/live-source.ts` |
 | Theme semantic types/validation | `renderer-core/src/theme/` |
-| **What a theme *is*, read off its envelope rather than authored into it** — the colour-mode vocabulary, the aspect buckets and their tolerance, and the sensor readings the store's five facets filter on; the one layer the host's listing and a catalogue Action can both import | `renderer-core/src/theme/facet-record.ts` |
+| **What a theme *is*, read off its envelope rather than authored into it** — the colour-mode vocabulary, the aspect buckets and their tolerance, and the sensor readings and style tags the store's five facets filter on; the one layer the host's listing and a catalogue Action can both import | `renderer-core/src/theme/facet-record.ts` |
 | **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `renderer-core/src/theme/` (`paletteTokenOptions`) |
 | The authored `vigiliaGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
 | Theme ZIP layout and bounds | `theme-package/src/` |

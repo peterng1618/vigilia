@@ -43,6 +43,10 @@ export interface FixtureTheme {
   readonly ground?: string;
   /** What the theme binds, keyed the way a document keys them. */
   readonly bindings?: FabricThemeEnvelope["bindings"];
+  /** The style tags the document declares. **Absent is a document that declares
+   *  none**, which is what every theme in the library was before the format
+   *  carried the field. */
+  readonly tags?: readonly string[];
 }
 
 /** The document behind a fixture theme. */
@@ -63,6 +67,7 @@ export function fixtureEnvelope(theme: FixtureTheme): FabricThemeEnvelope {
       themeLanguage: "en",
       ...(theme.author === undefined ? {} : { author: theme.author }),
       ...(theme.version === undefined ? {} : { version: theme.version }),
+      ...(theme.tags === undefined ? {} : { tags: theme.tags }),
     },
     scene: { version: "7.4.0", objects: [] },
     ...(theme.bindings === undefined ? {} : { bindings: theme.bindings }),
