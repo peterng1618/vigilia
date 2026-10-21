@@ -1849,7 +1849,12 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       sendJson(response, 200, {
         themes: themes.map((entry) => {
-          const origin = origins[entry.id];
+          // `Object.hasOwn`, not a bare read: `__proto__` is a legal theme id,
+          // and `origins["__proto__"]` answers `Object.prototype` for a theme
+          // that has no origin at all.
+          const origin = Object.hasOwn(origins, entry.id)
+            ? origins[entry.id]
+            : undefined;
           // Absence is the truth, the same way `author` is absent for a theme
           // that declares none — not a key holding undefined.
           return { ...entry, ...(origin === undefined ? {} : { origin }) };

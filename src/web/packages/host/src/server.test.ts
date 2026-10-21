@@ -1038,9 +1038,27 @@ describe("Host theme routes", () => {
     it("leaves a theme with no origin with no key at all", async () => {
       await saveTheme();
 
-      // Absence is the truth, the same way `author` is absent for a theme that
-      // declares none — not a key holding undefined.
+      // What this guards is the shape, not the absence: the listing goes over
+      // the wire through `JSON.stringify`, which drops an `undefined`-valued
+      // key, so a `null` or `{}` origin is what would reach a reader here.
       expect(Object.hasOwn(await listedEntry("living-room"), "origin")).toBe(
+        false,
+      );
+    });
+
+    it("carries no origin for a theme id that names a prototype member", async () => {
+      // `__proto__` is a legal theme id, and reading a map by key reaches the
+      // prototype chain: an id that happens to name a member of
+      // `Object.prototype` must not be answered with that member as its origin,
+      // which is what `{"id":"__proto__","origin":{}}` on the wire would be.
+      await request(
+        listing.server,
+        "PUT",
+        "/api/themes/__proto__",
+        themeBody(createValidPackage("__proto__", "Prototype")),
+      );
+
+      expect(Object.hasOwn(await listedEntry("__proto__"), "origin")).toBe(
         false,
       );
     });

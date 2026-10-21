@@ -63,6 +63,16 @@ conditional spread is the file's own idiom (eighteen sites) and the pattern
 type-checker can enforce here. What *is* observable, and what the case pins, is that the
 route never invents an origin — no `null`, no `{}` — for a theme that has none.
 
+**And the read itself has a prototype to miss.** `origins[entry.id]` on a plain object
+reaches `Object.prototype`: `__proto__` is a legal theme id under both `THEME_ID_REGEX`
+and the store's own `THEME_ID`, so a theme named `__proto__` with no origin recorded was
+answered `Object.prototype` — which stringifies as `{}` and reached the wire as
+`{"id":"__proto__","origin":{}}`. `constructor` and `toString` have the same read and
+happen to be dropped by `JSON.stringify`, so `__proto__` is the member that shows. The
+answer is `Object.hasOwn`, which is what `theme-origins.ts`'s own `removeTheme` already
+does for the same reason ("`constructor` is a legal theme id"), and it is the second time
+this file family has paid for reading a map by key.
+
 ## Rung 4 — ecosystem
 
 Searched: the JSON:API v1.1 format spec (compound documents, `included`, full linkage,
@@ -106,6 +116,8 @@ Measured 2026-10-21 on branch `develop` at BASE `773307cd`, from `src/web/`:
 | the five new cases before the wiring | `2 failed \| 3 passed` — the join and the sweep fail; the three negative cases pass, because they assert an absence the broken build also produces |
 | the same five after the wiring | `5 passed` |
 | the unconditional `{ ...entry, origin }` put back, then both absence-sensitive cases | `1 passed` and `1 passed` — **the break is not caught**, which is why rung 3's finding is written down rather than assumed |
+| a stored theme with id `__proto__` and no origin, against the bare `origins[entry.id]` read | `1 failed` — `expected true to be false` on `Object.hasOwn(entry, "origin")`, which is the `origin: {}` the reviewer measured |
+| the same case after `Object.hasOwn` | `1 passed` |
 
 ## Rung 7 — build
 
@@ -116,13 +128,16 @@ Measured 2026-10-21 on branch `develop` at BASE `773307cd`, from `src/web/`:
   that is the one place such state lives.
 - `server.ts` — `HostServerOptions` gains `readonly themeOrigins?: ThemeOriginsStore`.
   The `/api/themes` GET maps the listed entries and spreads an origin in only where the
-  store holds one for that id. The theme DELETE sweeps `themeOrigins?.removeTheme(rawId)`
-  only where `themeStore.remove` answered true, inside the handler's existing `try`, so a
-  sweep that throws answers 500 through the same catch that already answers a refused
-  trash — with the folder gone, deliberately, mirroring the display route's unguarded
-  `themeSettings?.removeDisplay(id)` rather than swallowing the fault.
-- `server.test.ts` — five cases: the join, the absent key, an origin naming a theme
-  that is gone, the sweep on success, and no sweep on a 404.
+  store holds one for that id, read through `Object.hasOwn` so an id naming a prototype
+  member is not answered with that member. The theme DELETE sweeps
+  `themeOrigins?.removeTheme(rawId)` only where `themeStore.remove` answered true, inside
+  the handler's existing `try`, so a sweep that throws answers 500 through the same catch
+  that already answers a refused trash — with the folder gone, deliberately, mirroring the
+  display route's unguarded `themeSettings?.removeDisplay(id)` rather than swallowing the
+  fault.
+- `server.test.ts` — six cases: the join, the absent key, a `__proto__` id with no
+  origin, an origin naming a theme that is gone, the sweep on success, and no sweep on a
+  404.
 
 ## Decision
 
@@ -133,6 +148,9 @@ linkage both apply — so an origin naming a theme that is gone reaches no respo
 without any pruning step of its own. A theme with no origin has **no `origin` key**,
 which is the convention `ThemeStoreEntry.author` already set — the conditional spread
 is the file's own idiom, and nothing but that convention holds it, as rung 3 records.
+**The map is read with `Object.hasOwn`**, so a legal id that names a prototype member is
+answered as a theme with no origin rather than as that member; the id rule is not
+narrowed, because `__proto__` is a theme an author may legitimately have.
 
 **The specific reason:** the store already answers the whole map, so the only open
 questions were which side the join is keyed on and what absence looks like — and both
