@@ -480,11 +480,16 @@ of it that does not need the author's hands.
    is no separate "import a Wallpaper Engine theme" errand, and no confirmation
    before the unpack (R8).
 2. **Vigilia unpacks it, silently.** The host extracts `scene.pkg` into
-   `projects/myprojects/<workshopId>/` and copies the item's `project.json`
-   beside the members, so the theme becomes an ordinary local project listed in
-   the editor's "View all projects". A downloaded theme cannot be opened without
-   this (§8.1). If that directory is already there, it is an earlier unpack of the
-   same item: nothing is rewritten and the flow goes straight on (R8).
+   `projects/myprojects/<workshopId>/` and writes the item's `project.json`
+   beside the members with its one packed-only field rewritten: `file` becomes
+   `scene.json`. A subscribed project says `"file": "scene.pkg"` while a source
+   project says `"file": "scene.json"` — checked against
+   `projects/defaultprojects/arsenal/project.json` — and the editor opens the
+   second shape only. With that key changed the theme is an ordinary local
+   project listed in the editor's "View all projects"; a downloaded theme cannot
+   be opened without this (§8.1). If the directory is already there, it is an
+   earlier unpack of the same item: nothing is rewritten and the flow goes
+   straight on (R8).
 3. **Vigilia opens the editor on it** — `wallpaperui.exe`, with `-project <path>`
    if that flag selects the project (§14.1) and otherwise with the author picking
    it from the list. A launch, not a drive (R1).
@@ -720,7 +725,7 @@ the file's end, and to reuse — not rewrite — a directory that already exists
   without text does not.
 - Selecting a scene unpacks and launches without an intervening confirmation, and
   writes every member byte-identically into `projects/myprojects/<workshopId>/`
-  beside the item's `project.json`.
+  beside a `project.json` whose `file` reads `scene.json`.
 - Selecting the same scene twice writes nothing the second time, answers
   `reused: true`, and launches the existing project.
 - A package whose table runs past the file's end leaves no directory behind and
