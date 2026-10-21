@@ -46,21 +46,22 @@ export function useInstall(options: {
     inFlight.current.add(item.id);
     setInstallingIds(new Set(inFlight.current));
     setRefusal(undefined);
-    void installItem(item).then(async (outcome) => {
-      if (outcome.ok) {
-        const listed = await options.source.list().catch(() => undefined);
-        if (listed !== undefined) {
-          options.onListed(listed);
+    void installItem(item)
+      .then(async (outcome) => {
+        if (outcome.ok) {
+          const listed = await options.source.list().catch(() => undefined);
+          if (listed !== undefined) {
+            options.onListed(listed);
+          } else {
+            setRefusal({
+              id: item.id,
+              message: uiCopy.store.install.notRefreshed,
+            });
+          }
         } else {
-          setRefusal({
-            id: item.id,
-            message: uiCopy.store.install.notRefreshed,
-          });
+          setRefusal({ id: item.id, message: outcome.message });
         }
-      } else {
-        setRefusal({ id: item.id, message: outcome.message });
-      }
-    })
+      })
       // A press that rejects rather than answering — the one path that leaves
       // this hook before `installItem`'s own catch — must still release its
       // control: a busy flag nobody clears disables that cell for the session.

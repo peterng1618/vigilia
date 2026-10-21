@@ -2309,7 +2309,9 @@ it("draws no catalogue refusal on a library item whose id collides", async () =>
  * release rides `finally` rather than the success arm.
  */
 it("releases the control when the press rejects rather than answering", async () => {
-  const host = installHost({ entries: [catalogueEntry("office-wall", "1.3.0")] });
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+  });
   vi.stubGlobal("fetch", host.fetch);
   await mountStore([]);
   await showOnline();
