@@ -1308,6 +1308,38 @@ describe("Host theme routes", () => {
       ).toBe(405);
     });
 
+    it("answers 500 when the origin could not be recorded", async () => {
+      const bytes = packageBytes(
+        createValidPackage("family-room", "Family Room"),
+      );
+      const failing = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        themeOrigins: {
+          ...createThemeOriginsStore(settings),
+          write: async () => {
+            throw new Error("the settings directory is read-only");
+          },
+        },
+        fetch: async () => new Response(new Uint8Array(bytes)),
+      });
+
+      try {
+        const res = await request(
+          failing.server,
+          "POST",
+          "/api/themes/install",
+          installBody(),
+        );
+
+        expect(res.status).toBe(500);
+        expect(res.text()).toContain("could not record");
+      } finally {
+        await failing.close();
+      }
+    });
+
     it("answers 400 to a body that is not the four strings", async () => {
       const res = await request(
         installing.server,

@@ -17,8 +17,10 @@ import type { ThumbnailStore } from "./thumbnails.js";
  * The owners stay separate — `downloadPackage` holds the trust boundary for a
  * remote address, `importThemePackage` owns the id rule and the write, and
  * `ThemeOriginsStore` owns the provenance file. This module only orders them,
- * and its one rule is that the origin is written **after** the theme landed:
- * a refused download or a refused write leaves `theme-origins.json` untouched.
+ * and its rule is that the origin is written **after** the theme landed: a
+ * refused download or a refused theme write leaves `theme-origins.json`
+ * untouched, and a refused origin write undoes a fresh import rather than
+ * leaving a copy the catalogue cannot see.
  *
  * An item this machine already installed is an **update**: the bytes land on
  * that copy, in place, rather than beside it.
@@ -41,15 +43,22 @@ export interface InstallOptions {
   readonly fetch?: typeof fetch;
 }
 
-/** `stage` is which owner refused, so a route can answer 502 for the remote end
- *  and 400 for an address, a package or a kind this build will not take. */
+/** `stage` is which owner refused, so a route can answer 502 for the remote end,
+ *  500 for this host's own store, and 400 for an address, a package or a kind
+ *  this build will not take. */
 export type InstallResult =
   | { readonly ok: true; readonly id: string }
   | {
       readonly ok: false;
       readonly message: string;
-      readonly stage: "address" | "download" | "package";
+      readonly stage: "address" | "download" | "package" | "store";
     };
+
+/** The host failed to record where the copy came from. It has no copy table of
+ *  its own to compose from, so the sentence lives beside the other install
+ *  refusals rather than in the editor's `ui-copy.ts`, which a host cannot read. */
+const ORIGIN_NOT_RECORDED =
+  "The theme was installed, but this PC could not record where it came from.";
 
 /**
  * The catalogue's `kind` names a shape this build runs; the library has no such
@@ -120,27 +129,33 @@ async function installOnce(
   }
 
   const replaceId = await catalogueCopyId(request.catalogueId, options);
-  const imported =
-    replaceId === undefined
-      ? await importThemePackage(downloaded.bytes, {
-          store: options.store,
-          ...(options.thumbnails === undefined
-            ? {}
-            : { thumbnails: options.thumbnails }),
-        })
-      : await replaceCatalogueCopy(downloaded.bytes, replaceId, options);
+  const replacing = replaceId !== undefined;
+  const imported = replacing
+    ? await replaceCatalogueCopy(downloaded.bytes, replaceId, options)
+    : await importThemePackage(downloaded.bytes, {
+        store: options.store,
+        ...(options.thumbnails === undefined
+          ? {}
+          : { thumbnails: options.thumbnails }),
+      });
   if (!imported.ok) {
     return { ok: false, stage: "package", message: imported.message };
   }
 
-  // After the write, never before, and not caught: a store that cannot record
-  // provenance must fail the request rather than report an install whose origin
-  // a reinstall could not find (Task 4).
-  await options.origins.write(imported.id, {
-    catalogueId: request.catalogueId,
-    version: request.version,
-    installedAt: new Date().toISOString(),
-  });
+  // After the write, never before: a theme whose origin a reinstall could not
+  // find would be installed twice. A fresh copy is removed when the record
+  // fails, so the next press replaces nothing and mints no `name-2`; an update
+  // keeps the copy that was already the person's, and only its origin misses.
+  try {
+    await options.origins.write(imported.id, {
+      catalogueId: request.catalogueId,
+      version: request.version,
+      installedAt: new Date().toISOString(),
+    });
+  } catch {
+    if (!replacing) await options.store.remove(imported.id).catch(() => false);
+    return { ok: false, stage: "store", message: ORIGIN_NOT_RECORDED };
+  }
   await forgetOtherCopies(request.catalogueId, imported.id, options.origins);
   return { ok: true, id: imported.id };
 }

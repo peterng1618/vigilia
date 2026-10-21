@@ -146,6 +146,60 @@ describe("installCatalogueItem", () => {
     expect(await origins.read()).toEqual({});
   });
 
+  it("removes a fresh import when its origin could not be written", async () => {
+    const refusing: ThemeOriginsStore = {
+      ...origins,
+      write: async () => {
+        throw new Error("the settings directory is read-only");
+      },
+    };
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins: refusing,
+      fetch: serving(packageOf("living-room", "Living Room")),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.stage).toBe("store");
+    // The write is undone, so the next press replaces nothing and mints no
+    // `living-room-2` beside a copy the catalogue could not see.
+    expect(await store.list()).toEqual([]);
+    expect(await origins.read()).toEqual({});
+  });
+
+  it("keeps the person's copy when an update's origin could not be written", async () => {
+    await store.write("aurora-copy", themeOf("aurora-copy", "Old Aurora"), {
+      expectFree: true,
+    });
+    await origins.write("aurora-copy", {
+      catalogueId: "aurora",
+      version: "1.0.0",
+      installedAt: new Date(0).toISOString(),
+    });
+    const refusing: ThemeOriginsStore = {
+      ...origins,
+      write: async () => {
+        throw new Error("the settings directory is read-only");
+      },
+    };
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins: refusing,
+      fetch: serving(packageOf("living-room", "Living Room 2")),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.stage).toBe("store");
+    // The previous copy is still the person's, so it stays; only its origin did
+    // not move, and the next press is still an update of this copy.
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "aurora-copy",
+    ]);
+    expect((await origins.read())["aurora-copy"]?.version).toBe("1.0.0");
+  });
+
   it("stamps the library id into the document", async () => {
     await store.write("living-room", themeOf("living-room", "Mine"), {
       expectFree: true,

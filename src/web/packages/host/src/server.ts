@@ -2275,14 +2275,16 @@ export function createHostServer(options: HostServerOptions): HostServer {
         ...(fetcher === undefined ? {} : { fetch: fetcher }),
       });
       if (!installed.ok) {
-        // The refusing owner's own words. 502 when the remote end failed; 400
-        // when the request's address, package or kind is one this build will
-        // not take.
-        sendText(
-          response,
-          installed.stage === "download" ? 502 : 400,
-          installed.message,
-        );
+        // The refusing owner's own words. 502 when the remote end failed, 500
+        // when this host's own store could not record the install; 400 when the
+        // request's address, package or kind is one this build will not take.
+        const status =
+          installed.stage === "download"
+            ? 502
+            : installed.stage === "store"
+              ? 500
+              : 400;
+        sendText(response, status, installed.message);
         return;
       }
       sendJson(response, 200, { ok: true, id: installed.id });
