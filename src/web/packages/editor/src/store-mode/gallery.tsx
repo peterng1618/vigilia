@@ -108,8 +108,9 @@ function Cell(props: {
 }): React.JSX.Element {
   const { item, onAction, onOpenItem } = props;
   const catalogue = item.catalogue;
-  // One read of the decision, used for both the band's left slot and the action
-  // slot, so the two cannot disagree about whether this is an online item.
+  // The left slot branches on whether the item has catalogue facts; the action
+  // slot on the install decision. They read different facts on purpose: a
+  // library item has no install state, and an online item always has a left slot.
   const installState = installStateOf(item);
 
   return (
@@ -195,8 +196,11 @@ function Cell(props: {
                 className="flex flex-none items-center gap-[var(--space-4)] font-mono text-xs text-muted"
               >
                 {/* The drawing's download mark, the same glyph the export
-                    action wears: one arrow for "taken from the store". */}
-                <Glyph icon={EXPORT_ITEM_GLYPH} size={12} />
+                    action wears: one arrow for "taken from the store". The
+                    mark is `--faint`, one step below the number's `--muted`. */}
+                <span className="flex-none text-faint">
+                  <Glyph icon={EXPORT_ITEM_GLYPH} size={12} />
+                </span>
                 {DOWNLOAD_COUNT.format(catalogue.downloads)}
               </span>
             </>
@@ -267,9 +271,13 @@ function InstallAction(props: {
     return (
       <span
         data-vigilia-store-cell-install={state}
-        className="flex flex-none items-center gap-[var(--space-6)] text-xs text-accent"
+        className="flex flex-none items-center gap-[var(--space-6)] text-xs text-muted"
       >
-        <Glyph icon={CHECK_GLYPH} size={13} />
+        {/* The word is muted like every other reading in the band; only the
+            check carries the rationed accent (`store-browse.html`). */}
+        <span className="flex-none text-accent">
+          <Glyph icon={CHECK_GLYPH} size={13} />
+        </span>
         {uiCopy.store.cell.installStates.installed}
       </span>
     );

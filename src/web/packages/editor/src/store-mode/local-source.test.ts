@@ -116,8 +116,8 @@ describe("the local half's items", () => {
 
     const items = await source.list();
 
-    // The wire value, not a display word: `Dashboard theme` is `uiCopy`'s to
-    // word and may change without a format change, while this may not.
+    // The wire value, not a display word: `Theme` is `uiCopy`'s to word and may
+    // change without a format change, while this may not.
     expect(items.map((item) => item.kind)).toEqual(["dashboard-theme"]);
     expect(source.kind).toBe(DASHBOARD_THEME_KIND);
   });

@@ -529,7 +529,9 @@ it("draws the kind badge and the download count for an online item, and neither 
   const container = await mount(
     <Gallery
       items={[
-        item({ catalogue: catalogue() }),
+        // A populated origin on the online item, so the absence below is the
+        // guard's doing rather than a fixture that could never draw the pill.
+        item({ catalogue: catalogue(), origin: ORIGIN }),
         item({ id: "workshop-bench", name: "Workshop bench" }),
       ]}
       onAction={() => undefined}
@@ -565,6 +567,15 @@ it("draws the kind badge and the download count for an online item, and neither 
     "the count is not the drawing's thousand-separated reading",
   ).toBe("1,204");
   expect(
+    must(
+      band("living-room").querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-downloads] span.text-faint",
+      ),
+      "the count's faint glyph",
+    ).textContent,
+    "the count's number, not its glyph, wears the faint colour",
+  ).toBe("");
+  expect(
     band("living-room").querySelector("[data-vigilia-store-cell-origin]"),
     "the online cell drew the local half's origin pill as well",
   ).toBeNull();
@@ -577,6 +588,35 @@ it("draws the kind badge and the download count for an online item, and neither 
     band("workshop-bench").querySelector("[data-vigilia-store-cell-downloads]"),
     "the library cell drew a catalogue count",
   ).toBeNull();
+});
+
+/**
+ * **A kind this build does not know prints its identifier** — the spec's rule
+ * for a client older than the kind, and the only case that proves the badge
+ * falls through to the wire value instead of naming `Theme` for every kind.
+ */
+it("prints the identifier of a kind this build does not know", async () => {
+  const container = await mount(
+    <Gallery
+      items={[
+        item({
+          id: "widget-preset",
+          kind: "widget-preset",
+          catalogue: catalogue(),
+        }),
+      ]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
+  );
+
+  expect(
+    must(
+      container.querySelector<HTMLElement>("[data-vigilia-store-cell-kind]"),
+      "kind badge",
+    ).textContent,
+    "an unknown kind was not printed as its own identifier",
+  ).toBe("widget-preset");
 });
 
 /**
@@ -626,9 +666,9 @@ it("decides the install state from the catalogue and the item", () => {
 
 /**
  * **The installed state is a mark, not a control** (the drawing's own comment at
- * `store-browse.html:112`): a check and the word in `--accent`, with no button,
- * because there is nothing to do. A disabled button here would be a control
- * drawn where the drawing draws none.
+ * `store-browse.html:112`): a check in `--accent` beside the word in `--muted`,
+ * with no button, because there is nothing to do. A disabled button here would
+ * be a control drawn where the drawing draws none.
  */
 it("marks an installed online item without drawing a control", async () => {
   const container = await mount(
@@ -654,8 +694,15 @@ it("marks an installed online item without drawing a control", async () => {
   ).toBe(uiCopy.store.cell.installStates.installed);
   expect(
     mark.className,
-    "the mark's word is not drawn in the accent colour",
-  ).toContain("text-accent");
+    "the mark's word is not drawn in the drawing's muted colour",
+  ).toContain("text-muted");
+  expect(
+    must(
+      mark.querySelector<HTMLElement>("span.text-accent"),
+      "the check's accent colour",
+    ).textContent,
+    "the accent is not on the check alone",
+  ).toBe("");
   expect(
     mark.querySelector("button"),
     "the installed state drew a button it has no action for",
