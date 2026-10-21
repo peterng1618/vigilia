@@ -682,6 +682,13 @@ export const uiCopy = {
       favorites: (count: number): string =>
         count === 1 ? "favorite" : "favorites",
     },
+    /** One line per refusal from the catalogue read, **naming the identifier the
+     *  catalogue used**: a kind this build does not ship has no display word, and
+     *  inventing one would be a word for something nothing declared (§9). An
+     *  entry that declared no kind at all is named by nothing, so the sentence
+     *  says where it was rather than what it claimed. */
+    catalogueRefused: (kind: string | undefined, count: number): string =>
+      `${count} ${count === 1 ? "entry" : "entries"} ${kind === undefined ? "in the store" : `of kind ${kind}`} could not be read.`,
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */
     item: {
@@ -709,6 +716,12 @@ export const uiCopy = {
     empty: {
       library: "No themes are saved on this PC yet.",
       libraryHint: "Build one in the editor, or import a package.",
+      /** **The catalogue's own empty state, and not the library's** (R124):
+       *  before the store has anything published this is the normal state, so
+       *  the sentence must not tell someone with a full library that it is
+       *  empty. */
+      catalogue: "The store has nothing yet.",
+      catalogueHint: "Themes published to the store will appear here.",
       filter: "No themes match these filters.",
     },
     /** The sort well, whose keys are per half because the two share none: the

@@ -42,6 +42,7 @@ import {
   type StoreItem,
   settledTags,
 } from "./local-source.js";
+import { useOnlineListing } from "./online-listing.js";
 import { Pager } from "./pager.js";
 
 /**
@@ -389,22 +390,23 @@ function pageItems(
 }
 
 /**
- * What the region's body draws: the items, one of the two empties, or nothing.
+ * What the region's body draws: the items, one of the three empties, or nothing.
  *
  * **"Nothing" is a state and not an oversight.** A listing that has not arrived
  * yet draws nothing rather than the first-run sentence — a store that flashed
  * "No themes are saved on this PC yet" before its own list landed would be lying
- * for a frame — and the online half has no source until phase C, so it lists
- * nothing rather than the library under another name.
+ * for a frame. A read that failed stays in this state too, whichever half it
+ * was: an empty array would claim the half is empty.
  *
- * **The two empties are different sentences because they have different
- * answers** (R124): a library with nothing in it is not a filter that matched
- * nothing, and the first-run sentence would tell someone with forty themes to go
- * and build one.
+ * **The empties are different sentences because they have different answers**
+ * (R124): a library with nothing in it is not a filter that matched nothing, and
+ * the first-run sentence would tell someone with forty themes to go and build
+ * one — nor does an empty catalogue say the library is empty.
  */
 type Body =
   | { readonly kind: "none" }
   | { readonly kind: "empty-library" }
+  | { readonly kind: "empty-catalogue" }
   | { readonly kind: "empty-filter" }
   | { readonly kind: "items"; readonly items: readonly StoreItem[] };
 
@@ -568,15 +570,18 @@ function StoreRegion(props: {
     };
   }, [source]);
 
-  // **The catalogue's own source is phase C's**, so the online half lists
-  // nothing rather than the library under another name.
-  const listed = tab === "local" ? items : undefined;
+  const online = useOnlineListing(items);
+
+  // **Each half reads its own listing**, and neither ever draws the other's:
+  // the point of the halves is that the catalogue and this PC's library are two
+  // different answers to "what themes are there".
+  const listed = tab === "local" ? items : online.items;
   const matching = (listed ?? []).filter(
     (item) => matchesFacets(item, chosen) && matchesQuery(item, query),
   );
-  // **The half's own key**, not the library's: the catalogue's keys arrive with
-  // its source in phase C, and an order looked up under `local` would sort the
-  // catalogue by a key it never declared the moment that source lands.
+  // **The half's own key**, not the library's. Only the local half's keys have
+  // an order here yet; a catalogue key falls through to no comparison, so the
+  // catalogue's own order stands rather than being re-sorted by a guess.
   const sorted = [...matching].sort(SORT_ORDERS[sort[tab]] ?? (() => 0));
   const total = pageCount(sorted.length, size);
   const current = Math.min(Math.max(page, 1), Math.max(total, 1));
@@ -585,7 +590,7 @@ function StoreRegion(props: {
     listed === undefined
       ? { kind: "none" }
       : listed.length === 0
-        ? { kind: "empty-library" }
+        ? { kind: tab === "local" ? "empty-library" : "empty-catalogue" }
         : sorted.length === 0
           ? { kind: "empty-filter" }
           : { kind: "items", items: pageItems(sorted, current, size) };
@@ -593,11 +598,11 @@ function StoreRegion(props: {
   const openItem =
     openId === undefined
       ? undefined
-      : items?.find((item) => item.id === openId);
+      : listed?.find((item) => item.id === openId);
   const assignItem =
     assignId === undefined
       ? undefined
-      : items?.find((item) => item.id === assignId);
+      : listed?.find((item) => item.id === assignId);
 
   /**
    * The one callback a cell's four actions and the modal's footer share.
@@ -705,6 +710,12 @@ function StoreRegion(props: {
             hint={uiCopy.store.empty.libraryHint}
           />
         ) : null}
+        {body.kind === "empty-catalogue" ? (
+          <Empty
+            lead={uiCopy.store.empty.catalogue}
+            hint={uiCopy.store.empty.catalogueHint}
+          />
+        ) : null}
         {body.kind === "empty-filter" ? (
           <Empty lead={uiCopy.store.empty.filter} hint={undefined} />
         ) : null}
@@ -716,6 +727,26 @@ function StoreRegion(props: {
           />
         ) : null}
       </div>
+
+      {/* Below the grid and above the pager: what the catalogue read could not
+          use, one line per kind, so the grid says what it holds and this says
+          what it left out. It belongs to the online half, because it is the
+          catalogue's fact and not the library's. */}
+      {tab === "online" && online.refused.length > 0 ? (
+        <ul
+          data-vigilia-store-refusals=""
+          className="flex flex-none flex-col gap-[var(--space-4)] px-[var(--space-16)] pt-[var(--space-8)] text-xs text-faint"
+        >
+          {online.refused.map((refusal) => (
+            <li
+              key={`${refusal.reason}:${refusal.kind ?? ""}`}
+              data-vigilia-store-refusal=""
+            >
+              {uiCopy.store.catalogueRefused(refusal.kind, refusal.count)}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <Pager
         current={current}
@@ -733,7 +764,7 @@ function StoreRegion(props: {
           item={openItem}
           // The vocabulary is the listing's, built here because the listing is
           // this surface's: the modal reads the set and never the items.
-          vocabulary={settledTags(items ?? [], openItem)}
+          vocabulary={settledTags(listed ?? [], openItem)}
           onClose={() => setOpenId(undefined)}
           onAction={onAction}
         />

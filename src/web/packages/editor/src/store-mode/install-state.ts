@@ -25,3 +25,38 @@ export function installStateOf(item: StoreItem): InstallState {
   if (installedVersion === undefined) return "install";
   return installedVersion === item.version ? "installed" : "update";
 }
+
+/**
+ * The catalogue's items, each carrying what this PC installed for it.
+ *
+ * **The version comes off the library item's origin record, not off the
+ * document.** An origin says which catalogue version this copy was installed
+ * from; the document's own version moves as the author edits it, so reading the
+ * document would call an edited copy *Installed* against a catalogue that had
+ * moved on. **No comparison happens here** — `installStateOf` owns it, and a
+ * second one would be the two owners this file exists to prevent.
+ *
+ * No local match, or no local listing at all, leaves `installedVersion` absent:
+ * `undefined` is the truth this PC installed nothing.
+ */
+export function withInstalledVersions(
+  online: readonly StoreItem[],
+  local: readonly StoreItem[] | undefined,
+): readonly StoreItem[] {
+  const installed = new Map<string, string>();
+  for (const item of local ?? []) {
+    const origin = item.origin;
+    if (origin !== undefined) installed.set(origin.catalogueId, origin.version);
+  }
+
+  return online.map((item) => {
+    const installedVersion = installed.get(item.id);
+    if (installedVersion === undefined || item.catalogue === undefined) {
+      return item;
+    }
+    return {
+      ...item,
+      catalogue: { ...item.catalogue, installedVersion },
+    };
+  });
+}

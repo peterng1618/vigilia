@@ -125,6 +125,34 @@ it("inflects each catalogue count's noun for the number it counts", () => {
 });
 
 /**
+ * **An empty catalogue is not an empty library**, and the two words are pinned
+ * as literals because the pair is the claim: a case asserting the keys would
+ * stay green while the catalogue's sentence was rewritten into the library's,
+ * which tells someone with a full library that they have nothing.
+ */
+it("says the store has nothing yet without calling the library empty", () => {
+  expect(uiCopy.store.empty.catalogue).toBe("The store has nothing yet.");
+  expect(uiCopy.store.empty.catalogueHint).toBe(
+    "Themes published to the store will appear here.",
+  );
+});
+
+/**
+ * The refusal sentence is read by a person, so the identifier it carries is the
+ * **wire value** and not a word this build invents: `widget-preset` is what the
+ * catalogue declared and what the line must print.
+ */
+it("names a skipped kind by the identifier the catalogue declared", () => {
+  expect(uiCopy.store.catalogueRefused("widget-preset", 1)).toContain(
+    "widget-preset",
+  );
+  expect(uiCopy.store.catalogueRefused("widget-preset", 1)).toContain(
+    "1 entry",
+  );
+  expect(uiCopy.store.catalogueRefused(undefined, 2)).toContain("2 entries");
+});
+
+/**
  * §9: a menu's rows are sentence case. The list is the menu's own — its three
  * names, its File and Edit rows and its View settings — not the whole table,
  * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:

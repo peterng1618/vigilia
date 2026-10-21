@@ -18,16 +18,22 @@
  */
 import { act, type ReactElement, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import {
   createThemeLibraryClient,
   type ThemedDisplay,
   type ThemeLibraryClient,
   type ThemeLibraryEntry,
+  type ThemeOrigin,
 } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { type Facet, FacetRow, toggleFacet } from "./facet-row.js";
-import { DARK_GROUND, fixtureEntry, LIGHT_GROUND } from "./item-fixture.js";
+import {
+  DARK_GROUND,
+  type FixtureTheme,
+  fixtureEntry,
+  LIGHT_GROUND,
+} from "./item-fixture.js";
 import type { CellAction, FacetSelection } from "./local-source.js";
 import { StoreModeRegion } from "./region.js";
 
@@ -77,6 +83,7 @@ async function unmount(): Promise<void> {
 
 afterEach(async () => {
   await unmount();
+  vi.unstubAllGlobals();
 });
 
 beforeEach(() => {
@@ -84,6 +91,12 @@ beforeEach(() => {
   // jsdom's storage outlives a test: without this, a case that chooses 48
   // changes how many pages the next one has.
   window.localStorage.clear();
+  // The region reads the catalogue when it mounts, and a case whose subject is
+  // the library must not reach the network for it: the default is a failed
+  // read, which leaves the online half unset.
+  vi.stubGlobal("fetch", async () => {
+    throw new TypeError("Failed to fetch");
+  });
 });
 
 async function mount(element: ReactElement): Promise<HTMLDivElement> {
@@ -1373,4 +1386,273 @@ it("opens the same choice from the modal's own assign action", async () => {
     "this-pc",
     "kitchen-tablet",
   ]);
+});
+
+/**
+ * The catalogue's listing, as the source reads it: one document of entries, and
+ * the same wire shape the index's own owner declares.
+ */
+function catalogueServing(entries: readonly unknown[]): typeof fetch {
+  return (async () =>
+    new Response(
+      JSON.stringify({
+        generatedAt: "2026-10-21T00:00:00.000Z",
+        entries,
+      }),
+      { status: 200 },
+    )) as unknown as typeof fetch;
+}
+
+const CATALOGUE_FACETS = {
+  author: "mira-k",
+  colourMode: "dark",
+  sensors: [],
+  tags: [],
+  orientation: "landscape",
+  aspect: "16:9",
+  width: 1920,
+  height: 1080,
+};
+
+function catalogueEntry(
+  id: string,
+  version: string,
+  kind = "dashboard-theme",
+): Record<string, unknown> {
+  return {
+    id,
+    kind,
+    name: `Catalogue ${id}`,
+    version,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-14T00:00:00.000Z",
+    downloads: 42,
+    favorites: 7,
+    packageUrl: `https://store.test/${id}.zip`,
+    thumbnail: `${id}/thumbnail.png`,
+    facets: CATALOGUE_FACETS,
+  };
+}
+
+/** A library theme the host holds an origin record for: where the online join
+ *  reads what this PC installed, and at which catalogue version. */
+function fixtureWithOrigin(
+  theme: FixtureTheme,
+  catalogueId: string,
+  version: string,
+): ThemeLibraryEntry {
+  const origin: ThemeOrigin = {
+    catalogueId,
+    version,
+    installedAt: "2026-10-15T00:00:00.000Z",
+  };
+  return { ...fixtureEntry(theme), origin };
+}
+
+/** The online half chosen, and the catalogue read settled before the assertion
+ *  reads the grid. */
+async function showOnline(): Promise<void> {
+  await act(async () => halves(headerRow(document.body))[1]?.click());
+  await act(async () => {});
+}
+
+/** One install reading per drawn cell, in the grid's order. */
+function installReadings(): readonly (readonly [
+  string | null,
+  string | null,
+])[] {
+  return cells().map((cell) => [
+    cell.getAttribute("data-vigilia-store-cell"),
+    cell
+      .querySelector("[data-vigilia-store-cell-install]")
+      ?.getAttribute("data-vigilia-store-cell-install") ?? null,
+  ]);
+}
+
+/**
+ * **The online half lists the catalogue** where it used to list nothing, and
+ * choosing the local half back draws the library unchanged: the two listings are
+ * separate facts, and a half that kept the other's items would be a store that
+ * showed the catalogue under *Your themes*.
+ */
+it("lists the catalogue on the online half and the library on the local one", async () => {
+  vi.stubGlobal(
+    "fetch",
+    catalogueServing([catalogueEntry("office-wall", "1.3.0")]),
+  );
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+  ]);
+
+  expect(
+    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    "the local half does not list the library",
+  ).toEqual(["living-room"]);
+
+  await showOnline();
+
+  expect(
+    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    "the online half lists nothing",
+  ).toEqual(["office-wall"]);
+
+  await act(async () => halves(headerRow(document.body))[0]?.click());
+
+  expect(
+    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    "the local half changed when the catalogue arrived",
+  ).toEqual(["living-room"]);
+});
+
+/**
+ * **The join is against the library's origin record**, not the document's own
+ * version: what the catalogue says this PC installed is `origin.version`, and a
+ * library copy whose document has since been edited past that version is still
+ * the catalogue's older copy. The `held-older` case is the one that tells the
+ * two apart — its document declares `1.3.0` while the origin says `1.2.0`, so a
+ * join reading the document answers *Installed* where the truth is *Update*.
+ */
+it("joins the catalogue against the library's origins, not its documents", async () => {
+  vi.stubGlobal(
+    "fetch",
+    catalogueServing([
+      catalogueEntry("held-same", "1.3.0"),
+      catalogueEntry("held-older", "1.3.0"),
+      catalogueEntry("not-held", "1.3.0"),
+    ]),
+  );
+  await mountStore([
+    fixtureWithOrigin(
+      { id: "same-copy", name: "Same", version: "1.3.0", ground: DARK_GROUND },
+      "held-same",
+      "1.3.0",
+    ),
+    fixtureWithOrigin(
+      {
+        id: "older-copy",
+        name: "Older",
+        version: "1.3.0",
+        ground: DARK_GROUND,
+      },
+      "held-older",
+      "1.2.0",
+    ),
+  ]);
+
+  await showOnline();
+
+  expect(
+    installReadings(),
+    "the catalogue was not joined against the library's origin versions",
+  ).toEqual([
+    ["held-same", "installed"],
+    ["held-older", "update"],
+    ["not-held", "install"],
+  ]);
+});
+
+/**
+ * **An empty catalogue is not an empty library** (R124, one half over): before
+ * the catalogue is published this is the *normal* state, so it must say the
+ * store has nothing rather than telling someone with forty themes their library
+ * is empty.
+ */
+it("says the store has nothing yet in its own words", async () => {
+  vi.stubGlobal("fetch", catalogueServing([]));
+  await mountStore([]);
+
+  await showOnline();
+
+  const empty = must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-empty]"),
+    "empty catalogue state",
+  );
+  expect(
+    empty.textContent,
+    "an empty catalogue does not say the store has nothing",
+  ).toContain(uiCopy.store.empty.catalogue);
+  expect(
+    empty.textContent,
+    "an empty catalogue tells the reader their library is empty",
+  ).not.toContain(uiCopy.store.empty.library);
+});
+
+/**
+ * **The skipped-kind line names the identifier the catalogue used**, never a
+ * display word: this build has no vocabulary for `widget-preset`, and inventing
+ * one would be §9's word for something nothing declared. The line sits below the
+ * grid and above the pager, where the drawing puts it.
+ */
+it("names the identifier of a kind the store skipped", async () => {
+  vi.stubGlobal(
+    "fetch",
+    catalogueServing([
+      catalogueEntry("office-wall", "1.3.0"),
+      catalogueEntry("widget", "1.0.0", "widget-preset"),
+    ]),
+  );
+  await mountStore([]);
+
+  await showOnline();
+
+  const line = must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-refusal]"),
+    "refusal line",
+  );
+  expect(
+    line.textContent,
+    "the refusal does not name the kind the catalogue declared",
+  ).toBe(uiCopy.store.catalogueRefused("widget-preset", 1));
+  expect(
+    line.textContent,
+    "the refusal line does not print the wire identifier",
+  ).toContain("widget-preset");
+
+  const follows = (first: Node, second: Node): boolean =>
+    (first.compareDocumentPosition(second) &
+      Node.DOCUMENT_POSITION_FOLLOWING) !==
+    0;
+  expect(
+    follows(
+      must(
+        document.body.querySelector("[data-vigilia-store-gallery]"),
+        "gallery",
+      ),
+      line,
+    ),
+    "the refusal line is not below the grid",
+  ).toBe(true);
+  expect(
+    follows(
+      line,
+      must(document.body.querySelector("[data-vigilia-store-pager]"), "pager"),
+    ),
+    "the refusal line is not above the pager",
+  ).toBe(true);
+});
+
+/**
+ * **A failed read is not an empty catalogue.** The two look the same on screen
+ * and mean opposite things — nothing published against nobody having answered —
+ * so the listing stays unset and the body draws nothing, exactly as the local
+ * half does (`:558-563`).
+ */
+it("leaves the online half unset when the catalogue read failed", async () => {
+  await mountStore([]);
+
+  await showOnline();
+
+  expect(cells(), "a failed read was drawn as a listing").toEqual([]);
+  expect(
+    document.body.querySelector("[data-vigilia-store-empty]"),
+    "a failed read was drawn as an empty catalogue",
+  ).toBeNull();
+  expect(
+    document.body.querySelector("[data-vigilia-store-refusal]"),
+    "a failed read claimed something it could not read",
+  ).toBeNull();
 });
