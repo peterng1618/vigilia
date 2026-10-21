@@ -35,7 +35,7 @@ catalogue download is the host's first outbound third-party request.**
 counter, no timeout on an outbound request exists anywhere in `packages/`.
 
 **The cap the reader enforces is private and late.** `MAX_ARCHIVE_BYTES`
-(`theme-package/src/index.ts:19`) is 64 MiB, applied by `readThemePackage` to a
+(`theme-package/src/index.ts:21`) is 64 MiB, applied by `readThemePackage` to a
 `Uint8Array` it has already been handed. A downloader that buffers first would
 hold an unbounded body before the reader ever sees it, so the cap has to be
 enforced during the read, and it must be the reader's number rather than a
@@ -93,8 +93,7 @@ allowlist compares a parsed host rather than a string prefix.
 
 ## Rung 4 — ecosystem
 
-Searched: the workspace's dependency tree; Node's and undici's docs (above); and
-web search for comparable downloaders.
+Searched: the workspace's dependency tree; Node's and undici's docs (above).
 
 Found: **each ecosystem client that has a knob for this still leaves the two
 policy decisions to its caller.** `node-fetch`'s `size`, `got`'s

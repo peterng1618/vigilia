@@ -108,15 +108,26 @@ async function read(
 
   if (response.status >= 300 && response.status < 400) {
     if (redirectsLeft <= 0)
-      return refuse("The catalogue redirected too many times.");
+      return refuseAndClose(
+        response,
+        "The catalogue redirected too many times.",
+      );
     const next = redirectTarget(response, target);
     if (next === undefined)
-      return refuse("The download left the catalogue's hosts.");
+      return refuseAndClose(
+        response,
+        "The download left the catalogue's hosts.",
+      );
+    // A redirect's own body is not the package; release it before the hop.
+    await response.body?.cancel().catch(() => undefined);
     return read(next, fetcher, signal, redirectsLeft - 1, opened);
   }
 
   if (!response.ok)
-    return refuse(`The download was refused (HTTP ${response.status}).`);
+    return refuseAndClose(
+      response,
+      `The download was refused (HTTP ${response.status}).`,
+    );
 
   // A hint, not enforcement: an origin may omit it or lie, and the counter
   // below is the rule. Checking it first only saves reading a body we already
@@ -125,7 +136,7 @@ async function read(
   if (declared !== null) {
     const size = Number(declared);
     if (Number.isFinite(size) && size > MAX_ARCHIVE_BYTES)
-      return refuse("That package is too large to download.");
+      return refuseAndClose(response, "That package is too large to download.");
   }
 
   if (response.body === null)
@@ -183,4 +194,15 @@ function redirectTarget(response: Response, current: URL): URL | undefined {
 
 function refuse(message: string): DownloadResult {
   return { ok: false, message };
+}
+
+/** A refusal before the reader exists: closing here is the only thing that
+ *  releases the connection, because the caller's `finally` has no reader to
+ *  cancel and the timer is already cleared. */
+async function refuseAndClose(
+  response: Response,
+  message: string,
+): Promise<DownloadResult> {
+  await response.body?.cancel().catch(() => undefined);
+  return refuse(message);
 }

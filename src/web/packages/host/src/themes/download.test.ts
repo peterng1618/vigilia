@@ -174,6 +174,29 @@ describe("downloadPackage", () => {
     expect(result.ok ? "" : result.message).toMatch(/large/i);
   });
 
+  it("cancels the body it refuses on its Content-Length", async () => {
+    // The refusal happens before a reader exists, so nothing else releases the
+    // connection: without an explicit cancel the origin keeps sending.
+    let cancelled = false;
+    const { fetch } = injectedFetch(
+      () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull: () => new Promise(() => undefined),
+            cancel() {
+              cancelled = true;
+            },
+          }),
+          { headers: { "content-length": String(MAX_ARCHIVE_BYTES + 1) } },
+        ),
+    );
+
+    const result = await downloadPackage(ASSET, { fetch, timeoutMs: 50 });
+
+    expect(result.ok).toBe(false);
+    expect(cancelled).toBe(true);
+  });
+
   it("refuses a body larger than the reader accepts, and stops reading it", async () => {
     // Twice the cap, so the stream is still open when the refusal lands: a
     // stream that had already ended would make `cancel` a no-op and prove
