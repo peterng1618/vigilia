@@ -30,7 +30,7 @@ const FIRST_VERSION = "1.0.0";
 export interface SubmissionFiles {
   readonly itemJson: string;
   readonly packageBytes: Uint8Array;
-  readonly thumbnail: Uint8Array | undefined;
+  readonly thumbnailBytes: Uint8Array;
   /** The catalogue directory the files belong in: `catalogue/<themeId>`. */
   readonly path: string;
 }
@@ -72,13 +72,21 @@ export async function submissionFiles(
     options?.thumbnails === undefined
       ? undefined
       : await options.thumbnails.read(themeId);
+  // Every item commits a picture beside its header, so a theme without one
+  // cannot be submitted: the storefront would hold a path to no file.
+  if (thumbnail === undefined) {
+    return {
+      ok: false,
+      message: "This theme has no picture yet; set one before submitting.",
+    };
+  }
 
   // The same writer the export path uses, so the package a reviewer downloads
   // is the package the Install action can open.
   const written = writeThemePackage({
     envelope: theme.envelope,
     assets: theme.assets,
-    ...(thumbnail === undefined ? {} : { thumbnail }),
+    thumbnail,
   });
   if (!written.ok) return { ok: false, message: written.message };
 
@@ -101,8 +109,7 @@ export async function submissionFiles(
     downloads: 0,
     favorites: 0,
     packageUrl: `${CATALOGUE_RAW_BASE}/catalogue/${themeId}/${themeId}.zip`,
-    // The wire requires this path even when there is no picture to commit; the
-    // submission then carries no thumbnail and the storefront falls back to text.
+    // The picture this submission commits, beside `item.json`.
     thumbnail: `catalogue/${themeId}/${THUMBNAIL_FILE}`,
   });
   if (!parsed.ok) return { ok: false, message: parsed.reason };
@@ -112,7 +119,7 @@ export async function submissionFiles(
     files: {
       itemJson: `${JSON.stringify(parsed.file, null, 2)}\n`,
       packageBytes: written.bytes,
-      thumbnail,
+      thumbnailBytes: thumbnail,
       path: `catalogue/${themeId}`,
     },
   };

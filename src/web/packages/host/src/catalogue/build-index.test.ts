@@ -6,6 +6,7 @@ import {
   facetRecordOf,
   parseCatalogueIndex,
 } from "@vigilia/renderer-core";
+import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildCatalogueIndexCommand,
@@ -47,28 +48,44 @@ function item(id: string, theme: unknown = themeFor(id, `Theme ${id}`)) {
 
 const temporary: string[] = [];
 
+/** ZIP magic and nothing else: a package `readThemePackage` refuses. */
+const NOT_A_PACKAGE = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+
 async function catalogueOf(
   entries: readonly {
     readonly id: string;
-    readonly theme?: unknown;
+    readonly theme?: FabricThemeEnvelope;
     readonly item?: unknown;
+    /** Bytes to write instead of a package built from `theme`; `null` writes
+     *  no package at all. */
+    readonly packageBytes?: Uint8Array | null;
   }[],
 ): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "vigilia-catalogue-"));
   temporary.push(root);
-  for (const { id, item, theme } of entries) {
+  for (const { id, item, theme, packageBytes } of entries) {
     const directory = path.join(root, id);
     await mkdir(directory, { recursive: true });
     await writeFile(
       path.join(directory, "item.json"),
       JSON.stringify(item ?? itemFor(id)),
     );
+    if (packageBytes === null) continue;
     await writeFile(
-      path.join(directory, "theme.json"),
-      JSON.stringify(theme ?? themeFor(id, `Theme ${id}`)),
+      path.join(directory, `${id}.zip`),
+      packageBytes ?? writtenPackage(id, theme),
     );
   }
   return root;
+}
+
+function writtenPackage(id: string, theme?: FabricThemeEnvelope): Uint8Array {
+  const written = writeThemePackage({
+    envelope: theme ?? themeFor(id, `Theme ${id}`),
+    assets: {},
+  });
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
 }
 
 afterEach(async () => {
@@ -125,7 +142,8 @@ describe("buildCatalogueIndexCommand", () => {
     const catalogue = await catalogueOf([
       { id: "beta", theme: themeFor("beta", "Beta") },
       { id: "alpha", theme: themeFor("alpha", "Alpha") },
-      { id: "broken", theme: { schemaVersion: 2 } },
+      { id: "broken", packageBytes: NOT_A_PACKAGE },
+      { id: "absent", packageBytes: null },
     ]);
     const out = path.join(catalogue, "index.json");
     const argv = [
@@ -152,6 +170,7 @@ describe("buildCatalogueIndexCommand", () => {
       facetRecordOf(themeFor("alpha", "Alpha")),
     );
     expect(errors.mock.calls.flat().join("\n")).toContain("catalogue/broken");
+    expect(errors.mock.calls.flat().join("\n")).toContain("catalogue/absent");
 
     expect(await buildCatalogueIndexCommand(argv)).toBe(0);
     expect(await readFile(out, "utf8")).toBe(bytes);
@@ -263,7 +282,7 @@ describe("buildCatalogueIndexCommand", () => {
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
     const catalogue = await catalogueOf([
-      { id: "broken", theme: { schemaVersion: 2 } },
+      { id: "broken", packageBytes: NOT_A_PACKAGE },
     ]);
 
     const status = await buildCatalogueIndexCommand([

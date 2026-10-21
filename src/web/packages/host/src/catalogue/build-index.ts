@@ -9,6 +9,7 @@ import {
   parseCatalogueItemFile,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
+import { readThemePackage } from "@vigilia/theme-package";
 
 /**
  * The catalogue listing's generator, run as a host command.
@@ -18,7 +19,7 @@ import {
  * (`bin/vigilia.js`). The output is the one file the editor fetches.
  */
 
-/** One item's two documents, as the walk read them — not yet validated. */
+/** One item's documents, as the walk read them — the header not yet validated. */
 export interface CatalogueItem {
   readonly id: string;
   readonly item: unknown;
@@ -126,11 +127,16 @@ export async function buildCatalogueIndexCommand(
   const items: CatalogueItem[] = [];
   for (const name of names) {
     try {
-      const [item, theme] = await Promise.all([
-        readJson(path.join(directory, name, "item.json")),
-        readJson(path.join(directory, name, "theme.json")),
-      ]);
-      items.push({ id: name, item, theme });
+      const item = await readJson(path.join(directory, name, "item.json"));
+      // Option B: the package is the theme, beside `item.json`; a loose
+      // `theme.json` would be a second copy that can drift.
+      const bytes = await readBytes(path.join(directory, name, `${name}.zip`));
+      const read = readThemePackage(bytes);
+      if (!read.ok) {
+        console.error(`Refused catalogue/${name}: ${read.message}`);
+        continue;
+      }
+      items.push({ id: name, item, theme: read.envelope });
     } catch (error) {
       console.error(`Refused catalogue/${name}: ${messageOf(error)}`);
     }
@@ -210,6 +216,14 @@ async function readJson(file: string): Promise<unknown> {
   }
 }
 
+async function readBytes(file: string): Promise<Uint8Array> {
+  try {
+    return await readFile(file);
+  } catch (error) {
+    throw new Error(`${path.basename(file)}: ${messageOf(error)}`);
+  }
+}
+
 /** Why the pure half dropped this item, resolved only for the items it dropped. */
 function refusalOf(theme: unknown, item: unknown): string {
   const file = parseCatalogueItemFile(item);
@@ -217,11 +231,11 @@ function refusalOf(theme: unknown, item: unknown): string {
 
   const validated = validateFabricThemeEnvelope(theme);
   if (validated.ok) {
-    return "item.json and theme.json could not make an entry.";
+    return "item.json and the package's theme could not make an entry.";
   }
   const issue = validated.issues[0];
   return issue === undefined
-    ? "theme.json is not a theme this build can read."
+    ? "The package's theme is not a theme this build can read."
     : `${issue.path === "" ? "/" : issue.path} ${issue.message}`;
 }
 

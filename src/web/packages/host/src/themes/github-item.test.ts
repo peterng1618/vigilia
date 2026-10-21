@@ -95,29 +95,36 @@ describe("submissionFiles", () => {
     if (!read.ok) throw new Error(read.message);
     expect(read.envelope.id).toBe("aurora");
     expect(read.envelope.metadata?.name).toBe("Aurora");
-    expect(files.thumbnail).toEqual(PNG);
+    expect(files.thumbnailBytes).toEqual(PNG);
     expect(read.thumbnail).toEqual(PNG);
   });
 
-  it("still submits a theme whose thumbnail was never captured", async () => {
+  it("publishes a theme that declares no version as its first release", async () => {
     await store.write("quiet", themeOf("quiet", "Quiet", undefined), {
       expectFree: true,
     });
+    await thumbnails.write("quiet", PNG);
 
     const result = await submissionFiles("quiet", store, { thumbnails });
     if (!result.ok) throw new Error(result.message);
 
-    expect(result.files.thumbnail).toBeUndefined();
     const parsed = parseCatalogueItemFile(JSON.parse(result.files.itemJson));
     if (!parsed.ok) throw new Error(parsed.reason);
-    // The wire requires a path even though there is no file to put there; the
-    // first release is the version a theme that declares none is published as.
-    expect(parsed.file.thumbnail).toBe("catalogue/quiet/thumbnail.png");
     expect(parsed.file.version).toBe("1.0.0");
+    expect(parsed.file.thumbnail).toBe("catalogue/quiet/thumbnail.png");
+  });
 
-    const read = readThemePackage(result.files.packageBytes);
-    if (!read.ok) throw new Error(read.message);
-    expect(read.thumbnail).toBeUndefined();
+  it("refuses a theme with no picture, naming what to do", async () => {
+    await store.write("quiet", themeOf("quiet", "Quiet", "1.0.0"), {
+      expectFree: true,
+    });
+
+    const result = await submissionFiles("quiet", store, { thumbnails });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.message).toBe(
+      "This theme has no picture yet; set one before submitting.",
+    );
   });
 
   it("refuses an id the store would never hold", async () => {
