@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase C's Task 6: the modal's catalogue facts** — an online item's counts join the caption's right end (`1.4.0 · 2026-10-14 · 1,204 · 38`) and its footer carries the install reading; a library item's caption and four actions are **identical to before, compared line for line**.
-- **The counts have an accessible name**, then a second fix: `Glyph` is `aria-hidden`, so `1,204` was announced as an isolated number; the noun follows as `sr-only` text and **inflects**, because a count of one is a first-day state.
-- **The figure–noun space is guarded**, not trimmed away by the test helper — deleting it fails with `expected '1,204downloads' to be '1,204 downloads'`.
-- **Two rulings recorded**: the counts take the caption's right end and add no row (the plan said "caption line", the drawing draws none, the spec enumerates that line); disabled-plus-reason is parked at four instances for the whole-branch review.
-- **Evidence**: store-mode 6 files / 88 and copy 9 green (97 across both), `typecheck` exit 0, `biome check ..` exit 0 at 750 files; the reviewer broke the counts' order and compared the library footer body against `664a3567`, finding it identical.
+- **Phase C's Task 7: the online half lists the catalogue** — its own listing state, the join against the library's **origin records**, the refusal line naming `widget-preset`, and an `empty-catalogue` body that is not the library's empty state.
+- **The review found the one real gap: sort was a no-op for all four online keys**, so phase C's "sort work" was unmet; four comparators now order by `createdAt`, `updatedAt`, `downloads` and `favorites`, each proved by a case asserting the list genuinely reorders.
+- **The join reads `origin.version`, not the document's** — a library copy edited past the version it was installed at still reads `Update`, which is the case that tells the two readings apart.
+- **`region.tsx` is 732 lines after extracting `sort-orders.ts`**; the region was 782 and the stop is 800, so the order table moved rather than the region growing.
+- **Evidence**: store-mode 6 files / 94 and copy 11 green, `typecheck` exit 0, `biome check ..` exit 0 at 752 files; both red proofs and a third the reviewer wrote (join returning `online` unchanged fails both install readings) reproduced, restored with `cmp`.
 
 ## Next
 
