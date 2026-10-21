@@ -957,9 +957,21 @@ refusal line, and five rendered claims against a routed index. **C is live
 end to end**: the Action's first run generated `index.json` from the pinned
 generator, and `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json`
 answers `200` with zero entries — the honest empty catalogue, since items arrive
-with E. **D–F are unstarted**, each behind a decision that is the reader's, and
-the acceptance below still decides whether A is accepted: landing is not
+with E. **E and F are unstarted**, each behind a decision that is the reader's,
+and the acceptance below still decides whether A is accepted: landing is not
 acceptance.
+
+**D's implementation landed 2026-10-22** under
+`2026-10-21-theme-store-install.md`: the hosting probe and the option B ruling
+below, ADR `0089` and the host's `downloadPackage`, `POST /api/themes/install`
+with `installCatalogueItem`, the rule that only a **newer** catalogue version is
+offered as *Update*, the editor's Install / Update / Installed control with its
+announcements, and three rendered claims against routed fixtures. **The host
+fetches the package and the browser never does**, because the release asset
+sends no `access-control-allow-origin` on either hop — measured, not assumed.
+The route is loopback only and now also refuses a `Host` that is not a loopback
+name, which is the one check that covers a rebound DNS name. Every browser claim
+is against a routed fixture: the real catalogue stays empty until E.
 
 **A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
 `index.json` and no hosting decision. **C is the last phase that dodges open
