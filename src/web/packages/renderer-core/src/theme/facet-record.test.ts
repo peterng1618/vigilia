@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
-import { ASPECT_BUCKETS, facetRecordOf } from "./facet-record.js";
+import {
+  ASPECT_BUCKETS,
+  facetRecordOf,
+  PUBLISHED_BUCKETS,
+} from "./facet-record.js";
 
 /** The smallest envelope a record can be read from; each case states only the
     part of the document it is about. */
@@ -153,6 +157,15 @@ describe("facetRecordOf", () => {
   it("buckets the two shapes the owner ruled", () => {
     expect(facetRecordOf(shaped(3840, 960)).aspect).toBe("4:1");
     expect(facetRecordOf(shaped(2340, 1080)).aspect).toBe("19.5:9");
+  });
+
+  it("has a table entry for every bucket the array publishes, and the reverse", () => {
+    // The compile-time table catches a union member with no entry; this catches
+    // the other direction — an entry with no `ASPECT_BUCKETS` row, which is a
+    // bucket the union offers and `aspectOf` can never return.
+    expect(ASPECT_BUCKETS.map((e) => e.bucket).sort()).toEqual(
+      Object.keys(PUBLISHED_BUCKETS).sort(),
+    );
   });
 
   it("orders the buckets by ascending ratio", () => {

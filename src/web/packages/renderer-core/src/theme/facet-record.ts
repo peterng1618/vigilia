@@ -65,8 +65,8 @@ const EPSILON = 216 / 24389;
 const KAPPA = 24389 / 27;
 
 /** The bucket union, spelled out: a member added above without its entry here
-    fails to compile, so the published set cannot silently drift. Exported only
-    to satisfy the unused-variable rule; nothing reads it at runtime. */
+    fails to compile. The test holds the other direction — every entry here has
+    a row in `ASPECT_BUCKETS`, which is the array `aspectOf` actually reads. */
 export const PUBLISHED_BUCKETS = {
   "1:1": true,
   "4:3": true,

@@ -107,9 +107,10 @@ distances: 2340×1080 is 0.0000% from `19.5:9`; 3840×960 is 0.0000% from `4:1`;
 - `facet-record.ts` — `AspectBucket` gains `"19.5:9"` and `"4:1"`; `ASPECT_BUCKETS`
   gains `19.5 / 9` between `16:9` and `21:9`, and `4` after `32:9`, keeping the
   ascending order the first-match rule depends on; a `PUBLISHED_BUCKETS` table
-  beside it makes a union member without its entry a compile error, and the
-  table's export lets the test assert the ascending order. `ASPECT_TOLERANCE`
-  and `aspectOf` are unchanged.
+  beside it makes a union member without its entry a compile error, and a test
+  holds the other direction — every entry has a row in `ASPECT_BUCKETS` — which
+  is what the table's export is for. `ASPECT_TOLERANCE` and `aspectOf` are
+  unchanged.
 - `store-mode/region.tsx` — no table is added: `shapeOptions` names each option
   with `item.facets.aspect` and maps only `other` to `uiCopy.store.otherShape`,
   so the two new ids label themselves and need no second list.
