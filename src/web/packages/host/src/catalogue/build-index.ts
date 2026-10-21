@@ -5,6 +5,7 @@ import {
   type CatalogueIndex,
   facetRecordOf,
   parseCatalogueIndex,
+  parseCatalogueItemFile,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 
@@ -22,6 +23,16 @@ export interface CatalogueItem {
   readonly item: unknown;
   readonly theme: unknown;
 }
+
+/** The one kind this build ships. The editor names the same wire value in
+ *  `store-mode/local-source.ts`; the host cannot import the editor, so the
+ *  generator carries it to check what a client would actually accept. */
+const DASHBOARD_THEME_KIND = "dashboard-theme";
+
+/** `YYYY-MM-DDTHH:MM:SS`, an optional fraction, then `Z` or `±HH:MM`. Presence
+ *  is not enough: a value the reader cannot place makes the listing's age wrong. */
+const ISO_INSTANT =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 const USAGE =
   "usage: vigilia-dashboard --build-catalogue-index <catalogueDir> --out <file> --generated-at <ISO>";
@@ -52,46 +63,12 @@ function entryOf({
   item,
   theme,
 }: CatalogueItem): CatalogueEntry | undefined {
+  const file = parseCatalogueItemFile(item);
+  if (!file.ok) return undefined;
   const validated = validateFabricThemeEnvelope(theme);
-  if (!validated.ok || !isObject(item)) return undefined;
+  if (!validated.ok) return undefined;
 
-  const kind = text(item, "kind");
-  const name = text(item, "name");
-  const version = text(item, "version");
-  const createdAt = text(item, "createdAt");
-  const updatedAt = text(item, "updatedAt");
-  const downloads = count(item, "downloads");
-  const favorites = count(item, "favorites");
-  const packageUrl = text(item, "packageUrl");
-  const thumbnail = text(item, "thumbnail");
-
-  if (
-    kind === undefined ||
-    name === undefined ||
-    version === undefined ||
-    createdAt === undefined ||
-    updatedAt === undefined ||
-    downloads === undefined ||
-    favorites === undefined ||
-    packageUrl === undefined ||
-    thumbnail === undefined
-  ) {
-    return undefined;
-  }
-
-  return {
-    id,
-    kind,
-    name,
-    version,
-    createdAt,
-    updatedAt,
-    downloads,
-    favorites,
-    packageUrl,
-    thumbnail,
-    facets: facetRecordOf(validated.envelope),
-  };
+  return { id, ...file.file, facets: facetRecordOf(validated.envelope) };
 }
 
 /**
@@ -140,6 +117,13 @@ export async function buildCatalogueIndexCommand(
     return 1;
   }
 
+  if (!ISO_INSTANT.test(generatedAt) || Number.isNaN(Date.parse(generatedAt))) {
+    console.error(
+      `--generated-at must be an ISO 8601 instant, not "${generatedAt}".\n${USAGE}`,
+    );
+    return 1;
+  }
+
   const names = await itemDirectories(directory);
   if (names === undefined) return 1;
 
@@ -165,21 +149,41 @@ export async function buildCatalogueIndexCommand(
     );
   }
 
-  // The reader's own parser checks the generator's output: two producers of one
-  // shape agree here or the run fails rather than publishing what the store skips.
-  const kinds = [...new Set(index.entries.map((entry) => entry.kind))];
-  const checked = parseCatalogueIndex(index, kinds);
-  if (
-    checked.refused.length > 0 ||
-    checked.entries.length !== index.entries.length
-  ) {
+  // A catalogue that read items and kept none is a defect, not an honest empty
+  // catalogue: publishing it would replace a good listing with nothing.
+  if (names.length > 0 && index.entries.length === 0) {
     console.error(
-      "Refused the generated index: the store cannot read it back.",
+      `Refused the generated index: ${names.length} catalogue director${
+        names.length === 1 ? "y was" : "ies were"
+      } refused.`,
     );
     return 1;
   }
 
-  await writeFile(out, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+  // The reader's own parser checks the generator's output with the kind this
+  // build ships: a mistyped kind would otherwise be skipped by every client.
+  const checked = parseCatalogueIndex(index, [DASHBOARD_THEME_KIND]);
+  if (checked.refused.length > 0) {
+    for (const refusal of checked.refused) {
+      const named =
+        refusal.kind === undefined ? "an entry" : `kind "${refusal.kind}"`;
+      console.error(
+        `Refused the generated index: ${named} is ${
+          refusal.reason === "unknown-kind"
+            ? "not a kind this build ships"
+            : "not the wire shape"
+        } (${refusal.count}).`,
+      );
+    }
+    return 1;
+  }
+
+  try {
+    await writeFile(out, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+  } catch (error) {
+    console.error(`Cannot write ${out}: ${messageOf(error)}`);
+    return 1;
+  }
   return 0;
 }
 
@@ -212,44 +216,17 @@ async function readJson(file: string): Promise<unknown> {
 
 /** Why the pure half dropped this item, resolved only for the items it dropped. */
 function refusalOf(theme: unknown, item: unknown): string {
+  const file = parseCatalogueItemFile(item);
+  if (!file.ok) return file.reason;
+
   const validated = validateFabricThemeEnvelope(theme);
   if (validated.ok) {
-    return isObject(item)
-      ? "item.json does not declare the fields an entry needs."
-      : "item.json is not an object.";
+    return "item.json and theme.json could not make an entry.";
   }
   const issue = validated.issues[0];
   return issue === undefined
     ? "theme.json is not a theme this build can read."
     : `${issue.path === "" ? "/" : issue.path} ${issue.message}`;
-}
-
-function text(
-  record: Record<string, unknown>,
-  key: string,
-): string | undefined {
-  const value = field(record, key);
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-/** A count; `-1` and `NaN` are not counts and must not become zero. */
-function count(
-  record: Record<string, unknown>,
-  key: string,
-): number | undefined {
-  const value = field(record, key);
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? value
-    : undefined;
-}
-
-/** A field's own value, never an inherited one. */
-function field(record: Record<string, unknown>, key: string): unknown {
-  return Object.hasOwn(record, key) ? record[key] : undefined;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function messageOf(error: unknown): string {

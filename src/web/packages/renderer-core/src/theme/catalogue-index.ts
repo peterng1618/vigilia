@@ -35,6 +35,83 @@ export interface CatalogueIndex {
   readonly entries: readonly CatalogueEntry[];
 }
 
+/**
+ * The authored header of one `catalogue/<id>/item.json`.
+ *
+ * It has no `author` — that is a facet the producer derives from `theme.json`'s
+ * metadata — and no `id`, which is the catalogue directory's name. The generator
+ * reads these fields to build an entry, so a misspelt one is a named refusal
+ * rather than an item silently dropped from the listing.
+ */
+export type CatalogueItemFile = Omit<CatalogueEntry, "id" | "facets">;
+
+export type CatalogueItemFileResult =
+  | { readonly ok: true; readonly file: CatalogueItemFile }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * The header, or the first field that is not what it declares.
+ *
+ * This is the input half of the generator's contract: the names here are the
+ * ones the uploader must write, and a typo names itself instead of publishing an
+ * index with the item quietly missing.
+ */
+export function parseCatalogueItemFile(
+  value: unknown,
+): CatalogueItemFileResult {
+  if (!isObject(value)) {
+    return { ok: false, reason: "item.json must be a JSON object." };
+  }
+
+  const kind = stringField(value, "kind");
+  if (kind === undefined) return refusedText("kind");
+  const name = stringField(value, "name");
+  if (name === undefined) return refusedText("name");
+  const version = stringField(value, "version");
+  if (version === undefined) return refusedText("version");
+  const createdAt = stringField(value, "createdAt");
+  if (createdAt === undefined) return refusedText("createdAt");
+  const updatedAt = stringField(value, "updatedAt");
+  if (updatedAt === undefined) return refusedText("updatedAt");
+  const downloads = countField(value, "downloads");
+  if (downloads === undefined) return refusedCount("downloads");
+  const favorites = countField(value, "favorites");
+  if (favorites === undefined) return refusedCount("favorites");
+  const packageUrl = stringField(value, "packageUrl");
+  if (packageUrl === undefined) return refusedText("packageUrl");
+  const thumbnail = stringField(value, "thumbnail");
+  if (thumbnail === undefined) return refusedText("thumbnail");
+
+  return {
+    ok: true,
+    file: {
+      kind,
+      name,
+      version,
+      createdAt,
+      updatedAt,
+      downloads,
+      favorites,
+      packageUrl,
+      thumbnail,
+    },
+  };
+}
+
+function refusedText(field: string): CatalogueItemFileResult {
+  return {
+    ok: false,
+    reason: `item.json's "${field}" must be a non-empty string.`,
+  };
+}
+
+function refusedCount(field: string): CatalogueItemFileResult {
+  return {
+    ok: false,
+    reason: `item.json's "${field}" must be a count of zero or more.`,
+  };
+}
+
 export interface CatalogueRefusal {
   /** The identifier the entry declared, or `undefined` for an entry that is not
    *  the shape at all and therefore declares nothing readable. Required and

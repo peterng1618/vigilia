@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseCatalogueIndex } from "./catalogue-index.js";
+import {
+  parseCatalogueIndex,
+  parseCatalogueItemFile,
+} from "./catalogue-index.js";
 
 /** The kinds this build ships; a `widget-preset` is a kind the catalogue may
     hold and this client cannot read. */
@@ -270,6 +273,48 @@ describe("parseCatalogueIndex", () => {
       packageUrl: "https://example.test/acme-ops.json",
       thumbnail: "themes/acme-ops.png",
       facets: derived,
+    });
+  });
+});
+
+describe("parseCatalogueItemFile", () => {
+  it("reads the authored header and ignores an id or author it is given", () => {
+    const parsed = parseCatalogueItemFile({
+      ...entry(),
+      id: "the-directory-name",
+      author: "ada",
+    });
+
+    expect(parsed).toStrictEqual({
+      ok: true,
+      file: {
+        kind: "dashboard-theme",
+        name: "Acme Ops",
+        version: "1.0.0",
+        createdAt: "2026-10-01T00:00:00Z",
+        updatedAt: "2026-10-02T00:00:00Z",
+        downloads: 12,
+        favorites: 3,
+        packageUrl: "https://example.test/acme-ops.json",
+        thumbnail: "themes/acme-ops.png",
+      },
+    });
+  });
+
+  it("refuses a misspelt field by naming it", () => {
+    const misspelt = { ...entry() };
+    delete misspelt["name"];
+
+    expect(parseCatalogueItemFile(misspelt)).toStrictEqual({
+      ok: false,
+      reason: `item.json's "name" must be a non-empty string.`,
+    });
+  });
+
+  it("refuses a count that is not a count", () => {
+    expect(parseCatalogueItemFile(entry({ downloads: -1 }))).toStrictEqual({
+      ok: false,
+      reason: `item.json's "downloads" must be a count of zero or more.`,
     });
   });
 });

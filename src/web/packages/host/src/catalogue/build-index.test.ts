@@ -48,18 +48,25 @@ function item(id: string, theme: unknown = themeFor(id, `Theme ${id}`)) {
 const temporary: string[] = [];
 
 async function catalogueOf(
-  entries: readonly { readonly id: string; readonly theme: unknown }[],
+  entries: readonly {
+    readonly id: string;
+    readonly theme?: unknown;
+    readonly item?: unknown;
+  }[],
 ): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "vigilia-catalogue-"));
   temporary.push(root);
-  for (const { id, theme } of entries) {
+  for (const { id, item, theme } of entries) {
     const directory = path.join(root, id);
     await mkdir(directory, { recursive: true });
     await writeFile(
       path.join(directory, "item.json"),
-      JSON.stringify(itemFor(id)),
+      JSON.stringify(item ?? itemFor(id)),
     );
-    await writeFile(path.join(directory, "theme.json"), JSON.stringify(theme));
+    await writeFile(
+      path.join(directory, "theme.json"),
+      JSON.stringify(theme ?? themeFor(id, `Theme ${id}`)),
+    );
   }
   return root;
 }
@@ -174,9 +181,7 @@ describe("buildCatalogueIndexCommand", () => {
     const errors = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
-    const catalogue = await catalogueOf([
-      { id: "alpha", theme: themeFor("alpha", "Alpha") },
-    ]);
+    const catalogue = await catalogueOf([{ id: "alpha" }]);
 
     expect(
       await buildCatalogueIndexCommand([
@@ -189,7 +194,11 @@ describe("buildCatalogueIndexCommand", () => {
         "--unknown",
       ]),
     ).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      "Unknown option --unknown.",
+    );
 
+    errors.mockClear();
     expect(
       await buildCatalogueIndexCommand([
         "--build-catalogue-index",
@@ -198,7 +207,126 @@ describe("buildCatalogueIndexCommand", () => {
         path.join(catalogue, "index.json"),
       ]),
     ).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      "--build-catalogue-index needs <catalogueDir>, --out and --generated-at.",
+    );
+  });
 
-    expect(errors.mock.calls.flat().join("\n")).toContain("--generated-at");
+  it("fails on a --generated-at that is not an ISO 8601 instant", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const catalogue = await catalogueOf([{ id: "alpha" }]);
+
+    const status = await buildCatalogueIndexCommand([
+      "--build-catalogue-index",
+      catalogue,
+      "--out",
+      path.join(catalogue, "index.json"),
+      "--generated-at",
+      "banana",
+    ]);
+
+    expect(status).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      '--generated-at must be an ISO 8601 instant, not "banana".',
+    );
+  });
+
+  it("names a misspelt header field instead of publishing nothing", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const misspelt: Record<string, unknown> = {
+      ...(itemFor("alpha") as Record<string, unknown>),
+    };
+    delete misspelt["name"];
+    const catalogue = await catalogueOf([{ id: "alpha", item: misspelt }]);
+
+    const status = await buildCatalogueIndexCommand([
+      "--build-catalogue-index",
+      catalogue,
+      "--out",
+      path.join(catalogue, "index.json"),
+      "--generated-at",
+      GENERATED_AT,
+    ]);
+
+    expect(status).toBe(1);
+    const stderr = errors.mock.calls.flat().join("\n");
+    expect(stderr).toContain(`item.json's "name" must be a non-empty string.`);
+    expect(stderr).toContain("1 catalogue directory was refused");
+  });
+
+  it("fails when every directory in a non-empty catalogue is refused", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const catalogue = await catalogueOf([
+      { id: "broken", theme: { schemaVersion: 2 } },
+    ]);
+
+    const status = await buildCatalogueIndexCommand([
+      "--build-catalogue-index",
+      catalogue,
+      "--out",
+      path.join(catalogue, "index.json"),
+      "--generated-at",
+      GENERATED_AT,
+    ]);
+
+    expect(status).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      "1 catalogue directory was refused",
+    );
+  });
+
+  it("fails when an item declares a kind this build does not ship", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const catalogue = await catalogueOf([
+      { id: "alpha" },
+      {
+        id: "typo",
+        item: { ...(itemFor("typo") as object), kind: "dashboard-theme " },
+      },
+    ]);
+
+    const status = await buildCatalogueIndexCommand([
+      "--build-catalogue-index",
+      catalogue,
+      "--out",
+      path.join(catalogue, "index.json"),
+      "--generated-at",
+      GENERATED_AT,
+    ]);
+
+    expect(status).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      'kind "dashboard-theme " is not a kind this build ships',
+    );
+  });
+
+  it("names an --out it cannot write", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const catalogue = await catalogueOf([{ id: "alpha" }]);
+    const out = path.join(catalogue, "no-such-dir", "index.json");
+
+    const status = await buildCatalogueIndexCommand([
+      "--build-catalogue-index",
+      catalogue,
+      "--out",
+      out,
+      "--generated-at",
+      GENERATED_AT,
+    ]);
+
+    expect(status).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      `Cannot write ${out}`,
+    );
   });
 });

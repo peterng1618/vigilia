@@ -235,9 +235,14 @@ export {
 export type {
   CatalogueEntry,
   CatalogueIndex,
+  CatalogueItemFile,
+  CatalogueItemFileResult,
   CatalogueRefusal,
 } from "./theme/catalogue-index.js";
-export { parseCatalogueIndex } from "./theme/catalogue-index.js";
+export {
+  parseCatalogueIndex,
+  parseCatalogueItemFile,
+} from "./theme/catalogue-index.js";
 export type {
   Artboard,
   AssetLicense,
