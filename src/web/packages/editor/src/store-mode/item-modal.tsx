@@ -252,18 +252,41 @@ function Caption(props: {
   // The catalogue's two counts join that same end for the same reason: they are
   // facts about the item rather than about any facet, so they take no group and
   // no row. A library item has no catalogue to read them from and draws neither.
-  const counts =
-    item.catalogue === undefined
-      ? []
-      : [
-          COUNT.format(item.catalogue.downloads),
-          COUNT.format(item.catalogue.favorites),
-        ];
-  const stamp = [
-    item.version,
-    day === undefined || day === "" ? undefined : day,
-    ...counts,
-  ].filter((part) => part !== undefined && part !== "");
+  //
+  // **The figure is visible and the noun is read.** The cell's download mark is
+  // `aria-hidden`, and a bare number is announced as an isolated figure, so each
+  // count carries its own `sr-only` noun: the eye still sees `1,204`, a screen
+  // reader hears `1,204 downloads`.
+  const stamp: { readonly key: string; readonly node: React.ReactNode }[] = [];
+  if (item.version !== undefined && item.version !== "") {
+    stamp.push({ key: "version", node: item.version });
+  }
+  if (day !== undefined && day !== "") {
+    stamp.push({ key: "date", node: day });
+  }
+  if (item.catalogue !== undefined) {
+    const { downloads, favorites } = item.catalogue;
+    stamp.push(
+      {
+        key: "downloads",
+        node: (
+          <>
+            {COUNT.format(downloads)}
+            <span className="sr-only">{` ${uiCopy.store.counts.downloads}`}</span>
+          </>
+        ),
+      },
+      {
+        key: "favorites",
+        node: (
+          <>
+            {COUNT.format(favorites)}
+            <span className="sr-only">{` ${uiCopy.store.counts.favorites}`}</span>
+          </>
+        ),
+      },
+    );
+  }
   return (
     <span className="flex flex-col gap-[var(--space-12)] px-[var(--space-24)] py-[var(--space-20)]">
       <span className="flex items-center gap-[var(--space-10)]">
@@ -296,7 +319,12 @@ function Caption(props: {
             data-vigilia-store-item-date=""
             className="flex-none font-mono text-xs text-faint"
           >
-            {stamp.join(uiCopy.store.readingSeparator)}
+            {stamp.map((part, index) => (
+              <Fragment key={part.key}>
+                {index === 0 ? null : uiCopy.store.readingSeparator}
+                {part.node}
+              </Fragment>
+            ))}
           </span>
         )}
       </span>

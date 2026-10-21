@@ -113,6 +113,18 @@ it("names the dashboard theme kind the way the drawings badge it", () => {
 });
 
 /**
+ * **The counts' nouns are pinned as literals, because the reading is the
+ * claim.** Both surfaces draw the figure the drawing draws and hide the noun, so
+ * a case asserting the key alone would stay green through the noun changing to a
+ * word that does not complete `1,204` — the accessible reading is what these
+ * two strings exist for.
+ */
+it("names the catalogue's two counts as the nouns a reader hears", () => {
+  expect(uiCopy.store.counts.downloads).toBe("downloads");
+  expect(uiCopy.store.counts.favorites).toBe("favorites");
+});
+
+/**
  * §9: a menu's rows are sentence case. The list is the menu's own — its three
  * names, its File and Edit rows and its View settings — not the whole table,
  * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:

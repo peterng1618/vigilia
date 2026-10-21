@@ -97,6 +97,20 @@ function must<T extends Element>(found: T | null, what: string): T {
   return found;
 }
 
+/** What the eye reads: the node's text with every `sr-only` noun removed. */
+function visibleText(node: Element): string {
+  const copy = node.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll(".sr-only")) hidden.remove();
+  return copy.textContent?.trim() ?? "";
+}
+
+/** The words a screen reader hears: every `sr-only` node's text. */
+function hiddenWords(node: Element): readonly string[] {
+  return Array.from(node.querySelectorAll<HTMLElement>(".sr-only")).map(
+    (hidden) => hidden.textContent?.trim() ?? "",
+  );
+}
+
 /**
  * The document an item describes, so the fixture's record is the derivation the
  * host would emit rather than a descriptor invented here — the trap A.4a's
@@ -557,15 +571,22 @@ it("draws the kind badge and the download count for an online item, and neither 
     ).textContent,
     "the badge is not the drawing's word for the kind",
   ).toBe("Theme");
+  const downloads = must(
+    band("living-room").querySelector<HTMLElement>(
+      "[data-vigilia-store-cell-downloads]",
+    ),
+    "download count",
+  );
   expect(
-    must(
-      band("living-room").querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-downloads]",
-      ),
-      "download count",
-    ).textContent,
+    visibleText(downloads),
     "the count is not the drawing's thousand-separated reading",
   ).toBe("1,204");
+  // The figure beside an `aria-hidden` glyph is an isolated number to a reader,
+  // so the cell owes the noun as `sr-only` text while the eye still sees `1,204`.
+  expect(
+    hiddenWords(downloads),
+    "the count is a bare number to a screen reader",
+  ).toEqual([uiCopy.store.counts.downloads]);
   expect(
     must(
       band("living-room").querySelector<HTMLElement>(
@@ -587,6 +608,12 @@ it("draws the kind badge and the download count for an online item, and neither 
   expect(
     band("workshop-bench").querySelector("[data-vigilia-store-cell-downloads]"),
     "the library cell drew a catalogue count",
+  ).toBeNull();
+  expect(
+    band("workshop-bench").querySelector(
+      "[data-vigilia-store-cell-downloads] .sr-only",
+    ),
+    "the library cell drew a count's noun",
   ).toBeNull();
 });
 

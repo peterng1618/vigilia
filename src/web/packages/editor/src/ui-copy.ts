@@ -667,6 +667,16 @@ export const uiCopy = {
      *  word here would read as part of the reading beside it, and it is drawn
      *  only where both readings exist. */
     readingSeparator: " · ",
+    /** **The catalogue's two counts are numbers, so they need a noun to be a
+     *  reading.** The figure is what the eye sees and the noun follows it as
+     *  `sr-only` text, because `Glyph` is `aria-hidden` and a bare `1,204` is
+     *  announced as an isolated number with nothing saying what it counts. The
+     *  cell draws downloads and the modal draws both, so the words live here
+     *  rather than beside either surface. */
+    counts: {
+      downloads: "downloads",
+      favorites: "favorites",
+    },
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */
     item: {
