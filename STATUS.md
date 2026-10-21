@@ -5,7 +5,7 @@ Branch: `develop`
 
 ## Current objective
 
-Give every display client its own theme, then let a person browse the themes it holds: `2026-10-18-per-display-themes.md` is **complete, reviewed and archived**, and `2026-10-18-theme-store.md`'s phase A is closed with its spec **accepted 2026-10-21**. The store spec's phases **A, B and G are landed**, and **phase C is in flight** under `2026-10-21-theme-store-online-tab.md`; D–F remain, each needing its own plan and an external gate. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md). **The backlog drain has no executable work left.**
+Give every display client its own theme, then let a person browse the themes it holds: `2026-10-18-per-display-themes.md` is **complete, reviewed and archived**, and `2026-10-18-theme-store.md`'s phase A is closed with its spec **accepted 2026-10-21**. The store spec's phases **A, B, C and G are landed** — C under `2026-10-21-theme-store-online-tab.md`, whose eight tasks are complete and whose final whole-branch review is the only step left before it closes. **D–F cannot start**: each opens with a decision that is the user's. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md). **The backlog drain has no executable work left.**
 
 ## Active work
 
@@ -18,15 +18,15 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase C's Task 7: the online half lists the catalogue** — its own listing state, the join against the library's **origin records**, the refusal line naming `widget-preset`, and an `empty-catalogue` body that is not the library's empty state.
-- **The review found the one real gap: sort was a no-op for all four online keys**, so phase C's "sort work" was unmet; four comparators now order by `createdAt`, `updatedAt`, `downloads` and `favorites`, each proved by a case asserting the list genuinely reorders.
-- **The join reads `origin.version`, not the document's** — a library copy edited past the version it was installed at still reads `Update`, which is the case that tells the two readings apart.
-- **`region.tsx` is 732 lines after extracting `sort-orders.ts`**; the region was 782 and the stop is 800, so the order table moved rather than the region growing.
-- **Evidence**: store-mode 6 files / 94 and copy 11 green, `typecheck` exit 0, `biome check ..` exit 0 at 752 files; both red proofs and a third the reviewer wrote (join returning `online` unchanged fails both install readings) reproduced, restored with `cmp`.
+- **Phase C's Task 8: the boundary** — five rendered claims in `editor-rail.spec.ts` against a **routed** `index.json`, five captures, and a Theme store section in the capture registry.
+- **The boundary caught a regression no task review could see**: the online effect fires on mount, so six pre-existing cases were reaching `raw.githubusercontent.com` for real. A `beforeEach` default answers 404 now, and the per-case fixture was **proved** to still win rather than assumed.
+- **Three of the five captures are byte-identical**, and that was ruled acceptable: one screen carries claims 1, 3 and 4, each test asserts its own, and the reviewer regenerated all three to identical bytes.
+- **`capture-freshness` is red at `vg-402`** (the 11 older captures predate the chrome changes) and `design:check` at `vg-626` — both pre-existing, neither a phase-C regression.
+- **Evidence**: full `editor-rail.spec.ts --workers=1` exit 0 (26 passed, 26 skipped), build and typecheck exit 0, `biome check ..` exit 0 at 752 files; the fix was proved by a probe failing on any live request — 6 failed without the default, 11 passed with it.
 
 ## Next
 
-1. **Execute phase C's eight tasks**, ending at the boundary's five rendered claims driven against a routed `index.json` rather than the live origin.
+1. **Dispatch phase C's final whole-branch review** on the most capable model, then close the plan and archive it.
 2. **Push `develop`, then push the catalogue repo** — Task 3's one remaining step, and one action; a shared-branch push is why it waits for the user.
 3. `vg-688` asks for a spec edit and `vg-689` for a guard on a duplicated wire type; `vg-690` is the store's missing status bar — all three are rulings or small surfaces rather than this plan's tasks.
 4. Decide whether `vg-626` (the red `design:check`) blocks the next plan as it did the per-display close; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
