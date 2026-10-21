@@ -5,6 +5,7 @@ import {
 } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { DARK_GROUND } from "../../packages/editor/src/store-mode/item-fixture.js";
+import type { ThemeOrigin } from "../../packages/editor/src/theme-library-client.js";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { answerDialogIfShown } from "./editor-canvas.js";
 import { openEveryGroup, openPane, paneBody } from "./editor-rail.js";
@@ -1793,6 +1794,361 @@ test("the store lists a library, opens an item, and comes back to the same page"
     uiCopy.store.size(1920, 1080),
     uiCopy.store.size(1080, 1920),
   ]);
+});
+
+/**
+ * The provenance and style work, read on the surfaces it lands on.
+ *
+ * **Every half of it was proved in jsdom, and jsdom lays nothing out.** What a
+ * browser adds is the *drawn* reading — a computed edge, a grid that really
+ * narrowed, a badge really inside the facts band — and two joins no unit case
+ * can see:
+ *
+ * 1. **The badge's word is asserted as a literal, and that is the point.** The
+ *    badge and the modal's provenance line are plain spans, and the copy walk
+ *    reads labels, buttons, headings and paragraphs, so **this case is the only
+ *    check of that word in the repo** (`vg-685`). Asserting it from
+ *    `uiCopy.store.fromStore` would make the case green through the rename it
+ *    exists to catch, which is how *Installed* shipped here twice: the drawing
+ *    badges every local cell *From the store* (`store-themes.html`) and
+ *    *Installed* is the **online** half's own footer verb (`store-detail.html`).
+ * 2. **The region's vocabulary reaches the modal.** `settledTags` is built by
+ *    the region and handed to `ItemModal`; replacing that prop with `[]` leaves
+ *    every jsdom case green, because each hands the modal its own set. The pill
+ *    read here is settled by *another theme's* use rather than by the shipped
+ *    seed, so the listing half of the vocabulary is what the case turns on.
+ *
+ * **The library is its own fixture, and `STORE_LIBRARY` is untouched.**
+ * Thirty is load-bearing for the pager case's three pages, so these four are a
+ * second fixture: envelopes through `facetRecordOf`, which is the host's own
+ * derivation rather than a hand-written record — the trap A.4a's review found.
+ */
+function boundaryEnvelope(input: {
+  readonly id: string;
+  readonly name: string;
+  readonly tags: readonly string[];
+  readonly width: number;
+  readonly height: number;
+}): FabricThemeEnvelope {
+  return {
+    schemaVersion: 2,
+    fabricVersion: "7.4.0",
+    id: input.id,
+    artboard: {
+      width: input.width,
+      height: input.height,
+      background: { value: DARK_GROUND },
+    },
+    metadata: {
+      name: input.name,
+      themeLanguage: "en",
+      author: "huyng",
+      tags: [...input.tags],
+    },
+    scene: { version: "7.4.0", objects: [] },
+  };
+}
+
+/** Where one copy came from, in the host's own record shape
+ *  (`settings/theme-origins.ts`). */
+const BOUNDARY_ORIGIN: ThemeOrigin = {
+  catalogueId: "cat-office-wall",
+  version: "1.2.0",
+  installedAt: "2026-10-10T09:00:00.000Z",
+};
+
+/**
+ * Four themes, each carrying one fact the case turns on: a copy installed from
+ * the catalogue, a theme the author made here, a theme whose tag no other theme
+ * and no seed holds, and an artboard at `19.5:9` (`2340×1080`).
+ *
+ * **`dusk-cafe` is on two themes and `warm-lantern` on one**, which is the pair
+ * the modal's two pills are read from: the first is settled by the other theme's
+ * use, the second by nothing at all.
+ *
+ * **No `updatedAt`**, so the editor boots on the starter it always opened on and
+ * no theme opens before this case's own open — the same shape `store-library.ts`
+ * seeds.
+ */
+const BOUNDARY_LIBRARY = (
+  [
+    {
+      envelope: boundaryEnvelope({
+        id: "boundary-origin",
+        name: "Boundary origin",
+        tags: ["futuristic", "dusk-cafe"],
+        width: 1920,
+        height: 1080,
+      }),
+      origin: BOUNDARY_ORIGIN,
+    },
+    {
+      envelope: boundaryEnvelope({
+        id: "boundary-plain",
+        name: "Boundary plain",
+        tags: [],
+        width: 1920,
+        height: 1080,
+      }),
+      origin: undefined,
+    },
+    {
+      envelope: boundaryEnvelope({
+        id: "boundary-proposed",
+        name: "Boundary proposed",
+        tags: ["dusk-cafe", "warm-lantern"],
+        width: 1920,
+        height: 1080,
+      }),
+      origin: undefined,
+    },
+    {
+      envelope: boundaryEnvelope({
+        id: "boundary-wide",
+        name: "Boundary wide",
+        tags: [],
+        width: 2340,
+        height: 1080,
+      }),
+      origin: undefined,
+    },
+  ] as const satisfies readonly {
+    readonly envelope: FabricThemeEnvelope;
+    readonly origin: ThemeOrigin | undefined;
+  }[]
+).map(({ envelope, origin }) => ({
+  id: envelope.id,
+  name: envelope.metadata?.name,
+  author: envelope.metadata?.author,
+  version: "1.4.0",
+  ground: DARK_GROUND,
+  // Absent rather than `undefined`: the record is consumer state the host keeps
+  // beside the library, so a theme the author made here has no key at all.
+  ...(origin === undefined ? {} : { origin }),
+  facets: facetRecordOf(envelope),
+}));
+
+test("the store draws the origin badge, narrows by style and shape, and marks a proposed tag", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.route("**/api/themes", (route) =>
+    route.fulfill({ json: { themes: BOUNDARY_LIBRARY } }),
+  );
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  // A page size another case left behind would page this listing differently.
+  await page.evaluate(() =>
+    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+  );
+  await page
+    .locator(".editor-shell-mode-switch")
+    .getByRole("button", { name: uiCopy.modes.themes, exact: true })
+    .click();
+
+  const region = page.locator("[data-vigilia-mode-region='themes']");
+  await expect(region, "the themes mode renders no region").toBeVisible();
+
+  const cells = region.locator("[data-vigilia-store-cell]");
+  await expect(
+    cells,
+    "the store does not list the whole boundary library",
+  ).toHaveCount(4);
+
+  const cellOf = (id: string) =>
+    region.locator(`[data-vigilia-store-cell='${id}']`);
+  const badgeOf = (id: string) =>
+    cellOf(id).locator("[data-vigilia-store-cell-origin]");
+  /** A reading worth keeping in the run's output, as the other store cases do. */
+  const record = (type: string, reading: string): void => {
+    console.log(`${type} ${reading}`);
+    testInfo.annotations.push({ type, description: reading });
+  };
+
+  // ── The origin badge, and its absence ──────────────────────────────────────
+  // **The literal, not `uiCopy.store.fromStore`** — see this case's own header:
+  // the whole value of the assertion is that a renamed word fails it.
+  const badgeWord = "From the store";
+  await expect(
+    badgeOf("boundary-origin"),
+    "a theme the host holds an origin record for draws no badge",
+  ).toHaveText(badgeWord);
+  record("store-origin-badge", `badge "${badgeWord}"`);
+
+  // **What the badge sits in is the claim** (`gallery.tsx`): the drawing puts it
+  // in the facts band rather than beside the name, so a badge that moved would
+  // change the grid while a bare existence check stayed green.
+  expect(
+    await badgeOf("boundary-origin").evaluate(
+      (node) =>
+        node.parentElement?.hasAttribute("data-vigilia-store-cell-band") ===
+        true,
+    ),
+    "the origin badge is not drawn in the cell's own facts band",
+  ).toBe(true);
+
+  // **A theme the host holds no record of came from nowhere.** Drawing the
+  // badge for it is a fact no record carries, which is what this reading is for.
+  await expect(
+    badgeOf("boundary-plain"),
+    "a theme with no origin record draws an origin badge",
+  ).toHaveCount(0);
+
+  // ── The item's Style group, with a proposed tag ────────────────────────────
+  // Opened from the region's own cell, which is what joins the two halves: the
+  // vocabulary this pill is read against is the region's, not the modal's.
+  await cellOf("boundary-proposed")
+    .locator("[data-vigilia-store-cell-surface]")
+    .click();
+  const modal = page.locator("[data-vigilia-store-item]");
+  await expect(modal, "a cell opens no item's surface").toBeVisible();
+
+  const styleGroup = modal.locator("[data-vigilia-store-item-group='style']");
+  await expect(
+    styleGroup,
+    "the item's own surface draws no Style group",
+  ).toBeVisible();
+  await expect(
+    styleGroup.locator("[data-vigilia-store-item-group-name]"),
+    "the Style group sits under no eyebrow",
+  ).toHaveText(uiCopy.store.pillGroups.style);
+
+  const pillOf = (tag: string) =>
+    styleGroup.locator(`[data-vigilia-store-item-pill='${tag}']`);
+  // The drawing's own words for a word the vocabulary does not hold yet, as a
+  // literal for the reason the badge's word is one (`store-detail.html`).
+  await expect(
+    pillOf("warm-lantern"),
+    "the tag no other theme and no seed holds is not marked as proposed",
+  ).toHaveText("warm-lantern · proposed");
+  await expect(
+    pillOf("dusk-cafe"),
+    "a tag the listing's other themes settle is drawn with a proposed mark",
+  ).toHaveText("dusk-cafe");
+
+  // **The mark is a computed edge, not a class name.** The jsdom case reads the
+  // class string; only the browser says the box really draws dashed — and the
+  // two pills are read against each other, so a palette change that made them
+  // the same ink is caught without this case owning a colour.
+  const pills = await styleGroup.evaluate((group) => {
+    const read = (tag: string) => {
+      const node = group.querySelector(
+        `[data-vigilia-store-item-pill='${tag}']`,
+      );
+      if (node === null) return null;
+      const style = getComputedStyle(node);
+      return {
+        edge: style.borderTopStyle,
+        width: style.borderTopWidth,
+        ink: style.color,
+      };
+    };
+    return { settled: read("dusk-cafe"), proposed: read("warm-lantern") };
+  });
+  const pillReading = `store-item pills ${JSON.stringify(pills)}`;
+  record("store-item-pills", pillReading);
+  if (pills.settled === null || pills.proposed === null) {
+    throw new Error(`the Style group drew no pill (${pillReading})`);
+  }
+  expect(
+    pills.proposed.edge,
+    `the proposed pill is not drawn on the drawing's dashed edge (${pillReading})`,
+  ).toBe("dashed");
+  expect(
+    pills.settled.edge,
+    `the settled pill is drawn on a dashed edge (${pillReading})`,
+  ).toBe("solid");
+  expect(
+    pills.proposed.ink,
+    `a proposed pill and a settled one are the same ink (${pillReading})`,
+  ).not.toBe(pills.settled.ink);
+
+  await page.locator("[data-vigilia-store-item-close]").click();
+  await expect(modal, "the item's surface does not close").toBeHidden();
+
+  // ── The Style facet narrows the grid ───────────────────────────────────────
+  const styleFacet = region.locator("[data-vigilia-facet='style']");
+  await expect(styleFacet, "the region draws no Style facet").toBeVisible();
+  await styleFacet.click();
+  const stylePopup = page.locator(
+    `[aria-label='${uiCopy.store.facets.style}']`,
+  );
+  await expect(stylePopup, "the Style facet opens no popover").toBeVisible();
+
+  // **The facet's values are the tags the listing carries, however few themes
+  // hold one** — the opposite of the size facet's rule, and the reason
+  // `warm-lantern` is here at all: a tag one theme declares is still a value,
+  // where a size one theme declares is not.
+  const styleOptions = stylePopup.locator("[data-vigilia-facet-option-name]");
+  await expect(
+    styleOptions,
+    "the Style facet does not offer the listing's own tags",
+  ).toHaveText(["dusk-cafe", "futuristic", "warm-lantern"]);
+
+  await stylePopup
+    .locator("[data-vigilia-facet-option='warm-lantern']")
+    .click();
+  const narrowed = await cells.count();
+  await expect(
+    cells,
+    `choosing a style tag does not narrow the grid (${narrowed} cells)`,
+  ).toHaveCount(1);
+  await expect(
+    cells.first(),
+    "the style filter kept a theme that does not carry the tag",
+  ).toHaveAttribute("data-vigilia-store-cell", "boundary-proposed");
+  record("store-style-filter", `warm-lantern kept ${narrowed} of 4 cells`);
+  await page.keyboard.press("Escape");
+
+  // Back to the whole library, so the shape facet below is read on its own.
+  await styleFacet.click();
+  await expect(stylePopup, "the Style facet reopens no popover").toBeVisible();
+  await stylePopup
+    .locator("[data-vigilia-facet-option='warm-lantern']")
+    .click();
+  await expect(
+    cells,
+    "unchoosing a style tag does not restore the listing",
+  ).toHaveCount(4);
+  await page.keyboard.press("Escape");
+
+  // ── The Shape popover offers the 19.5:9 bucket ─────────────────────────────
+  // Task 1 proved the bucket at record and matcher level; this is the rendered
+  // half — a 2340×1080 artboard, the bucket offered by the popover, and the
+  // grid narrowing to the one theme that is that shape.
+  await region.locator("[data-vigilia-facet='shape']").click();
+  const shapePopup = page.locator(
+    `[aria-label='${uiCopy.store.facets.shape}']`,
+  );
+  await expect(shapePopup, "the Shape facet opens no popover").toBeVisible();
+  const shapeValues = shapePopup.locator("[data-vigilia-facet-option-name]");
+  await expect(
+    shapeValues,
+    "the Shape popover does not offer the 19.5:9 bucket the library holds",
+  ).toHaveText([
+    uiCopy.store.orientations.landscape,
+    "16:9",
+    "19.5:9",
+    // The size facet's own rule beside it: 1920×1080 is declared by three
+    // themes and is offered, and the 2340×1080 only one theme declares is not.
+    uiCopy.store.size(1920, 1080),
+  ]);
+
+  await shapePopup.locator("[data-vigilia-facet-option='19.5:9']").click();
+  const shaped = await cells.count();
+  await expect(
+    cells,
+    `choosing the 19.5:9 bucket does not narrow the grid (${shaped} cells)`,
+  ).toHaveCount(1);
+  await expect(
+    cells.first(),
+    "the shape filter kept a theme that is not that shape",
+  ).toHaveAttribute("data-vigilia-store-cell", "boundary-wide");
+  record("store-shape-filter", `19.5:9 kept ${shaped} of 4 cells`);
+  await page.keyboard.press("Escape");
 });
 
 /**
