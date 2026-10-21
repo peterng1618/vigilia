@@ -18,10 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase C's Task 6: the modal's online facts** — an item carrying `catalogue` joins its downloads and favourites to the caption's right-hand end (`1.4.0 · 2026-10-14 · 1,204 · 38`); a library item's caption is unchanged.
-- **The footer's action set is a function of `installStateOf(item)`** — `none` keeps the library's four, `installed` draws the control-free mark, and `install`/`update` draw disabled buttons with their reason; the modal never compares a version itself.
-- **No new copy** — the footer readings and the disabled reason reuse `store.cell.installStates` and `store.cell.unavailable`, and each count is a bare number through the modal's own `Intl.NumberFormat("en-US")`, as the cell's is.
-- **Evidence**: store-mode 6 files / 88 tests, copy 8, `typecheck` and `biome check ..` exit 0; both red proofs measured — the comparison mutated to `installed` failed the Install arm, the update branch failed the Update arm, and removing the catalogue guard threw `Cannot read properties of undefined (reading 'downloads')`.
+- **Phase C's Task 6: the modal's catalogue facts** — an online item's counts join the caption's right end (`1.4.0 · 2026-10-14 · 1,204 · 38`) and its footer carries the install reading; a library item's caption and four actions are **identical to before, compared line for line**.
+- **The counts have an accessible name**, then a second fix: `Glyph` is `aria-hidden`, so `1,204` was announced as an isolated number; the noun follows as `sr-only` text and **inflects**, because a count of one is a first-day state.
+- **The figure–noun space is guarded**, not trimmed away by the test helper — deleting it fails with `expected '1,204downloads' to be '1,204 downloads'`.
+- **Two rulings recorded**: the counts take the caption's right end and add no row (the plan said "caption line", the drawing draws none, the spec enumerates that line); disabled-plus-reason is parked at four instances for the whole-branch review.
+- **Evidence**: store-mode 6 files / 88 and copy 9 green (97 across both), `typecheck` exit 0, `biome check ..` exit 0 at 750 files; the reviewer broke the counts' order and compared the library footer body against `664a3567`, finding it identical.
 
 ## Next
 
