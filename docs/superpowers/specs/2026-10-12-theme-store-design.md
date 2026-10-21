@@ -1,6 +1,6 @@
 # A theme store for Vigilia
 
-- **Status:** revised 2026-10-21 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **the pre-planning probes are answered**, and two open questions (3, freshness, and 8, the facet's buckets and tolerance) are settled by measurement rather than left as drafts — see § "Measured 2026-10-21" and § "Open questions"; **B–G have no plan yet, and the owner's review of this document is what gates them**
+- **Status:** revised 2026-10-21 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **the pre-planning probes are answered**, and two open questions (3, freshness, and 8, the facet's buckets and tolerance) are settled by measurement rather than left as drafts — see § "Measured 2026-10-21" and § "Open questions"; **ACCEPTED 2026-10-21**, so B–G may be planned; open questions 1, 2 and 8 were decided the same day, and the four still open (4, 5, 6 and 7) are rows rather than gates
 - **Date:** 2026-10-12, **revised 2026-10-16** after the `hydralauncher/hydra-themes`
   study, **revised again 2026-10-17** after the rulings in the next section
 - **Scope:** two subjects that are one shell. **The storefront**, specified
@@ -1000,8 +1000,9 @@ of the decision rather than a placeholder:
    repository files. **Which is cheaper is a question about how big an item really
    is**, and that is now measurable rather than arguable: the caps in phase F
    bound the video, so the number to decide against is F's own bound rather than
-   128 MiB. The decision remains the user's, and it is the last thing phase D
-   waits on.
+   128 MiB. **DECIDED 2026-10-21: deferred to phase D's plan, with A still leaning.** The
+   owner's ruling is that D's plan opens with the probe named above — whether `download_count`
+   survives a re-home — and the choice is taken against that measurement rather than the doubt.
 2. **The ffmpeg source** — probe a system binary, or bundle a static build and
    take on the licence obligation. **Measured 2026-10-21: there is no `ffmpeg` on
    `PATH` on the development box at all**, so the probe arm refuses there and the
@@ -1012,7 +1013,12 @@ of the decision rather than a placeholder:
    whose machine has no ffmpeg still has to be able to submit an item whose video
    is already inside the caps, and the caps are phase F's. Bundling is the other
    arm, and it owes `THIRD-PARTY-NOTICES.md` and a licence read before it is
-   chosen rather than after.
+   chosen rather than after. **DECIDED 2026-10-21: BUNDLE a static build.** No fallback has to
+   be designed for an author whose machine holds no encoder. **The licence read this arm owes
+   moves from a precondition of choosing it to a precondition of shipping it**, and it is the
+   bundling configuration that decides GPL against LGPL — so phase F's plan carries that read,
+   with `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md`, before the dependency
+   lands.
 3. **`index.json` freshness — ANSWERED 2026-10-21, and the answer is the route
    rather than the Action.** Through jsDelivr a branch file is 12 hours stale at
    the edge and 7 days in the client's own cache, and purge does not apply to a
@@ -1061,7 +1067,12 @@ of the decision rather than a placeholder:
    decided with the work that needs it rather than fallen into. Filed as `vg-673`,
    issue 50, because it changes a published vocabulary and belongs with a
    decision; the shipped set is `facet-record.ts:65-87`, which is where the fix
-   lands.
+   lands. **DECIDED 2026-10-21: add BOTH — 19.5:9 and 4:1 — and make the set easy to
+   extend.** The phone shape this product's own chooser offers and the panel's 4:1 strip are
+   settled together rather than the second waiting on the panel work; and the owner requires a
+   ratio to be addable **as an entry beside the others rather than as a revisit of the rule**, so
+   the set stays data beside `aspectOf` and adding a bucket is one entry plus its label — not a
+   change to the tolerance logic.
 
 ## Measured 2026-10-21
 
