@@ -1,11 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-  BACKGROUND_MEDIA_FITS,
-  MAX_TAGS,
-  TAG_PATTERN,
-} from "./document.js";
+import { BACKGROUND_MEDIA_FITS, MAX_TAGS, TAG_PATTERN } from "./document.js";
 import { SUPPORTED_SCHEMA_VERSION } from "./fabric-envelope.js";
 import { GLASS_TYPES, MAX_GLASS_BLUR_RADIUS } from "./glass.js";
 import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";

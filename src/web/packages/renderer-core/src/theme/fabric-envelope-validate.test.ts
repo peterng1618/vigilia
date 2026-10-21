@@ -1338,9 +1338,9 @@ describe("a theme's style tags", () => {
     ).toMatchObject({ ok: true });
     // A duplicate is not a refusal: the facet deduplicates, and the spec makes the
     // shape and the count the whole of what the format enforces (docs/decisions/0087).
-    expect(
-      validateFabricThemeEnvelope(withTags(["retro", "retro"])).ok,
-    ).toBe(true);
+    expect(validateFabricThemeEnvelope(withTags(["retro", "retro"])).ok).toBe(
+      true,
+    );
   });
 
   it("accepts a tag no vocabulary holds yet, which is the only way it can join one", () => {
