@@ -153,6 +153,26 @@ it("names a skipped kind by the identifier the catalogue declared", () => {
 });
 
 /**
+ * **The install's three sentences are pinned as literals**, because each names
+ * a different outcome the person who pressed has to act on: no package to
+ * install, a refusal with no host sentence, and a host that installed the theme
+ * but could not re-list it. Keys-only assertions would stay green if the three
+ * were rewritten into one another, which is exactly the mix-up that matters
+ * here — the third one must not read as a failure of the install.
+ */
+it("tells an install's no-package, refusal and stale-listing cases apart", () => {
+  expect(uiCopy.store.install.noCatalogueVersion).toBe(
+    "This item has no catalogue version to install.",
+  );
+  expect(uiCopy.store.install.refused(502)).toBe(
+    "The host refused the install (502).",
+  );
+  expect(uiCopy.store.install.notRefreshed).toBe(
+    "The theme was installed, but the library could not be refreshed.",
+  );
+});
+
+/**
  * §9: a menu's rows are sentence case. The list is the menu's own — its three
  * names, its File and Edit rows and its View settings — not the whole table,
  * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:

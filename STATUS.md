@@ -18,9 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase D's Task 4** — `installCatalogueItem` (`themes/install.ts`) replaces the library copy whose origin names the request's `catalogueId`, and installs additively when none does; one theme per item.
-- Review fixes: installs of one item now queue per `catalogueId`, so two concurrent installs both answer `ok` instead of one losing the staging rename; an origin naming an existing-but-unreadable theme is repaired in place; origin keys for the same item under other ids are removed after the landing copy's write.
-- 12 `install.test.ts` cases (themes 122/122, host 754/754); the concurrency, repair and stale-key cases were all red-proved before their fixes.
+- **Phase D's Task 5** — `store-mode/install-item.ts` posts `{packageUrl, catalogueId, version, kind}` to `/api/themes/install`; both controls press it, success re-lists the library so the join reads *Installed*, a refusal states the host's sentence beside the control.
+- Review fixes: an in-flight set per item replaces the one id slot, so pressing a second item cannot re-enable the first and a repeat press posts nothing; one persistent `role="status"` region owned by the region, with the visible sentence left beside the control.
+- A failed re-list after a successful install states a sentence instead of nothing; the install's three sentences moved into `ui-copy.store.install` and are covered by `ui-copy.test.ts`.
+- Red-proved: removing the in-flight guard posts twice in one tick; re-adding `role="status"` to a cell gives two live regions.
+- 120 tests green (store-mode 108, `ui-copy.test.ts` 12), typecheck and Biome exit 0.
 
 ## Next
 

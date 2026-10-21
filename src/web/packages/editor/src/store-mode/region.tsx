@@ -5,7 +5,7 @@ import {
   semanticKeysByFamily,
 } from "@vigilia/renderer-core";
 import type * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ControlSelect } from "../components/ui/control-select.js";
 import {
   ControlWell,
@@ -489,11 +489,15 @@ function StoreRegion(props: {
   const [items, setItems] = useState<readonly StoreItem[] | undefined>(
     undefined,
   );
-  /** The item an install press is in flight for, if any: its control disables
-   *  itself on this, so a double press cannot post twice. */
-  const [installingId, setInstallingId] = useState<string | undefined>(
-    undefined,
+  /** The items an install press is in flight for: each control disables itself
+   *  on its own id, so two items install at once and neither loses the other's
+   *  busy state. */
+  const [installingIds, setInstallingIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
   );
+  /** The same set for the guard, because a second press in one tick reads the
+   *  render before the first press committed; the state alone cannot refuse it. */
+  const inFlight = useRef<Set<string>>(new Set());
   /** The host's own reason for a refused install, and the item it names:
    *  another item's refusal is not drawn beside this one's control. */
   const [installRefusal, setInstallRefusal] = useState<
@@ -617,26 +621,37 @@ function StoreRegion(props: {
    * a restart or a second window could not see.
    *
    * **A refusal changes nothing but its reason**: the control's state stays the
-   * listing's, and the host's own sentence is kept for the item it names.
+   * listing's, and the host's own sentence is kept for the item it names. A
+   * re-list the host could not serve is stated too — the theme is installed
+   * even when this surface could not read the library back.
    */
   const onInstall = (item: StoreItem): void => {
-    if (installingId === item.id) return;
-    setInstallingId(item.id);
+    if (inFlight.current.has(item.id)) return;
+    inFlight.current.add(item.id);
+    setInstallingIds(new Set(inFlight.current));
     setInstallRefusal(undefined);
     void installItem(item).then(async (outcome) => {
       if (outcome.ok) {
         const listed = await source.list().catch(() => undefined);
-        if (listed !== undefined) setItems(listed);
+        if (listed !== undefined) {
+          setItems(listed);
+        } else {
+          setInstallRefusal({
+            id: item.id,
+            message: uiCopy.store.install.notRefreshed,
+          });
+        }
       } else {
         setInstallRefusal({ id: item.id, message: outcome.message });
       }
-      setInstallingId(undefined);
+      inFlight.current.delete(item.id);
+      setInstallingIds(new Set(inFlight.current));
     });
   };
 
   const install: InstallControl = {
     onInstall,
-    installingId,
+    installingIds,
     refusal: installRefusal,
   };
 
@@ -778,6 +793,21 @@ function StoreRegion(props: {
           onClose={() => setAssignId(undefined)}
         />
       )}
+
+      {/* **One live region for the whole store**, mounted empty and given its
+          sentence when a refusal arrives: a region mounted holding text is the
+          less reliably announced pattern, and the cell and the modal are both
+          on screen while the modal is open — one region per surface would put
+          the same sentence in two. The visible sentence stays beside the
+          control that was refused. It is last because the region's *first* row
+          is its header (`shows the two halves as a Segmented ...`). */}
+      <span
+        data-vigilia-store-install-announcement=""
+        role="status"
+        className="sr-only"
+      >
+        {installRefusal?.message ?? ""}
+      </span>
     </div>
   );
 }

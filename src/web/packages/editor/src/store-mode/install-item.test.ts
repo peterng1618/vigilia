@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { uiCopy } from "../ui-copy.js";
 import { installItem } from "./install-item.js";
 import { fixtureItem } from "./item-fixture.js";
 import type { CatalogueFacts } from "./local-source.js";
@@ -73,6 +74,34 @@ it("carries the host's refusal out unchanged", async () => {
     ok: false,
     message: "That package is not a theme.",
   });
+});
+
+/** A library item has no catalogue facts, so there is no package to name. The
+ *  controls never draw for one; this is the guard's own answer, and it must not
+ *  reach the host at all. */
+it("refuses a library item without posting an install of nothing", async () => {
+  let posted = false;
+  const outcome = await installItem(
+    fixtureItem({
+      id: "workshop-bench",
+      name: "Workshop bench",
+      version: "1.0.0",
+    }),
+    {
+      fetch: (async () => {
+        posted = true;
+        return new Response(null, { status: 200 });
+      }) as unknown as typeof fetch,
+    },
+  );
+
+  expect(outcome).toEqual({
+    ok: false,
+    message: uiCopy.store.install.noCatalogueVersion,
+  });
+  expect(posted, "a library item was posted to the host's install route").toBe(
+    false,
+  );
 });
 
 /** A refusal with no body still says the host refused, rather than answering an

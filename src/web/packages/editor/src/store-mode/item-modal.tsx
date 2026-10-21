@@ -415,7 +415,7 @@ function InstallFooter(props: {
     );
   }
 
-  const busy = install.installingId === item.id;
+  const busy = install.installingIds.has(item.id);
   const refusal =
     install.refusal?.id === item.id ? install.refusal.message : undefined;
   return (
@@ -434,7 +434,6 @@ function InstallFooter(props: {
       {refusal === undefined ? null : (
         <span
           data-vigilia-store-item-install-refusal=""
-          role="status"
           className="max-w-[40ch] text-xs text-warn"
         >
           {refusal}

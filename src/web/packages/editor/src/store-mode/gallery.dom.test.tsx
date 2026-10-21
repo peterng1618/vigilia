@@ -174,7 +174,7 @@ function catalogue(overrides: Partial<CatalogueFacts> = {}): CatalogueFacts {
  *  down: nothing in flight and no refusal to draw. */
 const NO_INSTALL: InstallControl = {
   onInstall: () => undefined,
-  installingId: undefined,
+  installingIds: new Set(),
   refusal: undefined,
 };
 

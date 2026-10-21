@@ -260,11 +260,14 @@ function Cell(props: {
         </span>
         {/* **The host's reason, beside the control it refused** — in the cell
             rather than in the band, because a sentence is not a 26px reading
-            and truncating it would swallow the part that says what to fix. */}
-        {refusal === undefined ? null : (
+            and truncating it would swallow the part that says what to fix. Only
+            a cell with catalogue facts can have been refused: drawn
+            unconditionally, a library item whose id collided with a refused
+            catalogue id would carry the sentence with no control. The
+            announcement is the region's one live region, not this span's. */}
+        {installState === "none" || refusal === undefined ? null : (
           <span
             data-vigilia-store-cell-install-refusal=""
-            role="status"
             className="block pt-[var(--space-6)] text-2xs text-warn"
           >
             {refusal}
@@ -308,7 +311,7 @@ function InstallAction(props: {
     );
   }
 
-  const busy = install.installingId === item.id;
+  const busy = install.installingIds.has(item.id);
   return (
     <button
       type="button"

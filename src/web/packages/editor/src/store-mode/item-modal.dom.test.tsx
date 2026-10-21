@@ -160,7 +160,7 @@ function modalFor(
  *  is in flight for nobody, and nothing was refused. */
 const NO_INSTALL: InstallControl = {
   onInstall: () => undefined,
-  installingId: undefined,
+  installingIds: new Set(),
   refusal: undefined,
 };
 
@@ -748,7 +748,7 @@ it("disables the footer's install in flight and states the host's refusal", asyn
   await mount(
     modalFor(pressed, [], {
       ...NO_INSTALL,
-      installingId: pressed.id,
+      installingIds: new Set([pressed.id]),
     }),
   );
   expect(

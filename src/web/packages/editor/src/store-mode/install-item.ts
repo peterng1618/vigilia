@@ -1,3 +1,4 @@
+import { uiCopy } from "../ui-copy.js";
 import type { StoreItem } from "./local-source.js";
 
 /** Where an install is handed over. The host's own route, named once. */
@@ -15,8 +16,9 @@ export type InstallOutcome =
  */
 export interface InstallControl {
   readonly onInstall: (item: StoreItem) => void;
-  /** The item a press is in flight for, so its control can disable itself. */
-  readonly installingId: string | undefined;
+  /** The items a press is in flight for, so each control disables itself on
+   *  its own id and two items install without losing one another's busy state. */
+  readonly installingIds: ReadonlySet<string>;
   /** The last refusal and the item it names; a refusal for another item is not
    *  drawn beside this one. */
   readonly refusal:
@@ -45,7 +47,7 @@ export async function installItem(
   if (catalogue === undefined || version === undefined || version === "") {
     return {
       ok: false,
-      message: "This item has no catalogue version to install.",
+      message: uiCopy.store.install.noCatalogueVersion,
     };
   }
 
@@ -75,7 +77,7 @@ export async function installItem(
       ok: false,
       message:
         reason.trim() === ""
-          ? `The host refused the install (${response.status}).`
+          ? uiCopy.store.install.refused(response.status)
           : reason,
     };
   }

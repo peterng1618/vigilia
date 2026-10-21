@@ -1518,9 +1518,9 @@ function installedCopy(id: string): ThemeLibraryEntry {
 }
 
 /** A host serving the catalogue and the install route, and recording every
- *  install body it received. `hold` keeps the install open so a case can press
- *  twice while the first attempt is in flight; `refusal` answers it with the
- *  host's own sentence. */
+ *  install body it received. `hold` keeps each install open so a case can press
+ *  another item while the first attempt is in flight; `refusal` answers it with
+ *  the host's own sentence. */
 function installHost(options: {
   readonly entries: readonly unknown[];
   readonly refusal?: string;
@@ -1532,7 +1532,7 @@ function installHost(options: {
   readonly resolve: () => void;
 } {
   const posts: unknown[] = [];
-  let release: (() => void) | undefined;
+  const releases: (() => void)[] = [];
   const fetchStub = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input) !== "/api/themes/install") {
       return new Response(
@@ -1547,7 +1547,7 @@ function installHost(options: {
     options.onInstall?.();
     if (options.hold === true) {
       await new Promise<void>((resolve) => {
-        release = resolve;
+        releases.push(resolve);
       });
     }
     return options.refusal === undefined
@@ -1560,7 +1560,11 @@ function installHost(options: {
   return {
     fetch: fetchStub,
     posts,
-    resolve: () => release?.(),
+    // Every install held by this host, so a case with two in flight releases
+    // both rather than leaking the one it did not press.
+    resolve: () => {
+      for (const release of releases.splice(0)) release();
+    },
   };
 }
 
@@ -2028,4 +2032,178 @@ it("leaves the control as it was and states the host's reason when the install i
     ).textContent,
     "the refusal is not the host's own sentence",
   ).toBe("That package is not a theme.");
+});
+
+/** The catalogue id each install body named, in the order the host received
+ *  them. */
+function postedIds(posts: readonly unknown[]): readonly string[] {
+  return posts.map(
+    (post) => (post as { readonly catalogueId: string }).catalogueId,
+  );
+}
+
+/**
+ * **Each in-flight install keeps its own busy state.** Pressing a second item
+ * must not re-enable the first one's control: the two are separate requests, and
+ * a repeat press of the first has to post nothing while its own request is open.
+ */
+it("keeps both items busy when two installs are in flight", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [
+      catalogueEntry("office-wall", "1.3.0"),
+      catalogueEntry("living-room", "1.4.0"),
+    ],
+    hold: true,
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await act(async () => installControl("living-room").click());
+
+  expect(
+    installControl("office-wall").disabled,
+    "the first item's control re-enabled when the second item was pressed",
+  ).toBe(true);
+  expect(
+    installControl("living-room").disabled,
+    "the second item's control is not busy while it installs",
+  ).toBe(true);
+
+  await act(async () => installControl("office-wall").click());
+  expect(
+    postedIds(host.posts),
+    "a repeat press of an item already in flight posted a second install",
+  ).toEqual(["office-wall", "living-room"]);
+
+  await act(async () => host.resolve());
+  await settle();
+  expect(
+    host.posts,
+    "the settled installs posted more than twice",
+  ).toHaveLength(2);
+});
+
+/**
+ * **The handler refuses a second press of the same item in one tick**, before
+ * the control's `disabled` has committed: two presses in one act see the same
+ * rendered props, so the guard has to read the in-flight set rather than state.
+ */
+it("posts once for two presses of the same item in one tick", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    hold: true,
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+
+  await act(async () => {
+    installControl("office-wall").click();
+    installControl("office-wall").click();
+  });
+  expect(
+    host.posts,
+    "two presses in one tick posted two installs of the same item",
+  ).toHaveLength(1);
+
+  await act(async () => host.resolve());
+  await settle();
+});
+
+/**
+ * **The refusal is announced once, through the region's own live region.** The
+ * cell and the item's modal both draw the sentence (the modal is open and the
+ * gallery is still mounted underneath it), and neither may be a live region:
+ * exactly one `role="status"` node exists, and it carries the host's words.
+ */
+it("announces a refusal once while its cell and its modal both draw it", async () => {
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    refusal: "That package is not a theme.",
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await showOnline();
+  await pressCellSurface("office-wall");
+
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        '[data-vigilia-store-item-install="install"]',
+      ),
+      "the modal's install control",
+    ).click(),
+  );
+  await settle();
+
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-install-refusal]",
+      ),
+      "the cell's refusal sentence",
+    ).textContent,
+    "the cell does not draw the reason beside its own control",
+  ).toBe("That package is not a theme.");
+  const live = Array.from(
+    document.body.querySelectorAll<HTMLElement>('[role="status"]'),
+  );
+  expect(
+    live,
+    "the same refusal is held in more than one live region",
+  ).toHaveLength(1);
+  expect(
+    live[0]?.textContent,
+    "the one live region does not carry the host's sentence",
+  ).toBe("That package is not a theme.");
+});
+
+/**
+ * **A successful install whose re-list fails is not silence.** The host holds
+ * the theme, so the cell cannot claim nothing happened; the surface says the
+ * library could not be refreshed rather than returning to *Install* with no
+ * word.
+ */
+it("says the theme was installed when the re-list fails", async () => {
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+
+  let lists = 0;
+  const client: ThemeLibraryClient = {
+    list: async () => {
+      lists += 1;
+      if (lists > 1) throw new Error("the library could not be read");
+      return [];
+    },
+    open: () => Promise.reject(new Error("the region lists; the shell opens")),
+    save: () => Promise.reject(new Error("the store does not save")),
+    assign: () => Promise.reject(new Error("the store does not assign")),
+    listDisplays: async () => ({ default: null, displays: [] }),
+  };
+  await mount(<StoreModeRegion mode="themes" client={client} />);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await settle();
+
+  expect(host.posts, "the install was not posted").toHaveLength(1);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-install-refusal]",
+      ),
+      "the re-list failure's sentence",
+    ).textContent,
+    "a failed re-list left the person with no word about the install",
+  ).toBe(uiCopy.store.install.notRefreshed);
+  expect(
+    installReadings(),
+    "the cell moved to installed without a listing to read it from",
+  ).toEqual([["office-wall", "install"]]);
 });
