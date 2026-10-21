@@ -693,15 +693,20 @@ export const uiCopy = {
     /** The online half's install, whose sentences the client composes where the
      *  host's own words cannot reach: a library item has no package (the
      *  controls never draw for one, so this is a guard's answer), a refusal with
-     *  no body, and a host that installed the theme but could not re-list it.
-     *  The host's own refusal sentence is passed through unchanged — it knows
-     *  which part failed (`install-item.ts`). */
+     *  no body, a host that installed the theme but could not re-list it, and
+     *  the success the live region announces. The host's own refusal sentence
+     *  is passed through unchanged — it knows which part failed
+     *  (`install-item.ts`). */
     install: {
       noCatalogueVersion: "This item has no catalogue version to install.",
       refused: (status: number): string =>
         `The host refused the install (${status}).`,
       notRefreshed:
         "The theme was installed, but the library could not be refreshed.",
+      /** The one sentence the live region hears when there is no refusal: a
+       *  press that succeeded is otherwise silent to a screen reader, which
+       *  cannot see the cell redraw as *Installed*. */
+      installed: (name: string): string => `${name} was installed.`,
     },
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */

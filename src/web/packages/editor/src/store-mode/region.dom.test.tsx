@@ -1927,6 +1927,75 @@ it("installs from the cell's Install and re-lists so the cell reads Installed", 
 });
 
 /**
+ * **A completed install is announced, not only drawn.** The cell redraws as
+ * *Installed*; a screen reader that cannot see that redraw hears one sentence
+ * naming the item, through the same single live region a refusal uses.
+ */
+it("announces a completed install through the live region", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    onInstall: () => library.push(installedCopy("office-wall")),
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await settle();
+
+  const live = Array.from(
+    document.body.querySelectorAll<HTMLElement>('[role="status"]'),
+  );
+  expect(
+    live,
+    "the install is announced in more than one live region",
+  ).toHaveLength(1);
+  expect(
+    live[0]?.textContent,
+    "a completed install reached no live region",
+  ).toBe(uiCopy.store.install.installed("Catalogue office-wall"));
+});
+
+/**
+ * **A new press clears the last success**, so the region is not still saying
+ * the previous item landed while another one is in flight.
+ */
+it("clears a completed install's announcement when the next press starts", async () => {
+  const host = installHost({
+    entries: [
+      catalogueEntry("office-wall", "1.3.0"),
+      catalogueEntry("living-room", "1.4.0"),
+    ],
+    hold: true,
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await act(async () => host.resolveNext());
+  await settle();
+
+  const live = () =>
+    must(
+      document.body.querySelector<HTMLElement>('[role="status"]'),
+      "the live region",
+    ).textContent;
+  expect(live(), "the completed install was not announced").toBe(
+    uiCopy.store.install.installed("Catalogue office-wall"),
+  );
+
+  await act(async () => installControl("living-room").click());
+  expect(live(), "the previous install's success survived the next press").toBe(
+    "",
+  );
+
+  await act(async () => host.resolve());
+  await settle();
+});
+
+/**
  * **The modal's Install is the same route as the cell's**: one post, and the
  * modal then reads *Installed* from the re-listed item it was opened on rather
  * than from a state it kept.

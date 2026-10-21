@@ -153,14 +153,15 @@ it("names a skipped kind by the identifier the catalogue declared", () => {
 });
 
 /**
- * **The install's three sentences are pinned as literals**, because each names
+ * **The install's four sentences are pinned as literals**, because each names
  * a different outcome the person who pressed has to act on: no package to
- * install, a refusal with no host sentence, and a host that installed the theme
- * but could not re-list it. Keys-only assertions would stay green if the three
- * were rewritten into one another, which is exactly the mix-up that matters
- * here — the third one must not read as a failure of the install.
+ * install, a refusal with no host sentence, a host that installed the theme but
+ * could not re-list it, and a success the live region announces. Keys-only
+ * assertions would stay green if they were rewritten into one another, which is
+ * exactly the mix-up that matters here — neither the success nor the stale
+ * listing may read as a failure of the install.
  */
-it("tells an install's no-package, refusal and stale-listing cases apart", () => {
+it("tells an install's no-package, refusal, stale-listing and success cases apart", () => {
   expect(uiCopy.store.install.noCatalogueVersion).toBe(
     "This item has no catalogue version to install.",
   );
@@ -169,6 +170,9 @@ it("tells an install's no-package, refusal and stale-listing cases apart", () =>
   );
   expect(uiCopy.store.install.notRefreshed).toBe(
     "The theme was installed, but the library could not be refreshed.",
+  );
+  expect(uiCopy.store.install.installed("Aurora")).toBe(
+    "Aurora was installed.",
   );
 });
 

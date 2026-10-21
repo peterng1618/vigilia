@@ -34,6 +34,9 @@ export function useInstall(options: {
   const [refusal, setRefusal] = useState<
     { readonly id: string; readonly message: string } | undefined
   >(undefined);
+  /** What the live region says when a press succeeded: the cell redraws as
+   *  *Installed*, which a screen reader cannot see. A refusal outranks it. */
+  const [installed, setInstalled] = useState<string | undefined>(undefined);
 
   /**
    * **A refusal changes nothing but its reason**: the control's state stays the
@@ -46,9 +49,13 @@ export function useInstall(options: {
     inFlight.current.add(item.id);
     setInstallingIds(new Set(inFlight.current));
     setRefusal(undefined);
+    // A new press clears the last success: the region must not still be saying
+    // the previous item landed while this one is being installed.
+    setInstalled(undefined);
     void installItem(item)
       .then(async (outcome) => {
         if (outcome.ok) {
+          setInstalled(uiCopy.store.install.installed(item.name));
           const listed = await options.source.list().catch(() => undefined);
           if (listed !== undefined) {
             options.onListed(listed);
@@ -79,6 +86,6 @@ export function useInstall(options: {
 
   return {
     control: { onInstall, installingIds, refusal },
-    announcement: refusal?.message ?? "",
+    announcement: refusal?.message ?? installed ?? "",
   };
 }
