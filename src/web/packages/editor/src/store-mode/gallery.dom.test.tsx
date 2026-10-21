@@ -666,12 +666,11 @@ it("prints the identifier of a kind this build does not know", async () => {
 });
 
 /**
- * **One owner of the decision**, and the four cases the plan names as a table.
+ * **One owner of the decision**, and the cases the spec's word *newer* makes.
  *
- * The last case is the one a naive `version === installedVersion` misses: the
- * catalogue says a copy is installed at `1.4.0` and the item reports no version
- * of its own, so the library copy cannot be that same version — an unknown is
- * not an equal — and the cell must offer **Update** rather than *Installed*.
+ * Update is offered only when the catalogue outranks the copy, so a held-newer
+ * copy and a pair this file cannot order both read *Installed*: the press
+ * overwrites with no undo and must not rest on a comparison that is not there.
  */
 it("decides the install state from the catalogue and the item", () => {
   const cases: readonly {
@@ -691,6 +690,30 @@ it("decides the install state from the catalogue and the item", () => {
       state: "update",
     },
     {
+      name: "a numeric order, not a string one",
+      item: item({
+        version: "1.10.0",
+        catalogue: catalogue({ installedVersion: "1.9.0" }),
+      }),
+      state: "update",
+    },
+    {
+      name: "a held-newer copy",
+      item: item({
+        version: "1.3.0",
+        catalogue: catalogue({ installedVersion: "1.4.0" }),
+      }),
+      state: "installed",
+    },
+    {
+      name: "a prerelease of the installed version",
+      item: item({
+        version: "1.4.0",
+        catalogue: catalogue({ installedVersion: "1.4.0-beta" }),
+      }),
+      state: "installed",
+    },
+    {
       name: "nothing installed",
       item: item({ catalogue: catalogue() }),
       state: "install",
@@ -701,7 +724,15 @@ it("decides the install state from the catalogue and the item", () => {
         version: undefined,
         catalogue: catalogue({ installedVersion: "1.4.0" }),
       }),
-      state: "update",
+      state: "installed",
+    },
+    {
+      name: "versions this file cannot order",
+      item: item({
+        version: "nightly",
+        catalogue: catalogue({ installedVersion: "1.4.0" }),
+      }),
+      state: "installed",
     },
   ];
 
