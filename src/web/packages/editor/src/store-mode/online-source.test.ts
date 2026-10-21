@@ -91,6 +91,16 @@ describe("the catalogue's source", () => {
     expect(source.refused()).toEqual([]);
   });
 
+  it("reads the address it is given instead of the default", async () => {
+    const fetcher = answering(indexWith([ENTRY]));
+    await onlineThemeSource({
+      url: "https://mirror.test/index.json",
+      fetch: fetcher,
+    }).list();
+
+    expect(fetcher).toHaveBeenCalledWith("https://mirror.test/index.json");
+  });
+
   it("rejects when the catalogue answers not-ok", async () => {
     const source = onlineThemeSource({ fetch: answering("", 500) });
 
@@ -128,5 +138,28 @@ describe("the catalogue's source", () => {
     expect(source.refused()).toEqual([
       { kind: "widget-theme", reason: "unknown-kind", count: 1 },
     ]);
+  });
+
+  it("forgets the refusals of a read that failed", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          indexWith([
+            ENTRY,
+            { ...ENTRY, id: "vigilia/widget", kind: "widget-theme" },
+          ]),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response("", { status: 500 }),
+      ) as unknown as typeof fetch;
+    const source = onlineThemeSource({ fetch: fetcher });
+
+    await source.list();
+    expect(source.refused()).toHaveLength(1);
+
+    await expect(source.list()).rejects.toThrow("500");
+    expect(source.refused()).toEqual([]);
   });
 });

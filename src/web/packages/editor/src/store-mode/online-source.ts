@@ -28,6 +28,9 @@ export function onlineThemeSource(
   return {
     kind: DASHBOARD_THEME_KIND,
     async list(): Promise<readonly StoreItem[]> {
+      // Cleared before the read, so `refused()` always describes the most recent
+      // attempt: a failed read answers none, never the previous read's rows.
+      refused = [];
       const response = await (options.fetch ?? fetch)(url);
       if (!response.ok) {
         throw new Error(`The catalogue answered ${response.status}.`);
