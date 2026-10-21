@@ -96,7 +96,49 @@ describe("theme origins", () => {
     await expect(
       store.write("../escape", origin("catalogue-x")),
     ).rejects.toThrow("Invalid");
-    expect(await store.read()).toEqual({});
+
+    // A refused write is no write at all, so there is nothing on disk to read
+    // back — the assertion that can go red, where `read()` answering `{}` on a
+    // directory that was never written to cannot.
+    await expect(readFile(originsFile(dir), "utf8")).rejects.toThrow();
+  });
+
+  it("writes nothing when the id names something on the prototype", async () => {
+    const corrupt = "{ not json";
+    await seed(corrupt);
+
+    // `constructor` is a legal theme id, and `themeId in all` walks the
+    // prototype chain and finds it, so a guard written that way would call this
+    // a removal and replace the unreadable file with `{}`.
+    await store.removeTheme("constructor");
+
+    expect(await readFile(originsFile(dir), "utf8")).toBe(corrupt);
+  });
+
+  it("keeps a __proto__ key as an entry rather than as the map's prototype", async () => {
+    // Built with `fromEntries` because `{ __proto__: x }` in a literal sets the
+    // prototype, which is the very confusion this case is about.
+    await seed(
+      JSON.stringify(
+        Object.fromEntries([["__proto__", origin("catalogue-proto")]]),
+      ),
+    );
+
+    const read = await store.read();
+
+    expect(Object.hasOwn(read, "__proto__")).toBe(true);
+    expect(read["__proto__"]).toEqual(origin("catalogue-proto"));
+    expect(Object.getPrototypeOf(read)).toBe(Object.prototype);
+
+    // And it survives a write beside another theme, landing in the file as a key.
+    await store.write("wall", origin("catalogue-wall"));
+
+    expect(JSON.parse(await readFile(originsFile(dir), "utf8"))).toEqual(
+      Object.fromEntries([
+        ["__proto__", origin("catalogue-proto")],
+        ["wall", origin("catalogue-wall")],
+      ]),
+    );
   });
 
   it("drops an entry stored under a key that is not a theme id", async () => {

@@ -2,12 +2,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Where each library theme came from, kept beside the themes themselves.
+ * Where each library theme came from, kept in the host's settings directory.
  *
  * "Installed" is a fact about this machine's copy, not about the catalogue item:
  * the item is the same for everyone, while this record exists only where someone
  * installed it. So it is consumer state, like `active-theme.json` and
- * `theme-answers.json`, and the file is
+ * `theme-answers.json`, and it lives beside them rather than beside the themes,
+ * as `theme-origins.json` holding
  * `{ "<theme id>": { "catalogueId": …, "version": …, "installedAt": … } }`.
  */
 
@@ -57,20 +58,26 @@ function asOrigin(value: unknown): ThemeOrigin | undefined {
   return { catalogueId, version, installedAt };
 }
 
-/** The file's contents, with every key held to `THEME_ID` and every entry validated. */
+/**
+ * The file's contents, with every key held to `THEME_ID` and every entry validated.
+ *
+ * Built through `Object.fromEntries` rather than by assignment: `__proto__` is a
+ * legal theme id, and `origins[id] = entry` would reach the map's prototype and
+ * lose the entry instead of storing it.
+ */
 function normalizeOrigins(input: unknown): Record<string, ThemeOrigin> {
   if (!isObject(input)) return {};
 
-  const origins: Record<string, ThemeOrigin> = {};
+  const pairs: [string, ThemeOrigin][] = [];
 
   for (const [id, raw] of Object.entries(input)) {
     if (!THEME_ID.test(id)) continue;
 
     const entry = asOrigin(raw);
-    if (entry) origins[id] = entry;
+    if (entry) pairs.push([id, entry]);
   }
 
-  return origins;
+  return Object.fromEntries(pairs);
 }
 
 async function readOrigins(file: string): Promise<Record<string, ThemeOrigin>> {
@@ -101,8 +108,9 @@ export function createThemeOriginsStore(directory: string): ThemeOriginsStore {
       }
 
       const all = await readOrigins(file);
-      // The whole map is normalized on the way out, so a key or an entry the
-      // reader dropped does not survive a write beside a good one.
+      // Both halves of a write: a key or an entry the reader dropped does not
+      // survive beside a good one, and a file the reader could not read at all
+      // is replaced by this one entry rather than kept.
       await save(normalizeOrigins({ ...all, [themeId]: origin }));
     },
 
@@ -112,7 +120,10 @@ export function createThemeOriginsStore(directory: string): ThemeOriginsStore {
       const all = await readOrigins(file);
       // Nothing to remove is no write: a file that could not be read reads as
       // `{}`, and saving that would replace the file that is actually there.
-      if (!(themeId in all)) return;
+      // `Object.hasOwn`, not `in`: `constructor` is a legal theme id, and `in`
+      // walks the prototype chain, so `removeTheme("constructor")` would find an
+      // entry that is not there and rewrite a file it should have left alone.
+      if (!Object.hasOwn(all, themeId)) return;
 
       delete all[themeId];
       await save(all);
