@@ -36,6 +36,32 @@ const RAIL_ACCENT_BAR_PX = 2;
  *  the mode-switch case spells its message from this. */
 const HEADER_STRIP_PX = 42;
 
+/**
+ * **No case in this spec may reach the catalogue's public URL.**
+ *
+ * The store region starts its online read when it mounts
+ * (`online-listing.ts`), and that is true of the Local half too, so every case
+ * that opens the themes mode would otherwise ask `raw.githubusercontent.com`
+ * for a catalogue that does not exist until phase E. The answer would be
+ * whatever the network says that day, not what the case is measuring.
+ *
+ * The default is the honest state — "there is no catalogue here" — and a 404
+ * keeps it distinguishable from an empty catalogue, which decision 0088 says
+ * must not be drawn when the read failed.
+ *
+ * A case that needs a catalogue registers `**\/index.json` itself in its body.
+ * Playwright runs the most recently registered matching handler first, so that
+ * fixture answers and this default never sees the request.
+ */
+test.beforeEach(async ({ page }) => {
+  await page.route("**/index.json", (route) =>
+    route.fulfill({
+      status: 404,
+      headers: { "access-control-allow-origin": "*" },
+    }),
+  );
+});
+
 test("asking for the pane already showing leaves it showing", async ({
   page,
 }, testInfo) => {

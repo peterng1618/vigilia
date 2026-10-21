@@ -188,7 +188,9 @@ result, not merely a mounted editor.
 
 The catalogue and the library are both answered by `page.route`, so these five
 show a routed fixture and not the live origin — the real catalogue is empty
-until phase E.
+until phase E. Each cell's picture is a 1×1 PNG served by the fixture at the
+panel ground, so the empty picture boxes are the stand-in, not a defect in the
+catalogue's thumbnails or their CDN.
 
 ## Settings page (`/settings`, real host)
 
