@@ -232,6 +232,7 @@ src/web/packages/host/src/wallpaper-engine/
   locate.ts      find the install and every Steam library, or report absence
   library.ts     scan item directories, merge workshopcache.json rows
   resolve.ts     item → outcome, and the payload path
+  unpack.ts      scene.pkg → an editable project under projects/myprojects/
   wire.ts        the JSON the browser receives
 ```
 
@@ -391,19 +392,63 @@ tool that can. The flow reduces that to a few clicks without touching the app.
    the first, which is also how stochastic content (particles) is made to repeat.
    A **"This theme does not animate"** toggle switches the guidance to 1 s and
    blend 0 (§4.1).
-3. **Open in Wallpaper Engine** launches `wallpaperui.exe -project <path>` so the
-   author lands in the editor with the project loaded. This is a launch, not a
-   drive (R1). The flag's exact semantics are verified at implementation; if it
-   does not select the project, the button is removed rather than worked around.
-4. The sheet then watches for the result: while it is open, the host polls for
+3. **Make it editable, which is the part Vigilia does.** A downloaded theme is a
+   packed `scene.pkg` and Wallpaper Engine refuses it twice over (§8.1). The host
+   unpacks the container into `projects/myprojects/<workshopId>/` and copies the
+   item's `project.json` beside the members. It is then an ordinary local
+   project, listed in the editor's "View all projects". The directory is created
+   only when absent: an existing one is never overwritten, and a name clash asks
+   the author for a new name rather than merging into someone's work.
+4. **Open in Wallpaper Engine** launches `wallpaperui.exe`, with `-project <path>`
+   if that flag selects the project (unverified — see §14.1) and otherwise with
+   the author picking it from the list. A launch, not a drive (R1).
+5. The sheet then watches for the result: while it is open, the host polls for
    `.mp4` files modified after the sheet opened, in
    `<install>/projects/temp/`, `<install>/projects/myprojects/`, and the
    Windows `Videos` folder only. The newest match is offered as the import. The
    polling scope is fixed and small on purpose — Vigilia does not roam the
    author's profile.
-5. If the export went somewhere else, the sheet says so and points at the normal
+6. If the export went somewhere else, the sheet says so and points at the normal
    **Add → File** route. That is not a Wallpaper Engine feature, and the sheet
    does not pretend otherwise.
+
+### 8.1 Why the editor cannot open it, and why unpacking is ours to do
+
+Wallpaper Engine refuses a downloaded scene twice, by design:
+
+- The Installed tab hides its **Open in Editor** button for anything with a
+  `workshopid`: `ng-if="!(currentSelection.localAndExternal ||
+  currentSelection.official || currentSelection.workshopid)"`.
+- The refusal is not only cosmetic. `ui_editor_toast_project_packed` renders as
+  **"Packed wallpapers cannot be opened."**, and that key ships in 2.8.42's own
+  `locale/ui_en-us.json`. The editor's `openProject` path rejects a `.pkg`, so
+  the drag-and-drop `createInEditor` route does not bypass it either.
+- The documented reason is the same one that makes a `.jpg` unopenable in an
+  image editor: a `.pkg` is the compiled output, and the author's project data
+  was never in it.
+
+The vendor's own help page points at unpacking, and that is the one step Vigilia
+can take. The container is small enough to be unambiguous, and was decoded and
+validated against two real packages while writing this:
+
+```
+u32 magicLen (= 8)   "PKGV0001"
+u32 entryCount
+per entry:  u32 nameLen   name[nameLen]   u32 dataOffset   u32 dataLen
+then      the member bytes, contiguous, offsets relative to the table's end
+```
+
+Both packages checked out exactly: entries contiguous, and the last entry ending
+at the file's final byte. Unpacking is a table walk and a byte copy — no
+decompression, no format conversion, and **no `.tex` decoding**: a project
+references its textures as `.tex` and the editor reads them natively. That is
+precisely why unpacking fixes the editor but does not fix §4.1's image import.
+
+Two consequences worth naming. The unpacked copy becomes a local wallpaper in
+the author's Installed tab, so the flow leaves something behind on their machine
+and the sheet says so. And the author may now edit objects — which is the
+deferred "remove the clock" request, reachable without any change to policy,
+because the edit happens in Wallpaper Engine, not in Vigilia.
 
 Element removal — the clock, and anything else a viewer should not see — stays
 out of scope as agreed. The supported answer is the author's own Wallpaper
@@ -456,8 +501,9 @@ manager's caps and reference model unchanged.
 
 **Rung 6 — probe.** Executed: a package reader against 238 real `scene.pkg`
 files during investigation (§3 — used to take the census, not shipped), the
-cache against the disk (421 vs 447, §1.4), every `project.file` against an image
-extension (0 of 447, §4.1), and the video sizes against the 32 MiB cap (§6).
+container layout against two packages to the last byte (§8.1), the cache against
+the disk (421 vs 447, §1.4), every `project.file` against an image extension
+(0 of 447, §4.1), and the video sizes against the 32 MiB cap (§6).
 
 **Rung 7 — build.** The smallest build that holds: one host module, three routes,
 one editor source. No new dependency.
@@ -487,6 +533,10 @@ No failure is silent. Every refusal names the item and the reason, in the editor
 - Author display names (§7.3).
 - Web wallpapers (§4).
 - Rendering scenes (R2).
+- When unpacking happens. This spec makes it an explicit button in the sheet, never
+  a side effect of listing or selecting an item: it writes into the author's
+  Wallpaper Engine installation, and R1's "reads files and launches" becomes
+  "writes one new directory" only with that click.
 - The author's own projects under `projects/myprojects/`. Only subscribed
   workshop items are listed, because the premise is a theme the author has
   already downloaded. A local project has no workshop id to key it by, and
@@ -503,16 +553,19 @@ No failure is silent. Every refusal names the item and the reason, in the editor
    credits surface in the theme's details.
 4. **Video path** — joins the media normalizer when it lands; before that, the
    pass-through-inside-budget behaviour of §6.
-5. **Guided export** — the sheet, the launch, the watcher.
+5. **Guided export** — the sheet, the unpacker, the launch, the watcher.
 
 Phase 1 is independently useful and testable. Phases 4 and 5 are the only ones
-that depend on other plans.
+that depend on other plans. The unpacker in phase 5 is a table walk with its own
+fixture: a real `scene.pkg`, asserted to extract every member to the byte and to
+refuse a table whose last member runs past the file's end.
 
 ## 14. Open questions
 
 1. **Does `wallpaperui.exe -project <path>` select the project in the editor?**
-   The flag exists; its semantics are unverified. Phase 5 verifies it and drops
-   the button if it does not hold.
+   The flag exists; its semantics are unverified. It is now a convenience only:
+   the unpacked project exists and is listed either way. Phase 5 verifies it and
+   drops the flag if it does not hold.
 2. **Where does Wallpaper Engine's editor export dialog default to?** Unknown;
    the watcher's fixed scope (§8, step 4) is designed so the answer changes convenience,
    not correctness.
@@ -533,6 +586,9 @@ that depend on other plans.
   player with `loop` and no audio.
 - A video item over 32 MiB is listed with a reason and cannot be imported.
 - A scene item offers the guided sheet and never offers "Import".
+- Unpacking a fixture `scene.pkg` writes every member byte-identically into
+  `projects/myprojects/<id>/`, copies its `project.json`, and refuses rather than
+  overwrite an existing directory.
 - A preset item is not listed.
 - With Wallpaper Engine absent, the Add pane is byte-identical to today's,
   proven by the existing DOM test passing unchanged.
