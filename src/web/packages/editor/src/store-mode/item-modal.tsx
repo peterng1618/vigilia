@@ -91,7 +91,7 @@ function Pill(props: {
   return (
     <span
       data-vigilia-store-item-pill={props.id}
-      className={`rounded-full border bg-panel-2 px-[var(--space-10)] py-[var(--space-4)] text-xs ${
+      className={`rounded-full border bg-panel-2 px-[var(--space-10)] py-[var(--space-4)] text-xs font-medium ${
         props.proposed
           ? "border-dashed border-edge text-muted"
           : "border-edge text-text"

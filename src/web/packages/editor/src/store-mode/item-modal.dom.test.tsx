@@ -339,6 +339,15 @@ it("draws the Style group, and marks the tag the vocabulary does not hold", asyn
     pillClass("retro-diner"),
     "a tag the vocabulary does not hold is drawn as a settled one",
   ).toContain("border-dashed");
+
+  // The drawing's `font:500` belongs to the pill's own box, not to the mark, so
+  // both pills carry it: a settled pill and a proposed one differ in edge and
+  // colour, and in nothing else (`store-detail.html`).
+  for (const id of ["retro", "retro-diner"]) {
+    expect(pillClass(id), `${id}: not the drawing's weight`).toContain(
+      "font-medium",
+    );
+  }
 });
 
 /**
