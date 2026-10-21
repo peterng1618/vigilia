@@ -409,6 +409,51 @@ function cells(): readonly HTMLElement[] {
   );
 }
 
+/** The cells' ids in the order the grid draws them. */
+function drawnIds(): readonly (string | null)[] {
+  return cells().map((cell) => cell.getAttribute("data-vigilia-store-cell"));
+}
+
+/** One entry of the sort well chosen, the way a person chooses it: Base UI
+ *  commits a list item only when the press that precedes the click started on
+ *  it, and the popup opens on a queue `act` does not drain by itself. */
+async function chooseSort(id: string): Promise<void> {
+  const trigger = must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-sort]"),
+    "sort well",
+  );
+  await act(async () => {
+    trigger.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+  });
+  for (let round = 0; round < 3; round += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+  const option = must(
+    document.body.querySelector<HTMLElement>(`[data-vigilia-option="${id}"]`),
+    `${id} sort option`,
+  );
+  await act(async () => {
+    option.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerType: "mouse",
+        button: 0,
+      }),
+    );
+  });
+  await act(async () => {
+    option.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }),
+    );
+  });
+  await act(async () => {});
+}
+
 /** One cell's action button, pressed the way a person presses it. */
 async function pressCell(id: string, action: CellAction): Promise<void> {
   const button = must(
@@ -1414,20 +1459,28 @@ const CATALOGUE_FACETS = {
   height: 1080,
 };
 
+/** One catalogue entry, with its sort facts overridable where a case orders it
+ *  rather than merely lists it. */
 function catalogueEntry(
   id: string,
   version: string,
   kind = "dashboard-theme",
+  facts: {
+    readonly createdAt?: string;
+    readonly updatedAt?: string;
+    readonly downloads?: number;
+    readonly favorites?: number;
+  } = {},
 ): Record<string, unknown> {
   return {
     id,
     kind,
     name: `Catalogue ${id}`,
     version,
-    createdAt: "2026-10-01T00:00:00.000Z",
-    updatedAt: "2026-10-14T00:00:00.000Z",
-    downloads: 42,
-    favorites: 7,
+    createdAt: facts.createdAt ?? "2026-10-01T00:00:00.000Z",
+    updatedAt: facts.updatedAt ?? "2026-10-14T00:00:00.000Z",
+    downloads: facts.downloads ?? 42,
+    favorites: facts.favorites ?? 7,
     packageUrl: `https://store.test/${id}.zip`,
     thumbnail: `${id}/thumbnail.png`,
     facets: CATALOGUE_FACETS,
@@ -1506,6 +1559,66 @@ it("lists the catalogue on the online half and the library on the local one", as
     cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
     "the local half changed when the catalogue arrived",
   ).toEqual(["living-room"]);
+});
+
+/**
+ * **Each of the online half's four keys reorders the catalogue**, and the
+ * default is `updated` newest first: a person who chooses *Most downloaded* and
+ * sees the list unmoved has been told their choice did nothing.
+ *
+ * The wire order is `bac`, which is none of the four expected orders and none
+ * of the half's default, so a comparator that compares nothing leaves the list
+ * visibly wrong for every key rather than passing on a lucky coincidence.
+ */
+it("reorders the catalogue by each of its four keys", async () => {
+  vi.stubGlobal(
+    "fetch",
+    catalogueServing([
+      catalogueEntry("b", "1.0.0", "dashboard-theme", {
+        createdAt: "2026-02-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        downloads: 30,
+        favorites: 3,
+      }),
+      catalogueEntry("a", "1.0.0", "dashboard-theme", {
+        createdAt: "2026-03-01T00:00:00.000Z",
+        updatedAt: "2026-02-02T00:00:00.000Z",
+        downloads: 10,
+        favorites: 9,
+      }),
+      catalogueEntry("c", "1.0.0", "dashboard-theme", {
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-03-02T00:00:00.000Z",
+        downloads: 20,
+        favorites: 6,
+      }),
+    ]),
+  );
+  await mountStore([]);
+  await showOnline();
+
+  expect(
+    drawnIds(),
+    "the online half does not open on its default — newest update first",
+  ).toEqual(["c", "a", "b"]);
+
+  await chooseSort("created");
+  expect(
+    drawnIds(),
+    "sorting the catalogue by created did not reorder it",
+  ).toEqual(["a", "b", "c"]);
+
+  await chooseSort("downloads");
+  expect(
+    drawnIds(),
+    "sorting the catalogue by downloads did not reorder it",
+  ).toEqual(["b", "c", "a"]);
+
+  await chooseSort("favorites");
+  expect(
+    drawnIds(),
+    "sorting the catalogue by favorites did not reorder it",
+  ).toEqual(["a", "c", "b"]);
 });
 
 /**

@@ -6,10 +6,7 @@ import {
 } from "@vigilia/renderer-core";
 import type * as React from "react";
 import { useEffect, useState } from "react";
-import {
-  type ControlOption,
-  ControlSelect,
-} from "../components/ui/control-select.js";
+import { ControlSelect } from "../components/ui/control-select.js";
 import {
   ControlWell,
   hitTargetClasses,
@@ -44,6 +41,7 @@ import {
 } from "./local-source.js";
 import { useOnlineListing } from "./online-listing.js";
 import { Pager } from "./pager.js";
+import { DEFAULT_SORT, SORT_KEYS, SORT_ORDERS } from "./sort-orders.js";
 
 /**
  * The store's two halves. `local` is the host's own library — what the author
@@ -79,53 +77,6 @@ const halvesSegmentId = (tab: StoreTab): string => `${HALVES_ID}-${tab}`;
 /** The sort well's id, named rather than minted: the row has one sort and the
  *  browser case reaches for it by name. */
 const SORT_ID = "vigilia-store-sort";
-
-/**
- * The sort keys, per half, because the two share none: the catalogue knows when
- * an item was published and how often it was taken, and the host's library knows
- * only what the author wrote.
- *
- * The keys are the record's own field names — `updatedAt` is the theme's, the
- * catalogue's is `updated` — so a key here cannot drift from the thing it sorts
- * by without a rename in one place.
- */
-const SORT_KEYS: Readonly<Record<StoreTab, readonly ControlOption[]>> = {
-  local: [
-    { id: "name", name: uiCopy.store.sort.local.name },
-    { id: "updatedAt", name: uiCopy.store.sort.local.updatedAt },
-  ],
-  online: [
-    { id: "created", name: uiCopy.store.sort.online.created },
-    { id: "updated", name: uiCopy.store.sort.online.updated },
-    { id: "downloads", name: uiCopy.store.sort.online.downloads },
-    { id: "favorites", name: uiCopy.store.sort.online.favorites },
-  ],
-};
-
-/** What each half opens on: the library by name, the catalogue by the item that
- *  changed most recently, which is the order each half is browsed in. */
-const DEFAULT_SORT: Readonly<Record<StoreTab, string>> = {
-  local: "name",
-  online: "updated",
-};
-
-/**
- * The orders the local half offers, keyed by the sort key the row declares.
- *
- * **A key with no order is the catalogue's.** Its items arrive with its own
- * source (phase C), so this phase orders nothing by `created`, `downloads` or
- * `favorites` rather than inventing an order for a list that is empty.
- *
- * "Updated" is newest first: the item that changed most recently is the one a
- * person is looking for, and the date is an ISO instant, so the string order is
- * the time order.
- */
-const SORT_ORDERS: Readonly<
-  Record<string, (a: StoreItem, b: StoreItem) => number>
-> = {
-  name: (a, b) => a.name.localeCompare(b.name),
-  updatedAt: (a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
-};
 
 /**
  * The browser's own storage, or nothing where the accessor itself refuses — a
@@ -579,9 +530,8 @@ function StoreRegion(props: {
   const matching = (listed ?? []).filter(
     (item) => matchesFacets(item, chosen) && matchesQuery(item, query),
   );
-  // **The half's own key**, not the library's. Only the local half's keys have
-  // an order here yet; a catalogue key falls through to no comparison, so the
-  // catalogue's own order stands rather than being re-sorted by a guess.
+  // **The half's own key**, not the library's: the two halves share no key, so
+  // the order read is the one the drawn half declared.
   const sorted = [...matching].sort(SORT_ORDERS[sort[tab]] ?? (() => 0));
   const total = pageCount(sorted.length, size);
   const current = Math.min(Math.max(page, 1), Math.max(total, 1));
