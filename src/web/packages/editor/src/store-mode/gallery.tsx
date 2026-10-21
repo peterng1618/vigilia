@@ -3,14 +3,17 @@ import { Fragment, useState } from "react";
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import {
   ASSIGN_ITEM_GLYPH,
+  CHECK_GLYPH,
   DELETE_ITEM_GLYPH,
   EXPORT_ITEM_GLYPH,
   Glyph,
+  INSTALL_ITEM_GLYPH,
   type LucideIcon,
   OPEN_ITEM_GLYPH,
 } from "../editor-shell/icons.js";
 import { uiCopy } from "../ui-copy.js";
 import { CELL_ACTION_REASONS } from "./cell-actions.js";
+import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
 
 /**
@@ -44,6 +47,12 @@ const CELL_ACTION_GLYPHS: Readonly<Record<CellAction, LucideIcon>> = {
   export: EXPORT_ITEM_GLYPH,
   delete: DELETE_ITEM_GLYPH,
 };
+
+/** The download count's reader. `en-US` because `uiCopy` is one English table,
+ *  and `Intl` rather than `toLocaleString` so the separator is the build's
+ *  rather than the machine's — the drawing's `1,204`. When the UI gains locales
+ *  this follows `uiCopy`. */
+const DOWNLOAD_COUNT = new Intl.NumberFormat("en-US");
 
 /**
  * The grid of cells.
@@ -87,9 +96,10 @@ export function Gallery(props: {
  * One item: its picture, its name, its byline and its facts band.
  *
  * The bands are the drawing's exactly — the picture at `2/1` with `object-fit:
- * cover`, the name, the mono byline, and the 26px band — and the band's left
- * slot carries the origin badge, drawn only where the host holds a record of
- * where the theme came from.
+ * cover`, the name, the mono byline, and the 26px band. **The band's left slot
+ * has one occupant per half, and they are exclusive**: an online item draws the
+ * kind badge and the download count, and a library item draws the origin pill
+ * where the host holds a record of where the theme came from.
  */
 function Cell(props: {
   readonly item: StoreItem;
@@ -97,6 +107,10 @@ function Cell(props: {
   readonly onOpenItem: (id: string) => void;
 }): React.JSX.Element {
   const { item, onAction, onOpenItem } = props;
+  const catalogue = item.catalogue;
+  // One read of the decision, used for both the band's left slot and the action
+  // slot, so the two cannot disagree about whether this is an online item.
+  const installState = installStateOf(item);
 
   return (
     <li
@@ -150,60 +164,138 @@ function Cell(props: {
           data-vigilia-store-cell-band=""
           className="flex h-[26px] items-center gap-[var(--space-6)]"
         >
-          {/* **The origin badge is the drawing's pill, in the band's left
-              slot** — not beside the name, where it would make this half's
-              cells taller than the online half's, and the cell is one cell
-              shared by both halves (`store-themes.html`). It is drawn only for a
-              theme the host holds a record of: a theme the author made here came
-              from nowhere, and a badge saying so would be a fact no record
-              carries. */}
-          {item.origin === undefined ? null : (
-            <span
-              data-vigilia-store-cell-origin=""
-              className="flex-none rounded-full border border-edge bg-panel px-[var(--space-8)] py-[var(--space-4)] text-2xs font-medium text-muted"
-            >
-              {uiCopy.store.fromStore}
-            </span>
+          {/* **The left slot has one occupant per half** — the online cell's
+              kind and count, or the library cell's origin pill — because the
+              two derive from facts the other half does not have and fitting
+              four readings in the band would change the grid's minimum shape.
+              The origin pill is drawn only for a theme the host holds a record
+              of: a theme the author made here came from nowhere, and a badge
+              saying so would be a fact no record carries. */}
+          {catalogue === undefined ? (
+            item.origin === undefined ? null : (
+              <span
+                data-vigilia-store-cell-origin=""
+                className="flex-none rounded-full border border-edge bg-panel px-[var(--space-8)] py-[var(--space-4)] text-2xs font-medium text-muted"
+              >
+                {uiCopy.store.fromStore}
+              </span>
+            )
+          ) : (
+            <>
+              <span
+                data-vigilia-store-cell-kind=""
+                className="flex-none rounded-full border border-edge px-[var(--space-8)] py-[var(--space-4)] text-2xs font-medium text-muted"
+              >
+                {/* A kind this build does not know prints its identifier, which
+                    is the spec's rule for a client older than the kind. */}
+                {uiCopy.store.cell.kinds[item.kind] ?? item.kind}
+              </span>
+              <span
+                data-vigilia-store-cell-downloads=""
+                className="flex flex-none items-center gap-[var(--space-4)] font-mono text-xs text-muted"
+              >
+                {/* The drawing's download mark, the same glyph the export
+                    action wears: one arrow for "taken from the store". */}
+                <Glyph icon={EXPORT_ITEM_GLYPH} size={12} />
+                {DOWNLOAD_COUNT.format(catalogue.downloads)}
+              </span>
+            </>
           )}
           <span className="flex-1" />
-          {/* **All four are drawn and the two a build does not run are
-              disabled** (R164): the drawing gives every cell four, and a
-              control that looks live and answers a press with nothing is the
-              defect the ruling answers. The reason travels beside the button
-              rather than in a tooltip, because a disabled control is one the
-              pointer cannot ask. */}
-          {CELL_ACTIONS.map((action) => {
-            const reason = CELL_ACTION_REASONS[action];
-            const controlId = cellActionId(item.id, action);
-            return (
-              <Fragment key={action}>
-                <ControlIconButton
-                  id={controlId}
-                  label={uiCopy.store.cell.actions[action]}
-                  disabled={reason !== undefined}
-                  // `exactOptionalPropertyTypes` wants the prop omitted rather
-                  // than handed `undefined`, and a button with a reason of its
-                  // own must not describe itself by one it does not have.
-                  {...(reason === undefined
-                    ? {}
-                    : { describedById: `${controlId}-reason` })}
-                  destructive={action === "delete"}
-                  data={{ "data-vigilia-store-cell-action": action }}
-                  onClick={() => onAction(action, item.id)}
-                >
-                  <Glyph icon={CELL_ACTION_GLYPHS[action]} size={14} />
-                </ControlIconButton>
-                {reason === undefined ? null : (
-                  <span id={`${controlId}-reason`} className="sr-only">
-                    {reason}
-                  </span>
-                )}
-              </Fragment>
-            );
-          })}
+          {installState === "none" ? (
+            /* **All four are drawn and the two a build does not run are
+               disabled** (R164): the drawing gives every cell four, and a
+               control that looks live and answers a press with nothing is the
+               defect the ruling answers. The reason travels beside the button
+               rather than in a tooltip, because a disabled control is one the
+               pointer cannot ask. */
+            CELL_ACTIONS.map((action) => {
+              const reason = CELL_ACTION_REASONS[action];
+              const controlId = cellActionId(item.id, action);
+              return (
+                <Fragment key={action}>
+                  <ControlIconButton
+                    id={controlId}
+                    label={uiCopy.store.cell.actions[action]}
+                    disabled={reason !== undefined}
+                    // `exactOptionalPropertyTypes` wants the prop omitted rather
+                    // than handed `undefined`, and a button with a reason of its
+                    // own must not describe itself by one it does not have.
+                    {...(reason === undefined
+                      ? {}
+                      : { describedById: `${controlId}-reason` })}
+                    destructive={action === "delete"}
+                    data={{ "data-vigilia-store-cell-action": action }}
+                    onClick={() => onAction(action, item.id)}
+                  >
+                    <Glyph icon={CELL_ACTION_GLYPHS[action]} size={14} />
+                  </ControlIconButton>
+                  {reason === undefined ? null : (
+                    <span id={`${controlId}-reason`} className="sr-only">
+                      {reason}
+                    </span>
+                  )}
+                </Fragment>
+              );
+            })
+          ) : (
+            <InstallAction itemId={item.id} state={installState} />
+          )}
         </span>
       </div>
     </li>
+  );
+}
+
+/**
+ * The online cell's action slot: one of the drawing's three readings, never the
+ * library's four actions (`store-browse.html`).
+ *
+ * **Installed is a mark, not a control** — there is nothing to do, and the
+ * drawing draws no button there. **Install and Update are disabled with their
+ * reason** (R164): phase D owns the install, so neither is an act this build
+ * runs, and the reason travels in the tree beside the control because a
+ * disabled control is one the pointer cannot ask.
+ */
+function InstallAction(props: {
+  readonly itemId: string;
+  readonly state: Exclude<InstallState, "none">;
+}): React.JSX.Element {
+  const { itemId, state } = props;
+
+  if (state === "installed") {
+    return (
+      <span
+        data-vigilia-store-cell-install={state}
+        className="flex flex-none items-center gap-[var(--space-6)] text-xs text-accent"
+      >
+        <Glyph icon={CHECK_GLYPH} size={13} />
+        {uiCopy.store.cell.installStates.installed}
+      </span>
+    );
+  }
+
+  const controlId = `vigilia-store-cell-${itemId}-install`;
+  return (
+    <Fragment>
+      <button
+        type="button"
+        id={controlId}
+        data-vigilia-store-cell-install={state}
+        disabled
+        aria-describedby={`${controlId}-reason`}
+        className="inline-flex flex-none items-center gap-[var(--space-6)] rounded-md border border-edge bg-panel px-[var(--space-10)] py-[var(--space-4)] text-xs text-text disabled:text-faint"
+      >
+        <Glyph
+          icon={state === "install" ? INSTALL_ITEM_GLYPH : EXPORT_ITEM_GLYPH}
+          size={13}
+        />
+        {uiCopy.store.cell.installStates[state]}
+      </button>
+      <span id={`${controlId}-reason`} className="sr-only">
+        {uiCopy.store.cell.unavailable}
+      </span>
+    </Fragment>
   );
 }
 

@@ -15,6 +15,7 @@ import type {
 import type { DisplayLensId } from "./display-lens.js";
 import type { AssignableGroup } from "./host-settings-mode/client.js";
 import type { ShortcutPrefix } from "./shortcut-manager/display.js";
+import type { InstallState } from "./store-mode/install-state.js";
 import type { CellAction } from "./store-mode/local-source.js";
 
 /**
@@ -561,15 +562,16 @@ export const uiCopy = {
    * "The store mode").
    */
   store: {
-    /** The store's two halves, which the region's own `Segmented` names.
+    /** The store's two halves, which the region's own `Segmented` names. The
+     *  two labels are the drawings' tab words (`store-browse.html`), and
      *  `label` is the group's name: the two labels inside are the options, so a
-     *  group with no name announces "Local, pressed" with nothing saying what is
-     *  being chosen. Local first, because the host's own library is what an
-     *  author already has. */
+     *  group with no name announces "Your themes, pressed" with nothing saying
+     *  what is being chosen. The host's own library comes first, because it is
+     *  what an author already has. */
     halves: {
       label: "Theme halves",
-      local: "Local",
-      online: "Online",
+      local: "Your themes",
+      online: "Store",
     },
     /** The search well's name and the word it shows while empty, as one string:
      *  a placeholder that could disagree with the name would be a second copy of
@@ -736,15 +738,20 @@ export const uiCopy = {
        *  only thing true of them is that no phase in the spec's landing order
        *  has one. */
       unavailable: "Not available yet",
-      /** What each kind is called, keyed by its wire identifier. The cell draws
-       *  no kind — the local half's drawing has no room for one and the online
-       *  half's badge is not this cell — so this is the item's own surface's word
-       *  (A.6) rather than this cell's. A kind this build does not know prints
-       *  its own identifier, which is what the spec requires of a client older
-       *  than the kind. */
-      kinds: { "dashboard-theme": "Dashboard theme" } as Readonly<
-        Record<string, string>
-      >,
+      /** The online half's three answers, keyed by `InstallState` less `none`
+       *  — a library item has no catalogue to be installed from, so it draws
+       *  the local half's four actions rather than one of these. */
+      installStates: {
+        installed: "Installed",
+        update: "Update",
+        install: "Install",
+      } satisfies Record<Exclude<InstallState, "none">, string>,
+      /** What each kind is called, keyed by its wire identifier. The online
+       *  cell draws this badge in its facts band (`store-browse.html`), and the
+       *  item's own surface draws the same word (`store-detail.html`). A kind
+       *  this build does not know prints its own identifier, which is what the
+       *  spec requires of a client older than the kind. */
+      kinds: { "dashboard-theme": "Theme" } as Readonly<Record<string, string>>,
     },
     /** The display choice a cell's **Assign to display** opens. Its name is the
      *  action's own word (`cell.actions.assign`), so the two cannot disagree. */

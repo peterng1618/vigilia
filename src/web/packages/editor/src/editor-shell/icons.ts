@@ -42,6 +42,7 @@ import {
   TriangleRight,
   Type,
   Unlock,
+  Upload,
   X,
 } from "lucide-react";
 import type * as React from "react";
@@ -203,6 +204,12 @@ export const OPEN_ITEM_GLYPH: LucideIcon = Folder;
 export const ASSIGN_ITEM_GLYPH: LucideIcon = Monitor;
 export const EXPORT_ITEM_GLYPH: LucideIcon = Download;
 export const DELETE_ITEM_GLYPH: LucideIcon = Trash2;
+
+/** The online cell's *Install* control, which the drawing marks with an upload
+ *  into a tray (`store-browse.html`). *Update* wears the download arrow, the
+ *  same `EXPORT_ITEM_GLYPH` the export action does — the drawing draws one mark
+ *  for "take this in" whichever surface it is on. */
+export const INSTALL_ITEM_GLYPH: LucideIcon = Upload;
 
 /** The way out of a surface that draws no title bar to put one in: the item
  *  modal floats it over the stage's corner (`store-detail.html`), where an × is

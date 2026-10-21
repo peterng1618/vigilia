@@ -18,11 +18,11 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase C's Task 4: the online source** — `onlineThemeSource` reads `index.json` through the shared parser and maps each entry to a `StoreItem` carrying its `catalogue` facts, its CDN thumbnail and no `origin`.
-- **`DASHBOARD_THEME_KIND` now has one owner** in `renderer-core`'s `catalogue-index.ts`; the host's private copy and the editor's duplicate are gone, which closes a finding raised three times.
-- **Two fix rounds, both red-proofed**: `refused()` clears **before** the read so a failed list answers none, and the discriminating case is a fetch that **rejects** — a clear placed after the `await` keeps the non-ok case green, which is why round 2 exists.
-- **Evidence**: store-mode 6 files / 79 tests green, `typecheck` and `biome check ..` exit 0, and the reviewer's independent red proof caught a two-slash thumbnail join.
-- **Tasks 1–3 also stand**: the index's wire shape and parser, the generator as a host-binary command, and the catalogue repo's workflow — committed locally, unpushed, because the pin does not resolve on `origin` yet.
+- **Phase C's Task 5: the online cell** — an item carrying `catalogue` facts draws the kind badge and the thousand-separated download count in the band's left slot; a library item keeps the origin pill and the four actions.
+- **`installStateOf` is the one owner of the install decision** — `none`/`install`/`installed`/`update`, with a set `installedVersion` against an absent `version` pinned as `update`.
+- **The action slot**: `Installed` is a check mark in `--accent` with no control, and `Install`/`Update` are disabled with `uiCopy.store.cell.unavailable` beside them (R164); phase D owns the wiring.
+- **Two copy drifts fixed** — `store.cell.kinds["dashboard-theme"]` is `Theme` and the halves are `Your themes`/`Store`, each pinned against the drawing's literal.
+- **Evidence**: store-mode + copy 7 files / 92 tests green, `npm run typecheck` and `npx biome check ..` exit 0; both required red proofs failed as specified and were restored, checked by `cmp`.
 
 ## Next
 

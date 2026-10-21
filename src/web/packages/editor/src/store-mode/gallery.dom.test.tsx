@@ -24,7 +24,8 @@ import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { Gallery } from "./gallery.js";
-import type { StoreItem } from "./local-source.js";
+import { installStateOf } from "./install-state.js";
+import type { CatalogueFacts, StoreItem } from "./local-source.js";
 
 // Base UI's tooltip needs three browser APIs jsdom has none of: floating-ui
 // observes its anchor, the popup waits for its own open transition, and it asks
@@ -139,6 +140,21 @@ const ORIGIN: ThemeOrigin = {
   version: "1.3.0",
   installedAt: "2026-10-14T00:00:00.000Z",
 };
+
+/** The catalogue's own facts about an item, with the one field the join fills
+ *  left to each case: what this PC has installed. */
+function catalogue(overrides: Partial<CatalogueFacts> = {}): CatalogueFacts {
+  return {
+    id: "living-room",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-15T09:31:00.000Z",
+    downloads: 1204,
+    favorites: 12,
+    packageUrl: "https://example.invalid/living-room.vtheme",
+    installedVersion: undefined,
+    ...overrides,
+  };
+}
 
 /** The cell's picture box, which every case here reads through. */
 function pictureBox(container: HTMLElement): HTMLElement {
@@ -495,4 +511,204 @@ it("badges the cell whose theme came from the store, and leaves the other unbadg
     badge("workshop-bench"),
     "the cell badged a theme the host has no origin for",
   ).toBeNull();
+});
+
+/**
+ * **The online half's left slot is the drawing's, in the same band**: the kind
+ * badge and the download count (`store-browse.html`). The count is pinned as the
+ * literal `1,204` because the thousands separator is the assertion — a bare
+ * `1204` would pass on any locale and is what the red proof breaks — and the
+ * badge as the drawing's `Theme`, which is also the copy case's value.
+ *
+ * The second cell is mounted in the same pass, so the absence of both is a
+ * reading of that cell rather than a case that never drew anything: an item
+ * without catalogue facts is a library item, and its left slot is the origin
+ * pill's.
+ */
+it("draws the kind badge and the download count for an online item, and neither for a library item", async () => {
+  const container = await mount(
+    <Gallery
+      items={[
+        item({ catalogue: catalogue() }),
+        item({ id: "workshop-bench", name: "Workshop bench" }),
+      ]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
+  );
+
+  function band(id: string): HTMLElement {
+    return must(
+      container.querySelector<HTMLElement>(
+        `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-band]`,
+      ),
+      `${id}'s facts band`,
+    );
+  }
+
+  expect(
+    must(
+      band("living-room").querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-kind]",
+      ),
+      "kind badge",
+    ).textContent,
+    "the badge is not the drawing's word for the kind",
+  ).toBe("Theme");
+  expect(
+    must(
+      band("living-room").querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-downloads]",
+      ),
+      "download count",
+    ).textContent,
+    "the count is not the drawing's thousand-separated reading",
+  ).toBe("1,204");
+  expect(
+    band("living-room").querySelector("[data-vigilia-store-cell-origin]"),
+    "the online cell drew the local half's origin pill as well",
+  ).toBeNull();
+
+  expect(
+    band("workshop-bench").querySelector("[data-vigilia-store-cell-kind]"),
+    "the library cell drew a catalogue kind",
+  ).toBeNull();
+  expect(
+    band("workshop-bench").querySelector("[data-vigilia-store-cell-downloads]"),
+    "the library cell drew a catalogue count",
+  ).toBeNull();
+});
+
+/**
+ * **One owner of the decision**, and the four cases the plan names as a table.
+ *
+ * The last case is the one a naive `version === installedVersion` misses: the
+ * catalogue says a copy is installed at `1.4.0` and the item reports no version
+ * of its own, so the library copy cannot be that same version — an unknown is
+ * not an equal — and the cell must offer **Update** rather than *Installed*.
+ */
+it("decides the install state from the catalogue and the item", () => {
+  const cases: readonly {
+    readonly name: string;
+    readonly item: StoreItem;
+    readonly state: ReturnType<typeof installStateOf>;
+  }[] = [
+    { name: "a library item", item: item(), state: "none" },
+    {
+      name: "the same version installed",
+      item: item({ catalogue: catalogue({ installedVersion: "1.4.0" }) }),
+      state: "installed",
+    },
+    {
+      name: "an older version installed",
+      item: item({ catalogue: catalogue({ installedVersion: "1.3.0" }) }),
+      state: "update",
+    },
+    {
+      name: "nothing installed",
+      item: item({ catalogue: catalogue() }),
+      state: "install",
+    },
+    {
+      name: "installed at a version the item does not report",
+      item: item({
+        version: undefined,
+        catalogue: catalogue({ installedVersion: "1.4.0" }),
+      }),
+      state: "update",
+    },
+  ];
+
+  for (const { name, item: sample, state } of cases) {
+    expect(installStateOf(sample), name).toBe(state);
+  }
+});
+
+/**
+ * **The installed state is a mark, not a control** (the drawing's own comment at
+ * `store-browse.html:112`): a check and the word in `--accent`, with no button,
+ * because there is nothing to do. A disabled button here would be a control
+ * drawn where the drawing draws none.
+ */
+it("marks an installed online item without drawing a control", async () => {
+  const container = await mount(
+    <Gallery
+      items={[item({ catalogue: catalogue({ installedVersion: "1.4.0" }) })]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
+  );
+
+  const mark = must(
+    container.querySelector<HTMLElement>(
+      '[data-vigilia-store-cell-install="installed"]',
+    ),
+    "installed mark",
+  );
+  expect(mark.tagName, "the installed state is drawn as a control").toBe(
+    "SPAN",
+  );
+  expect(
+    mark.textContent,
+    "the mark is not the drawing's word for an installed item",
+  ).toBe(uiCopy.store.cell.installStates.installed);
+  expect(
+    mark.className,
+    "the mark's word is not drawn in the accent colour",
+  ).toContain("text-accent");
+  expect(
+    mark.querySelector("button"),
+    "the installed state drew a button it has no action for",
+  ).toBeNull();
+});
+
+/**
+ * **Install and Update are disabled with their reason** (R164), because phase D
+ * owns the install and neither is an act this build can run. The reason is the
+ * copy table's standing one, in the tree beside the control rather than in a
+ * tooltip: a disabled control is one the pointer cannot ask.
+ */
+it("draws Install and Update disabled, with their reason", async () => {
+  const container = await mount(
+    <Gallery
+      items={[
+        item({ catalogue: catalogue() }),
+        item({
+          id: "office-wall",
+          name: "Office wall",
+          catalogue: catalogue({ installedVersion: "1.3.0" }),
+        }),
+      ]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
+  );
+
+  const expected = [
+    { id: "living-room", state: "install", word: "Install" },
+    { id: "office-wall", state: "update", word: "Update" },
+  ] as const;
+
+  for (const { id, state, word } of expected) {
+    const button = must(
+      container.querySelector<HTMLButtonElement>(
+        `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-install="${state}"]`,
+      ),
+      `${state} action`,
+    );
+    expect(button.tagName, `${word} is not a control`).toBe("BUTTON");
+    expect(button.textContent, `${word} is not the drawing's word`).toBe(
+      uiCopy.store.cell.installStates[state],
+    );
+    expect(button.disabled, `${word} is drawn live`).toBe(true);
+    const describedBy = button.getAttribute("aria-describedby") ?? "";
+    expect(describedBy, `${word} states no reason`).not.toBe("");
+    expect(
+      must(
+        container.querySelector<HTMLElement>(`#${describedBy}`),
+        `${word}'s reason`,
+      ).textContent,
+      `${word}'s reason is not the copy table's`,
+    ).toBe(uiCopy.store.cell.unavailable);
+  }
 });

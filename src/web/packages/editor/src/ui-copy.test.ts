@@ -96,6 +96,23 @@ it("words the local origin badge the way the drawing does", () => {
 });
 
 /**
+ * **The two store words the drawings settle, pinned as literals because the
+ * drawings own them and this table does not.** Both were drift: the tabs read
+ * `Local`/`Online` where both drawings label them `Your themes`/`Store`
+ * (`store-browse.html:65-69`), and the kind badge read `Dashboard theme` where
+ * both drawings draw `Theme` (`store-browse.html:122`, `store-detail.html:79`).
+ * A case asserting the key would stay green through the value changing again.
+ */
+it("names the store's two halves the way the drawings label the tabs", () => {
+  expect(uiCopy.store.halves.local).toBe("Your themes");
+  expect(uiCopy.store.halves.online).toBe("Store");
+});
+
+it("names the dashboard theme kind the way the drawings badge it", () => {
+  expect(uiCopy.store.cell.kinds["dashboard-theme"]).toBe("Theme");
+});
+
+/**
  * §9: a menu's rows are sentence case. The list is the menu's own — its three
  * names, its File and Edit rows and its View settings — not the whole table,
  * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:

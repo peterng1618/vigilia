@@ -4,7 +4,7 @@ import {
   facetRecordOf,
 } from "@vigilia/renderer-core";
 import type { ThemeLibraryEntry } from "../theme-library-client.js";
-import type { StoreItem } from "./local-source.js";
+import type { CatalogueFacts, StoreItem } from "./local-source.js";
 
 /**
  * The store's own fixtures, in a file of their own rather than in the tests that
@@ -87,8 +87,15 @@ export function fixtureEntry(theme: FixtureTheme): ThemeLibraryEntry {
   };
 }
 
-/** The item a source would hand the gallery for a fixture theme. */
-export function fixtureItem(theme: FixtureTheme): StoreItem {
+/** The item a source would hand the gallery for a fixture theme.
+ *
+ *  The second argument is the catalogue's facts for an online fixture; a
+ *  library fixture leaves it `undefined`, which is what the cell's origin pill
+ *  and `installStateOf` read. */
+export function fixtureItem(
+  theme: FixtureTheme,
+  catalogue: CatalogueFacts | undefined = undefined,
+): StoreItem {
   const entry = fixtureEntry(theme);
   return {
     id: entry.id,
@@ -102,8 +109,8 @@ export function fixtureItem(theme: FixtureTheme): StoreItem {
     // A fixture theme is one the author made here, so the host holds no record
     // of where it came from — which is the absence the badge is read against.
     origin: undefined,
-    // A fixture is a library item, so the catalogue holds no facts about it.
-    catalogue: undefined,
+    // A fixture is a library item unless the case hands it catalogue facts.
+    catalogue,
     facets: entry.facets,
   };
 }
