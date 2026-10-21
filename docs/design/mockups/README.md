@@ -1,7 +1,7 @@
 # Design mockups
 
 **`current/` is the target.** The editor is being rebuilt towards the original
-visual direction as those seventeen files draw it, and they are **checked at
+visual direction as those nineteen files draw it, and they are **checked at
 every plan gate** — not read once and remembered. The three originals below them
 are the record of the first cut, not the target.
 
