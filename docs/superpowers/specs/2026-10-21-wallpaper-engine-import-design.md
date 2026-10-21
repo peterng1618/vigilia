@@ -189,7 +189,7 @@ Every subscribed `scene.pkg` was opened through its container and its root
 | Effect chains per scene | median 4, p90 22, max 375 |
 
 The 12% with no effect is not a measurement of *static* themes — §4.1 defines
-that, and it is 24%. Effect chains also attach at the material level rather than
+that, and it is 21%. Effect chains also attach at the material level rather than
 on the object, which this census did not inspect; the one effect-free scene that
 was opened ("Water effect 13") still ships
 `materials/background.tex`, a `flowmask.tex`, a ripple material and a flow-image
@@ -238,18 +238,24 @@ accept the result.
 So the test is not "the picture never changes". It is: does anything animate on
 its own?
 
-> **Still at rest** = the scene carries **no particle object** and **no animation
-> layer** — the two subsystems whose animation does not need the pointer.
+> **Still at rest** = the scene has **no particle object**, **no animation
+> layer**, and **no property carrying keyframes**.
 >
-> The keys are `particle` and `animationlayers` in `scene.json`, and — once their
-> JSON is parsed — sprite-sheet animation and animated models under
-> `models/*.json`. Everything else a scene can hold does not enter the test.
+> The first two are the `particle` and `animationlayers` object keys. The third is
+> an `animation` key anywhere in the tree: Wallpaper Engine stores a keyframed
+> property as `{ "c0": [ { "frame": 0, "value": … }, … ] }` under `animation`, so
+> an object whose `origin`, `alpha` or shader constant has one moves by itself.
+> Sprite-sheet animation and animated models under `models/*.json` belong to the
+> same class and join the test once their JSON is parsed. Everything else a
+> scene can hold does not enter it.
 
 Measured by reading each package's `scene.json` through the real container reader
-(§8.1), over the 225 subscribed scenes of which 224 parsed: **53 are still at
-rest (24%)**, of which 12 carry text, 7 carry sound and 6 have no layer effect at
-all. Adding `model` and `light` to the test changes the count by zero — no still
-scene carries either key — so the rule is those two keys.
+(§8.1), over the 225 subscribed scenes of which 224 parsed: **48 are still at
+rest (21%)**, of which 8 carry text, 6 carry sound and 6 have no layer effect at
+all. Five more scenes passed the particle and animation-layer test and failed on
+keyframes — they are the cases that would have shipped as a frozen image of a
+moving thing. Adding `model` and `light` to the test changes the count by zero —
+no still scene carries either key — so the test is those three.
 
 **A clock must not reach the background, in either format.** Text does not
 disqualify the theme, but it must not be exported into the asset. Vigilia draws
@@ -276,17 +282,17 @@ The decoder was considered and rejected on measurement. A `.tex` is `TEXV0005`,
 `TEXI0001`, a texture-info block, a header CRC and `TEXB0001` blocks of
 LZ4-compressed, mip-chained BC-compressed payloads: a format enum table, an LZ4
 stage and BC1/BC3/BC7 decoders. That buys the background texture and nothing
-else — **47 of the 53 still scenes carry at least one layer effect**, which a
-compositor would not render, so 89% of the still set would come out wrong. The
+else — **42 of the 48 still scenes carry at least one layer effect**, which a
+compositor would not render, so 88% of the still set would come out wrong. The
 decoder is not in this design; if it is ever wanted, it is for the 6 scenes
 without layer effects, and it is its own plan.
 
 **What is not yet verified.** Sprite-sheet and model animation live inside the
-`models/*.json` a scene object points at, which this census did not parse; the
-53 is therefore an upper bound on still themes, bounded by the 13 objects that
-carry `animationlayers` directly in `scene.json`. The classifier must parse those
-referenced JSONs before the number is trusted, and the phase that builds it
-carries a fixture for a sprite-animated model.
+`models/*.json` a scene object points at. A first pass found no object-level
+`model` key in this library, so those JSONs were not walked; the 48 is therefore
+an upper bound on still themes, and the classifier must reach them before the
+number is trusted. The phase that builds it carries a fixture for a
+sprite-animated model.
 
 GIF wallpapers need no special case: Wallpaper Engine converts them to `.mp4`
 at subscribe time and they arrive as video items.
@@ -679,9 +685,9 @@ No failure is silent. Every refusal names the item and the reason, in the editor
    the read routes, unit tests over fixture directories and a recorded
    `workshopcache.json` slice.
 2. **The still test** — `classify.ts`, parsing `scene.json` and the referenced
-   `models/*.json` for particle and animation keys and reporting `hasText` for the
-   sheet's removal step. Fixtures: a particle scene, a clock scene, a
-   sprite-sheet model, and an unreadable package.
+   `models/*.json` for particle, animation-layer and keyframe keys, and reporting
+   `hasText` for the removal step. Fixtures: a particle scene, a clock scene, a
+   keyframed-property scene, a sprite-sheet model, and an unreadable package.
 3. **Editor source** — the list, the image and video paths, the refusal states.
 4. **Credits member** — `theme-package` change, the importer writing entries, the
    credits surface in the theme's details.
@@ -725,9 +731,9 @@ the file's end, and to reuse — not rewrite — a directory that already exists
 - A video item over 32 MiB is listed with a reason and cannot be imported.
 - A scene item starts the flow and never offers "Import".
 - The still test returns **true** for a fixture with text, sound, parallax and a
-  mouse-interactive layer, and **false** for one with a particle object or an
-  animation layer. A sprite-animated model in a referenced `models/*.json` also
-  returns false.
+  mouse-interactive layer, and **false** for one with a particle object, an
+  animation layer, or a property carrying `animation` keyframes. A
+  sprite-animated model in a referenced `models/*.json` also returns false.
 - The classifier reports `hasText` for a scene with a text object and omits it
   otherwise; a still scene with text lists the delete-the-text step and one
   without text does not.
@@ -764,14 +770,19 @@ no readable project.json                     28
 presets (ispreset)                           23  (typed Scene/Web in the cache)
 subscribed scenes                           225
 scene.pkg parsed through the container      224 / 225
-still at rest                                53 / 224 (24%)
-  of those, carrying text                    12
-  of those, carrying sound                    7
+still at rest (particles, animation     48 / 224 (21%)
+  layers and keyframes all absent)
+  of those, carrying text                    8
+  of those, carrying sound                   6
   of those, no layer effect                   6
-  of those, ≥1 layer effect                  47
-animated (particles or animation layers)    171 / 224 (76%)
+  of those, ≥1 layer effect                  42
+  scenes failing only on keyframes            5
+animated (any of the three)                176 / 224 (79%)
   scenes with a particle system             170
   scenes with animation layers                7
+  scenes with a keyframed property           19
+  scenes carrying particle, layer,          219 / 224 (98%)
+    keyframes, text or an effect
 types        scene/scene 188+37, video/video 144+12, web/web 12+3
 project.file with an image extension        0 / 447
 video wallpapers under 32 MiB                92 / 156 (59%)
