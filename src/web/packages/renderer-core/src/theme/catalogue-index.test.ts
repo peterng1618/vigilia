@@ -5,6 +5,24 @@ import { parseCatalogueIndex } from "./catalogue-index.js";
     hold and this client cannot read. */
 const KNOWN = ["dashboard-theme"];
 
+/** The record the Action derives: every field a reader touches, which is the
+    shallow check the parser makes and nothing more. */
+function facets(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    author: "ada",
+    colourMode: "dark",
+    sensors: [],
+    tags: ["ops"],
+    orientation: "landscape",
+    aspect: "16:9",
+    width: 1920,
+    height: 1080,
+    ...overrides,
+  };
+}
+
 /** One wire entry, every field well-formed; a case states only the part it is
     about. */
 function entry(
@@ -21,7 +39,7 @@ function entry(
     favorites: 3,
     packageUrl: "https://example.test/acme-ops.json",
     thumbnail: "themes/acme-ops.png",
-    facets: { tags: ["ops"] },
+    facets: facets(),
     ...overrides,
   };
 }
@@ -83,6 +101,22 @@ describe("parseCatalogueIndex", () => {
     ]);
   });
 
+  it("keeps two unknown kinds in the order each first appeared", () => {
+    const parsed = parseCatalogueIndex(
+      document([
+        entry({ id: "w1", kind: "widget-preset" }),
+        entry({ id: "s1", kind: "sprite-pack" }),
+        entry({ id: "w2", kind: "widget-preset" }),
+      ]),
+      KNOWN,
+    );
+
+    expect(parsed.refused).toStrictEqual([
+      { kind: "widget-preset", reason: "unknown-kind", count: 2 },
+      { kind: "sprite-pack", reason: "unknown-kind", count: 1 },
+    ]);
+  });
+
   it("refuses a malformed entry by its own kind, not as an unknown kind", () => {
     const parsed = parseCatalogueIndex(
       document([without("name", { id: "nameless", kind: "widget-preset" })]),
@@ -106,18 +140,23 @@ describe("parseCatalogueIndex", () => {
     expect(parseCatalogueIndex([entry()], KNOWN)).toStrictEqual(whole);
   });
 
-  it("refuses a document whose generatedAt is not a string", () => {
-    const whole = {
+  it("refuses a document with no generatedAt", () => {
+    expect(parseCatalogueIndex({ entries: [entry()] }, KNOWN)).toStrictEqual({
       entries: [],
       refused: [{ kind: undefined, reason: "malformed", count: 1 }],
-    };
+    });
+  });
 
-    expect(parseCatalogueIndex({ entries: [entry()] }, KNOWN)).toStrictEqual(
-      whole,
+  it("refuses a document whose generatedAt is not a string, counting its entries", () => {
+    const parsed = parseCatalogueIndex(
+      { generatedAt: 21, entries: [entry(), entry({ id: "beta" })] },
+      KNOWN,
     );
-    expect(
-      parseCatalogueIndex({ generatedAt: 21, entries: [entry()] }, KNOWN),
-    ).toStrictEqual(whole);
+
+    expect(parsed).toStrictEqual({
+      entries: [],
+      refused: [{ kind: undefined, reason: "malformed", count: 2 }],
+    });
   });
 
   it("refuses a document whose entries is not an array", () => {
@@ -148,6 +187,26 @@ describe("parseCatalogueIndex", () => {
     ]);
   });
 
+  it("refuses an entry whose facets record is missing a field a reader needs", () => {
+    const withoutTags = facets();
+    delete withoutTags.tags;
+
+    const parsed = parseCatalogueIndex(
+      document([
+        entry({ id: "empty-facets", facets: {} }),
+        entry({ id: "no-tags", facets: withoutTags }),
+        entry({ id: "zero-width", facets: facets({ width: 0 }) }),
+        entry({ id: "nan-height", facets: facets({ height: Number.NaN }) }),
+      ]),
+      KNOWN,
+    );
+
+    expect(parsed.entries).toStrictEqual([]);
+    expect(parsed.refused).toStrictEqual([
+      { kind: "dashboard-theme", reason: "malformed", count: 4 },
+    ]);
+  });
+
   it("refuses an entry whose counts are not counts", () => {
     const parsed = parseCatalogueIndex(
       document([
@@ -168,6 +227,20 @@ describe("parseCatalogueIndex", () => {
     ]);
   });
 
+  it("refuses an entry whose fields are inherited rather than its own", () => {
+    // What a bare `record[key]` read would accept: no own field at all, every
+    // field resolved off the prototype. `JSON.parse` cannot produce one, which is
+    // why the reader's check has to be constructed here.
+    const inherited = Object.create(entry());
+
+    const parsed = parseCatalogueIndex(document([inherited]), KNOWN);
+
+    expect(parsed.entries).toStrictEqual([]);
+    expect(parsed.refused).toStrictEqual([
+      { kind: undefined, reason: "malformed", count: 1 },
+    ]);
+  });
+
   it("reads an entry whose id is __proto__", () => {
     const parsed = parseCatalogueIndex(
       document([entry({ id: "__proto__" })]),
@@ -179,8 +252,9 @@ describe("parseCatalogueIndex", () => {
   });
 
   it("carries the entry's fields through unchanged", () => {
+    const derived = facets({ width: 1920 });
     const parsed = parseCatalogueIndex(
-      document([entry({ facets: { tags: ["ops"], width: 1920 } })]),
+      document([entry({ facets: derived })]),
       KNOWN,
     );
 
@@ -195,7 +269,7 @@ describe("parseCatalogueIndex", () => {
       favorites: 3,
       packageUrl: "https://example.test/acme-ops.json",
       thumbnail: "themes/acme-ops.png",
-      facets: { tags: ["ops"], width: 1920 },
+      facets: derived,
     });
   });
 });

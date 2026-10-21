@@ -53,8 +53,9 @@ type Reason = CatalogueRefusal["reason"];
  * item skips it and says so rather than failing the listing — but the two
  * refusals are different facts: an entry of a kind this build does not ship is
  * named by its identifier, while an entry that is not the shape has none to name.
- * The document itself is one thing, so a document that is not the shape is one
- * refusal rather than one per entry it claimed.
+ * A document that is not the shape is one row, counted in the entries it dropped
+ * rather than per entry it claimed: the sentence the surface prints is about
+ * items.
  */
 export function parseCatalogueIndex(
   value: unknown,
@@ -63,12 +64,12 @@ export function parseCatalogueIndex(
   readonly entries: readonly CatalogueEntry[];
   readonly refused: readonly CatalogueRefusal[];
 } {
-  if (!isObject(value)) return refusedDocument();
+  if (!isObject(value)) return refusedDocument(1);
 
   const generatedAt = stringField(value, "generatedAt");
   const raw = field(value, "entries");
   if (generatedAt === undefined || !Array.isArray(raw)) {
-    return refusedDocument();
+    return refusedDocument(Array.isArray(raw) ? raw.length : 1);
   }
 
   const entries: CatalogueEntry[] = [];
@@ -102,13 +103,17 @@ export function parseCatalogueIndex(
   return { entries, refused: [...rows.values()] };
 }
 
-function refusedDocument(): {
+/** A document nothing can be read from, counted in the entries it dropped: a bad
+ *  `generatedAt` over three items is three unreadable items, not one. A document
+ *  with no list to count counts one, and an empty list counts zero because it
+ *  dropped nothing. */
+function refusedDocument(count: number): {
   readonly entries: readonly CatalogueEntry[];
   readonly refused: readonly CatalogueRefusal[];
 } {
   return {
     entries: [],
-    refused: [{ kind: undefined, reason: "malformed", count: 1 }],
+    refused: [{ kind: undefined, reason: "malformed", count }],
   };
 }
 
@@ -159,17 +164,37 @@ function asEntry(value: unknown): CatalogueEntry | undefined {
   };
 }
 
-/** The producer's derived record, handed on as it was written.
+/**
+ * The producer's derived record, handed on as it was written.
  *
- * Checked as a non-null, non-array object and never re-derived: `facetRecordOf`
- * here would be a second owner of one fact, and this layer has no envelope to
- * derive it from anyway.
+ * Shallow is the *check*, not the depth of the record: `FacetRecord` has eight
+ * required fields, and a gallery that reads `tags` off a record missing it dies
+ * outside this refusal mechanism, so the fields every reader touches are held
+ * for presence and kind. Nothing is derived or recomputed — `facetRecordOf` here
+ * would be a second owner of one fact — and the values stay the producer's.
  */
 function facetsOf(entry: Record<string, unknown>): FacetRecord | undefined {
   const value = field(entry, "facets");
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as FacetRecord)
-    : undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const facets = value as Record<string, unknown>;
+  const complete =
+    typeof field(facets, "colourMode") === "string" &&
+    typeof field(facets, "orientation") === "string" &&
+    typeof field(facets, "aspect") === "string" &&
+    Array.isArray(field(facets, "sensors")) &&
+    Array.isArray(field(facets, "tags")) &&
+    isDimension(field(facets, "width")) &&
+    isDimension(field(facets, "height"));
+
+  return complete ? (value as FacetRecord) : undefined;
+}
+
+/** An artboard size: zero and `NaN` are not dimensions. */
+function isDimension(value: unknown): boolean {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 /** A field's own value, never an inherited one: a `__proto__` key in the document
