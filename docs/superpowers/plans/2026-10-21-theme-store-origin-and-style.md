@@ -75,7 +75,8 @@ The spec's landing order names A–G. **A landed 2026-10-20. C–F cannot start*
 - Create: `docs/decisions/0085-aspect-buckets-are-data-beside-the-rule.md` (claims `src/web/packages/renderer-core/src/theme/facet-record.ts`)
 - Modify: `src/web/packages/renderer-core/src/theme/facet-record.ts`
 - Modify: `src/web/packages/renderer-core/src/theme/facet-record.test.ts`
-- Modify: `src/web/packages/editor/src/store-mode/region.tsx` (the aspect labels)
+- Modify: `src/web/packages/editor/src/store-mode/local-source.ts` (`SHAPE_RATIO`, which rejected `19.5:9`)
+- Modify: `src/web/packages/editor/src/store-mode/local-source.test.ts`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -101,12 +102,12 @@ it("refuses to file a 2.35:1 artboard under its nearest bucket", () => {
   expect(facetRecordOf(envelopeWithBoard(2350, 1000)).aspect).toBe("other");
 });
 
-it("has exactly one entry for every published bucket", () => {
-  // Extendability is the requirement, not the two values: a bucket added to the
-  // union without its entry (or with a second one) must fail here.
-  expect(ASPECT_BUCKETS.map((e) => e.bucket).sort()).toEqual(
-    (["1:1", "4:3", "3:2", "16:10", "16:9", "19.5:9", "21:9", "32:9", "4:1"] as const).slice().sort(),
-  );
+it("orders the buckets by ascending ratio", () => {
+  // A misplaced entry steals its neighbour's artboards, because the reader takes
+  // the first bucket within tolerance. A *missing* entry is a compile error (the
+  // type-level table in Step 3); this is the *misordered* one.
+  const ratios = ASPECT_BUCKETS.map((e) => e.ratio);
+  expect(ratios).toEqual([...ratios].sort((a, b) => a - b));
 });
 ```
 
@@ -119,9 +120,11 @@ it("has exactly one entry for every published bucket", () => {
 
 - [ ] **Step 3: Add the members and the entries.** `"19.5:9"` sits between `"16:9"` and `"21:9"`; `"4:1"` after `"32:9"`. `aspectOf` returns the **first** bucket within `ASPECT_TOLERANCE`, so the array stays in ascending ratio order — a bucket declared out of order silently steals its neighbour's artboards.
 
-  Leave `ASPECT_TOLERANCE` at `0.005`. It is bounded by the tightest half-gap between adjacent buckets, which is still 3:2 against 16:10 at 3.2%: 19.5:9's neighbours are 16:9 (0.7% away in log space) and 21:9 (3.7%), both wider than the tolerance needs.
+  Add a type-level table beside the array — `{ … } satisfies Record<Exclude<AspectBucket, "other">, true>` — so a bucket added to the union without its entry fails `tsc`. A runtime equality against a hardcoded list cannot do that: both sides move together and a missing entry passes.
 
-- [ ] **Step 4: Add the two labels** in `region.tsx`'s aspect option builder, keyed by the same bucket id, in the same order.
+  Leave `ASPECT_TOLERANCE` at `0.005`. The bound that actually binds is **2.35:1, which sits 0.712% from 21:9** — anything at or above `0.0071` starts filing it under 21:9. The tightest half-gap between adjacent buckets is still 3.2% (3:2 against 16:10), which is a true but different statement: with 19.5:9 added, its neighbour half-gaps are 9.89% and 3.70%.
+
+- [ ] **Step 4: Widen `SHAPE_RATIO`** in `src/web/packages/editor/src/store-mode/local-source.ts` to `/^\d+(?:\.\d+)?:\d+$/`, and add a matcher case asserting that selecting `19.5:9` returns a 2340×1080 theme. There is no aspect label table to extend: the row builds each option from `item.facets.aspect` itself, so a new bucket is a new value it reads. Without the widening the new bucket is offered and matches nothing.
 
 - [ ] **Step 5: Run the focused tests.**
 
@@ -485,7 +488,7 @@ Not a code task. Run at the end of the plan, before the final whole-branch revie
   npm run build
   npx playwright test tests/e2e/<the store spec> --workers=1
   ```
-  Two claims need eyes: the *Installed* badge on a cell whose theme has a seeded `theme-origins.json`, and a Style facet narrowing the grid. Visible behaviour needs rendered inspection, not a geometry assertion.
+  Three claims need eyes: the *Installed* badge on a cell whose theme has a seeded `theme-origins.json`, a Style facet narrowing the grid, and the Shape popover offering `19.5:9` for a theme whose artboard is that ratio — the last one because Task 1 proved the bucket at record and matcher level only. Visible behaviour needs rendered inspection, not a geometry assertion.
 
 - [ ] **Step 3: Prove the red direction of each new guard**, then restore with `cmp`, not `git checkout` — a Windows text-mode write leaves CRLF and git normalises it, so only `cmp` shows the file is back. Break each guard, watch its test fail, restore, `cmp`, re-run.
 
