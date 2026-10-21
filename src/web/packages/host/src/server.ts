@@ -284,6 +284,23 @@ function isLoopbackRemote(address: string | undefined): boolean {
   return normalized === "127.0.0.1" || normalized === "::1";
 }
 
+/** The hostname an authority (`host:port`, `[::1]:port`) names, or nothing. */
+function hostnameOf(authority: string): string | undefined {
+  try {
+    return new URL(`http://${authority}`).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
+/** A name that can only mean this machine. */
+function isLoopbackName(name: string | undefined): boolean {
+  if (name === undefined) return false;
+  return (
+    name === "localhost" || name === "[::1]" || /^127(\.\d{1,3}){3}$/.test(name)
+  );
+}
+
 /**
  * Whether a request states an origin other than its own.
  *
@@ -292,13 +309,19 @@ function isLoopbackRemote(address: string | undefined): boolean {
  * fact that page cannot forge. An absent `Origin` stays allowed: curl, the
  * host's tooling and a same-origin navigation all send none, and every other
  * route treats that as the same-origin case.
+ *
+ * **The `Host` must also be a loopback name.** Origin and Host agreeing is not
+ * enough on its own: a page served from `http://evil.example:5173`, whose name
+ * later resolves to 127.0.0.1, sends both headers naming itself and would
+ * otherwise pass. Only this route makes that check — it is the one that
+ * overwrites a library copy, so it is the one worth the alias it costs.
  */
 function isForeignOrigin(request: http.IncomingMessage): boolean {
+  const host = request.headers.host;
+  if (host === undefined || !isLoopbackName(hostnameOf(host))) return true;
+
   const origin = request.headers.origin;
   if (origin === undefined) return false;
-
-  const host = request.headers.host;
-  if (host === undefined) return true;
 
   try {
     return new URL(origin).host.toLowerCase() !== host.toLowerCase();

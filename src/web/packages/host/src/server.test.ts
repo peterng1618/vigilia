@@ -219,7 +219,9 @@ function request(
 
     req.method = method;
     req.url = urlPath;
-    req.headers = { ...(options?.headers ?? {}) };
+    // A real client always sends `Host`; the fake socket has none, so the loopback
+    // default is the harness's, not a claim about the product.
+    req.headers = { host: "127.0.0.1:5173", ...(options?.headers ?? {}) };
     if (body !== undefined) {
       req.headers["content-length"] = String(
         typeof body === "string" ? Buffer.byteLength(body) : body.byteLength,
@@ -1337,6 +1339,50 @@ describe("Host theme routes", () => {
         await request(installing.server, "GET", "/api/themes")
       ).json() as { themes: readonly unknown[] };
       expect(listing.themes).toEqual([]);
+    });
+
+    it("refuses a name that only resolves to this machine", async () => {
+      // DNS rebinding: the page and the request both name the attacker's host,
+      // so Origin and Host agree and only the name itself gives it away.
+      let downloads = 0;
+      answer = () => {
+        downloads += 1;
+        return new Response(
+          new Uint8Array(
+            packageBytes(createValidPackage("family-room", "Family Room")),
+          ),
+        );
+      };
+
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        installBody(),
+        {
+          headers: {
+            origin: "http://evil.example:5173",
+            host: "evil.example:5173",
+          },
+        },
+      );
+
+      expect(res.status).toBe(403);
+      expect(downloads, "a rebound name reached the download").toBe(0);
+    });
+
+    it("refuses a request that states no host at all", async () => {
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        installBody(),
+        {
+          headers: { host: "" },
+        },
+      );
+
+      expect(res.status).toBe(403);
     });
 
     it("accepts a POST whose origin is the request's own host", async () => {

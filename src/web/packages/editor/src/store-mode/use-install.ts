@@ -5,7 +5,7 @@ import type { ItemSource, StoreItem } from "./local-source.js";
 
 /**
  * The online half's Install and Update, and the sentence a screen reader hears
- * for its last refusal.
+ * for the last install: a refusal's reason, or the news that it finished.
  *
  * It lives beside the region rather than in it because the region is a surface
  * at its line stop, and this is a fact the surface renders: the in-flight set,

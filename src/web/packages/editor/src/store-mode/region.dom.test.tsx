@@ -2285,6 +2285,17 @@ it("says the theme was installed when the re-list fails", async () => {
     installReadings(),
     "the cell moved to installed without a listing to read it from",
   ).toEqual([["office-wall", "install"]]);
+  // The success sentence was already set when the re-list failed; the refusal
+  // has to outrank it, or a screen reader hears "installed" and nothing else.
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-install-announcement]",
+      ),
+      "the live region",
+    ).textContent,
+    "the live region announced the success and not the failed re-list",
+  ).toBe(uiCopy.store.install.notRefreshed);
 });
 
 /**

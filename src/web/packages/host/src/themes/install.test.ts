@@ -11,7 +11,11 @@ import {
   createThemeOriginsStore,
   type ThemeOriginsStore,
 } from "../settings/theme-origins.js";
-import { type InstallRequest, installCatalogueItem } from "./install.js";
+import {
+  INSTALL_REFUSALS,
+  type InstallRequest,
+  installCatalogueItem,
+} from "./install.js";
 import {
   createThemeStore,
   type ThemeContent,
@@ -162,10 +166,42 @@ describe("installCatalogueItem", () => {
 
     expect(result.ok).toBe(false);
     expect(result.ok ? "" : result.stage).toBe("store");
+    // The sentence says what happened here, not what happened to a kept copy.
+    expect(result.ok ? "" : result.message).toBe(INSTALL_REFUSALS.rolledBack);
     // The write is undone, so the next press replaces nothing and mints no
     // `living-room-2` beside a copy the catalogue could not see.
     expect(await store.list()).toEqual([]);
     expect(await origins.read()).toEqual({});
+  });
+
+  it("says the copy is left behind when the rollback itself fails", async () => {
+    const refusing: ThemeOriginsStore = {
+      ...origins,
+      write: async () => {
+        throw new Error("the settings directory is read-only");
+      },
+    };
+    const stuck: ThemeStore = {
+      ...store,
+      remove: async () => {
+        throw new Error("the library is read-only");
+      },
+    };
+
+    const result = await installCatalogueItem(REQUEST, {
+      store: stuck,
+      origins: refusing,
+      fetch: serving(packageOf("living-room", "Living Room")),
+    });
+
+    expect(result.ok ? "" : result.message).toBe(
+      INSTALL_REFUSALS.rolledBackFailed,
+    );
+    // The sentence warns about a theme that is really there, so the listing is
+    // what a person sees when they go to delete it.
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "living-room",
+    ]);
   });
 
   it("keeps the person's copy when an update's origin could not be written", async () => {
@@ -192,6 +228,7 @@ describe("installCatalogueItem", () => {
 
     expect(result.ok).toBe(false);
     expect(result.ok ? "" : result.stage).toBe("store");
+    expect(result.ok ? "" : result.message).toBe(INSTALL_REFUSALS.updateKept);
     // The previous copy is still the person's, so it stays; only its origin did
     // not move, and the next press is still an update of this copy.
     expect((await store.list()).map((entry) => entry.id)).toEqual([

@@ -55,10 +55,21 @@ export type InstallResult =
     };
 
 /** The host failed to record where the copy came from. It has no copy table of
- *  its own to compose from, so the sentence lives beside the other install
- *  refusals rather than in the editor's `ui-copy.ts`, which a host cannot read. */
-const ORIGIN_NOT_RECORDED =
-  "The theme was installed, but this PC could not record where it came from.";
+ *  its own to compose from, so the sentences live beside the other install
+ *  refusals rather than in the editor's `ui-copy.ts`, which a host cannot read.
+ *
+ *  Three, not one, because the paths end differently: an update keeps the copy
+ *  the person already had, and a fresh import is removed — unless the removal
+ *  fails too, which leaves a theme the catalogue cannot see and a person who
+ *  needs telling which one. */
+export const INSTALL_REFUSALS = {
+  updateKept:
+    "This PC could not record where that theme came from; your copy is unchanged.",
+  rolledBack:
+    "This PC could not record where that theme came from, so it was not kept.",
+  rolledBackFailed:
+    "This PC could not record where that theme came from, and could not remove it; delete it from Your themes before installing again.",
+} as const;
 
 /**
  * The catalogue's `kind` names a shape this build runs; the library has no such
@@ -153,8 +164,24 @@ async function installOnce(
       installedAt: new Date().toISOString(),
     });
   } catch {
-    if (!replacing) await options.store.remove(imported.id).catch(() => false);
-    return { ok: false, stage: "store", message: ORIGIN_NOT_RECORDED };
+    if (replacing) {
+      return {
+        ok: false,
+        stage: "store",
+        message: INSTALL_REFUSALS.updateKept,
+      };
+    }
+    const removed = await options.store.remove(imported.id).then(
+      () => true,
+      () => false,
+    );
+    return {
+      ok: false,
+      stage: "store",
+      message: removed
+        ? INSTALL_REFUSALS.rolledBack
+        : INSTALL_REFUSALS.rolledBackFailed,
+    };
   }
   await forgetOtherCopies(request.catalogueId, imported.id, options.origins);
   return { ok: true, id: imported.id };
