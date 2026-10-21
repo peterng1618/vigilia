@@ -24,6 +24,7 @@ import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { Gallery } from "./gallery.js";
+import type { InstallControl } from "./install-item.js";
 import { installStateOf } from "./install-state.js";
 import type { CatalogueFacts, StoreItem } from "./local-source.js";
 
@@ -169,6 +170,14 @@ function catalogue(overrides: Partial<CatalogueFacts> = {}): CatalogueFacts {
   };
 }
 
+/** The install control a gallery mount that is not about installing hands
+ *  down: nothing in flight and no refusal to draw. */
+const NO_INSTALL: InstallControl = {
+  onInstall: () => undefined,
+  installingId: undefined,
+  refusal: undefined,
+};
+
 /** The cell's picture box, which every case here reads through. */
 function pictureBox(container: HTMLElement): HTMLElement {
   return must(
@@ -190,6 +199,7 @@ it("draws the theme's own ground when it has no thumbnail", async () => {
       items={[item({ thumbnailUrl: undefined })]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -215,6 +225,7 @@ it("drops the picture a theme does not have, leaving its ground", async () => {
       items={[item()]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
   const box = pictureBox(container);
@@ -242,6 +253,7 @@ it("draws a picture again when the address changes after a failure", async () =>
       items={[item()]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
   const box = pictureBox(container);
@@ -256,6 +268,7 @@ it("draws a picture again when the address changes after a failure", async () =>
       items={[item({ thumbnailUrl: "/api/themes/living-room/thumbnail-2" })]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -277,6 +290,7 @@ it("asks for the picture again only when the theme itself changed", async () => 
       items={[item()]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
   const box = pictureBox(container);
@@ -293,6 +307,7 @@ it("asks for the picture again only when the theme itself changed", async () => 
       items={[item({ name: "Living room (renamed)" })]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
   expect(
@@ -312,6 +327,7 @@ it("asks for the picture again only when the theme itself changed", async () => 
       items={[item({ updatedAt: "2026-10-16T11:02:00.000Z" })]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -344,6 +360,7 @@ it("draws its four actions, runs the two it has and disables the two it has not"
       items={[item()]}
       onAction={onAction}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -414,7 +431,12 @@ it("opens the item from the cell's own surface rather than from an action", asyn
   const onAction = vi.fn();
   const onOpenItem = vi.fn();
   const container = await mount(
-    <Gallery items={[item()]} onAction={onAction} onOpenItem={onOpenItem} />,
+    <Gallery
+      items={[item()]}
+      onAction={onAction}
+      onOpenItem={onOpenItem}
+      install={NO_INSTALL}
+    />,
   );
 
   const surface = must(
@@ -458,6 +480,7 @@ it("writes the byline the drawing draws, and says so when there is no author", a
       ]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -496,6 +519,7 @@ it("badges the cell whose theme came from the store, and leaves the other unbadg
       ]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -549,6 +573,7 @@ it("draws the kind badge and the download count for an online item, and neither 
       ]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -627,6 +652,7 @@ it("prints the identifier of a kind this build does not know", async () => {
       ]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -696,6 +722,7 @@ it("marks an installed online item without drawing a control", async () => {
       items={[item({ catalogue: catalogue({ installedVersion: "1.4.0" }) })]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={NO_INSTALL}
     />,
   );
 
@@ -730,12 +757,15 @@ it("marks an installed online item without drawing a control", async () => {
 });
 
 /**
- * **Install and Update are disabled with their reason** (R164), because phase D
- * owns the install and neither is an act this build can run. The reason is the
- * copy table's standing one, in the tree beside the control rather than in a
- * tooltip: a disabled control is one the pointer cannot ask.
+ * **Install and Update are controls that report a press** — phase D owns the
+ * install, so the cell hands the item up rather than deciding anything here.
+ *
+ * The three states are read together: `installed` is the mark the drawing draws
+ * and reports nothing, and the other two carry the drawing's words and reach
+ * `onInstall` with the item whose control was pressed.
  */
-it("draws Install and Update disabled, with their reason", async () => {
+it("reports a press on Install and Update, and draws no control for an installed item", async () => {
+  const onInstall = vi.fn();
   const container = await mount(
     <Gallery
       items={[
@@ -745,37 +775,51 @@ it("draws Install and Update disabled, with their reason", async () => {
           name: "Office wall",
           catalogue: catalogue({ installedVersion: "1.3.0" }),
         }),
+        item({
+          id: "living-room-2",
+          name: "Living room 2",
+          catalogue: catalogue({ installedVersion: "1.4.0" }),
+        }),
       ]}
       onAction={() => undefined}
       onOpenItem={() => undefined}
+      install={{ ...NO_INSTALL, onInstall }}
     />,
   );
 
   const expected = [
-    { id: "living-room", state: "install", word: "Install" },
-    { id: "office-wall", state: "update", word: "Update" },
+    { id: "living-room", state: "install" },
+    { id: "office-wall", state: "update" },
   ] as const;
 
-  for (const { id, state, word } of expected) {
+  for (const { id, state } of expected) {
     const button = must(
       container.querySelector<HTMLButtonElement>(
         `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-install="${state}"]`,
       ),
       `${state} action`,
     );
-    expect(button.tagName, `${word} is not a control`).toBe("BUTTON");
-    expect(button.textContent, `${word} is not the drawing's word`).toBe(
+    expect(button.tagName, `${state} is not a control`).toBe("BUTTON");
+    expect(button.textContent, `${state} is not the drawing's word`).toBe(
       uiCopy.store.cell.installStates[state],
     );
-    expect(button.disabled, `${word} is drawn live`).toBe(true);
-    const describedBy = button.getAttribute("aria-describedby") ?? "";
-    expect(describedBy, `${word} states no reason`).not.toBe("");
-    expect(
-      must(
-        container.querySelector<HTMLElement>(`#${describedBy}`),
-        `${word}'s reason`,
-      ).textContent,
-      `${word}'s reason is not the copy table's`,
-    ).toBe(uiCopy.store.cell.unavailable);
+    expect(button.disabled, `${state} is drawn live`).toBe(false);
+    await act(async () => button.click());
   }
+
+  expect(
+    onInstall.mock.calls.map(([pressed]) => pressed.id),
+    "the two controls did not report the item that was pressed",
+  ).toEqual(["living-room", "office-wall"]);
+
+  expect(
+    container.querySelector('[data-vigilia-store-cell-install="installed"]'),
+    "the installed item draws no mark",
+  ).not.toBeNull();
+  expect(
+    container.querySelector(
+      '[data-vigilia-store-cell="living-room-2"] button[data-vigilia-store-cell-install]',
+    ),
+    "an installed item drew an install control it has no action for",
+  ).toBeNull();
 });

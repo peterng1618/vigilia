@@ -1502,6 +1502,88 @@ function fixtureWithOrigin(
   return { ...fixtureEntry(theme), origin };
 }
 
+/** One library entry the host holds after an install: what the re-list reads,
+ *  and what makes the online item read *Installed*. */
+function installedCopy(id: string): ThemeLibraryEntry {
+  return fixtureWithOrigin(
+    {
+      id: `${id}-copy`,
+      name: `Catalogue ${id}`,
+      version: "1.3.0",
+      ground: DARK_GROUND,
+    },
+    id,
+    "1.3.0",
+  );
+}
+
+/** A host serving the catalogue and the install route, and recording every
+ *  install body it received. `hold` keeps the install open so a case can press
+ *  twice while the first attempt is in flight; `refusal` answers it with the
+ *  host's own sentence. */
+function installHost(options: {
+  readonly entries: readonly unknown[];
+  readonly refusal?: string;
+  readonly hold?: boolean;
+  readonly onInstall?: () => void;
+}): {
+  readonly fetch: typeof fetch;
+  readonly posts: unknown[];
+  readonly resolve: () => void;
+} {
+  const posts: unknown[] = [];
+  let release: (() => void) | undefined;
+  const fetchStub = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input) !== "/api/themes/install") {
+      return new Response(
+        JSON.stringify({
+          generatedAt: "2026-10-21T00:00:00.000Z",
+          entries: options.entries,
+        }),
+        { status: 200 },
+      );
+    }
+    posts.push(JSON.parse(String(init?.body)));
+    options.onInstall?.();
+    if (options.hold === true) {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    }
+    return options.refusal === undefined
+      ? new Response(JSON.stringify({ ok: true, id: "installed" }), {
+          status: 200,
+        })
+      : new Response(options.refusal, { status: 400 });
+  }) as unknown as typeof fetch;
+
+  return {
+    fetch: fetchStub,
+    posts,
+    resolve: () => release?.(),
+  };
+}
+
+/** The cell's install control, or the failure that it drew none. */
+function installControl(id: string): HTMLButtonElement {
+  return must(
+    document.body.querySelector<HTMLButtonElement>(
+      `[data-vigilia-store-cell="${id}"] button[data-vigilia-store-cell-install]`,
+    ),
+    `${id}'s install control`,
+  );
+}
+
+/** Lets a press's promise chain — the post, the re-list and the state it sets —
+ *  finish before the assertion reads the grid. */
+async function settle(): Promise<void> {
+  for (let round = 0; round < 4; round += 1) {
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
+
 /** The online half chosen, and the catalogue read settled before the assertion
  *  reads the grid. */
 async function showOnline(): Promise<void> {
@@ -1795,4 +1877,155 @@ it("leaves the online half unset when the catalogue read failed", async () => {
     document.body.querySelector("[data-vigilia-store-refusal]"),
     "a failed read claimed something it could not read",
   ).toBeNull();
+});
+
+/**
+ * **The cell's Install posts the item once and the cell then reads
+ * Installed** — from the listing, not from a flag kept in the cell: the host
+ * records the origin, the region re-lists, and the join answers the word.
+ */
+it("installs from the cell's Install and re-lists so the cell reads Installed", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    onInstall: () => library.push(installedCopy("office-wall")),
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await settle();
+
+  expect(
+    host.posts,
+    "the cell's Install did not post the item once, with the four facts the host needs",
+  ).toEqual([
+    {
+      packageUrl: "https://store.test/office-wall.zip",
+      catalogueId: "office-wall",
+      version: "1.3.0",
+      kind: "dashboard-theme",
+    },
+  ]);
+  expect(
+    installReadings(),
+    "the cell still offers Install after the re-list gained the copy",
+  ).toEqual([["office-wall", "installed"]]);
+  expect(
+    document.body.querySelector('[data-vigilia-store-cell="office-wall"]')
+      ?.textContent,
+    "the cell does not read the listing's own word after the install",
+  ).toContain(uiCopy.store.cell.installStates.installed);
+});
+
+/**
+ * **The modal's Install is the same route as the cell's**: one post, and the
+ * modal then reads *Installed* from the re-listed item it was opened on rather
+ * than from a state it kept.
+ */
+it("installs from the modal's Install and the modal then reads Installed", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    onInstall: () => library.push(installedCopy("office-wall")),
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+  await pressCellSurface("office-wall");
+
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        '[data-vigilia-store-item-install="install"]',
+      ),
+      "the modal's install control",
+    ).click(),
+  );
+  await settle();
+
+  expect(
+    host.posts,
+    "the modal's Install did not post the item once",
+  ).toHaveLength(1);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        '[data-vigilia-store-item-install="installed"]',
+      ),
+      "the modal's installed mark",
+    ).tagName,
+    "the modal still draws a control after the copy was installed",
+  ).toBe("SPAN");
+});
+
+/**
+ * **A press in flight disables the control**, so a second press cannot post a
+ * second install: the one attempt is still open when the second press lands.
+ */
+it("posts nothing on a second press while the first is in flight", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    hold: true,
+    onInstall: () => library.push(installedCopy("office-wall")),
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  expect(
+    installControl("office-wall").disabled,
+    "the control is still pressable while its first press is in flight",
+  ).toBe(true);
+
+  await act(async () => installControl("office-wall").click());
+  expect(
+    host.posts,
+    "a second press while the first is in flight posted a second install",
+  ).toHaveLength(1);
+
+  await act(async () => host.resolve());
+  await settle();
+  expect(host.posts, "the settled install posted more than once").toHaveLength(
+    1,
+  );
+});
+
+/**
+ * **A refusal changes nothing but its reason**: the control returns to the
+ * state the listing gave it, and the host's own sentence is stated beside it
+ * rather than swallowed.
+ */
+it("leaves the control as it was and states the host's reason when the install is refused", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    refusal: "That package is not a theme.",
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await settle();
+
+  expect(installReadings(), "a refused install moved the item's state").toEqual(
+    [["office-wall", "install"]],
+  );
+  expect(
+    installControl("office-wall").disabled,
+    "a refused install left the control dead",
+  ).toBe(false);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-install-refusal]",
+      ),
+      "the refusal reason",
+    ).textContent,
+    "the refusal is not the host's own sentence",
+  ).toBe("That package is not a theme.");
 });

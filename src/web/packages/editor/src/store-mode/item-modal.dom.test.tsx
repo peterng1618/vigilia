@@ -20,9 +20,10 @@
 import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, expect, it } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
+import type { InstallControl } from "./install-item.js";
 import { DARK_GROUND, type FixtureTheme, fixtureItem } from "./item-fixture.js";
 import { ItemModal } from "./item-modal.js";
 import type { CatalogueFacts, StoreItem } from "./local-source.js";
@@ -142,6 +143,7 @@ function modal(theme: FixtureTheme): ReactElement {
 function modalFor(
   item: StoreItem,
   vocabulary: readonly string[] = [],
+  install: InstallControl = NO_INSTALL,
 ): ReactElement {
   return (
     <ItemModal
@@ -149,9 +151,18 @@ function modalFor(
       vocabulary={vocabulary}
       onClose={() => {}}
       onAction={() => {}}
+      install={install}
     />
   );
 }
+
+/** The install control a case that is not about installing hands down. A press
+ *  is in flight for nobody, and nothing was refused. */
+const NO_INSTALL: InstallControl = {
+  onInstall: () => undefined,
+  installingId: undefined,
+  refusal: undefined,
+};
 
 /** Where a theme came from, as the host records it: the catalogue item and the
  *  version this copy was installed from. */
@@ -482,6 +493,7 @@ it("runs the footer's two actions and disables the two it has not", async () => 
       vocabulary={[]}
       onClose={() => {}}
       onAction={(action) => ran.push(action)}
+      install={NO_INSTALL}
     />,
   );
 
@@ -584,6 +596,7 @@ it("reports its own close rather than closing itself", async () => {
       vocabulary={[]}
       onClose={() => closed.push(1)}
       onAction={() => {}}
+      install={NO_INSTALL}
     />,
   );
 
@@ -651,18 +664,22 @@ it("joins the catalogue's counts to the caption's right-hand end", async () => {
  * Installed is a **mark**, not a control, because there is nothing to do; the
  * check carries the rationed accent and the word stays `--muted`, exactly as
  * the cell draws it (`store-browse.html:128-131`). Install and Update are
- * **disabled with their reason** (R164), in the tree beside the control rather
- * than in a tooltip, because a disabled control is one the pointer cannot ask.
+ * controls that report the item they press, and the region owns what that
+ * press does.
  */
 it("carries the cell's install reading in the footer instead of the library's four", async () => {
+  const onInstall = vi.fn();
   const cases = [
     { state: "installed", catalogue: { installedVersion: "1.4.0" } },
     { state: "install", catalogue: {} },
     { state: "update", catalogue: { installedVersion: "1.3.0" } },
   ] as const;
 
+  let pressed = 0;
   for (const sample of cases) {
-    await mount(modalFor(onlineItem(sample.catalogue)));
+    await mount(
+      modalFor(onlineItem(sample.catalogue), [], { ...NO_INSTALL, onInstall }),
+    );
     const word = uiCopy.store.cell.installStates[sample.state];
 
     expect(
@@ -709,17 +726,65 @@ it("carries the cell's install reading in the footer instead of the library's fo
       ),
       `${sample.state} action`,
     );
-    expect(button.disabled, `${word} is drawn live`).toBe(true);
-    const describedBy = button.getAttribute("aria-describedby") ?? "";
-    expect(describedBy, `${word} states no reason`).not.toBe("");
-    expect(
-      must(
-        document.body.querySelector<HTMLElement>(`#${describedBy}`),
-        `${word}'s reason`,
-      ).textContent,
-      `${word}'s reason is not the copy table's`,
-    ).toBe(uiCopy.store.cell.unavailable);
+    expect(button.disabled, `${word} is drawn dead`).toBe(false);
+    await act(async () => button.click());
+    pressed += 1;
   }
+
+  expect(
+    onInstall.mock.calls.map(([itemPressed]) => itemPressed.id),
+    "the two controls did not report the item that was pressed",
+  ).toEqual(Array.from({ length: pressed }, () => "kitchen-strip"));
+});
+
+/**
+ * **A press in flight disables the footer's control**, and a refusal is the
+ * host's own sentence beside it: the person who pressed reads why it did not
+ * land rather than a control that snapped back with nothing said.
+ */
+it("disables the footer's install in flight and states the host's refusal", async () => {
+  const pressed = onlineItem();
+
+  await mount(
+    modalFor(pressed, [], {
+      ...NO_INSTALL,
+      installingId: pressed.id,
+    }),
+  );
+  expect(
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        '[data-vigilia-store-item-install="install"]',
+      ),
+      "install action",
+    ).disabled,
+    "an install in flight is pressable a second time",
+  ).toBe(true);
+
+  await mount(
+    modalFor(pressed, [], {
+      ...NO_INSTALL,
+      refusal: { id: pressed.id, message: "That package is not a theme." },
+    }),
+  );
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-item-install-refusal]",
+      ),
+      "install refusal",
+    ).textContent,
+    "the footer does not state the host's own reason",
+  ).toBe("That package is not a theme.");
+  expect(
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        '[data-vigilia-store-item-install="install"]',
+      ),
+      "install action after a refusal",
+    ).disabled,
+    "a refused install left the control dead",
+  ).toBe(false);
 });
 
 /** **A library item's footer is untouched** — the four actions, in the

@@ -7,6 +7,7 @@ import { CHECK_GLYPH, CLOSE_GLYPH, Glyph } from "../editor-shell/icons.js";
 import { destructiveMarker } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import { CELL_ACTION_REASONS } from "./cell-actions.js";
+import type { InstallControl } from "./install-item.js";
 import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
 
@@ -389,15 +390,16 @@ function Caption(props: {
  * **Installed is a mark, not a control** — there is nothing to do, and the
  * drawing draws no button there. The check carries the rationed accent and the
  * word stays `--muted`, as the cell draws it (`store-browse.html:128-131`).
- * **Install and Update are disabled with their reason** (R164): phase D owns
- * the install, so neither is an act this build runs, and the reason travels in
- * the tree beside the control because a disabled control is one the pointer
- * cannot ask.
+ * **Install and Update post the item to the host**, disable themselves while the
+ * press is in flight, and state the host's refusal beside the control where the
+ * person who pressed can read it.
  */
 function InstallFooter(props: {
+  readonly item: StoreItem;
   readonly state: Exclude<InstallState, "none">;
+  readonly install: InstallControl;
 }): React.JSX.Element {
-  const { state } = props;
+  const { item, state, install } = props;
 
   if (state === "installed") {
     return (
@@ -413,21 +415,31 @@ function InstallFooter(props: {
     );
   }
 
+  const busy = install.installingId === item.id;
+  const refusal =
+    install.refusal?.id === item.id ? install.refusal.message : undefined;
   return (
     <Fragment>
       <button
         type="button"
         id="vigilia-store-item-install"
         data-vigilia-store-item-install={state}
-        disabled
-        aria-describedby="vigilia-store-item-install-reason"
+        disabled={busy}
+        aria-busy={busy}
+        onClick={() => install.onInstall(item)}
         className={FOOTER_BUTTON}
       >
         {uiCopy.store.cell.installStates[state]}
       </button>
-      <span id="vigilia-store-item-install-reason" className="sr-only">
-        {uiCopy.store.cell.unavailable}
-      </span>
+      {refusal === undefined ? null : (
+        <span
+          data-vigilia-store-item-install-refusal=""
+          role="status"
+          className="max-w-[40ch] text-xs text-warn"
+        >
+          {refusal}
+        </span>
+      )}
     </Fragment>
   );
 }
@@ -443,8 +455,11 @@ export function ItemModal(props: {
    *  the same four, so it reports them the same way rather than owning a second
    *  answer to "what does this action mean". */
   readonly onAction: (action: CellAction, id: string) => void;
+  /** The online half's install press, owned by the region because the re-listing
+   *  it causes is the listing's fact rather than any surface's. */
+  readonly install: InstallControl;
 }): React.JSX.Element {
-  const { item, onClose, onAction } = props;
+  const { item, onClose, onAction, install } = props;
   // The one owner of the decision (`install-state.ts`): this surface draws what
   // it answers and never compares a version itself.
   const installState = installStateOf(item);
@@ -525,7 +540,11 @@ export function ItemModal(props: {
                 control that cannot run, which the shell's own selector holds.
                 An online item draws its install reading instead. */}
             {installState !== "none" ? (
-              <InstallFooter state={installState} />
+              <InstallFooter
+                item={item}
+                state={installState}
+                install={install}
+              />
             ) : (
               FOOTER_ACTIONS.map((action) => {
                 const reason = CELL_ACTION_REASONS[action];

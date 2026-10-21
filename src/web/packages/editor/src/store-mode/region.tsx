@@ -29,6 +29,7 @@ import {
   toggleFacet,
 } from "./facet-row.js";
 import { Gallery } from "./gallery.js";
+import { type InstallControl, installItem } from "./install-item.js";
 import { ItemModal } from "./item-modal.js";
 import {
   type CellAction,
@@ -488,6 +489,16 @@ function StoreRegion(props: {
   const [items, setItems] = useState<readonly StoreItem[] | undefined>(
     undefined,
   );
+  /** The item an install press is in flight for, if any: its control disables
+   *  itself on this, so a double press cannot post twice. */
+  const [installingId, setInstallingId] = useState<string | undefined>(
+    undefined,
+  );
+  /** The host's own reason for a refused install, and the item it names:
+   *  another item's refusal is not drawn beside this one's control. */
+  const [installRefusal, setInstallRefusal] = useState<
+    { readonly id: string; readonly message: string } | undefined
+  >(undefined);
 
   // One client and one source for the life of the region: a client built per
   // render would be a new one every time, and the listing would reach a host the
@@ -597,6 +608,38 @@ function StoreRegion(props: {
     }
   };
 
+  /**
+   * The online half's Install and Update.
+   *
+   * **Success re-lists the library, and nothing here writes "installed".** The
+   * host records the origin and the join reads it, so the listing is the one
+   * source of what is installed; a flag set here would be a second answer that
+   * a restart or a second window could not see.
+   *
+   * **A refusal changes nothing but its reason**: the control's state stays the
+   * listing's, and the host's own sentence is kept for the item it names.
+   */
+  const onInstall = (item: StoreItem): void => {
+    if (installingId === item.id) return;
+    setInstallingId(item.id);
+    setInstallRefusal(undefined);
+    void installItem(item).then(async (outcome) => {
+      if (outcome.ok) {
+        const listed = await source.list().catch(() => undefined);
+        if (listed !== undefined) setItems(listed);
+      } else {
+        setInstallRefusal({ id: item.id, message: outcome.message });
+      }
+      setInstallingId(undefined);
+    });
+  };
+
+  const install: InstallControl = {
+    onInstall,
+    installingId,
+    refusal: installRefusal,
+  };
+
   /** **A changed filter returns to page one** (R123). A narrower result would
    *  otherwise leave the viewer on a page that no longer exists, which reads as
    *  an empty store — and it is the filter's rule rather than the pager's, so
@@ -680,6 +723,7 @@ function StoreRegion(props: {
             items={body.items}
             onAction={onAction}
             onOpenItem={setOpenId}
+            install={install}
           />
         ) : null}
       </div>
@@ -723,6 +767,7 @@ function StoreRegion(props: {
           vocabulary={settledTags(listed ?? [], openItem)}
           onClose={() => setOpenId(undefined)}
           onAction={onAction}
+          install={install}
         />
       )}
 

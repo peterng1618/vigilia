@@ -13,6 +13,7 @@ import {
 } from "../editor-shell/icons.js";
 import { uiCopy } from "../ui-copy.js";
 import { CELL_ACTION_REASONS } from "./cell-actions.js";
+import type { InstallControl } from "./install-item.js";
 import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
 
@@ -74,6 +75,9 @@ export function Gallery(props: {
   /** Opens one item's own surface — the modal — which is the cell's own
    *  gesture rather than one of its four actions. */
   readonly onOpenItem: (id: string) => void;
+  /** The online half's install press, which the region owns because the
+   *  re-listing it causes is the listing's fact rather than a cell's. */
+  readonly install: InstallControl;
 }): React.JSX.Element {
   return (
     <ul
@@ -86,6 +90,7 @@ export function Gallery(props: {
           item={item}
           onAction={props.onAction}
           onOpenItem={props.onOpenItem}
+          install={props.install}
         />
       ))}
     </ul>
@@ -105,13 +110,16 @@ function Cell(props: {
   readonly item: StoreItem;
   readonly onAction: (action: CellAction, id: string) => void;
   readonly onOpenItem: (id: string) => void;
+  readonly install: InstallControl;
 }): React.JSX.Element {
-  const { item, onAction, onOpenItem } = props;
+  const { item, onAction, onOpenItem, install } = props;
   const catalogue = item.catalogue;
   // The left slot branches on whether the item has catalogue facts; the action
   // slot on the install decision. They read different facts on purpose: a
   // library item has no install state, and an online item always has a left slot.
   const installState = installStateOf(item);
+  const refusal =
+    install.refusal?.id === item.id ? install.refusal.message : undefined;
 
   return (
     <li
@@ -247,9 +255,21 @@ function Cell(props: {
               );
             })
           ) : (
-            <InstallAction itemId={item.id} state={installState} />
+            <InstallAction item={item} state={installState} install={install} />
           )}
         </span>
+        {/* **The host's reason, beside the control it refused** — in the cell
+            rather than in the band, because a sentence is not a 26px reading
+            and truncating it would swallow the part that says what to fix. */}
+        {refusal === undefined ? null : (
+          <span
+            data-vigilia-store-cell-install-refusal=""
+            role="status"
+            className="block pt-[var(--space-6)] text-2xs text-warn"
+          >
+            {refusal}
+          </span>
+        )}
       </div>
     </li>
   );
@@ -260,16 +280,17 @@ function Cell(props: {
  * library's four actions (`store-browse.html`).
  *
  * **Installed is a mark, not a control** — there is nothing to do, and the
- * drawing draws no button there. **Install and Update are disabled with their
- * reason** (R164): phase D owns the install, so neither is an act this build
- * runs, and the reason travels in the tree beside the control because a
- * disabled control is one the pointer cannot ask.
+ * drawing draws no button there. **Install and Update post the item to the
+ * host**, and the control disables itself while that press is in flight so a
+ * double press cannot install twice; the region re-lists on success, so the
+ * word this draws comes from the listing rather than from a copy kept here.
  */
 function InstallAction(props: {
-  readonly itemId: string;
+  readonly item: StoreItem;
   readonly state: Exclude<InstallState, "none">;
+  readonly install: InstallControl;
 }): React.JSX.Element {
-  const { itemId, state } = props;
+  const { item, state, install } = props;
 
   if (state === "installed") {
     return (
@@ -287,27 +308,23 @@ function InstallAction(props: {
     );
   }
 
-  const controlId = `vigilia-store-cell-${itemId}-install`;
+  const busy = install.installingId === item.id;
   return (
-    <Fragment>
-      <button
-        type="button"
-        id={controlId}
-        data-vigilia-store-cell-install={state}
-        disabled
-        aria-describedby={`${controlId}-reason`}
-        className="inline-flex flex-none items-center gap-[var(--space-6)] rounded-md border border-edge bg-panel px-[var(--space-10)] py-[var(--space-4)] text-xs text-text disabled:text-faint"
-      >
-        <Glyph
-          icon={state === "install" ? INSTALL_ITEM_GLYPH : EXPORT_ITEM_GLYPH}
-          size={13}
-        />
-        {uiCopy.store.cell.installStates[state]}
-      </button>
-      <span id={`${controlId}-reason`} className="sr-only">
-        {uiCopy.store.cell.unavailable}
-      </span>
-    </Fragment>
+    <button
+      type="button"
+      id={`vigilia-store-cell-${item.id}-install`}
+      data-vigilia-store-cell-install={state}
+      disabled={busy}
+      aria-busy={busy}
+      onClick={() => install.onInstall(item)}
+      className="inline-flex flex-none items-center gap-[var(--space-6)] rounded-md border border-edge bg-panel px-[var(--space-10)] py-[var(--space-4)] text-xs text-text disabled:text-faint"
+    >
+      <Glyph
+        icon={state === "install" ? INSTALL_ITEM_GLYPH : EXPORT_ITEM_GLYPH}
+        size={13}
+      />
+      {uiCopy.store.cell.installStates[state]}
+    </button>
   );
 }
 
