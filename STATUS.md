@@ -9,7 +9,7 @@ Give every display client its own theme, then let a person browse and install th
 
 ## Active work
 
-- **No implementation plan is active.** `2026-10-21-theme-store-install.md` closed 2026-10-22 and is in `docs/superpowers/plans/archive/`; its ledger is `.superpowers/sdd/2026-10-21-theme-store-install/progress.md`.
+- **Active plan:** `docs/superpowers/plans/2026-10-22-theme-store-submission.md` — the store spec's **phase E** (submission), ten tasks; `docs/decisions/0090` claims the paths it writes, and phase D's ledger is `.superpowers/sdd/2026-10-21-theme-store-install/progress.md`.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts until the user picks one.
 - **The catalogue repo `peterng1618/vigilia-store` is live**: the Action pins app commit `2c7e97b8e63bf78e2fddd65f814fc4b2f61b48ca`, and the raw `index.json` answers `200` with zero entries because items arrive with E.
 - **Decision `0088`**: the editor's browser fetches that index from the raw path, which revalidates conditionally for free against a server measured to answer `304`.
