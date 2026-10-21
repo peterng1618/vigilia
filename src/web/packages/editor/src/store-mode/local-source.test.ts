@@ -220,6 +220,15 @@ describe("narrowing by a facet", () => {
     });
   }
 
+  /** A theme carrying these style tags, which is the one thing a style case
+   *  states — and it keeps the document's binding of one sensor. */
+  function tagged(...tags: readonly string[]): FabricThemeEnvelope {
+    return envelope({
+      id: `tagged-${tags.join("-")}`,
+      metadata: { name: "Tagged", themeLanguage: "en", tags },
+    });
+  }
+
   it("asks a theme to read every sensor the selection names", async () => {
     const cpuOnly = await item(binding("cpu.load"));
     const both = await item(binding("cpu.load", "gpu.load"));
@@ -370,15 +379,58 @@ describe("narrowing by a facet", () => {
     expect(matchesFacets(dark, { "colour-mode": ["light"] })).toBe(false);
   });
 
-  it("matches nothing on a facet no theme carries a value for", async () => {
-    // Style's values arrive with the tags in phase G. Until then a selection in
-    // it matches nothing rather than everything, which is what an empty set
-    // means — and an unknown facet id has no rule at all.
+  it("matches a style selection as OR, unlike sensors and shape", async () => {
+    const retro = await item(tagged("retro"));
+    const neon = await item(tagged("neon-2"));
+    const both = await item(tagged("retro", "neon-2"));
+
+    // Two values in one facet are alternatives, so a theme carrying either
+    // answers — where the same pair on Sensors asks for both, which is the one
+    // exception the spec calls out. `retro` binds `cpu.load` alone.
+    expect(matchesFacets(retro, { style: ["retro", "neon-2"] })).toBe(true);
+    expect(matchesFacets(neon, { style: ["retro", "neon-2"] })).toBe(true);
+    expect(matchesFacets(both, { style: ["retro", "neon-2"] })).toBe(true);
+    expect(matchesFacets(retro, { style: ["neon-2"] })).toBe(false);
+    expect(
+      matchesFacets(retro, { sensors: ["cpu.load", "gpu.load"] }),
+      "a style selection reads like a sensor selection",
+    ).toBe(false);
+  });
+
+  it("matches no style selection when the theme carries none", async () => {
+    const bare = await item(
+      envelope({
+        id: "bare",
+        metadata: { name: "Bare", themeLanguage: "en" },
+      }),
+    );
+
+    // Nothing is asked of a facet nobody chose in, so an empty answer is
+    // excluded by a style selection and kept by no selection at all.
+    expect(bare.facets.tags).toEqual([]);
+    expect(matchesFacets(bare, { style: ["retro"] })).toBe(false);
+    expect(matchesFacets(bare, { style: [] })).toBe(true);
+    expect(matchesFacets(bare, {})).toBe(true);
+  });
+
+  it("reads a tag that names a prototype member as the tag it is", async () => {
+    // `constructor` is well-formed under the format's own rule, so it is a tag a
+    // theme may carry — and one the facet must answer as itself rather than as
+    // the member of `Object.prototype` that shares its name.
+    const one = await item(tagged("constructor"));
+
+    expect(one.facets.tags).toEqual(["constructor"]);
+    expect(matchesFacets(one, { style: ["constructor"] })).toBe(true);
+    expect(matchesFacets(one, { style: ["toString"] })).toBe(false);
+  });
+
+  it("matches nothing on a facet id this build does not know", async () => {
+    // No rule at all, rather than a rule that matches everything: a filter over
+    // a vocabulary nothing populates cannot be satisfied.
     const one = await item(envelope());
 
-    expect(matchesFacets(one, { style: ["calm"] })).toBe(false);
     expect(matchesFacets(one, { nonsense: ["calm"] })).toBe(false);
-    expect(matchesFacets(one, { style: [] })).toBe(true);
+    expect(matchesFacets(one, { nonsense: [] })).toBe(true);
   });
 });
 

@@ -175,6 +175,23 @@ describe("facetRecordOf", () => {
     expect(ratios).toEqual([...ratios].sort((a, b) => a - b));
   });
 
+  it("reads a document's tags into its record", () => {
+    // A repeat is well-formed — the format's rule is shape and count — and the
+    // facet is where it collapses, so the record holds the value once.
+    expect(
+      facetRecordOf(
+        envelope({ metadata: { tags: ["retro", "neon-2", "retro"] } }),
+      ).tags,
+    ).toEqual(["retro", "neon-2"]);
+  });
+
+  it("reads a document with no tags as an empty list", () => {
+    // Required and possibly empty: every record was derived from a document, so
+    // there is always an answer, and the facet draws no value for the empty one.
+    expect(facetRecordOf(envelope()).tags).toEqual([]);
+    expect(facetRecordOf(envelope({ metadata: {} })).tags).toEqual([]);
+  });
+
   it("carries the author and the exact pixel size the document declares", () => {
     expect(facetRecordOf(envelope()).author).toBeUndefined();
     expect(

@@ -479,6 +479,7 @@ describe("Host theme routes", () => {
           author: undefined,
           colourMode: "unclassified",
           sensors: [],
+          tags: [],
           orientation: "landscape",
           aspect: "16:9",
           width: 1920,

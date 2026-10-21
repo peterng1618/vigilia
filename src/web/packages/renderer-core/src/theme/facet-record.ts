@@ -41,6 +41,10 @@ export interface FacetRecord {
      *  does not know, which has no family to be filed under. */
     readonly family: SemanticFamily | undefined;
   }[];
+  /** The style tags the document declares, deduplicated and in its own order.
+   *  Required and possibly empty: every record is derived from a document, so
+   *  there is always an answer (docs/decisions/0087). */
+  readonly tags: readonly string[];
   readonly orientation: Orientation;
   readonly aspect: AspectBucket;
   readonly width: number;
@@ -112,6 +116,7 @@ export function facetRecordOf(envelope: FabricThemeEnvelope): FacetRecord {
     author: envelope.metadata?.author,
     colourMode: colourModeOf(envelope),
     sensors: sensorsOf(envelope),
+    tags: tagsOf(envelope),
     orientation: orientationOf(
       envelope.artboard.width,
       envelope.artboard.height,
@@ -120,6 +125,13 @@ export function facetRecordOf(envelope: FabricThemeEnvelope): FacetRecord {
     width: envelope.artboard.width,
     height: envelope.artboard.height,
   };
+}
+
+/** The document's own tags, deduplicated in the order they were written: a
+    repeat is well-formed (the format's rule is shape and count), so the collapse
+    belongs to the facet that would otherwise offer one value twice. */
+function tagsOf(envelope: FabricThemeEnvelope): string[] {
+  return [...new Set(envelope.metadata?.tags ?? [])];
 }
 
 /**

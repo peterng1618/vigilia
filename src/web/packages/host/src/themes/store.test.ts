@@ -343,6 +343,7 @@ describe("ThemeStore", () => {
       author: "Ada",
       colourMode: "dark",
       sensors: [],
+      tags: [],
       orientation: "portrait",
       // The published bucket for both orientations, which is what a 9:16
       // artboard reads as.
@@ -356,6 +357,7 @@ describe("ThemeStore", () => {
       author: "Ada",
       colourMode: "unclassified",
       sensors: [],
+      tags: [],
       orientation: "landscape",
       aspect: "16:9",
       width: 1920,

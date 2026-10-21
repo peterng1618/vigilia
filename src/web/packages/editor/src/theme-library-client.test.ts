@@ -22,6 +22,7 @@ const FACETS: FacetRecord = {
   author: "Ada",
   colourMode: "dark",
   sensors: [],
+  tags: [],
   orientation: "landscape",
   aspect: "16:9",
   width: 1920,

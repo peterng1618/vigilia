@@ -196,9 +196,10 @@ const FACET_MATCHERS: Readonly<Record<string, FacetMatcher>> = {
       item.facets.sensors.some((sensor) => sensor.key === value),
     ),
   shape: matchesShape,
-  // No values this phase: the record carries no tags until phase G, so a style
-  // selection matches nothing rather than everything.
-  style: () => false,
+  // The ordinary reading, like author and colour mode: two tags are alternatives
+  // a theme answers with either one, where the same two on Sensors ask for both.
+  style: (item, chosen) =>
+    chosen.some((value) => item.facets.tags.includes(value)),
 };
 
 /**
@@ -212,8 +213,7 @@ const FACET_MATCHERS: Readonly<Record<string, FacetMatcher>> = {
  * treats it as matching.
  *
  * A facet id this build does not know has no rule, so a selection in one matches
- * nothing. That is the same answer `style` gives, and for the same reason: a
- * filter over a vocabulary nothing populates cannot be satisfied.
+ * nothing: a filter nothing can answer is not a filter that matches everything.
  */
 export function matchesFacets(
   item: StoreItem,

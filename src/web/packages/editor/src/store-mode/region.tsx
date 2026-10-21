@@ -278,6 +278,20 @@ function shapeOptions(items: readonly StoreItem[]): readonly FacetOption[] {
 }
 
 /**
+ * The style tags the items carry, **each offered however few themes carry it**:
+ * a tag one theme declares is still a value, where a size one theme declares is
+ * not — a theme nothing can filter to is the theme the facet exists to find.
+ *
+ * `optionsFrom` counts them in a `Map`, which is what makes a tag that names a
+ * prototype member (`constructor` is well-formed) read as itself.
+ */
+function styleOptions(items: readonly StoreItem[]): readonly FacetOption[] {
+  return optionsFrom(items, (item) =>
+    item.facets.tags.map((tag) => ({ id: tag, name: tag })),
+  );
+}
+
+/**
  * The sizes the facet offers: **those more than one theme declares**, largest
  * first. A size exactly one theme declares is a theme wearing a filter's
  * clothes, and every other size is reachable under `Other` (spec, "Finding a
@@ -313,10 +327,9 @@ function sizeOptions(items: readonly StoreItem[]): readonly FacetOption[] {
 /**
  * The five facets, in the row's order, with the values the items carry.
  *
- * **Style has no values this phase** and its facet is drawn with none: the
- * record carries no tags until phase G, and `matchesFacets` answers "nothing"
- * for a style selection — so a Style chip would empty the list rather than
- * narrow it.
+ * **Style's values are the documents' own tags**, and its facet is drawn with
+ * none where no theme declares one — which is what a library of untagged themes
+ * looks like rather than a facet that cannot filter.
  */
 function storeFacets(items: readonly StoreItem[]): readonly Facet[] {
   return [
@@ -350,7 +363,7 @@ function storeFacets(items: readonly StoreItem[]): readonly Facet[] {
     {
       id: "style",
       name: uiCopy.store.facets.style,
-      options: [],
+      options: styleOptions(items),
     },
   ];
 }
