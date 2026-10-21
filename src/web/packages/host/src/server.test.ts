@@ -1028,6 +1028,16 @@ describe("Host theme routes", () => {
       );
     }
 
+    /** A theme whose id names a member of `Object.prototype`, which is legal. */
+    async function savePrototypeTheme(): Promise<void> {
+      await request(
+        listing.server,
+        "PUT",
+        "/api/themes/__proto__",
+        themeBody(createValidPackage("__proto__", "Prototype")),
+      );
+    }
+
     it("joins an origin onto the theme it names", async () => {
       await saveTheme();
       await origins.write("living-room", origin);
@@ -1035,7 +1045,7 @@ describe("Host theme routes", () => {
       expect((await listedEntry("living-room")).origin).toEqual(origin);
     });
 
-    it("leaves a theme with no origin with no key at all", async () => {
+    it("leaves a theme with no origin with no origin key, not an empty one", async () => {
       await saveTheme();
 
       // What this guards is the shape, not the absence: the listing goes over
@@ -1051,16 +1061,21 @@ describe("Host theme routes", () => {
       // prototype chain: an id that happens to name a member of
       // `Object.prototype` must not be answered with that member as its origin,
       // which is what `{"id":"__proto__","origin":{}}` on the wire would be.
-      await request(
-        listing.server,
-        "PUT",
-        "/api/themes/__proto__",
-        themeBody(createValidPackage("__proto__", "Prototype")),
-      );
+      await savePrototypeTheme();
 
       expect(Object.hasOwn(await listedEntry("__proto__"), "origin")).toBe(
         false,
       );
+    });
+
+    it("carries the origin for a theme id that names a prototype member", async () => {
+      // The other direction, and the reason the rule is an own-property check
+      // rather than a refusal of the id: this theme *has* an origin, and a
+      // lookup that answered only for ids no prototype names would drop it.
+      await savePrototypeTheme();
+      await origins.write("__proto__", origin);
+
+      expect((await listedEntry("__proto__")).origin).toEqual(origin);
     });
 
     it("does not fail the listing when an origin names a theme that is gone", async () => {
