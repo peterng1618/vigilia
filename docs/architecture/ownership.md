@@ -167,6 +167,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Theme semantic types/validation | `renderer-core/src/theme/` |
 | **What a theme *is*, read off its envelope rather than authored into it** — the colour-mode vocabulary, the aspect buckets and their tolerance, and the sensor readings and style tags the store's five facets filter on; the one layer the host's listing and a catalogue Action can both import | `renderer-core/src/theme/facet-record.ts` |
 | **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `renderer-core/src/theme/` (`paletteTokenOptions`) |
+| **The catalogue index's wire shape** — what `index.json` carries, what a malformed entry refuses with, the authored `item.json` header the generator reads, and the one kind identifier the generator and the editor's client must agree on | `renderer-core/src/theme/catalogue-index.ts` |
 | The authored `vigiliaGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
 | Theme ZIP layout and bounds | `theme-package/src/` |
 | Published development schema | `schema/theme-document.schema.json` |
@@ -217,6 +218,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Device assignment and display names | `host/src/settings/devices.ts` |
 | A theme's own device answers | `host/src/settings/theme-settings.ts` |
 | Which catalogue item and version a theme was installed from, and whether it is still held | `host/src/settings/theme-origins.ts` |
+| **The catalogue's generated index** — reading a catalogue directory, refusing an item by its own field name, and writing `index.json` deterministically | `host/src/catalogue/` |
 | Which device slots a theme needs | `host/src/settings/required-devices.ts` |
 | Which host an app folder is — the id a display re-finds it by, and the name it shows | `host/src/settings/host-record.ts` |
 | Whether a host already holds an app folder | `host/src/settings/host-lock.ts` |
