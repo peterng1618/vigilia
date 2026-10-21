@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vigilia editor — asset finder entry</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0e12; font: 12px system-ui, -apple-system, 'Segoe UI', sans-serif; }
+</style>
+</head>
+<body>
+<!-- Where the finder is opened from. Two entry points, one surface: the Add
+     pane's file section, beside the import drop target, because that is where a
+     person already looks for something to add; and the File menu, because the
+     finder is reachable without a document focus.
+
+     The Add pane keeps its drop target. The finder is for assets that are not
+     on disk yet; a file that is on disk still goes through the same import the
+     finder's own import uses, so both routes end in the asset manager. -->
+<div style="--bg:#0b0e12;--hdr:#12161c;--panel:#12161c;--panel2:#171c23;--edge:#242b34;--edge2:#1b212a;
+            --text:#e8ecf3;--muted:#8a97ab;--faint:#5a6675;--accent:#72e0c0;--hot:#ff7e6e;--warn:#f3aa64;
+            width:1180px;height:900px;position:relative;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column">
+
+  <div style="height:42px;flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--hdr);border-bottom:1px solid var(--edge)">
+    <span style="font:700 13px/1.3 system-ui;letter-spacing:.02em">Vigilia</span>
+    <span style="width:1px;height:18px;background:var(--edge);margin:0 4px"></span>
+    <span style="display:flex;gap:4px;padding:4px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px">
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;background:var(--bg)">Editor</span>
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">Themes</span>
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">This PC</span>
+    </span>
+    <span style="flex:1"></span>
+
+    <!-- the open File menu: Find assets sits above Import, because both add
+         something and the finder is the one that fetches -->
+    <span style="position:relative">
+      <span style="display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--edge);border-radius:5px;background:var(--panel2);font:500 12px/1.4 system-ui">File</span>
+      <span style="position:absolute;top:30px;left:0;width:236px;display:flex;flex-direction:column;padding:5px;background:var(--hdr);border:1px solid var(--edge);border-radius:7px;box-shadow:0 16px 40px rgba(0,0,0,.6);z-index:3">
+        <span style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:5px">
+          <span style="flex:1;font:400 12px/1.4 system-ui">New document</span>
+          <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">Ctrl N</span>
+        </span>
+        <span style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:5px">
+          <span style="flex:1;font:400 12px/1.4 system-ui">Open…</span>
+          <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">Ctrl O</span>
+        </span>
+        <span style="height:1px;background:var(--edge);margin:4px 2px"></span>
+        <span style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:5px;background:#1d2733;box-shadow:inset 2px 0 0 var(--accent)">
+          <span style="flex:1;font:500 12px/1.4 system-ui">Find assets…</span>
+          <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">Ctrl Shift A</span>
+        </span>
+        <span style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:5px">
+          <span style="flex:1;font:400 12px/1.4 system-ui">Import file…</span>
+        </span>
+        <span style="height:1px;background:var(--edge);margin:4px 2px"></span>
+        <span style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:5px">
+          <span style="flex:1;font:400 12px/1.4 system-ui">Export document…</span>
+        </span>
+      </span>
+    </span>
+    <span style="font:400 12px/1.4 system-ui;color:var(--muted)">Edit&nbsp;&nbsp;View</span>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <div style="width:56px;flex:0 0 auto;border-right:1px solid var(--edge);background:var(--hdr);padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <span style="width:34px;height:30px;border:1px solid var(--edge);border-radius:6px;background:var(--panel2)"></span>
+      <span style="width:34px;height:30px;border:1px solid var(--edge);border-radius:6px;background:var(--panel2)"></span>
+      <span style="width:34px;height:30px;border:1px solid var(--edge);border-radius:6px;background:var(--panel2)"></span>
+    </div>
+
+    <div style="width:264px;flex:0 0 auto;border-right:1px solid var(--edge);background:var(--panel);display:flex;flex-direction:column">
+      <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--edge)">
+        <span style="padding:4px 10px;border-radius:5px;background:var(--panel2);font:500 11px/1.4 system-ui">Add</span>
+        <span style="padding:4px 10px;border-radius:5px;font:500 11px/1.4 system-ui;color:var(--muted)">Layers</span>
+        <span style="padding:4px 10px;border-radius:5px;font:500 11px/1.4 system-ui;color:var(--muted)">Data</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;padding:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font:500 12px/1.4 system-ui">File</span>
+          <span style="flex:1"></span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;border:1px dashed var(--edge);border-radius:8px;background:var(--panel2)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.7"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span style="font:400 11px/1.4 system-ui;color:var(--muted)">Drop an image, video or font</span>
+        </div>
+
+        <!-- the entry point, in the pane, at the same weight as the drop target -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 10px;border:1px solid var(--accent);border-radius:7px;background:rgba(114,224,192,.09)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
+          <span style="font:600 12px/1.4 system-ui;color:var(--accent)">Find assets…</span>
+        </div>
+
+        <span style="font:400 10px/1.4 system-ui;color:var(--faint)">Fonts, icons and Wallpaper Engine themes open in one finder.</span>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#10151c,#0d1117)">
+      <span style="width:420px;height:240px;border:1px solid var(--edge);border-radius:8px;background:linear-gradient(135deg,#16202b,#101820 60%,#0e141b)"></span>
+    </div>
+
+    <div style="width:272px;flex:0 0 auto;border-left:1px solid var(--edge);background:var(--panel)"></div>
+  </div>
+</div>
+</body>
+</html>

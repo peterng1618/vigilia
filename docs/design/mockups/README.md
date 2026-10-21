@@ -1,16 +1,16 @@
 # Design mockups
 
 **`current/` is the target.** The editor is being rebuilt towards the original
-visual direction as those eleven files draw it, and they are **checked at every
-plan gate** — not read once and remembered. The three originals below them are
-the record of the first cut, not the target.
+visual direction as those seventeen files draw it, and they are **checked at
+every plan gate** — not read once and remembered. The three originals below them
+are the record of the first cut, not the target.
 
 ## The current set — `current/`
 
 The editor as it renders today, in the original visual direction, with nothing
 in any file addressed to the reader: no heading, no caption, no note about what
 is illustrative. One file per view, so no file needs a specimen — and the
-settings modal's three panels are three of those files, because each panel is
+settings modal's four panels are four of those files, because each panel is
 drawn once, where a second copy of the frame in one file would make a
 `[style*="…"]` selector address more than one element and the reader refuses to
 guess between them.
@@ -28,6 +28,14 @@ guess between them.
 | [`current/store-facets.html`](current/store-facets.html) | The one new control on its own: a facet button open, drawn on Shape because that is the facet with three groups — orientation, aspect ratio and pixel size, each with its counts, each group's values summing to the catalogue, and `Other` carrying the long tail |
 | [`current/store-detail.html`](current/store-detail.html) | The item's own surface, drawn as the viewer it is: one modal for every kind, 960px wide with a fixed preview stage the theme is contained in, no title bar, and the sensors, the shape and the tags as three pill groups rather than a row per fact |
 | [`current/host-settings.html`](current/host-settings.html) | The shell in its This PC mode: the displays and the theme each shows, the device groups and their names, the display settings, and one theme's unanswered question |
+| [`current/asset-finder-entry.html`](current/asset-finder-entry.html) | Where the finder opens from: the Add pane's file section beside its drop target, and the File menu with Find assets above Import |
+| [`current/asset-finder-fonts.html`](current/asset-finder-fonts.html) | The finder on Fonts, inset 24px inside the editor: the derived tab row, the trio list and the faces with their specimens, weights and licences |
+| [`current/asset-finder-icons.html`](current/asset-finder-icons.html) | The finder on Icons with two sources enabled: the chip row with per-source counts, the mixed round-robin grid with a source badge on every tile, Load more, and the import action |
+| [`current/asset-finder-wallpaper-engine.html`](current/asset-finder-wallpaper-engine.html) | The finder on Wallpaper Engine, the one fixed local source: the install it read, the still-at-rest filter, and rows whose action is the outcome — Convert to image, Convert to video, or no conversion for a preset |
+| [`current/asset-finder-scene-export.html`](current/asset-finder-scene-export.html) | The conversion sheet over the finder: the PNG/MP4 choice with the video values to type into Wallpaper Engine, the five steps with Delete the dynamic text left open, the export watcher's two folders, and the credit |
+| [`current/asset-finder-sources.html`](current/asset-finder-sources.html) | The sources panel: one group per category, each source's locality and licence, an enabled one, one needing a key, one disabled, and Wallpaper Engine fixed at Always on |
+| [`current/asset-finder-states.html`](current/asset-finder-states.html) | The finder with nothing to show: a failed source kept as a struck chip and named in a banner, a source needing a key, and the empty grid that offers only the controls that change the answer |
+| [`current/settings-connections.html`](current/settings-connections.html) | The settings modal's fourth panel: stored keys shown as a four-character hint with Verify and Clear, an unconnected source's Save, and a rejection that names the status it saw |
 
 ## The originals — the record
 
@@ -62,7 +70,10 @@ Open them in a browser. Each is self-contained — one file, no build, no server
   `ui-copy.ts` or the component that owns the words, so the drawing and the
   editor cannot disagree about what a surface is called. The originals' copy is
   illustrative — it predates the surfaces it draws — and the copy rules are
-  DESIGN.md §9.
+  DESIGN.md §9. **The asset finder and Connections drawings are the exception
+  until their plan lands**: no component owns those words yet, so their copy is
+  the spec's wording and moves into `ui-copy.ts` with the implementation, which
+  is what a gate compares the built surface against.
 
 ## Reviewed reference contract — 2026-10-08
 

@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vigilia assets — fonts</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0e12; font: 12px system-ui, -apple-system, 'Segoe UI', sans-serif; }
+</style>
+</head>
+<body>
+<!-- The assets surface in its Fonts tab, opened over the editor and inset so the
+     shell still says where it is. The surface is one modal for every category:
+     the tab row is derived from the source registry, and a category with no
+     source has no tab — which is why there is no Images or Video tab here.
+
+     Fonts has a single source, so there is no source chip row: the curated
+     catalogue is the category. The rows are trios, because a trio is what the
+     type presets consume; the face list is the second half of the same view and
+     carries the specimen, the weight and the licence. Counts and weights are
+     mono. The footer names the action — Apply to preset — rather than Import. -->
+<div style="--bg:#0b0e12;--hdr:#12161c;--panel:#12161c;--panel2:#171c23;--edge:#242b34;--edge2:#1b212a;
+            --text:#e8ecf3;--muted:#8a97ab;--faint:#5a6675;--accent:#72e0c0;--hot:#ff7e6e;--warn:#f3aa64;
+            width:1180px;height:900px;position:relative;overflow:hidden;background:var(--bg);color:var(--text)">
+
+  <!-- the shell, dimmed and inert behind the modal -->
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;opacity:.55">
+    <div style="height:42px;flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--hdr);border-bottom:1px solid var(--edge)">
+      <span style="font:700 13px/1.3 system-ui;letter-spacing:.02em">Vigilia</span>
+      <span style="width:1px;height:18px;background:var(--edge);margin:0 4px"></span>
+      <span style="display:flex;gap:4px;padding:4px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px">
+        <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;background:var(--bg)">Editor</span>
+        <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">Themes</span>
+        <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">This PC</span>
+      </span>
+      <span style="flex:1"></span>
+      <span style="font:400 12px/1.4 system-ui;color:var(--muted)">File&nbsp;&nbsp;Edit&nbsp;&nbsp;View</span>
+    </div>
+    <div style="flex:1;display:flex;min-height:0">
+      <div style="width:56px;flex:0 0 auto;border-right:1px solid var(--edge);background:var(--hdr)"></div>
+      <div style="width:248px;flex:0 0 auto;border-right:1px solid var(--edge);background:var(--panel)"></div>
+      <div style="flex:1;background:linear-gradient(160deg,#10151c,#0d1117)"></div>
+      <div style="width:272px;flex:0 0 auto;border-left:1px solid var(--edge);background:var(--panel)"></div>
+    </div>
+  </div>
+
+  <!-- the modal: inset 24px on every side, the whole editor minus its frame -->
+  <div style="position:absolute;inset:24px;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--edge);border-radius:12px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.6)">
+
+    <div style="flex:0 0 auto;display:flex;align-items:center;gap:18px;padding:0 20px;height:52px;border-bottom:1px solid var(--edge);background:var(--hdr)">
+      <span style="display:flex;gap:18px">
+        <span style="display:flex;flex-direction:column;gap:6px;padding-top:6px">
+          <span style="font:500 13px/1.3 system-ui">Fonts</span>
+          <span style="height:2px;background:var(--accent)"></span>
+        </span>
+        <span style="display:flex;flex-direction:column;gap:6px;padding-top:6px">
+          <span style="font:500 13px/1.3 system-ui;color:var(--muted)">Icons</span>
+          <span style="height:2px;background:transparent"></span>
+        </span>
+        <span style="display:flex;flex-direction:column;gap:6px;padding-top:6px">
+          <span style="font:500 13px/1.3 system-ui;color:var(--muted)">Wallpaper Engine</span>
+          <span style="height:2px;background:transparent"></span>
+        </span>
+      </span>
+      <span style="flex:1"></span>
+      <span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--edge);border-radius:6px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </span>
+    </div>
+
+    <div style="flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:14px 20px">
+      <span style="display:flex;align-items:center;gap:8px;flex:1;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:6px 10px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
+        <span style="font:400 12px/1.4 system-ui">geometric sans</span>
+        <span style="flex:1"></span>
+        <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">24 matches</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:6px 10px">
+        <span style="font:400 12px/1.4 system-ui;color:var(--muted)">Mood</span>
+        <span style="font:400 12px/1.4 system-ui;color:var(--faint)">Calm</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--edge);border-radius:6px;padding:6px 10px">
+        <span style="font:500 12px/1.4 system-ui">A–Z</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:6px 10px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8"><path d="m12 3 2.6 5.9 6.4.6-4.8 4.2 1.4 6.3L12 16.8 6.4 20l1.4-6.3L3 9.5l6.4-.6z"/></svg>
+        <span style="font:400 12px/1.4 system-ui;color:var(--muted)">Favourites</span>
+      </span>
+    </div>
+
+    <div style="flex:1;min-height:0;display:flex;border-top:1px solid var(--edge)">
+
+      <div style="width:352px;flex:0 0 auto;display:flex;flex-direction:column;border-right:1px solid var(--edge);overflow:auto">
+        <!-- chosen trio: a raised background, never an accent fill -->
+        <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;background:var(--panel2);border-bottom:1px solid var(--edge)">
+          <span style="display:flex;align-items:center;gap:8px">
+            <span style="font:500 13px/1.3 system-ui">Yaldevi · Libre Franklin</span>
+            <span style="flex:1"></span>
+            <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">3 faces</span>
+          </span>
+          <span style="font:400 11px/1.4 system-ui;color:var(--muted)">A geometric display face over a calm grotesque body, with a mono for figures.</span>
+          <span style="display:flex;gap:6px;margin-top:2px">
+            <span style="padding:2px 7px;border:1px solid var(--edge);border-radius:999px;font:400 10px/1.5 system-ui;color:var(--muted)">editorial</span>
+            <span style="padding:2px 7px;border:1px solid var(--edge);border-radius:999px;font:400 10px/1.5 system-ui;color:var(--muted)">calm</span>
+            <span style="padding:2px 7px;border:1px solid var(--edge);border-radius:999px;font:400 10px/1.5 system-ui;color:var(--muted)">dashboard</span>
+          </span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-bottom:1px solid var(--edge)">
+          <span style="display:flex;align-items:center;gap:8px">
+            <span style="font:500 13px/1.3 system-ui;color:var(--text)">Instrument · Inter</span>
+            <span style="flex:1"></span>
+            <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">3 faces</span>
+          </span>
+          <span style="font:400 11px/1.4 system-ui;color:var(--muted)">A condensed technical display over Inter, for dense readouts.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-bottom:1px solid var(--edge)">
+          <span style="display:flex;align-items:center;gap:8px">
+            <span style="font:500 13px/1.3 system-ui">Fraunces · Source Sans</span>
+            <span style="flex:1"></span>
+            <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">3 faces</span>
+          </span>
+          <span style="font:400 11px/1.4 system-ui;color:var(--muted)">A high-contrast serif over a workmanlike sans.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-bottom:1px solid var(--edge)">
+          <span style="display:flex;align-items:center;gap:8px">
+            <span style="font:500 13px/1.3 system-ui">Space Grotesk · IBM Plex</span>
+            <span style="flex:1"></span>
+            <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">3 faces</span>
+          </span>
+          <span style="font:400 11px/1.4 system-ui;color:var(--muted)">A wide grotesque with a technical sans and a slab-leaning mono.</span>
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:auto">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 20px 10px">
+          <span style="font:500 12px/1.4 system-ui;color:var(--muted)">Faces in this trio</span>
+          <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">3</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;padding:0 20px 20px">
+          <!-- a face row: the specimen is the row's own text, at its own weight -->
+          <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px">
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+              <span style="font:500 26px/1.15 system-ui;letter-spacing:-.01em">Aa Bb Cc 0123</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="font:500 12px/1.4 system-ui">Yaldevi</span>
+                <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">700 · normal</span>
+                <span style="padding:1px 6px;border:1px solid var(--edge);border-radius:4px;font:400 10px/1.5 system-ui;color:var(--muted)">heading</span>
+              </span>
+            </span>
+            <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">SIL OFL 1.1</span>
+              <span style="display:flex;gap:6px">
+                <span style="padding:4px 10px;border:1px solid var(--edge);border-radius:5px;background:var(--bg);font:500 11px/1.4 system-ui">Apply</span>
+              </span>
+            </span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px">
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+              <span style="font:400 22px/1.2 system-ui">The quick brown fox jumps over the lazy dog</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="font:500 12px/1.4 system-ui">Libre Franklin</span>
+                <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">400 · normal</span>
+                <span style="padding:1px 6px;border:1px solid var(--edge);border-radius:4px;font:400 10px/1.5 system-ui;color:var(--muted)">body</span>
+              </span>
+            </span>
+            <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">SIL OFL 1.1</span>
+              <span style="display:flex;gap:6px">
+                <span style="padding:4px 10px;border:1px solid var(--edge);border-radius:5px;background:var(--bg);font:500 11px/1.4 system-ui">Apply</span>
+              </span>
+            </span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px">
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+              <span style="font:400 17px/1.3 ui-monospace,Menlo,monospace">12:48 · 64% · 1,204</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="font:500 12px/1.4 system-ui">Spline Sans Mono</span>
+                <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">400 · normal</span>
+                <span style="padding:1px 6px;border:1px solid var(--edge);border-radius:4px;font:400 10px/1.5 system-ui;color:var(--muted)">mono</span>
+              </span>
+            </span>
+            <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <span style="font:400 10px/1.3 ui-monospace,Menlo,monospace;color:var(--faint)">SIL OFL 1.1</span>
+              <span style="display:flex;gap:6px">
+                <span style="padding:4px 10px;border:1px solid var(--edge);border-radius:5px;background:var(--bg);font:500 11px/1.4 system-ui">Apply</span>
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:12px 20px;border-top:1px solid var(--edge);background:var(--hdr)">
+      <span style="font:400 11px/1.4 ui-monospace,Menlo,monospace;color:var(--muted)">24 trios · 1 source</span>
+      <span style="flex:1"></span>
+      <span style="padding:6px 14px;border:1px solid var(--edge);border-radius:6px;font:500 12px/1.4 system-ui;color:var(--muted)">Cancel</span>
+      <span style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#08221b;font:600 12px/1.4 system-ui">Apply to preset</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
