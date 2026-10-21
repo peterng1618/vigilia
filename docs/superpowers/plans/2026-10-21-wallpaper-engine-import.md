@@ -245,6 +245,13 @@ GET  /api/wallpaper-engine/export?name=<name>     → bytes | 404
 
 ## Task 6: The editor's source, for image, video and web
 
+> **Amended 2026-10-21, before dispatch.** The editor surface is the **asset finder's
+> modal** (`docs/superpowers/specs/2026-10-21-asset-finder-design.md`), not a
+> section of the Add pane. If that spec has landed, this task becomes "register
+> `wallpaper-engine` as a local source in `host/src/assets/sources.ts` and give it
+> the per-kind actions of Task 7" — no new surface. If it has not landed, do not
+> build a second one: run Tasks 1–5, then wait. The host half is unaffected.
+
 **Files:**
 - Create: `src/web/packages/editor/src/wallpaper-engine/client.ts`
 - Create: `src/web/packages/editor/src/wallpaper-engine/client.test.ts`
@@ -281,6 +288,10 @@ export async function fetchItemPreview(workshopId: string): Promise<Blob | undef
 - [ ] **Step 6: Green, `npx tsc --noEmit`, commit** `feat(editor): list the Wallpaper Engine library in the Add pane`.
 
 ## Task 7: The scene flow — unpack, launch, guide, import
+
+> **Amended 2026-10-21:** the sheet is opened from the asset finder's modal and
+> its `Open in Wallpaper Engine` action; the guidance and import steps below are
+> unchanged, but the surface they render in is the finder's.
 
 **Files:**
 - Create: `src/web/packages/editor/src/wallpaper-engine/export-sheet.tsx`

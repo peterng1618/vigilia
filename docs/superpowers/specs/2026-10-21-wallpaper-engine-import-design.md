@@ -373,7 +373,10 @@ size caps and the reference model.
 
 ### 5.3 Editor surface
 
-The background-media picker gains a source: **From Wallpaper Engine**. It shows
+The background-media picker gains a source: **From Wallpaper Engine**. **The
+placement is now the asset finder's** ([`2026-10-21-asset-finder-design.md`](2026-10-21-asset-finder-design.md)):
+the library is registered there as the one local source, and this section
+describes what that source shows. It shows
 a list — thumbnail, title, kind, size — filtered by kind, with a search field
 over the title. Selecting an `image` or `video` item fetches its asset and calls
 `manager.import(file)`, then sets it as the artboard background, saying once
@@ -689,6 +692,8 @@ No failure is silent. Every refusal names the item and the reason, in the editor
    `hasText` for the removal step. Fixtures: a particle scene, a clock scene, a
    keyframed-property scene, a sprite-sheet model, and an unreadable package.
 3. **Editor source** — the list, the image and video paths, the refusal states.
+   Its surface is the asset finder's modal, so it lands with that spec or after
+   it, as a registry entry rather than a section of its own.
 4. **Credits member** — `theme-package` change, the importer writing entries, the
    credits surface in the theme's details.
 5. **Video path** — joins the media normalizer when it lands; before that, the
