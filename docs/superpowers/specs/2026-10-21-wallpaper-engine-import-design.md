@@ -251,6 +251,15 @@ rest (24%)**, of which 12 carry text, 7 carry sound and 6 have no layer effect a
 all. Adding `model` and `light` to the test changes the count by zero — no still
 scene carries either key — so the rule is those two keys.
 
+**A frozen clock is still wrong.** Text does not disqualify the theme, but it
+must not reach the image: a clock, a date or a media label captured at export
+time is a wrong time or a stale label, printed permanently into a background.
+So the still path carries one required author step, and the sheet names it
+before the export rather than after: **delete the dynamic text objects in the
+editor** — the clock above all — and export the frame without them. The
+classifier reports whether the scene carries text (§5.2) so the sheet knows when
+to say it, and stays silent for the 41 still scenes that do not.
+
 **The still path is Wallpaper Engine's own PNG export, not a `.tex` decoder.**
 The editor's format list ships `{label:"ui_editor_export_modal_settings_format_png",
 value:"png"}`, so a still theme renders to an exact 1920×1080 image — effect
@@ -332,6 +341,7 @@ GET /api/wallpaper-engine/export?name=<name>
 workshopId, title, kind (image | video | web | scene),
 previewUrl?, filesize, tags[], properties (read-only),
 stillAtRest?,                       // scene items only; absent when unclassified
+hasText?,                           // scene items only: the sheet's removal step
 attribution: { steamId?, workshopUrl? } | absent
 ```
 
@@ -492,10 +502,14 @@ of it that does not need the author's hands.
    last `blend` seconds into the first, which is also how stochastic content
    (particles) is made to repeat.
 
-   The sheet also says the one thing only the author can decide: **delete what
-   should not be in the picture** — the clock, most often — in the editor before
-   exporting. That is the deferred element-removal request, answered inside
-   Wallpaper Engine's own editor rather than by policy (R1).
+   **First, for a still scene: delete the dynamic text.** A clock, a date or a
+   media label is captured at whatever instant the frame is taken, so it would
+   be printed permanently and wrongly into the background. The sheet lists the
+   deletion as a step — not a suggestion — whenever the item's `hasText` is
+   true (§4.1), and says nothing about it for a still scene without text. The
+   author deletes those objects in Wallpaper Engine's own editor, which is also
+   the answer to the deferred element-removal request without any change to
+   policy (R1); Vigilia never edits the scene for them.
 5. **The sheet watches for the result.** While it is open, it polls the host for
    files modified since it opened — `.png` or `.mp4` according to the format
    above — in `<install>/projects/temp/`, `<install>/projects/myprojects/`, and
@@ -547,9 +561,10 @@ author's Installed tab, so the flow leaves something behind on their machine.
 The sheet says so once, where it lists the export steps, rather than asking
 before it starts (R8).
 
-Element removal — the clock, and anything else a viewer should not see — stays
-out of scope as agreed. The supported answer is the author's own Wallpaper
-Engine property values (§1.3), which are what the render reads.
+Element removal is a **step the author takes and Vigilia only names** (§8, step
+4): no scene is edited by the importer, and nothing about the removal is data
+Vigilia stores. The author's own Wallpaper Engine property values (§1.3) are what
+the render reads.
 
 ## 9. What already exists, and must not be rebuilt
 
@@ -651,8 +666,9 @@ No failure is silent. Every refusal names the item and the reason, in the editor
    the read routes, unit tests over fixture directories and a recorded
    `workshopcache.json` slice.
 2. **The still test** — `classify.ts`, parsing `scene.json` and the referenced
-   `models/*.json` for particle and animation keys. Fixtures: a particle scene, a
-   clock scene, a sprite-sheet model, and an unreadable package.
+   `models/*.json` for particle and animation keys and reporting `hasText` for the
+   sheet's removal step. Fixtures: a particle scene, a clock scene, a
+   sprite-sheet model, and an unreadable package.
 3. **Editor source** — the list, the image and video paths, the refusal states.
 4. **Credits member** — `theme-package` change, the importer writing entries, the
    credits surface in the theme's details.
@@ -699,6 +715,9 @@ the file's end, and to reuse — not rewrite — a directory that already exists
   mouse-interactive layer, and **false** for one with a particle object or an
   animation layer. A sprite-animated model in a referenced `models/*.json` also
   returns false.
+- The classifier reports `hasText` for a scene with a text object and omits it
+  otherwise; a still scene with text lists the delete-the-text step and one
+  without text does not.
 - Selecting a scene unpacks and launches without an intervening confirmation, and
   writes every member byte-identically into `projects/myprojects/<workshopId>/`
   beside the item's `project.json`.
