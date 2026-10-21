@@ -9,7 +9,7 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Active work
 
-- **Active plan:** `docs/superpowers/plans/2026-10-21-theme-store-online-tab.md` — the store spec's **phase C**, eight tasks dispatched one seat at a time; its ledger is `.superpowers/sdd/2026-10-21-theme-store-online-tab/progress.md`.
+- **Active plan:** `docs/superpowers/plans/2026-10-21-theme-store-online-tab.md` — the store spec's **phase C**, eight tasks dispatched one seat at a time; its ledger is `.superpowers/sdd/2026-10-21-theme-store-online-tab/progress.md`. **Queued behind it:** `docs/superpowers/plans/2026-10-21-wallpaper-engine-import.md` (Wallpaper Engine as a background source, spec accepted 2026-10-21), which must not start until phase C closes.
 - Its scope: the online half as a second `ItemSource` over the catalogue's `index.json`, that index's shape owned by `renderer-core`, the generator the catalogue's Action runs, the online cell and the modal's online facts.
 - **Decision `docs/decisions/0088`**: the editor's **browser** fetches the index from the raw path, because it revalidates conditionally for free against a server measured to answer `304` while Node's `fetch` has no HTTP cache at all; a script cannot set `If-None-Match` on either route (preflight `403`).
 - **The catalogue repo is `peterng1618/vigilia-store`**, created public; its workflow and README are committed locally in `C:\tmp\vigilia-store` and **not pushed**, because the Action pins `dfb51024` and `origin/develop` is 48 commits behind.
