@@ -3,6 +3,7 @@ import { Fragment, useState } from "react";
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import {
   ASSIGN_ITEM_GLYPH,
+  CHECK_GLYPH,
   DELETE_ITEM_GLYPH,
   EXPORT_ITEM_GLYPH,
   Glyph,
@@ -88,8 +89,8 @@ export function Gallery(props: {
  *
  * The bands are the drawing's exactly — the picture at `2/1` with `object-fit:
  * cover`, the name, the mono byline, and the 26px band — and the band's left
- * slot is deliberately **empty**: the origin badge is phase B's, and inventing
- * one here would be an origin record this phase has no producer for.
+ * slot carries the origin badge, drawn only where the host holds a record of
+ * where the theme came from.
  */
 function Cell(props: {
   readonly item: StoreItem;
@@ -143,6 +144,23 @@ function Cell(props: {
       </span>
       <div className="px-[var(--space-10)] pb-[var(--space-10)]">
         <span className="flex h-[26px] items-center gap-[var(--space-6)]">
+          {/* **The origin badge sits in the band's left slot**, which is where
+              the drawing puts it — beside the name it would make this half's
+              cells taller than the online half's (`store-themes.html`). It is
+              drawn only for a theme the host holds a record of: a theme the
+              author made here came from nowhere, and a badge saying so would be
+              a fact no record carries. */}
+          {item.origin === undefined ? null : (
+            <span
+              data-vigilia-store-cell-origin=""
+              className="flex flex-none items-center gap-[var(--space-6)] text-xs text-muted"
+            >
+              <span className="flex-none text-accent">
+                <Glyph icon={CHECK_GLYPH} size={13} />
+              </span>
+              {uiCopy.store.cell.installed}
+            </span>
+          )}
           <span className="flex-1" />
           {/* **All four are drawn and the two a build does not run are
               disabled** (R164): the drawing gives every cell four, and a

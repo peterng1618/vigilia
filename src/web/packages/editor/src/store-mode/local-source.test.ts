@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   ThemeLibraryClient,
   ThemeLibraryEntry,
+  ThemeOrigin,
 } from "../theme-library-client.js";
 import {
   DASHBOARD_THEME_KIND,
@@ -55,6 +56,7 @@ function envelope(
 function entry(
   document: FabricThemeEnvelope,
   ground: string | undefined,
+  origin?: ThemeOrigin,
 ): ThemeLibraryEntry {
   return {
     id: document.id,
@@ -68,6 +70,7 @@ function entry(
     updatedAt: "2026-10-15T09:31:00.000Z",
     thumbnailUrl: `/api/themes/${document.id}/thumbnail`,
     ...(ground === undefined ? {} : { ground }),
+    ...(origin === undefined ? {} : { origin }),
     facets: facetRecordOf(document),
   };
 }
@@ -82,10 +85,11 @@ const GROUND = "#101014";
 function clientOf(
   documents: readonly FabricThemeEnvelope[],
   ground: string | undefined,
+  origin?: ThemeOrigin,
 ): ThemeLibraryClient {
   return {
     list: vi.fn(async () =>
-      documents.map((document) => entry(document, ground)),
+      documents.map((document) => entry(document, ground, origin)),
     ),
     open: vi.fn(async () => {
       throw new Error("the source opened a theme it should not have opened");
@@ -172,6 +176,27 @@ describe("the local half's items", () => {
 
     expect(versioned[0]?.version).toBe("1.4.0");
     expect(bare[0]?.version).toBeUndefined();
+  });
+
+  it("carries a listing's origin, and a theme the host has no record for as an absence", async () => {
+    // Where a theme came from is consumer state kept beside the library, so a
+    // theme the author made here arrives with **no key at all** — the same
+    // absence `author` carries for a document that declares none. An origin
+    // invented to fill the field would make every theme read as installed.
+    const origin: ThemeOrigin = {
+      catalogueId: "vigilia/office-wall",
+      version: "1.3.0",
+      installedAt: "2026-10-14T00:00:00.000Z",
+    };
+    const installed = await localThemeSource(
+      clientOf([envelope()], GROUND, origin),
+    ).list();
+    const madeHere = await localThemeSource(
+      clientOf([envelope()], GROUND),
+    ).list();
+
+    expect(installed[0]?.origin).toEqual(origin);
+    expect(madeHere[0]?.origin).toBeUndefined();
   });
 });
 

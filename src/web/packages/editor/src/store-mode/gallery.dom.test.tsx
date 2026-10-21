@@ -21,6 +21,7 @@ import { facetRecordOf } from "@vigilia/renderer-core";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { Gallery } from "./gallery.js";
 import { DASHBOARD_THEME_KIND, type StoreItem } from "./local-source.js";
@@ -124,10 +125,19 @@ function item(overrides: Partial<StoreItem> = {}): StoreItem {
     updatedAt: "2026-10-15T09:31:00.000Z",
     thumbnailUrl: "/api/themes/living-room/thumbnail",
     ground: "midnightblue",
+    origin: undefined,
     facets: facetRecordOf(DOCUMENT),
     ...overrides,
   };
 }
+
+/** Where a theme came from, as the host records it: the catalogue item and the
+ *  version this copy was installed from. */
+const ORIGIN: ThemeOrigin = {
+  catalogueId: "vigilia/office-wall",
+  version: "1.3.0",
+  installedAt: "2026-10-14T00:00:00.000Z",
+};
 
 /** The cell's picture box, which every case here reads through. */
 function pictureBox(container: HTMLElement): HTMLElement {
@@ -429,4 +439,40 @@ it("writes the byline the drawing draws, and says so when there is no author", a
     "@mira-k · 2026-10-15",
     `${uiCopy.store.cell.noAuthor} · 2026-10-15`,
   ]);
+});
+
+/**
+ * **The badge says where the theme came from**, and it is drawn only where the
+ * host holds a record (spec, "Provenance"). The two cells are mounted together,
+ * so the badge's absence on the second is a reading of that cell rather than a
+ * case that never drew anything — a cell badging every theme, or one badging
+ * none, fails here either way.
+ */
+it("badges the cell whose theme came from the store, and leaves the other unbadged", async () => {
+  const container = await mount(
+    <Gallery
+      items={[
+        item({ origin: ORIGIN }),
+        item({ id: "workshop-bench", name: "Workshop bench" }),
+      ]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+    />,
+  );
+
+  /** One cell's badge, or the `null` that says it drew none. */
+  function badge(id: string): HTMLElement | null {
+    return container.querySelector<HTMLElement>(
+      `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-origin]`,
+    );
+  }
+
+  expect(
+    must(badge("living-room"), "installed badge").textContent,
+    "the badge is not the copy table's word for where a theme came from",
+  ).toBe(uiCopy.store.cell.installed);
+  expect(
+    badge("workshop-bench"),
+    "the cell badged a theme the host has no origin for",
+  ).toBeNull();
 });

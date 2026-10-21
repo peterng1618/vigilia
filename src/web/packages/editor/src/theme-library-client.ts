@@ -22,6 +22,12 @@ export interface ThemeLibraryEntry {
    *  and absent for the same reason: a theme that declares no version draws no
    *  version and no separator beside it. */
   readonly version?: string;
+  /** Where this copy came from, when the host holds a record of it.
+   *  **Optional, and the absence is the truth**: the record is consumer state
+   *  the host keeps beside the library, so a theme the author made here has no
+   *  key at all — exactly as `author` has none for a document that declares
+   *  none, and never a key holding `undefined`. */
+  readonly origin?: ThemeOrigin;
   /** What the theme *is*, derived by the host from the document it listed —
    *  required, because every entry here is a stored theme and every stored
    *  theme has a document to derive it from. */
@@ -35,6 +41,24 @@ export interface ThemeLibraryEntry {
   /** Where the theme's picture is served, built here because this is what
    *  knows the host's base URL. Absent from a producer that has no host. */
   readonly thumbnailUrl?: string;
+}
+
+/**
+ * Where a stored theme came from, as the host records it: the catalogue item it
+ * was installed from and the version this copy holds.
+ *
+ * The host owns the record (`packages/host/src/settings/theme-origins.ts`) and
+ * this package does not depend on that one, so this is the editor's own reading
+ * of the wire shape — the same thing {@link ThemeLibraryEntry} is for the host's
+ * own entry, and the reason neither is imported across the seam.
+ */
+export interface ThemeOrigin {
+  /** The catalogue's own id for the item, not the library id. */
+  readonly catalogueId: string;
+  /** The catalogue version this copy was installed from. */
+  readonly version: string;
+  /** An ISO instant. */
+  readonly installedAt: string;
 }
 
 export interface ThemeLibraryContent {

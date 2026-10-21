@@ -93,6 +93,9 @@ export function fixtureItem(theme: FixtureTheme): StoreItem {
     updatedAt: entry.updatedAt,
     thumbnailUrl: undefined,
     ground: theme.ground,
+    // A fixture theme is one the author made here, so the host holds no record
+    // of where it came from — which is the absence the badge is read against.
+    origin: undefined,
     facets: entry.facets,
   };
 }

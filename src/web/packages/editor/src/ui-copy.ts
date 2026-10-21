@@ -666,10 +666,15 @@ export const uiCopy = {
      *
      *  **Style is not here, and its group is not drawn.** The record carries no
      *  tags until phase G, so the group would be a heading over nothing — which
-     *  is what §9 forbids and what `PillGroup` refuses to render. */
+     *  is what §9 forbids and what `PillGroup` refuses to render.
+     *
+     *  **`origin` is the record's own two strings under one eyebrow** rather
+     *  than a sentence, and its group is drawn only for a theme the host holds a
+     *  record of (`item-modal.tsx`). */
     pillGroups: {
       reads: "Reads",
       shape: "Shape",
+      origin: "From the store",
     },
     /** The two empties, which are two sentences because they have two answers: a
      *  library with nothing in it is not a filter that matched nothing, and
@@ -696,17 +701,16 @@ export const uiCopy = {
     /** One cell of either gallery (`2026-10-12-theme-store-design.md`, "The store
      *  mode"). The actions are keyed by `CellAction`, so an action added to the
      *  cell without a word for it fails to compile rather than drawing an
-     *  icon-only button nobody can name.
-     *
-     *  **The origin badge is not here**, and neither is any word for it: the
-     *  spec's own landing order puts the origin record and the *Installed* badge
-     *  in phase B, so the band this task draws has the four actions and an empty
-     *  left slot. */
+     *  icon-only button nobody can name. */
     cell: {
       /** A theme whose document declares no author. A fact about the theme
        *  rather than a missing reading, which is why it is a word and not the
        *  gap's blank. */
       noAuthor: "No author",
+      /** The badge a cell draws where the host holds a record of where the theme
+       *  came from. A theme the author made here has no such record and draws no
+       *  badge at all, so this is never drawn over an absence. */
+      installed: "Installed",
       /** The four actions, as the drawing's facts band orders them. Spelled as
        *  the spec does — **Open in editor**, **Assign to display**, **Export
        *  package** and **Delete** — because each names the operation the library

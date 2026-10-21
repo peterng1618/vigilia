@@ -20,10 +20,11 @@
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it } from "vitest";
+import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { DARK_GROUND, type FixtureTheme, fixtureItem } from "./item-fixture.js";
 import { ItemModal } from "./item-modal.js";
-import { DASHBOARD_THEME_KIND } from "./local-source.js";
+import { DASHBOARD_THEME_KIND, type StoreItem } from "./local-source.js";
 
 // Base UI's dialog needs three browser APIs jsdom has none of: floating-ui
 // observes its anchor, the popup waits for its own open transition, and it asks
@@ -128,14 +129,22 @@ const VERSIONLESS: FixtureTheme = {
 };
 
 function modal(theme: FixtureTheme): ReactElement {
-  return (
-    <ItemModal
-      item={fixtureItem(theme)}
-      onClose={() => {}}
-      onAction={() => {}}
-    />
-  );
+  return modalFor(fixtureItem(theme));
 }
+
+/** The same surface over an item built here rather than from a fixture theme —
+ *  the origin record has no document behind it to derive. */
+function modalFor(item: StoreItem): ReactElement {
+  return <ItemModal item={item} onClose={() => {}} onAction={() => {}} />;
+}
+
+/** Where a theme came from, as the host records it: the catalogue item and the
+ *  version this copy was installed from. */
+const ORIGIN: ThemeOrigin = {
+  catalogueId: "vigilia/office-wall",
+  version: "1.3.0",
+  installedAt: "2026-10-14T00:00:00.000Z",
+};
 
 /** The stage and the picture inside it, from the portalled popup. */
 function stage(): HTMLElement {
@@ -388,6 +397,36 @@ it("draws no version and no separator for a theme that declares none", async () 
       ?.textContent?.trim(),
     "a versionless theme draws a separator or an invented version",
   ).toBe("2026-10-14");
+});
+
+/**
+ * **The modal says where the item came from**, which is the one thing a cell's
+ * badge cannot (spec, "Provenance": *a cell can say Installed and cannot say
+ * installed from where*). The two facts are the record's own strings — the
+ * catalogue item's id and the version this copy was installed from — and they
+ * are pills in a group like every other fact here.
+ *
+ * **A theme the host has no record for draws no group at all**, which is what
+ * `PillGroup` already refuses to render over an empty list: an eyebrow over
+ * nothing is a word that says nothing (§9).
+ */
+it("names the catalogue item and the installed version, and draws no group without one", async () => {
+  await mount(modalFor({ ...fixtureItem(LANDSCAPE), origin: ORIGIN }));
+
+  const origin = group("origin");
+  expect(origin.name, "the origin pills sit under no eyebrow").toBe(
+    uiCopy.store.pillGroups.origin,
+  );
+  expect(
+    origin.pills,
+    "the modal does not name the catalogue item and the version installed",
+  ).toEqual([ORIGIN.catalogueId, ORIGIN.version]);
+
+  await mount(modal(LANDSCAPE));
+  expect(
+    document.body.querySelector('[data-vigilia-store-item-group="origin"]'),
+    "the modal drew an origin group for a theme with no origin",
+  ).toBeNull();
 });
 
 /** The way out is the modal's own answer rather than a state it keeps: the

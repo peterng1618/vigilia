@@ -1,5 +1,8 @@
 import type { FacetRecord, Orientation } from "@vigilia/renderer-core";
-import type { ThemeLibraryClient } from "../theme-library-client.js";
+import type {
+  ThemeLibraryClient,
+  ThemeOrigin,
+} from "../theme-library-client.js";
 
 /**
  * The local half's items, behind the one hop that makes a second kind cheap.
@@ -36,6 +39,12 @@ export interface StoreItem {
   readonly updatedAt: string | undefined;
   readonly thumbnailUrl: string | undefined;
   readonly ground: string | undefined;
+  /** Where this copy came from, or `undefined` for a theme the host holds no
+   *  record of — one the author made here. A required key whose value may be
+   *  absent, as `author` and `version` are: a cell reads the field rather than
+   *  asking whether the key exists, and `exactOptionalPropertyTypes` forbids the
+   *  optional spelling this would otherwise take. */
+  readonly origin: ThemeOrigin | undefined;
   readonly facets: FacetRecord;
 }
 
@@ -86,6 +95,7 @@ export function localThemeSource(client: ThemeLibraryClient): ItemSource {
         updatedAt: entry.updatedAt,
         thumbnailUrl: entry.thumbnailUrl,
         ground: entry.ground,
+        origin: entry.origin,
         facets: entry.facets,
       }));
     },
