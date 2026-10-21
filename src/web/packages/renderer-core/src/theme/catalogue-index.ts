@@ -186,15 +186,17 @@ export function parseCatalogueIndex(
 
 /** A document nothing can be read from, counted in the entries it dropped: a bad
  *  `generatedAt` over three items is three unreadable items, not one. A document
- *  with no list to count counts one, and an empty list counts zero because it
- *  dropped nothing. */
+ *  with no list to count counts one. An empty list drops nothing, so it refuses
+ *  nothing: a refusal with `count: 0` would make the surface print that entries
+ *  were left out when none were, and over a bad `generatedAt` alone there is no
+ *  fact worth a row. */
 function refusedDocument(count: number): {
   readonly entries: readonly CatalogueEntry[];
   readonly refused: readonly CatalogueRefusal[];
 } {
   return {
     entries: [],
-    refused: [{ kind: undefined, reason: "malformed", count }],
+    refused: count > 0 ? [{ kind: undefined, reason: "malformed", count }] : [],
   };
 }
 

@@ -161,6 +161,15 @@ describe("parseCatalogueIndex", () => {
     });
   });
 
+  it("refuses nothing when a malformed document dropped nothing", () => {
+    // Nothing was dropped, so nothing was refused: the surface then says the
+    // store is empty rather than that unreadable entries were left out.
+    expect(parseCatalogueIndex({ entries: [] }, KNOWN)).toStrictEqual({
+      entries: [],
+      refused: [],
+    });
+  });
+
   it("refuses a document whose generatedAt is not a string, counting its entries", () => {
     const parsed = parseCatalogueIndex(
       { generatedAt: 21, entries: [entry(), entry({ id: "beta" })] },
