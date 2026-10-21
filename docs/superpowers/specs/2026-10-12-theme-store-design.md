@@ -1015,6 +1015,34 @@ of the decision rather than a placeholder:
    128 MiB. **DECIDED 2026-10-21: deferred to phase D's plan, with A still leaning.** The
    owner's ruling is that D's plan opens with the probe named above — whether `download_count`
    survives a re-home — and the choice is taken against that measurement rather than the doubt.
+
+   **PROBED 2026-10-21, AND THE ANSWER IS B — the package rides in the catalogue
+   repo beside `item.json`.** The probe the paragraph above names was run on a
+   temporary public release: an asset that had recorded **3** downloads was
+   deleted and the same bytes re-uploaded, and the new asset answered
+   **`download_count: 0`**. The count lives on the asset row and a re-upload
+   creates a new one, so A's counter restarts **at every re-home — that is, at
+   every version**, which makes the downloads facet a per-version number at best
+   and not the item's. That removes the gain A was leaning on and leaves A
+   carrying only its costs: the pre-merge URL is one the author controls, the
+   re-home is delete-then-upload with a window in which neither copy is the
+   store's, and the follow-up commit that rewrites the URL starts no workflow, so
+   nothing re-validates it. **B has none of those, and its one cost is bounded by
+   a number this design already owns**: the reader refuses a package past
+   `MAX_ARCHIVE_BYTES` (64 MiB), which sits under GitHub's per-file block, so
+   **every package this product will accept is a file the catalogue repo can
+   store** — no releases, no re-home Action, no LFS. What B gives up is a
+   download counter, and under the measured A that is per-version rather than per
+   item. **Revisit when the catalogue repo passes about 1 GB** (GitHub's own soft
+   guidance), which at a typical 25 MiB item is some forty revisions; the
+   `packageUrl` an item carries is then the only thing that moves.
+
+   Two further measurements from the same probe, because they shape phase D:
+   **`download_count` is not readable within ten minutes** — four real downloads
+   left it at `0` and it answered `1` only nine minutes later — and **a release
+   asset sends no `access-control-allow-origin` on either hop** (the `302` to
+   `release-assets.githubusercontent.com` and the asset itself), so a browser
+   cannot download one at all.
 2. **The ffmpeg source** — probe a system binary, or bundle a static build and
    take on the licence obligation. **Measured 2026-10-21: there is no `ffmpeg` on
    `PATH` on the development box at all**, so the probe arm refuses there and the
