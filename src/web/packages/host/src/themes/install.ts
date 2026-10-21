@@ -3,7 +3,11 @@ import { readThemePackage } from "@vigilia/theme-package";
 import type { ThemeOriginsStore } from "../settings/theme-origins.js";
 import { downloadPackage } from "./download.js";
 import { importThemePackage, type ThemeImportResult } from "./import.js";
-import type { ThemeStore } from "./store.js";
+import {
+  type ThemeStore,
+  ThemeTooLargeError,
+  ThemeValidationError,
+} from "./store.js";
 import type { ThumbnailStore } from "./thumbnails.js";
 
 /**
@@ -56,6 +60,46 @@ export async function installCatalogueItem(
   request: InstallRequest,
   options: InstallOptions,
 ): Promise<InstallResult> {
+  return exclusively(request.catalogueId, () => installOnce(request, options));
+}
+
+/**
+ * Installs of one catalogue item run one at a time.
+ *
+ * Two overlapping installs resolve the same library id and both stage-and-rename
+ * that folder; the loser's rename fails with the filesystem's own refusal
+ * (EPERM on Windows) rather than interleaving safely. Distinct items keep
+ * separate chains and still install in parallel.
+ *
+ * The queue holds the *settled* promise, so a refusal does not wedge the next
+ * install, and it clears its own entry once it is the tail.
+ */
+const installing = new Map<string, Promise<unknown>>();
+
+async function exclusively<T>(
+  catalogueId: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  const previous = installing.get(catalogueId) ?? Promise.resolve();
+  const next = previous.then(work, work);
+  const settled = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  installing.set(catalogueId, settled);
+  try {
+    return await next;
+  } finally {
+    if (installing.get(catalogueId) === settled) {
+      installing.delete(catalogueId);
+    }
+  }
+}
+
+async function installOnce(
+  request: InstallRequest,
+  options: InstallOptions,
+): Promise<InstallResult> {
   if (request.kind !== DASHBOARD_THEME_KIND) {
     return {
       ok: false,
@@ -97,28 +141,66 @@ export async function installCatalogueItem(
     version: request.version,
     installedAt: new Date().toISOString(),
   });
+  await forgetOtherCopies(request.catalogueId, imported.id, options.origins);
   return { ok: true, id: imported.id };
 }
 
 /**
  * The library id this catalogue item already occupies, or nothing.
  *
- * Both halves are needed. The origins map says which item a library copy came
- * from; the listing says the copy is still there. An origin whose theme was
- * deleted — or whose origin write failed after a refused install — names an id
- * with nothing to replace, so trusting the map alone would mint a theme under a
- * dead key instead of updating one.
+ * The origins map says which item a library copy came from; the listing says
+ * the copy is still there. An origin whose theme was deleted names an id with
+ * nothing to replace, so trusting the map alone would mint a theme under a dead
+ * key instead of updating one.
+ *
+ * The listing skips a folder whose `theme.json` will not read, so "not listed"
+ * alone cannot mean "gone". A folder that is there but unreadable — `read`
+ * answers the store's typed refusals where a missing theme answers `undefined`
+ * — is a broken install of *this* item and is repaired in place rather than
+ * duplicated beside it. No filesystem probe is needed: the store already tells
+ * the two apart.
  */
 async function catalogueCopyId(
   catalogueId: string,
   options: InstallOptions,
 ): Promise<string | undefined> {
   const origins = await options.origins.read();
-  if (Object.keys(origins).length === 0) return undefined;
+  const ids = Object.entries(origins)
+    .filter(([, origin]) => origin.catalogueId === catalogueId)
+    .map(([id]) => id)
+    .sort();
+  if (ids.length === 0) return undefined;
 
-  const listed = await options.store.list();
-  return listed.find((entry) => origins[entry.id]?.catalogueId === catalogueId)
-    ?.id;
+  const listed = new Set((await options.store.list()).map((entry) => entry.id));
+  const ordinary = ids.find((id) => listed.has(id));
+  if (ordinary !== undefined) return ordinary;
+
+  for (const id of ids) {
+    if (await brokenCopyExists(options.store, id)) return id;
+  }
+  return undefined;
+}
+
+/**
+ * Whether the library holds a theme under this id that the listing could not
+ * show. `read` answers `undefined` for a missing theme and the store's typed
+ * refusals for one it will not serve, which is why those two count and anything
+ * else does not.
+ */
+async function brokenCopyExists(
+  store: ThemeStore,
+  id: string,
+): Promise<boolean> {
+  try {
+    // Readable but unlisted: the listing raced this install, and the folder is
+    // still the item's copy to replace. `undefined` is the absent theme.
+    return (await store.read(id)) !== undefined;
+  } catch (error) {
+    return (
+      error instanceof ThemeValidationError ||
+      error instanceof ThemeTooLargeError
+    );
+  }
 }
 
 /**
@@ -157,6 +239,31 @@ async function replaceCatalogueCopy(
     await options.thumbnails.write(id, thumbnail).catch(() => undefined);
   }
   return { ok: true, id };
+}
+
+/**
+ * Forgets origin entries that name this catalogue item under another library
+ * id, once the copy this install landed on holds its own.
+ *
+ * Only one copy of an item should exist. A second key is a deleted theme's
+ * origin, or one left by a broken copy just repaired, and two keys for one item
+ * is the state in which a later update picks whichever id sorts first. Runs
+ * after the landing copy's origin is written, so a refusal here leaves this
+ * install's own provenance in place.
+ */
+async function forgetOtherCopies(
+  catalogueId: string,
+  id: string,
+  origins: ThemeOriginsStore,
+): Promise<void> {
+  const all = await origins.read();
+  await Promise.all(
+    Object.entries(all)
+      .filter(
+        ([key, origin]) => key !== id && origin.catalogueId === catalogueId,
+      )
+      .map(([key]) => origins.removeTheme(key)),
+  );
 }
 
 /**

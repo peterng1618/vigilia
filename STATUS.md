@@ -18,9 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase D's Task 4** — `installCatalogueItem` (`themes/install.ts`) reads `theme-origins.json` and, when a listed library id carries the request's `catalogueId`, replaces that copy with the store's `overwrite` instead of minting a free id.
-- **An origin alone is not proof of a copy**: the id must also appear in `store.list()`, so a theme deleted from a library is not resurrected under its dead key.
-- Four `install.test.ts` cases cover replace-in-place, version/`installedAt` bump, a same-named theme the catalogue did not install, and the dangling origin; the last is red-proved by trusting the origins map alone.
+- **Phase D's Task 4** — `installCatalogueItem` (`themes/install.ts`) replaces the library copy whose origin names the request's `catalogueId`, and installs additively when none does; one theme per item.
+- Review fixes: installs of one item now queue per `catalogueId`, so two concurrent installs both answer `ok` instead of one losing the staging rename; an origin naming an existing-but-unreadable theme is repaired in place; origin keys for the same item under other ids are removed after the landing copy's write.
+- 12 `install.test.ts` cases (themes 122/122, host 754/754); the concurrency, repair and stale-key cases were all red-proved before their fixes.
 
 ## Next
 

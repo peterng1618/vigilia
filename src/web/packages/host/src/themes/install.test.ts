@@ -287,5 +287,66 @@ describe("installCatalogueItem", () => {
     expect((await store.list()).map((entry) => entry.id)).toEqual([
       "living-room",
     ]);
+    // The dead key goes with it, so one item never has two origin entries.
+    expect(Object.keys(await origins.read())).toEqual(["living-room"]);
+  });
+
+  it("repairs an origin naming a theme the library cannot read", async () => {
+    const folder = path.join(libraryDir, "aurora-copy");
+    await fs.mkdir(folder, { recursive: true });
+    await fs.writeFile(path.join(folder, "theme.json"), "{ not json");
+    await origins.write("aurora-copy", {
+      catalogueId: "aurora",
+      version: "1.0.0",
+      installedAt: new Date(0).toISOString(),
+    });
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(packageOf("living-room", "Living Room")),
+    });
+
+    // Repaired under the origin's id, not minted beside it: the broken folder
+    // was still this item's copy.
+    expect(result).toEqual({ ok: true, id: "aurora-copy" });
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "aurora-copy",
+    ]);
+    expect((await store.read("aurora-copy"))?.envelope.id).toBe("aurora-copy");
+    expect(Object.keys(await origins.read())).toEqual(["aurora-copy"]);
+  });
+
+  it("serialises two installs of one item", async () => {
+    const [first, second] = await Promise.all([
+      installCatalogueItem(
+        { ...REQUEST, version: "1.2.0" },
+        {
+          store,
+          origins,
+          fetch: serving(packageOf("living-room", "Living Room")),
+        },
+      ),
+      installCatalogueItem(
+        { ...REQUEST, version: "1.3.0" },
+        {
+          store,
+          origins,
+          fetch: serving(packageOf("living-room", "Living Room 2")),
+        },
+      ),
+    ]);
+
+    // Both succeed: the second waits for the first rather than racing its
+    // staging rename. Invocation order is the queue's order.
+    expect(first).toEqual({ ok: true, id: "living-room" });
+    expect(second).toEqual({ ok: true, id: "living-room" });
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "living-room",
+    ]);
+    expect((await origins.read())["living-room"]?.version).toBe("1.3.0");
+    expect((await store.read("living-room"))?.envelope.metadata?.name).toBe(
+      "Living Room 2",
+    );
   });
 });
