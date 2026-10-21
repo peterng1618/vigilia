@@ -954,9 +954,11 @@ it("takes the draft/commit decision from the one hook, in every file that holds 
   // and discarded leaves the handlers reaching nothing, which is the same defect
   // as not calling it. One occurrence count sees it — the binding itself, plus
   // at least one use of it (`{...keys}`, `keys.onKeyDown`) — without
-  // enumerating the shapes a use can take. The ceiling is exactly that: *that*
-  // the result is used, not that it is used well, and a file that destructures
-  // the call rather than binding it is not checked at all.
+  // enumerating the shapes a use can take. A use has to be a use of *this
+  // binding*: a member access off something else is not one, and the lookbehind
+  // below is what says so. The ceiling is exactly that: *that* the result is
+  // used, not that it is used well, and a file that destructures the call
+  // rather than binding it is not checked at all.
   for (const entry of files.filter((file) => callsDraftCommit(file.source))) {
     const code = withoutComments(entry.source);
     expect(code, `${entry.file}: a composing handler of its own`).not.toMatch(
@@ -967,8 +969,14 @@ it("takes the draft/commit decision from the one hook, in every file that holds 
     );
     const bound = BINDS_HOOK.exec(code)?.[1];
     if (bound === undefined) continue;
+    // `(?<![\w$]\.)`: every caller binds the hook as `keys`, and `Object.keys`
+    // is a bare `keys` in the same file — idiomatic here
+    // (`control-slider.tsx`, `card-token-mapping.ts`), and one line of it
+    // satisfied the count while the wiring was missing. The spread's `...` and
+    // a member use's leading position are preceded by no word character and a
+    // dot, so both still count.
     expect(
-      code.match(new RegExp(`\\b${bound}\\b`, "g"))?.length ?? 0,
+      code.match(new RegExp(`(?<![\\w$]\\.)\\b${bound}\\b`, "g"))?.length ?? 0,
       `${entry.file}: calls useDraftCommit and never uses what it returns`,
     ).toBeGreaterThan(1);
   }
