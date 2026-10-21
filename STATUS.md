@@ -19,7 +19,7 @@ Give every display client its own theme, then let a person browse the themes it 
 ## Last completed change
 
 - **Phase D's Task 3** — `installCatalogueItem` (`themes/install.ts`) downloads a catalogue package, applies the import's id rule, and records `theme-origins.json` only after the write; a kind other than `dashboard-theme` is refused by its identifier.
-- **`POST /api/themes/install`** sits beside `/api/themes/import`: loopback only, 405 on another method, 400 on a bad body or a refused package, and 502 when the download failed.
+- **`POST /api/themes/install`** sits beside `/api/themes/import`: loopback only, 405 on another method, 400 on a bad address, body or package, 413 on an oversized body, and 502 when the download failed.
 - **`HostServerOptions.fetch`** is the route's injected fetcher, so the route suite installs with no network; five install tests and five route tests pass, with the kind gate and the origin ordering red-proved.
 
 ## Next

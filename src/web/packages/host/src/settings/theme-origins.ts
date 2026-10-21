@@ -97,36 +97,54 @@ export function createThemeOriginsStore(directory: string): ThemeOriginsStore {
     await writeFile(file, `${JSON.stringify(all, null, 2)}\n`, "utf8");
   };
 
+  // Two mutators can overlap now — an install's write beside a delete's
+  // removal — and both are read-modify-write over one file. Interleaved reads
+  // lose an entry or resurrect a removed one, so mutations queue; a rejection
+  // is swallowed for the queue's sake and still reaches its own caller.
+  let writing: Promise<unknown> = Promise.resolve();
+  const writeExclusively = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = writing.then(work, work);
+    writing = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  };
+
   return {
     async read() {
       return readOrigins(file);
     },
 
     async write(themeId, origin) {
-      if (!THEME_ID.test(themeId)) {
-        throw new Error(`Invalid theme id "${themeId}".`);
-      }
+      await writeExclusively(async () => {
+        if (!THEME_ID.test(themeId)) {
+          throw new Error(`Invalid theme id "${themeId}".`);
+        }
 
-      const all = await readOrigins(file);
-      // Both halves of a write: a key or an entry the reader dropped does not
-      // survive beside a good one, and a file the reader could not read at all
-      // is replaced by this one entry rather than kept.
-      await save(normalizeOrigins({ ...all, [themeId]: origin }));
+        const all = await readOrigins(file);
+        // Both halves of a write: a key or an entry the reader dropped does not
+        // survive beside a good one, and a file the reader could not read at all
+        // is replaced by this one entry rather than kept.
+        await save(normalizeOrigins({ ...all, [themeId]: origin }));
+      });
     },
 
     async removeTheme(themeId) {
-      if (!THEME_ID.test(themeId)) return;
+      await writeExclusively(async () => {
+        if (!THEME_ID.test(themeId)) return;
 
-      const all = await readOrigins(file);
-      // Nothing to remove is no write: a file that could not be read reads as
-      // `{}`, and saving that would replace the file that is actually there.
-      // `Object.hasOwn`, not `in`: `constructor` is a legal theme id, and `in`
-      // walks the prototype chain, so `removeTheme("constructor")` would find an
-      // entry that is not there and rewrite a file it should have left alone.
-      if (!Object.hasOwn(all, themeId)) return;
+        const all = await readOrigins(file);
+        // Nothing to remove is no write: a file that could not be read reads as
+        // `{}`, and saving that would replace the file that is actually there.
+        // `Object.hasOwn`, not `in`: `constructor` is a legal theme id, and `in`
+        // walks the prototype chain, so `removeTheme("constructor")` would find an
+        // entry that is not there and rewrite a file it should have left alone.
+        if (!Object.hasOwn(all, themeId)) return;
 
-      delete all[themeId];
-      await save(all);
+        delete all[themeId];
+        await save(all);
+      });
     },
   };
 }

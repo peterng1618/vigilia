@@ -44,6 +44,27 @@ describe("theme origins", () => {
     });
   });
 
+  it("serializes overlapping writes so neither entry is lost", async () => {
+    // Both are read-modify-write over one file: an install's write can overlap
+    // a delete's removal, and an unserialized pair reads the same map twice and
+    // lets the later save replace the other's entry.
+    const pairs = Array.from({ length: 5 }, (_unused, index) => index);
+    await Promise.all(
+      pairs.flatMap((index) => [
+        store.write(`left-${index}`, origin(`catalogue-left-${index}`)),
+        store.write(`right-${index}`, origin(`catalogue-right-${index}`)),
+      ]),
+    );
+
+    const expected = Object.fromEntries(
+      pairs.flatMap((index) => [
+        [`left-${index}`, origin(`catalogue-left-${index}`)],
+        [`right-${index}`, origin(`catalogue-right-${index}`)],
+      ]),
+    );
+    expect(await store.read()).toEqual(expected);
+  });
+
   it("drops an entry whose fields are not the three strings", async () => {
     await seed(
       JSON.stringify({

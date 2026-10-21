@@ -88,6 +88,7 @@ describe("downloadPackage", () => {
 
     expect(result).toEqual({
       ok: false,
+      stage: "address",
       message: expect.stringContaining("https"),
     });
     // A refused scheme is refused before the request, not after it.

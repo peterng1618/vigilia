@@ -2241,9 +2241,19 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
+      let raw: string;
+      try {
+        raw = await readBody(request);
+      } catch {
+        // `readBody`'s only refusal is its size limit; the import route answers
+        // the same class of input with 413.
+        sendText(response, 413, "That install request is too large.");
+        return;
+      }
+
       let install: InstallRequest;
       try {
-        const parsed = parseInstallRequest(JSON.parse(await readBody(request)));
+        const parsed = parseInstallRequest(JSON.parse(raw));
         if (parsed === undefined) {
           sendText(
             response,
@@ -2265,8 +2275,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
         ...(fetcher === undefined ? {} : { fetch: fetcher }),
       });
       if (!installed.ok) {
-        // The refusing owner's own words. 502 when the remote end failed and
-        // 400 when the request asked for a package this build will not take.
+        // The refusing owner's own words. 502 when the remote end failed; 400
+        // when the request's address, package or kind is one this build will
+        // not take.
         sendText(
           response,
           installed.stage === "download" ? 502 : 400,

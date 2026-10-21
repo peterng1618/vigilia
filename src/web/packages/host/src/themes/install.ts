@@ -1,6 +1,6 @@
 import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
 import type { ThemeOriginsStore } from "../settings/theme-origins.js";
-import { type DownloadOptions, downloadPackage } from "./download.js";
+import { downloadPackage } from "./download.js";
 import { importThemePackage } from "./import.js";
 import type { ThemeStore } from "./store.js";
 import type { ThumbnailStore } from "./thumbnails.js";
@@ -32,17 +32,16 @@ export interface InstallOptions {
   readonly thumbnails?: ThumbnailStore;
   /** Injected so a test drives the download without a network. */
   readonly fetch?: typeof fetch;
-  readonly timeoutMs?: number;
 }
 
 /** `stage` is which owner refused, so a route can answer 502 for the remote end
- *  and 400 for a package or kind this build will not take. */
+ *  and 400 for an address, a package or a kind this build will not take. */
 export type InstallResult =
   | { readonly ok: true; readonly id: string }
   | {
       readonly ok: false;
       readonly message: string;
-      readonly stage: "download" | "package";
+      readonly stage: "address" | "download" | "package";
     };
 
 /**
@@ -62,15 +61,15 @@ export async function installCatalogueItem(
     };
   }
 
-  const downloadOptions: DownloadOptions = {
+  const downloaded = await downloadPackage(request.packageUrl, {
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
-    ...(options.timeoutMs === undefined
-      ? {}
-      : { timeoutMs: options.timeoutMs }),
-  };
-  const downloaded = await downloadPackage(request.packageUrl, downloadOptions);
+  });
   if (!downloaded.ok) {
-    return { ok: false, stage: "download", message: downloaded.message };
+    return {
+      ok: false,
+      stage: downloaded.stage,
+      message: downloaded.message,
+    };
   }
 
   const imported = await importThemePackage(downloaded.bytes, {

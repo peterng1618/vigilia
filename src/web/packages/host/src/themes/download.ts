@@ -18,7 +18,13 @@ export interface DownloadOptions {
 
 export type DownloadResult =
   | { readonly ok: true; readonly bytes: Uint8Array }
-  | { readonly ok: false; readonly message: string };
+  | {
+      readonly ok: false;
+      readonly message: string;
+      /** `address` is the caller's data (a scheme or host no catalogue can
+       *  produce) and belongs to a 400; `download` is the remote end failing. */
+      readonly stage: "address" | "download";
+    };
 
 /** The hosts the hosting decision's two options can legitimately produce: a
  *  release asset (both its redirect target and the older object host) and a
@@ -42,15 +48,15 @@ export async function downloadPackage(
 ): Promise<DownloadResult> {
   const target = parseUrl(url);
   if (target === undefined)
-    return refuse("That is not a URL a catalogue can produce.");
+    return refuseAddress("That is not a URL a catalogue can produce.");
   if (target.protocol !== "https:")
-    return refuse("A catalogue package must be downloaded over https.");
+    return refuseAddress("A catalogue package must be downloaded over https.");
   if (!isCatalogueHost(target))
-    return refuse("That host cannot serve a catalogue package.");
+    return refuseAddress("That host cannot serve a catalogue package.");
 
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
-    return refuse(
+    return refuseDownload(
       "A download timeout must be a positive number of milliseconds.",
     );
 
@@ -84,8 +90,8 @@ export async function downloadPackage(
     return await Promise.race([running, timedOut]);
   } catch (error) {
     if (controller.signal.aborted)
-      return refuse("The download did not finish in time.");
-    return refuse(
+      return refuseDownload("The download did not finish in time.");
+    return refuseDownload(
       error instanceof Error ? error.message : "The download failed.",
     );
   } finally {
@@ -140,7 +146,7 @@ async function read(
   }
 
   if (response.body === null)
-    return refuse("The download answered no package.");
+    return refuseDownload("The download answered no package.");
 
   const reader = response.body.getReader();
   opened(reader);
@@ -151,7 +157,7 @@ async function read(
     if (done) break;
     total += value.byteLength;
     if (total > MAX_ARCHIVE_BYTES)
-      return refuse("That package is too large to download.");
+      return refuseDownload("That package is too large to download.");
     chunks.push(value);
   }
   const bytes = new Uint8Array(total);
@@ -192,8 +198,12 @@ function redirectTarget(response: Response, current: URL): URL | undefined {
   }
 }
 
-function refuse(message: string): DownloadResult {
-  return { ok: false, message };
+function refuseDownload(message: string): DownloadResult {
+  return { ok: false, stage: "download", message };
+}
+
+function refuseAddress(message: string): DownloadResult {
+  return { ok: false, stage: "address", message };
 }
 
 /** A refusal before the reader exists: closing here is the only thing that
@@ -204,5 +214,5 @@ async function refuseAndClose(
   message: string,
 ): Promise<DownloadResult> {
   await response.body?.cancel().catch(() => undefined);
-  return refuse(message);
+  return refuseDownload(message);
 }

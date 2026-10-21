@@ -1323,6 +1323,36 @@ describe("Host theme routes", () => {
       expect(res.status).toBe(400);
     });
 
+    it("answers 400 for an address no catalogue can produce", async () => {
+      // Nothing pre-checks the URL in the route: the downloader owns the
+      // allowlist and its `address` stage is what maps to 400.
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        JSON.stringify({
+          packageUrl: "http://github.com/x/y.zip",
+          catalogueId: "aurora",
+          version: "1.2.0",
+          kind: DASHBOARD_THEME_KIND,
+        }),
+      );
+
+      expect(res.status).toBe(400);
+      expect(res.text()).toContain("https");
+    });
+
+    it("answers 413 for an install body over the limit", async () => {
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        "x".repeat(65 * 1024),
+      );
+
+      expect(res.status).toBe(413);
+    });
+
     it("answers 502 when the download failed", async () => {
       answer = () => new Response("no", { status: 404 });
 

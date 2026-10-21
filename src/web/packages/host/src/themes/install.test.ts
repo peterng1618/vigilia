@@ -164,6 +164,19 @@ describe("installCatalogueItem", () => {
     expect(Object.keys(await origins.read())).toEqual(["living-room-2"]);
   });
 
+  it("forwards an address no catalogue can produce as the caller's refusal", async () => {
+    const { fetch } = recorded(() => new Response("no"));
+
+    const result = await installCatalogueItem(
+      { ...REQUEST, packageUrl: "http://github.com/x/y.zip" },
+      { store, origins, fetch },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.stage).toBe("address");
+    expect(await origins.read()).toEqual({});
+  });
+
   it("records no origin when the download was refused", async () => {
     const { fetch } = recorded(() => new Response("no", { status: 404 }));
 
