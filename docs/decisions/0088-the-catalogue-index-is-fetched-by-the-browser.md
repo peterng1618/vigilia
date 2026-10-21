@@ -3,7 +3,8 @@
 - **Date:** 2026-10-21
 - **Status:** accepted
 - **Paths:** `src/web/packages/renderer-core/src/theme/`
-  `scripts/`
+  `src/web/packages/host/src/catalogue/` (neither is a watchlisted owner; this
+  note claims them because they are the two the decision creates)
 
 ## The problem
 

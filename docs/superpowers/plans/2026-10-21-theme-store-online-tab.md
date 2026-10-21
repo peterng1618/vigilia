@@ -90,23 +90,28 @@ export function parseCatalogueIndex(
 - [ ] **Step 4: Add the cases the Review Focus names** — a non-object; `entries` not an array; an entry whose `facets` is not a record; `downloads` non-numeric; a `__proto__` entry id. Then run the file green and `npx tsc --noEmit`.
 - [ ] **Step 5: Export from the barrel** and commit.
 
-## Task 2: The generator, and the Action that runs it
+## Task 2: The generator, as a command on the host binary
+
+**Amended 2026-10-21, before dispatch** — the original version put the generator in `scripts/*.mjs` and was unbuildable. `@vigilia/renderer-core`'s `exports` points at `./src/index.ts`, the package has no build, and `packages/host/bin/vigilia.js`'s own docblock states the exact reason a plain Node script cannot import it: *"Node can strip types but cannot resolve `renderer-core`'s bundler-style `.js` specifiers from source."* CI runs `npm ci` then `npm run gate` with no build between, so a script importing the package would fail `gates:self-test` on a clean checkout. **The host is the one Node runtime here that is built and can import it**, and `run(argv)` is already its CLI entry.
 
 **Files:**
-- Create: `scripts/generate-catalogue-index.mjs`
-- Modify: `src/web/package.json` (`gates:self-test`, wired exactly as `scripts/oversize-files.mjs` is)
+- Create: `src/web/packages/host/src/catalogue/build-index.ts`
+- Create: `src/web/packages/host/src/catalogue/build-index.test.ts`
+- Modify: `src/web/packages/host/src/main.ts` (one line at the top of `run`, plus the import)
 
 **Interfaces:**
-- Consumes: `facetRecordOf`, `validateFabricThemeEnvelope` and `parseCatalogueIndex` from `renderer-core`, imported through the package's own `exports` entry (read `src/web/packages/renderer-core/package.json`; never a hand-built `dist` path).
-- Produces: a CLI, `node scripts/generate-catalogue-index.mjs --catalogue <dir> --out <file> --generated-at <ISO>`.
+- `catalogueIndexOf(items: readonly CatalogueItem[], generatedAt: string): CatalogueIndex` — pure, using `facetRecordOf` and `CatalogueIndex` from `@vigilia/renderer-core`. `CatalogueItem` is `{ readonly id: string; readonly item: unknown; readonly theme: unknown }` — what the walk read, not yet validated.
+- `buildCatalogueIndexCommand(argv: readonly string[]): Promise<number | undefined>` — returns `undefined` unless `argv[0]` is `--build-catalogue-index`, so `run` falls through to `parseArgs` untouched and **no option parser changes**.
+- `run()` gains, as its first statement: `const catalogue = await buildCatalogueIndexCommand(argv); if (catalogue !== undefined) return catalogue;`
+- CLI: `node packages/host/bin/vigilia.js --build-catalogue-index <catalogueDir> --out <file> --generated-at <ISO>`.
 
 **`--generated-at` is required and never `Date.now()`.** A generator that stamps the clock produces a different file every run, which makes the Action's diff dirty on every push and the output untestable. The Action passes the catalogue commit's own timestamp.
 
-- [ ] **Step 1: Write the failing `--self-test` arm** — a temp catalogue of two items: one valid `item.json` + `theme.json` pair, one whose `theme.json` fails validation. Assert the output's `entries` has one entry, that entry's `facets` deep-equals `facetRecordOf(theme)`, and that `parseCatalogueIndex(output, ["dashboard-theme"]).refused` is empty — the generator validates its own output with the reader's parser, which is what keeps the two producers one shape.
-- [ ] **Step 2: Run it and watch it fail** — `node scripts/generate-catalogue-index.mjs --self-test` from the repo root.
+- [ ] **Step 1: Write the failing Vitest test** (`build-index.test.ts`, in `packages/host`) — a temp catalogue of two items: one valid `item.json` + `theme.json` pair, one whose `theme.json` fails validation. Assert the output's `entries` has one entry, that entry's `facets` deep-equals `facetRecordOf(theme)`, and that `parseCatalogueIndex(output, ["dashboard-theme"]).refused` is empty — the generator validates its own output with the reader's parser, which is what keeps the two producers one shape.
+- [ ] **Step 2: Run it and watch it fail** — `npx vitest run packages/host/src/catalogue/build-index.test.ts` from `src/web/`.
 - [ ] **Step 3: Implement the walk and the write** — every `catalogue/*/item.json`, its sibling `theme.json` validated by `validateFabricThemeEnvelope`, refused items reported on stderr and **excluded** rather than failing the run; output written with two-space indent and a trailing newline so the Action's diff is stable.
-- [ ] **Step 4: A missing build must fail loudly** — if `renderer-core`'s entry cannot be imported, exit non-zero naming the build step. A generator that silently wrote an empty index would publish an empty catalogue.
-- [ ] **Step 5: Wire `--self-test` into `gates:self-test`, run `npm run gates:self-test`, and commit.**
+- [ ] **Step 4: The command must not be silently absent** — an unknown flag after `--build-catalogue-index`, or a catalogue directory that does not exist, exits non-zero with a message naming the argument. A generator that wrote an empty index over a mistyped path would publish an empty catalogue.
+- [ ] **Step 5: Green, `npx tsc --noEmit`, `npx biome check ..` from `src/web/`, commit.** No change to `gates:self-test`: the command is tested by Vitest like every other host module.
 
 ## Task 3: The catalogue repo (controller step — external, not delegated)
 
@@ -142,8 +147,8 @@ jobs:
       - run: npm run build
         working-directory: app/src/web
       - run: |
-          node app/scripts/generate-catalogue-index.mjs \
-            --catalogue catalogue --out index.json \
+          node app/src/web/packages/host/bin/vigilia.js \
+            --build-catalogue-index catalogue --out index.json \
             --generated-at "$(git log -1 --format=%cI)"
       - run: |
           git config user.name  "vigilia-index"
