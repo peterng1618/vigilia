@@ -448,6 +448,12 @@ it("writes the byline the drawing draws, and says so when there is no author", a
  * case that never drew anything — a cell badging every theme, or one badging
  * none, fails here either way.
  *
+ * **The query is scoped to the facts band**, because the band is the drawing's
+ * whole reason for the badge's position: beside the name it would make this
+ * half's cells taller than the online half's, and the cell is one cell shared by
+ * both halves. A badge that merely exists somewhere in the cell is not the
+ * drawing's badge.
+ *
  * **The word is the local half's own**, *From the store*, and not the online
  * half's *Installed*: `uiCopy.store.fromStore` carries why.
  */
@@ -463,10 +469,20 @@ it("badges the cell whose theme came from the store, and leaves the other unbadg
     />,
   );
 
+  /** One cell's facts band, which is where the drawing puts the badge. */
+  function band(id: string): HTMLElement {
+    return must(
+      container.querySelector<HTMLElement>(
+        `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-band]`,
+      ),
+      `${id}'s facts band`,
+    );
+  }
+
   /** One cell's badge, or the `null` that says it drew none. */
   function badge(id: string): HTMLElement | null {
-    return container.querySelector<HTMLElement>(
-      `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-origin]`,
+    return band(id).querySelector<HTMLElement>(
+      "[data-vigilia-store-cell-origin]",
     );
   }
 

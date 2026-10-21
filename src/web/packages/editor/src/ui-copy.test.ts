@@ -82,6 +82,20 @@ it("names each reading for the question it answers", () => {
 });
 
 /**
+ * **The origin word is pinned as a literal, because the drawings are its owner
+ * and this table is not.** Every surface that prints it reads
+ * `uiCopy.store.fromStore`, so a case asserting the badge says *that key* stays
+ * green if the key's own value changes — and it did change once: *Installed* is
+ * the **online** half's footer verb (`store-detail.html`), where a theme is read
+ * against the catalogue rather than against this machine's copy, while the local
+ * half badges its cells *From the store* (`store-themes.html`). One fact, two
+ * views, two words; this is the only assertion that tells them apart.
+ */
+it("words the local origin badge the way the drawing does", () => {
+  expect(uiCopy.store.fromStore).toBe("From the store");
+});
+
+/**
  * §9: a menu's rows are sentence case. The list is the menu's own — its three
  * names, its File and Edit rows and its View settings — not the whole table,
  * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:

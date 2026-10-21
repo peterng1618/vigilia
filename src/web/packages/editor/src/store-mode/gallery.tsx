@@ -142,7 +142,14 @@ function Cell(props: {
         {byline(item)}
       </span>
       <div className="px-[var(--space-10)] pb-[var(--space-10)]">
-        <span className="flex h-[26px] items-center gap-[var(--space-6)]">
+        {/* The band's own hook, because **what the badge sits in is the claim**:
+            the drawing puts it here rather than beside the name, so a case that
+            only asked whether the badge exists would stay green through a move
+            that changed the grid (`store-themes.html`). */}
+        <span
+          data-vigilia-store-cell-band=""
+          className="flex h-[26px] items-center gap-[var(--space-6)]"
+        >
           {/* **The origin badge is the drawing's pill, in the band's left
               slot** — not beside the name, where it would make this half's
               cells taller than the online half's, and the cell is one cell

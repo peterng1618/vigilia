@@ -251,7 +251,11 @@ function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
           (`store-detail.html`). **Only the origin clause is drawn** — *Shows on
           …* is an assignment fact no item carries yet, and the surface that owns
           assignment owns that clause. A theme the host holds no record of draws
-          no line at all. */}
+          no line at all.
+          **The version here is not the caption's.** The caption prints the
+          document's own version; this one is the version installed from the
+          catalogue, and the two can differ — so this is not a duplicate to
+          remove. */}
       {item.origin === undefined ? null : (
         <span
           data-vigilia-store-item-origin=""
