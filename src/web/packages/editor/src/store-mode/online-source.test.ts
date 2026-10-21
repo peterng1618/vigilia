@@ -162,4 +162,30 @@ describe("the catalogue's source", () => {
     await expect(source.list()).rejects.toThrow("500");
     expect(source.refused()).toEqual([]);
   });
+
+  it("forgets the refusals of a read that rejected", async () => {
+    // The production failure shapes — offline, a DNS failure, an abort — reject
+    // the promise rather than answer a status, so nothing after the `await`
+    // runs and only a clear at method entry leaves `refused()` empty.
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          indexWith([
+            ENTRY,
+            { ...ENTRY, id: "vigilia/widget", kind: "widget-theme" },
+          ]),
+        ),
+      )
+      .mockRejectedValueOnce(
+        new TypeError("Failed to fetch"),
+      ) as unknown as typeof fetch;
+    const source = onlineThemeSource({ fetch: fetcher });
+
+    await source.list();
+    expect(source.refused()).toHaveLength(1);
+
+    await expect(source.list()).rejects.toThrow("Failed to fetch");
+    expect(source.refused()).toEqual([]);
+  });
 });
