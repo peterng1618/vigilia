@@ -60,9 +60,20 @@ export function useInstall(options: {
       } else {
         setRefusal({ id: item.id, message: outcome.message });
       }
-      inFlight.current.delete(item.id);
-      setInstallingIds(new Set(inFlight.current));
-    });
+    })
+      // A press that rejects rather than answering — the one path that leaves
+      // this hook before `installItem`'s own catch — must still release its
+      // control: a busy flag nobody clears disables that cell for the session.
+      .catch((error: unknown) => {
+        setRefusal({
+          id: item.id,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      })
+      .finally(() => {
+        inFlight.current.delete(item.id);
+        setInstallingIds(new Set(inFlight.current));
+      });
   };
 
   return {

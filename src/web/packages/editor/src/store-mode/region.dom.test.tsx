@@ -2300,3 +2300,35 @@ it("draws no catalogue refusal on a library item whose id collides", async () =>
     "a library item drew a catalogue refusal it has no control for",
   ).toBeNull();
 });
+
+/**
+ * **A press that rejects still releases its control.** `installItem` answers
+ * rather than throwing for every refusal it can name, but one path escapes
+ * before its own try: an environment with no `fetch` to bind. A busy flag
+ * nobody clears would disable that cell for the rest of the session, so the
+ * release rides `finally` rather than the success arm.
+ */
+it("releases the control when the press rejects rather than answering", async () => {
+  const host = installHost({ entries: [catalogueEntry("office-wall", "1.3.0")] });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await showOnline();
+
+  vi.stubGlobal("fetch", undefined);
+  await act(async () => installControl("office-wall").click());
+  await settle();
+
+  expect(
+    installControl("office-wall").disabled,
+    "the control stayed busy after a press that rejected",
+  ).toBe(false);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-install-refusal]",
+      ),
+      "the rejected press's sentence",
+    ).textContent,
+    "a rejected press stated nothing",
+  ).not.toBe("");
+});
