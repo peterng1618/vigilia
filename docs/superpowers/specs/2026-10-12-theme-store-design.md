@@ -976,7 +976,8 @@ is against a routed fixture: the real catalogue stays empty until E.
 **A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
 `index.json` and no hosting decision. **C is the last phase that dodges open
 question 1**; everything after it depends on where the bytes live, which is why
-that question is the first thing D waits on rather than a footnote.
+that question was D's first step rather than a footnote. It was decided on
+2026-10-21, and D landed on that ruling.
 
 **G is the one row out of order.** It needs only A, and it must land before C so
 the first `index.json` the Action generates already carries tags, rather than the
