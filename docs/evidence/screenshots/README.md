@@ -188,9 +188,13 @@ result, not merely a mounted editor.
 | Theme store | Press Install on an item the library does not hold, and read the cell after the host answers `ok` | `store-online-install-installed` / `draws the item as Installed once the host answers ok` |
 | Theme store | Press Update on an item the library holds at an older version, and read the cell before and after | `store-online-install-updated` / `reads Update before the press and Installed after` |
 | Theme store | Read a cell after the host refuses its install | `store-online-install-refused` / `leaves the cell as it was and states the host's reason` |
+| Theme store | Submit a library theme with no identity, and read the one-time code and verification link | `store-submit-code` / `signing in shows the host's one-time code and its verification link` |
+| Theme store | Read a submitted library theme's pull request link, and the control after it | `store-submit-submitted` / `a submitted theme shows its pull request link and the control no longer offers Submit` |
+| Theme store | Read a library theme's surface after the host refuses its submission | `store-submit-refused` / `a refused submission states the host's own sentence` |
 
-The catalogue, the library and `/api/themes/install` are all answered by
-`page.route`, so these eight show a routed fixture and not the live origin — the
+The catalogue, the library, `/api/themes/install`, `/api/themes/submit` and both
+`/api/github/device` routes are all answered by `page.route`, so these eleven
+show a routed fixture and not the live origin — the
 real catalogue is empty until phase E. Each cell's picture is a 1×1 PNG served by the fixture at the
 panel ground, so the empty picture boxes are the stand-in, not a defect in the
 catalogue's thumbnails or their CDN.

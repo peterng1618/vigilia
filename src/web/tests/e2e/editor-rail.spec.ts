@@ -2372,6 +2372,14 @@ async function routeInstallingHost(
   );
 }
 
+/** A transparent 1×1 PNG, for a picture a fixture does not serve: an empty box
+ *  showing the surface's own ground rather than the browser's broken-image
+ *  mark, which would read as a defect in the surface. */
+const EMPTY_PICTURE_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAANSURBVBhXY2BgYGAAAAAFAAGKM+MAAAAAAElFTkSuQmCC",
+  "base64",
+);
+
 /**
  * The store, on its online half: the catalogue and the library both routed, the
  * region mounted and its Store segment chosen, and the readable entries listed.
@@ -2398,10 +2406,7 @@ async function showOnlineStore(page: Page): Promise<Locator> {
     (route) =>
       route.fulfill({
         contentType: "image/png",
-        body: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOQVjEAAADNAHAfna9TAAAAAElFTkSuQmCC",
-          "base64",
-        ),
+        body: EMPTY_PICTURE_PNG,
       }),
   );
 
@@ -2754,6 +2759,211 @@ test("the online item's own surface shows its counts and its install action", as
   ).toBeEnabled();
 
   await captureVisualReview(page, testInfo, "store-online-modal");
+});
+
+/**
+ * The library half with one theme's own surface open — **the only half whose
+ * surface offers Submit**: an online item draws its install answer instead
+ * (`item-modal.tsx`).
+ *
+ * The library is `BOUNDARY_LIBRARY`, which carries no `updatedAt`, so the
+ * editor boots on its starter and opens nothing before this case's own open.
+ * The submission routes are the caller's, registered after this returns and
+ * before the press, because only the press asks them anything.
+ */
+async function openLibraryItem(page: Page, id: string): Promise<Locator> {
+  await page.route("**/api/themes", (route) =>
+    route.fulfill({ json: { themes: BOUNDARY_LIBRARY } }),
+  );
+  // The client composes `/api/themes/<id>/thumbnail` for every entry, so an
+  // unrouted thumbnail draws the browser's broken-image mark in each capture.
+  await page.route("**/api/themes/*/thumbnail", (route) =>
+    route.fulfill({ contentType: "image/png", body: EMPTY_PICTURE_PNG }),
+  );
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  // A page size another case left behind would page this listing differently.
+  await page.evaluate(() =>
+    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+  );
+  await page
+    .locator(".editor-shell-mode-switch")
+    .getByRole("button", { name: uiCopy.modes.themes, exact: true })
+    .click();
+
+  const region = page.locator("[data-vigilia-mode-region='themes']");
+  await expect(region, "the themes mode renders no region").toBeVisible();
+  await region
+    .locator(
+      `[data-vigilia-store-cell='${id}'] [data-vigilia-store-cell-surface]`,
+    )
+    .click();
+  const modal = page.locator("[data-vigilia-store-item]");
+  await expect(modal, "a library cell opens no item's surface").toBeVisible();
+  return modal;
+}
+
+/** The host's answer for the device flow these three cases stand in for. */
+const DEVICE_FLOW = {
+  userCode: "ABCD-1234",
+  verificationUri: "https://github.com/login/device",
+  expiresIn: 900,
+  interval: 1,
+};
+
+/** The pull request the host's second answer names. */
+const SUBMITTED_PR = "https://github.com/peterng1618/vigilia-store/pull/42";
+
+test("signing in shows the host's one-time code and its verification link", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const modal = await openLibraryItem(page, "boundary-plain");
+  // **A `401` is the one status that starts a sign-in**, and the poll waits:
+  // this claim is about what the author is told while it does.
+  await page.route("**/api/themes/submit", (route) =>
+    route.fulfill({ status: 401, body: "" }),
+  );
+  await page.route("**/api/github/device", (route) =>
+    route.fulfill({ json: DEVICE_FLOW }),
+  );
+  await page.route("**/api/github/device/poll", (route) =>
+    route.fulfill({ json: { state: "pending" } }),
+  );
+
+  const submit = modal.locator("[data-vigilia-store-item-submit]");
+  await expect(
+    submit,
+    "the library item's surface offers no submission",
+  ).toHaveText("Submit to the store");
+  await submit.click();
+
+  await expect(
+    submit,
+    "the control does not enter the sign-in state",
+  ).toHaveAttribute("data-vigilia-store-item-submit", "authorising");
+  await expect(
+    submit,
+    "the control is live while the flow waits",
+  ).toBeDisabled();
+
+  // **The host's own code and link, drawn as the sentence `uiCopy` owns**, so a
+  // renamed or reordered sentence fails here rather than reading as correct.
+  const code = modal.locator("[data-vigilia-store-item-submit-code]");
+  await expect(
+    code,
+    "the sign-in does not state the one-time code and where to type it",
+  ).toHaveText(
+    "Enter ABCD-1234 at github.com to approve this submission. Open github.com to approve",
+  );
+  const open = modal.locator("[data-vigilia-store-item-submit-open]");
+  await expect(open, "the code is not accompanied by a link").toHaveAttribute(
+    "href",
+    DEVICE_FLOW.verificationUri,
+  );
+  await expect(open, "the sign-in link carries no words").toHaveText(
+    "Open github.com to approve",
+  );
+
+  await captureVisualReview(page, testInfo, "store-submit-code", modal);
+});
+
+test("a submitted theme shows its pull request link and the control no longer offers Submit", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const modal = await openLibraryItem(page, "boundary-plain");
+  // The host answers the first press with no identity, the retry with a pull
+  // request; the poll waits once and then authorises, as the real flow does.
+  let submits = 0;
+  await page.route("**/api/themes/submit", (route) => {
+    submits += 1;
+    return submits === 1
+      ? route.fulfill({ status: 401, body: "" })
+      : route.fulfill({ json: { ok: true, url: SUBMITTED_PR } });
+  });
+  await page.route("**/api/github/device", (route) =>
+    route.fulfill({ json: DEVICE_FLOW }),
+  );
+  let polls = 0;
+  await page.route("**/api/github/device/poll", (route) => {
+    polls += 1;
+    return route.fulfill({
+      json: polls === 1 ? { state: "pending" } : { state: "ok", login: "ada" },
+    });
+  });
+
+  const submit = modal.locator("[data-vigilia-store-item-submit]");
+  await submit.click();
+
+  const submitted = modal.locator(
+    "[data-vigilia-store-item-submit='submitted']",
+  );
+  await expect(
+    submitted,
+    "the retried submission never reaches the submitted state",
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    submitted,
+    "a submitted theme's control still offers another submission",
+  ).toBeDisabled();
+  await expect(
+    modal,
+    "the surface does not state the pull request",
+  ).toContainText("Pull request opened.");
+  const url = modal.locator("[data-vigilia-store-item-submit-url]");
+  await expect(url, "the pull request is not linked").toHaveAttribute(
+    "href",
+    SUBMITTED_PR,
+  );
+  await expect(url, "the pull request link does not name its URL").toHaveText(
+    SUBMITTED_PR,
+  );
+
+  await captureVisualReview(page, testInfo, "store-submit-submitted", modal);
+});
+
+test("a refused submission states the host's own sentence", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const modal = await openLibraryItem(page, "boundary-plain");
+  // A sentence only the host could write: a local composer that paraphrased it
+  // would pass a test that asserted its own copy instead.
+  const reason = "This host has no GitHub token to open a pull request.";
+  let deviceCalls = 0;
+  await page.route("**/api/themes/submit", (route) =>
+    route.fulfill({ status: 503, body: reason }),
+  );
+  await page.route("**/api/github/device", (route) => {
+    deviceCalls += 1;
+    return route.fulfill({ json: DEVICE_FLOW });
+  });
+
+  const submit = modal.locator("[data-vigilia-store-item-submit]");
+  await submit.click();
+
+  await expect(
+    modal.locator("[data-vigilia-store-item-submit-refusal]"),
+    "the refused submission is not stated beside the control",
+  ).toHaveText(reason);
+  const after = modal.locator("[data-vigilia-store-item-submit='refused']");
+  await expect(
+    after,
+    "a refused submission left the control in another state",
+  ).toBeVisible();
+  await expect(
+    after,
+    "a refused submission left the control dead",
+  ).toBeEnabled();
+  expect(deviceCalls, "a refusal that is not a 401 started a sign-in").toBe(0);
+
+  await captureVisualReview(page, testInfo, "store-submit-refused", modal);
 });
 
 /**
