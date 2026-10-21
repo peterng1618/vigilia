@@ -177,6 +177,25 @@ it("tells an install's no-package, refusal, stale-listing and success cases apar
 });
 
 /**
+ * **The submission's sentences are pinned as literals**, for the same reason
+ * the install's are: each names a different thing the author does next — press,
+ * enter a code, read the pull request, or try again after a sign-in expired —
+ * and keys-only assertions would stay green if two were rewritten into one.
+ */
+it("pins the submission's sentences as literals", () => {
+  expect(uiCopy.store.submit.label).toBe("Submit to the store");
+  expect(uiCopy.store.submit.busy).toBe("Submitting…");
+  expect(uiCopy.store.submit.authorising("ABCD-1234")).toBe(
+    "Enter ABCD-1234 at github.com to approve this submission.",
+  );
+  expect(uiCopy.store.submit.open).toBe("Open github.com to approve");
+  expect(uiCopy.store.submit.submitted).toBe("Pull request opened.");
+  expect(uiCopy.store.submit.expired).toBe(
+    "The GitHub sign-in expired. Submit again.",
+  );
+});
+
+/**
  * §9: a menu's rows are sentence case. The list is the menu's own — its three
  * names, its File and Edit rows and its View settings — not the whole table,
  * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:

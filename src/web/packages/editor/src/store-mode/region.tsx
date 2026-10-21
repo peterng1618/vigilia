@@ -43,6 +43,7 @@ import { useOnlineListing } from "./online-listing.js";
 import { Pager } from "./pager.js";
 import { DEFAULT_SORT, SORT_KEYS, SORT_ORDERS } from "./sort-orders.js";
 import { useInstall } from "./use-install.js";
+import { useSubmit } from "./use-submit.js";
 
 /**
  * The store's two halves. `local` is the host's own library — what the author
@@ -501,6 +502,10 @@ function StoreRegion(props: {
   /** The online half's install: the press, its in-flight set, and the sentence
    *  its last refusal announces (`use-install.ts`). */
   const install = useInstall({ source, onListed: setItems });
+  /** The library half's submission press and its longer flow (`use-submit.ts`):
+   *  the device sign-in outlives the modal that started it, so its state lives
+   *  beside the region rather than in the surface that pressed. */
+  const submit = useSubmit({});
   const [preference] = useState(() =>
     createPageSizePreference(browserStorage()),
   );
@@ -729,6 +734,7 @@ function StoreRegion(props: {
           onClose={() => setOpenId(undefined)}
           onAction={onAction}
           install={install.control}
+          submit={submit.control}
         />
       )}
 
@@ -746,14 +752,21 @@ function StoreRegion(props: {
           on screen while the modal is open — one region per surface would put
           the same sentence in two. The visible sentence stays beside the
           control that was refused. It is last because the region's *first* row
-          is its header (`shows the two halves as a Segmented ...`). */}
+          is its header (`shows the two halves as a Segmented ...`).
+          **The install and the submission share it** rather than each mounting
+          their own: two live regions are two announcements, and the modal's
+          outside-hiding spares only `[aria-live]` nodes. An install's sentence
+          wins where both exist, which is the one state the region was already
+          announcing. */}
       <span
         data-vigilia-store-install-announcement=""
         role="status"
         aria-live="polite"
         className="sr-only"
       >
-        {install.announcement}
+        {install.announcement === ""
+          ? submit.announcement
+          : install.announcement}
       </span>
     </div>
   );

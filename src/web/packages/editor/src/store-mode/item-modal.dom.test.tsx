@@ -27,6 +27,7 @@ import type { InstallControl } from "./install-item.js";
 import { DARK_GROUND, type FixtureTheme, fixtureItem } from "./item-fixture.js";
 import { ItemModal } from "./item-modal.js";
 import type { CatalogueFacts, StoreItem } from "./local-source.js";
+import type { SubmitControl } from "./use-submit.js";
 
 // Base UI's dialog needs three browser APIs jsdom has none of: floating-ui
 // observes its anchor, the popup waits for its own open transition, and it asks
@@ -144,6 +145,7 @@ function modalFor(
   item: StoreItem,
   vocabulary: readonly string[] = [],
   install: InstallControl = NO_INSTALL,
+  submit: SubmitControl = NO_SUBMIT,
 ): ReactElement {
   return (
     <ItemModal
@@ -152,6 +154,7 @@ function modalFor(
       onClose={() => {}}
       onAction={() => {}}
       install={install}
+      submit={submit}
     />
   );
 }
@@ -161,6 +164,17 @@ function modalFor(
 const NO_INSTALL: InstallControl = {
   onInstall: () => undefined,
   installingIds: new Set(),
+  refusal: undefined,
+};
+
+/** The submit control a case that is not about submitting hands down: idle,
+ *  with nothing asked for and nothing answered. */
+const NO_SUBMIT: SubmitControl = {
+  onSubmit: () => undefined,
+  state: "idle",
+  userCode: undefined,
+  verificationUri: undefined,
+  url: undefined,
   refusal: undefined,
 };
 
@@ -494,6 +508,7 @@ it("runs the footer's two actions and disables the two it has not", async () => 
       onClose={() => {}}
       onAction={(action) => ran.push(action)}
       install={NO_INSTALL}
+      submit={NO_SUBMIT}
     />,
   );
 
@@ -597,6 +612,7 @@ it("reports its own close rather than closing itself", async () => {
       onClose={() => closed.push(1)}
       onAction={() => {}}
       install={NO_INSTALL}
+      submit={NO_SUBMIT}
     />,
   );
 

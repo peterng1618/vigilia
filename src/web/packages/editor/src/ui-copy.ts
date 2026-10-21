@@ -708,6 +708,26 @@ export const uiCopy = {
        *  cannot see the cell redraw as *Installed*. */
       installed: (name: string): string => `${name} was installed.`,
     },
+    /** The library half's submission, whose sentence the client composes only
+     *  where the poll answers a state and no host sentence exists: the sign-in's
+     *  code and expiry, and the busy label. **A refusal is never composed here** —
+     *  the host knows which part of the submission failed, so its own words are
+     *  passed through unchanged (`use-submit.ts`). */
+    submit: {
+      label: "Submit to the store",
+      busy: "Submitting…",
+      /** Names the one-time code and where to type it, so the sentence is a
+       *  function of the code rather than a sentence with a hole a screen reader
+       *  reads in the wrong order. */
+      authorising: (code: string): string =>
+        `Enter ${code} at github.com to approve this submission.`,
+      /** The link's own words: the sentence above says what the code is for, and
+       *  this is the control that takes the author there. */
+      open: "Open github.com to approve",
+      submitted: "Pull request opened.",
+      expired: "The GitHub sign-in expired. Submit again.",
+      denied: "The GitHub sign-in was denied. Submit again.",
+    },
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */
     item: {

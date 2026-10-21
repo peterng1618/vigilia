@@ -10,6 +10,7 @@ import { CELL_ACTION_REASONS } from "./cell-actions.js";
 import type { InstallControl } from "./install-item.js";
 import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
+import type { SubmitControl } from "./use-submit.js";
 
 /**
  * The item's own surface: the modal a cell opens (`store-detail.html`).
@@ -443,6 +444,86 @@ function InstallFooter(props: {
   );
 }
 
+/**
+ * The library half's submission: the one control here that hands the theme to
+ * the store, beside the four actions that keep it on this PC.
+ *
+ * **The flow can be longer than a press**, so the control states what a person
+ * has to do next: the one-time code and the link while the host is authorising,
+ * the pull request once it is opened, and the host's own refusal otherwise. The
+ * control disables itself only while a press is in flight and after a
+ * submission landed; a refusal re-enables it, because acting on the reason is
+ * the point of stating it.
+ */
+function SubmitFooter(props: {
+  readonly item: StoreItem;
+  readonly submit: SubmitControl;
+}): React.JSX.Element {
+  const { item, submit } = props;
+  const busy = submit.state === "submitting" || submit.state === "authorising";
+  const submitted = submit.state === "submitted";
+  return (
+    <Fragment>
+      <button
+        type="button"
+        id="vigilia-store-item-submit"
+        data-vigilia-store-item-submit={submit.state}
+        disabled={busy || submitted}
+        aria-busy={busy}
+        onClick={() => submit.onSubmit(item)}
+        className={FOOTER_BUTTON}
+      >
+        {busy ? uiCopy.store.submit.busy : uiCopy.store.submit.label}
+      </button>
+      {/* The code is data, so the sentence that names it is the copy group's
+          function rather than a composed sentence here. The link is the control
+          the sentence tells the author to use, and it opens a new tab so the
+          editor is not replaced mid-flow. */}
+      {submit.state === "authorising" &&
+      submit.userCode !== undefined &&
+      submit.verificationUri !== undefined ? (
+        <span
+          data-vigilia-store-item-submit-code=""
+          className="max-w-[40ch] text-xs text-muted"
+        >
+          {uiCopy.store.submit.authorising(submit.userCode)}{" "}
+          <a
+            data-vigilia-store-item-submit-open=""
+            href={submit.verificationUri}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            {uiCopy.store.submit.open}
+          </a>
+        </span>
+      ) : null}
+      {submitted && submit.url !== undefined ? (
+        <span className="max-w-[40ch] text-xs text-muted">
+          {uiCopy.store.submit.submitted}{" "}
+          <a
+            data-vigilia-store-item-submit-url=""
+            href={submit.url}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            {submit.url}
+          </a>
+        </span>
+      ) : null}
+      {submit.state === "refused" && submit.refusal !== undefined ? (
+        <span
+          data-vigilia-store-item-submit-refusal=""
+          className="max-w-[40ch] text-xs text-warn"
+        >
+          {submit.refusal}
+        </span>
+      ) : null}
+    </Fragment>
+  );
+}
+
 export function ItemModal(props: {
   readonly item: StoreItem;
   /** The style tags the vocabulary holds, built from the listing by the surface
@@ -457,8 +538,11 @@ export function ItemModal(props: {
   /** The online half's install press, owned by the region because the re-listing
    *  it causes is the listing's fact rather than any surface's. */
   readonly install: InstallControl;
+  /** The library half's submission, owned by the region for the same reason:
+   *  the device flow outlives the press that started it. */
+  readonly submit: SubmitControl;
 }): React.JSX.Element {
-  const { item, onClose, onAction, install } = props;
+  const { item, onClose, onAction, install, submit } = props;
   // The one owner of the decision (`install-state.ts`): this surface draws what
   // it answers and never compares a version itself.
   const installState = installStateOf(item);
@@ -577,6 +661,11 @@ export function ItemModal(props: {
                 );
               })
             )}
+            {/* The library half's submission, beside the actions that keep the
+                theme on this PC; an online item has nothing to submit. */}
+            {installState === "none" ? (
+              <SubmitFooter item={item} submit={submit} />
+            ) : null}
           </span>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>

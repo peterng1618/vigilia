@@ -83,6 +83,9 @@ async function unmount(): Promise<void> {
 
 afterEach(async () => {
   await unmount();
+  // A case that drives the sign-in's poll installs fake timers; a timer left
+  // faked would stop the next file's `settle` from ever running.
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -2413,4 +2416,324 @@ it("releases the control when the press rejects rather than answering", async ()
     ).textContent,
     "a rejected press stated nothing",
   ).not.toBe("");
+});
+
+/**
+ * The submission routes the editor's own surface reaches: each `submit` and
+ * `poll` answer is drawn in turn, and the last one repeats, so a case can say
+ * *the second submit* rather than counting whichever answer came back.
+ */
+function submitHost(options: {
+  readonly submit: readonly Response[];
+  readonly device?: Response;
+  readonly poll?: readonly Response[];
+}): {
+  readonly fetch: typeof fetch;
+  readonly calls: string[];
+  readonly polls: () => number;
+} {
+  const calls: string[] = [];
+  const submits = [...options.submit];
+  const polls = [...(options.poll ?? [])];
+  let polled = 0;
+  const fetchStub = (async (input: RequestInfo | URL) => {
+    const path = String(input);
+    calls.push(path);
+    if (path === "/api/themes/submit") {
+      const answer = submits.length > 1 ? submits.shift() : submits[0];
+      return answer?.clone() ?? new Response("", { status: 500 });
+    }
+    if (path === "/api/github/device") {
+      return (
+        options.device?.clone() ??
+        new Response("No device flow.", { status: 503 })
+      );
+    }
+    if (path === "/api/github/device/poll") {
+      polled += 1;
+      const answer = polls.length > 1 ? polls.shift() : polls[0];
+      return (
+        answer?.clone() ??
+        new Response(JSON.stringify({ state: "pending" }), { status: 200 })
+      );
+    }
+    return new Response("Not found", { status: 404 });
+  }) as unknown as typeof fetch;
+  return { fetch: fetchStub, calls, polls: () => polled };
+}
+
+/** The device flow's own answer: the code the author types and where. */
+function deviceAnswer(interval = 5): Response {
+  return new Response(
+    JSON.stringify({
+      userCode: "ABCD-1234",
+      verificationUri: "https://github.com/login/device",
+      expiresIn: 900,
+      interval,
+    }),
+    { status: 200 },
+  );
+}
+
+const SUBMIT_PR_URL = "https://github.com/peterng1618/vigilia-store/pull/7";
+
+/** The modal's Submit control, or the failure that the library half draws none. */
+function submitControl(): HTMLButtonElement {
+  return must(
+    document.body.querySelector<HTMLButtonElement>(
+      "[data-vigilia-store-item-submit]",
+    ),
+    "the modal's submit control",
+  );
+}
+
+/** One press of the modal's Submit. */
+async function pressSubmit(): Promise<void> {
+  await act(async () => submitControl().click());
+}
+
+/** What the region's one live region is saying. */
+function liveRegion(): string {
+  return (
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-install-announcement]",
+      ),
+      "the live region",
+    ).textContent ?? ""
+  );
+}
+
+/** One library theme, its own surface opened, ready for a submission press. */
+async function mountAndOpen(): Promise<void> {
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+  ]);
+  await pressCellSurface("living-room");
+}
+
+/**
+ * **A missing identity starts the device flow and nothing else.** The host
+ * answers `401`; the surface asks for a code, shows it, and offers the link that
+ * opens in a new tab — the browser never sees a token, so the code is all it is
+ * given.
+ */
+it("shows the code and the verification link when the host asks for a sign-in", async () => {
+  vi.stubGlobal(
+    "fetch",
+    submitHost({
+      submit: [
+        new Response("Sign in to GitHub before submitting a theme.", {
+          status: 401,
+        }),
+      ],
+      device: deviceAnswer(),
+    }).fetch,
+  );
+  await mountAndOpen();
+
+  await pressSubmit();
+  await settle();
+
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-item-submit-code]",
+      ),
+      "the sign-in code",
+    ).textContent,
+    "the surface did not show the code the author types",
+  ).toContain("ABCD-1234");
+  const link = must(
+    document.body.querySelector<HTMLAnchorElement>(
+      "[data-vigilia-store-item-submit-open]",
+    ),
+    "the verification link",
+  );
+  expect(
+    link.getAttribute("href"),
+    "the verification link does not open GitHub's device page",
+  ).toBe("https://github.com/login/device");
+  expect(link.getAttribute("target"), "the link replaces the editor").toBe(
+    "_blank",
+  );
+  expect(link.getAttribute("rel"), "the link leaks no referrer").toBe(
+    "noreferrer",
+  );
+  expect(liveRegion(), "the authorising state reached no live region").toBe(
+    uiCopy.store.submit.authorising("ABCD-1234"),
+  );
+});
+
+/**
+ * **A poll that answers `ok` retries the submission once**, and the retry's
+ * answer is the pull request: the control then states the link and cannot be
+ * pressed again.
+ */
+it("retries the submission once the poll answers ok and shows the pull request", async () => {
+  vi.useFakeTimers();
+  const host = submitHost({
+    submit: [
+      new Response("Sign in to GitHub before submitting a theme.", {
+        status: 401,
+      }),
+      new Response(JSON.stringify({ ok: true, url: SUBMIT_PR_URL }), {
+        status: 200,
+      }),
+    ],
+    device: deviceAnswer(1),
+    poll: [
+      new Response(JSON.stringify({ state: "ok", login: "aurora-author" }), {
+        status: 200,
+      }),
+    ],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountAndOpen();
+
+  await pressSubmit();
+  await settle();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+  await settle();
+
+  const link = must(
+    document.body.querySelector<HTMLAnchorElement>(
+      "[data-vigilia-store-item-submit-url]",
+    ),
+    "the pull request link",
+  );
+  expect(
+    link.getAttribute("href"),
+    "the surface does not link to the pull request the host opened",
+  ).toBe(SUBMIT_PR_URL);
+  expect(
+    host.calls.filter((call) => call === "/api/themes/submit"),
+    "the poll's `ok` did not retry the submission exactly once",
+  ).toHaveLength(2);
+  expect(
+    submitControl().disabled,
+    "the control is still pressable after the pull request was opened",
+  ).toBe(true);
+  expect(liveRegion(), "the submitted state reached no live region").toBe(
+    uiCopy.store.submit.submitted,
+  );
+});
+
+/**
+ * **A refusal is the host's own sentence**, stated beside the control, and the
+ * control can be pressed again — the reason says which part of the submission
+ * failed, so a sentence composed here would hide it.
+ */
+it("states the host's refusal beside the control and re-enables it", async () => {
+  const refusal = "That theme has no picture to put in the store.";
+  vi.stubGlobal(
+    "fetch",
+    submitHost({
+      submit: [new Response(refusal, { status: 422 })],
+    }).fetch,
+  );
+  await mountAndOpen();
+
+  await pressSubmit();
+  await settle();
+
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-item-submit-refusal]",
+      ),
+      "the submit refusal",
+    ).textContent,
+    "the refusal is not the host's own sentence",
+  ).toBe(refusal);
+  expect(
+    submitControl().disabled,
+    "a refused submission left the control dead",
+  ).toBe(false);
+  expect(
+    liveRegion(),
+    "the refusal did not outrank the state it interrupted",
+  ).toBe(refusal);
+});
+
+/**
+ * **An expired sign-in is a refusal the surface can name**, because the poll
+ * answers a state and no sentence: the author is told to submit again, and the
+ * control is their way to.
+ */
+it("states an expired sign-in and lets the author submit again", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal(
+    "fetch",
+    submitHost({
+      submit: [
+        new Response("Sign in to GitHub before submitting a theme.", {
+          status: 401,
+        }),
+      ],
+      device: deviceAnswer(1),
+      poll: [
+        new Response(JSON.stringify({ state: "expired" }), { status: 200 }),
+      ],
+    }).fetch,
+  );
+  await mountAndOpen();
+
+  await pressSubmit();
+  await settle();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+  await settle();
+
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-item-submit-refusal]",
+      ),
+      "the expired sign-in's sentence",
+    ).textContent,
+    "an expired sign-in stated nothing",
+  ).toBe(uiCopy.store.submit.expired);
+  expect(
+    submitControl().disabled,
+    "an expired sign-in left the control dead",
+  ).toBe(false);
+  expect(
+    submitControl().textContent?.trim(),
+    "the control did not return to its own label",
+  ).toBe(uiCopy.store.submit.label);
+});
+
+/**
+ * **The poll stops with the surface.** A timer scheduled before unmount is
+ * cleared rather than firing against a hook that no longer exists.
+ */
+it("does not poll after the surface unmounts", async () => {
+  vi.useFakeTimers();
+  const host = submitHost({
+    submit: [
+      new Response("Sign in to GitHub before submitting a theme.", {
+        status: 401,
+      }),
+    ],
+    device: deviceAnswer(1),
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountAndOpen();
+
+  await pressSubmit();
+  await settle();
+  await unmount();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5_000);
+  });
+
+  expect(host.polls(), "a poll fired after the surface unmounted").toBe(0);
 });
