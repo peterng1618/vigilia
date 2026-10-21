@@ -92,6 +92,7 @@ two apart is the judgement the map cannot make for itself.
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
 | New-object defaults (text, charts, shapes) and the shape list | `editor/src/new-object-defaults.ts` |
 | **The card units a document can be built from, and what they are called** — the card vocabulary and its names | `editor/src/card-library.ts` (`CARD_LIBRARY`) |
+| **The tags an author picks from before a catalogue answers** — the offline style vocabulary, which a reachable catalogue replaces rather than extends | `editor/src/theme-tag-seed.ts` (`THEME_TAG_SEED`) |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
 | Shape material fields (fill, stroke, border, shadow, radius) and each shape's own geometry | `editor/src/selection-inspector/panel.ts` |
 | **Which sections a selection gets** — the questions a kind is asked and the order they are asked in, total over every selection kind by construction | `editor/src/selection-inspector/per-kind-column.ts` |
@@ -215,6 +216,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Provider scheduling/failure isolation/fallback | `host/src/providers/registry.ts` |
 | Device assignment and display names | `host/src/settings/devices.ts` |
 | A theme's own device answers | `host/src/settings/theme-settings.ts` |
+| Which catalogue item and version a theme was installed from, and whether it is still held | `host/src/settings/theme-origins.ts` |
 | Which device slots a theme needs | `host/src/settings/required-devices.ts` |
 | Which host an app folder is — the id a display re-finds it by, and the name it shows | `host/src/settings/host-record.ts` |
 | Whether a host already holds an app folder | `host/src/settings/host-lock.ts` |
