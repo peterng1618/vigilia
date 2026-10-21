@@ -13,6 +13,13 @@ export const STABLE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 /** Necessary asset-path shape; validator also rejects `.`/`..` segments. */
 export const ASSET_PATH_PATTERN = /^assets\/[A-Za-z0-9._/-]{1,200}$/;
 
+/** A style tag's shape. Exported so the editor's field refuses exactly what the
+ *  validator refuses; the *vocabulary* is the catalogue's and lives nowhere here. */
+export const TAG_PATTERN = /^[a-z0-9-]{1,24}$/;
+
+/** How many style tags one theme may declare. The facet reads them; this caps them. */
+export const MAX_TAGS = 5;
+
 /** Chosen import bounds, not measured rendering limits. */
 export const MAX_NODE_DEPTH = 32;
 export const MAX_NODE_COUNT = 5000;
@@ -257,4 +264,11 @@ export interface ThemeMetadata {
    * the runtime's formatting preferences. See docs/decisions/0022.
    */
   readonly themeLanguage?: string;
+  /**
+   * Style tags the author picked from the catalogue's vocabulary. The shape and
+   * the count are the format's whole rule: membership is unchecked, because a tag
+   * the vocabulary does not yet know has to be writable before it can join it, and
+   * duplicates are the facet's to collapse. See docs/decisions/0087.
+   */
+  readonly tags?: readonly string[];
 }

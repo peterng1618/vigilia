@@ -10,7 +10,9 @@ import {
   MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
+  MAX_TAGS,
   STABLE_ID_PATTERN,
+  TAG_PATTERN,
 } from "./document.js";
 import { envelopeKeysFor, knownKeysFor } from "./envelope-keys.js";
 import {
@@ -96,6 +98,7 @@ export function validateFabricThemeEnvelope(
   }
   validateEnvelopeSemantics(input, issues);
   themeLanguage(input["metadata"], issues);
+  styleTags(input["metadata"], issues);
   v2Globals(input["globals"], issues);
   artboardPaintReferences(input["artboard"], input["globals"], issues);
   paletteNone(input["globals"], issues);
@@ -159,6 +162,53 @@ function themeLanguage(metadata: unknown, issues: ValidationIssue[]): void {
         "invalid-enum",
         "/metadata/themeLanguage",
         `themeLanguage "${String(language)}" is not a language this runtime can render.`,
+      ),
+    );
+  }
+}
+
+/**
+ * A theme's style tags: the shape and the count, and the whole of what the format
+ * enforces.
+ *
+ * Membership is unchecked on purpose — the vocabulary is the catalogue's, and a
+ * tag it does not yet know has to be writable before it can join it — and a
+ * duplicate is left for the facet to collapse rather than refused here
+ * (docs/decisions/0087).
+ */
+function styleTags(metadata: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(metadata)) return;
+  const tags = metadata["tags"];
+  if (tags === undefined) return;
+
+  if (!Array.isArray(tags)) {
+    issues.push(
+      issue(
+        "wrong-type",
+        "/metadata/tags",
+        `Style tags must be an array of at most ${MAX_TAGS} lowercase tags.`,
+      ),
+    );
+    return;
+  }
+
+  if (tags.length > MAX_TAGS) {
+    issues.push(
+      issue(
+        "out-of-range",
+        "/metadata/tags",
+        `A theme declares at most ${MAX_TAGS} style tags; this one declares ${tags.length}.`,
+      ),
+    );
+  }
+
+  for (const [index, tag] of tags.entries()) {
+    if (typeof tag === "string" && TAG_PATTERN.test(tag)) continue;
+    issues.push(
+      issue(
+        typeof tag === "string" ? "invalid-id" : "wrong-type",
+        `/metadata/tags/${index}`,
+        `A style tag must match ${TAG_PATTERN.source} — 1–24 lowercase letters, digits or hyphens; got ${JSON.stringify(tag) ?? String(tag)}.`,
       ),
     );
   }

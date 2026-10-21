@@ -1321,3 +1321,85 @@ describe("a text object's fixed box", () => {
     }
   });
 });
+
+describe("a theme's style tags", () => {
+  const withTags = (tags: unknown): Record<string, unknown> =>
+    withMetadata(envelope(), { themeLanguage: "en", tags });
+
+  const tagIssue = (tag: unknown): Record<string, unknown> => ({
+    code: typeof tag === "string" ? "invalid-id" : "wrong-type",
+    path: "/metadata/tags/0",
+    message: `A style tag must match ^[a-z0-9-]{1,24}$ — 1–24 lowercase letters, digits or hyphens; got ${JSON.stringify(tag) ?? String(tag)}.`,
+  });
+
+  it("accepts a well-formed tag list", () => {
+    expect(
+      validateFabricThemeEnvelope(withTags(["retro", "neon-2"])),
+    ).toMatchObject({ ok: true });
+    // A duplicate is not a refusal: the facet deduplicates, and the spec makes the
+    // shape and the count the whole of what the format enforces (docs/decisions/0087).
+    expect(
+      validateFabricThemeEnvelope(withTags(["retro", "retro"])).ok,
+    ).toBe(true);
+  });
+
+  it("refuses an uppercase tag", () => {
+    expect(issuesOf(validateFabricThemeEnvelope(withTags(["Retro"])))).toEqual([
+      tagIssue("Retro"),
+    ]);
+  });
+
+  it("refuses a tag with a space or an underscore", () => {
+    for (const tag of ["science fiction", "science_fiction"]) {
+      expect(
+        issuesOf(validateFabricThemeEnvelope(withTags([tag]))),
+        tag,
+      ).toEqual([tagIssue(tag)]);
+    }
+  });
+
+  it("refuses a tag longer than 24 characters", () => {
+    const tag = "a".repeat(25);
+
+    expect(issuesOf(validateFabricThemeEnvelope(withTags([tag])))).toEqual([
+      tagIssue(tag),
+    ]);
+  });
+
+  it("refuses an empty tag list member", () => {
+    expect(issuesOf(validateFabricThemeEnvelope(withTags([""])))).toEqual([
+      tagIssue(""),
+    ]);
+  });
+
+  it("accepts five tags and refuses a sixth", () => {
+    expect(
+      validateFabricThemeEnvelope(withTags(["a", "b", "c", "d", "e"])).ok,
+    ).toBe(true);
+
+    expect(
+      issuesOf(
+        validateFabricThemeEnvelope(withTags(["a", "b", "c", "d", "e", "f"])),
+      ),
+    ).toEqual([
+      {
+        code: "out-of-range",
+        path: "/metadata/tags",
+        message: "A theme declares at most 5 style tags; this one declares 6.",
+      },
+    ]);
+  });
+
+  it("refuses tags that are not strings", () => {
+    expect(issuesOf(validateFabricThemeEnvelope(withTags([42])))).toEqual([
+      tagIssue(42),
+    ]);
+    // The bag itself is a value this rule reads, so a string where the list belongs
+    // is refused as the wrong type rather than iterated character by character.
+    expect(
+      issuesOf(validateFabricThemeEnvelope(withTags("retro"))),
+    ).toContainEqual(
+      expect.objectContaining({ code: "wrong-type", path: "/metadata/tags" }),
+    );
+  });
+});
