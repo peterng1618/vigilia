@@ -17,6 +17,7 @@
  * A.4's review made for the facet predicate, which the plan had put in the
  * gallery's file.
  */
+import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it } from "vitest";
@@ -24,7 +25,7 @@ import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { DARK_GROUND, type FixtureTheme, fixtureItem } from "./item-fixture.js";
 import { ItemModal } from "./item-modal.js";
-import { DASHBOARD_THEME_KIND, type StoreItem } from "./local-source.js";
+import type { StoreItem } from "./local-source.js";
 
 // Base UI's dialog needs three browser APIs jsdom has none of: floating-ui
 // observes its anchor, the popup waits for its own open transition, and it asks

@@ -1,4 +1,5 @@
 import {
+  DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
   facetRecordOf,
 } from "@vigilia/renderer-core";
@@ -9,7 +10,6 @@ import type {
   ThemeOrigin,
 } from "../theme-library-client.js";
 import {
-  DASHBOARD_THEME_KIND,
   localThemeSource,
   matchesFacets,
   matchesQuery,

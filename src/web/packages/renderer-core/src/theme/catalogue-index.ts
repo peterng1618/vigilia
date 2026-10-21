@@ -9,6 +9,10 @@ import type { FacetRecord } from "./facet-record.js";
  * fetches: the reader hands in a parsed document.
  */
 
+/** The one kind v1 exchanges, and the value it is identified by on the wire
+ *  (spec, "The three kinds"). What it is *called* is `uiCopy.store.cell.kinds`. */
+export const DASHBOARD_THEME_KIND = "dashboard-theme";
+
 export interface CatalogueEntry {
   /** The catalogue's own id for the item, not a library id. */
   readonly id: string;

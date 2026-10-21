@@ -1,4 +1,9 @@
-import type { FacetRecord, Orientation } from "@vigilia/renderer-core";
+import {
+  type CatalogueRefusal,
+  DASHBOARD_THEME_KIND,
+  type FacetRecord,
+  type Orientation,
+} from "@vigilia/renderer-core";
 import type {
   ThemeLibraryClient,
   ThemeOrigin,
@@ -46,7 +51,30 @@ export interface StoreItem {
    *  asking whether the key exists, and `exactOptionalPropertyTypes` forbids the
    *  optional spelling this would otherwise take. */
   readonly origin: ThemeOrigin | undefined;
+  /** The catalogue's own facts about this item, or `undefined` for an item the
+   *  library holds and the catalogue does not. `installedVersion` is the one
+   *  field a source cannot fill: it is a fact about the library, so the source
+   *  leaves it absent and the join sets it. */
+  readonly catalogue: CatalogueFacts | undefined;
   readonly facets: FacetRecord;
+}
+
+/**
+ * What the catalogue says about an item, in the shape a cell reads it.
+ *
+ * It is the wire entry **minus the two `StoreItem` already carries** — `facets`
+ * and `thumbnail`, which arrive as `item.facets` and `item.thumbnailUrl` —
+ * **plus `installedVersion`**, which is a fact about this PC's library rather
+ * than the catalogue. The wire shape stays in `renderer-core`.
+ */
+export interface CatalogueFacts {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly downloads: number;
+  readonly favorites: number;
+  readonly packageUrl: string;
+  readonly installedVersion: string | undefined;
 }
 
 /** One kind's list, as the gallery reads it. `kind` is on the source rather than
@@ -54,6 +82,10 @@ export interface StoreItem {
 export interface ItemSource {
   readonly kind: string;
   list(): Promise<readonly StoreItem[]>;
+  /** What the last `list()` skipped, so a caller reads one shape whether it
+   *  holds the library or the catalogue. The library has no wire entries to
+   *  refuse and answers none. */
+  refused(): readonly CatalogueRefusal[];
 }
 
 /**
@@ -69,10 +101,6 @@ export type CellAction = "open" | "assign" | "export" | "delete";
 /** What the facets are narrowed by: one facet id, and the values chosen in it.
  *  A facet that is absent, or present with nothing chosen, is "any". */
 export type FacetSelection = Readonly<Record<string, readonly string[]>>;
-
-/** The one kind v1 exchanges, and the value it is identified by on the wire
- *  (spec, "The three kinds"). What it is *called* is `uiCopy.store.cell.kinds`. */
-export const DASHBOARD_THEME_KIND = "dashboard-theme";
 
 /**
  * The host's own library as an `ItemSource`.
@@ -97,8 +125,12 @@ export function localThemeSource(client: ThemeLibraryClient): ItemSource {
         thumbnailUrl: entry.thumbnailUrl,
         ground: entry.ground,
         origin: entry.origin,
+        catalogue: undefined,
         facets: entry.facets,
       }));
+    },
+    refused(): readonly CatalogueRefusal[] {
+      return [];
     },
   };
 }

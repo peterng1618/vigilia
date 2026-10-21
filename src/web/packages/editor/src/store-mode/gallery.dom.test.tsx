@@ -17,14 +17,14 @@
  * case here.
  */
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { facetRecordOf } from "@vigilia/renderer-core";
+import { DASHBOARD_THEME_KIND, facetRecordOf } from "@vigilia/renderer-core";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { Gallery } from "./gallery.js";
-import { DASHBOARD_THEME_KIND, type StoreItem } from "./local-source.js";
+import type { StoreItem } from "./local-source.js";
 
 // Base UI's tooltip needs three browser APIs jsdom has none of: floating-ui
 // observes its anchor, the popup waits for its own open transition, and it asks
@@ -126,6 +126,7 @@ function item(overrides: Partial<StoreItem> = {}): StoreItem {
     thumbnailUrl: "/api/themes/living-room/thumbnail",
     ground: "midnightblue",
     origin: undefined,
+    catalogue: undefined,
     facets: facetRecordOf(DOCUMENT),
     ...overrides,
   };

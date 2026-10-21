@@ -1,9 +1,10 @@
 import {
+  DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
   facetRecordOf,
 } from "@vigilia/renderer-core";
 import type { ThemeLibraryEntry } from "../theme-library-client.js";
-import { DASHBOARD_THEME_KIND, type StoreItem } from "./local-source.js";
+import type { StoreItem } from "./local-source.js";
 
 /**
  * The store's own fixtures, in a file of their own rather than in the tests that
@@ -101,6 +102,8 @@ export function fixtureItem(theme: FixtureTheme): StoreItem {
     // A fixture theme is one the author made here, so the host holds no record
     // of where it came from — which is the absence the badge is read against.
     origin: undefined,
+    // A fixture is a library item, so the catalogue holds no facts about it.
+    catalogue: undefined,
     facets: entry.facets,
   };
 }

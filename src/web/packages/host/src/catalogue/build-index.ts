@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   type CatalogueEntry,
   type CatalogueIndex,
+  DASHBOARD_THEME_KIND,
   facetRecordOf,
   parseCatalogueIndex,
   parseCatalogueItemFile,
@@ -23,11 +24,6 @@ export interface CatalogueItem {
   readonly item: unknown;
   readonly theme: unknown;
 }
-
-/** The one kind this build ships. The editor names the same wire value in
- *  `store-mode/local-source.ts`; the host cannot import the editor, so the
- *  generator carries it to check what a client would actually accept. */
-const DASHBOARD_THEME_KIND = "dashboard-theme";
 
 /** `YYYY-MM-DDTHH:MM:SS`, an optional fraction, then `Z` or `±HH:MM`. Presence
  *  is not enough: a value the reader cannot place makes the listing's age wrong. */
