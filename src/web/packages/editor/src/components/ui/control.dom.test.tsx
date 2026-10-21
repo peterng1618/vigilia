@@ -86,6 +86,25 @@ function inputFiles(): readonly {
 }
 
 /**
+ * Whether a file **calls** the hook, read off the code rather than the prose
+ * about it.
+ *
+ * Two things make this the call and not the name: the call's own syntax
+ * (`useDraftCommit(`), and comments blanked first. Both were missing from the
+ * first version of this walk, and each one alone was enough to keep it green —
+ * an unused import, or `tags-field.tsx`'s own docblock naming the hook, passed
+ * it with the spread deleted. A guard that a *mention* satisfies is not a guard
+ * (`vg-203`'s fix round 2).
+ */
+function callsDraftCommit(source: string): boolean {
+  return /\buseDraftCommit\s*\(/.test(withoutComments(source));
+}
+
+/** The name a file binds the hook's result to, when it takes the whole object
+ *  rather than destructuring it. */
+const BINDS_HOOK = /const\s+(\w+)\s*=\s*useDraftCommit\s*\(/;
+
+/**
  * The input-taking files that do **not** take the decision from
  * `useDraftCommit`, each with the reason it does not.
  *
@@ -919,8 +938,7 @@ it("takes the draft/commit decision from the one hook, in every file that holds 
   expect(
     files
       .filter(
-        (entry) =>
-          !/\buseDraftCommit\b/.test(entry.source) && !exempt.has(entry.file),
+        (entry) => !callsDraftCommit(entry.source) && !exempt.has(entry.file),
       )
       .map((entry) => entry.file),
     "an input-taking file neither calls useDraftCommit nor says why it does not",
@@ -929,17 +947,30 @@ it("takes the draft/commit decision from the one hook, in every file that holds 
   // And a file that calls the hook may not keep a copy of the decision beside
   // it. Both copies were *correct* when vg-203 was filed, so only reading the
   // source sees one coming back — the behavioural cases pass against either.
-  for (const entry of files.filter((file) =>
-    /\buseDraftCommit\b/.test(file.source),
-  )) {
+  // Comments are blanked here too: this file's own docblock says "composing
+  // ref", and prose is not a copy of the decision.
+  //
+  // The last assertion is the other half of a call: a result that is computed
+  // and discarded leaves the handlers reaching nothing, which is the same defect
+  // as not calling it. One occurrence count sees it — the binding itself, plus
+  // at least one use of it (`{...keys}`, `keys.onKeyDown`) — without
+  // enumerating the shapes a use can take. The ceiling is exactly that: *that*
+  // the result is used, not that it is used well, and a file that destructures
+  // the call rather than binding it is not checked at all.
+  for (const entry of files.filter((file) => callsDraftCommit(file.source))) {
+    const code = withoutComments(entry.source);
+    expect(code, `${entry.file}: a composing handler of its own`).not.toMatch(
+      /onComposition(Start|End)/,
+    );
+    expect(code, `${entry.file}: a composing ref of its own`).not.toMatch(
+      /\buseRef\b/,
+    );
+    const bound = BINDS_HOOK.exec(code)?.[1];
+    if (bound === undefined) continue;
     expect(
-      entry.source,
-      `${entry.file}: a composing handler of its own`,
-    ).not.toMatch(/onComposition(Start|End)/);
-    expect(
-      entry.source,
-      `${entry.file}: a composing ref of its own`,
-    ).not.toMatch(/\buseRef\b/);
+      code.match(new RegExp(`\\b${bound}\\b`, "g"))?.length ?? 0,
+      `${entry.file}: calls useDraftCommit and never uses what it returns`,
+    ).toBeGreaterThan(1);
   }
 
   // An exemption for a file that no longer holds an input is a reason nobody can
