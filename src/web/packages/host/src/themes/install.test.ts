@@ -191,4 +191,101 @@ describe("installCatalogueItem", () => {
     expect(await origins.read()).toEqual({});
     expect(await store.list()).toEqual([]);
   });
+
+  it("replaces the copy the origin names", async () => {
+    // The library id is deliberately not the package's own id, so a write that
+    // followed the package rather than the origin would land somewhere else.
+    await store.write("aurora-copy", themeOf("aurora-copy", "Old Aurora"), {
+      expectFree: true,
+    });
+    await origins.write("aurora-copy", {
+      catalogueId: "aurora",
+      version: "1.0.0",
+      installedAt: new Date(0).toISOString(),
+    });
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(packageOf("living-room", "Living Room 2")),
+    });
+
+    expect(result).toEqual({ ok: true, id: "aurora-copy" });
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "aurora-copy",
+    ]);
+    const stored = await store.read("aurora-copy");
+    expect(stored?.envelope.metadata?.name).toBe("Living Room 2");
+    expect(stored?.envelope.id).toBe("aurora-copy");
+  });
+
+  it("bumps the origin's version", async () => {
+    await installCatalogueItem(
+      { ...REQUEST, version: "1.2.0" },
+      {
+        store,
+        origins,
+        fetch: serving(packageOf("living-room", "Living Room")),
+      },
+    );
+    const before = (await origins.read())["living-room"];
+
+    // Distinct instants, so a second write of the first one is caught.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await installCatalogueItem(
+      { ...REQUEST, version: "1.3.0" },
+      {
+        store,
+        origins,
+        fetch: serving(packageOf("living-room", "Living Room")),
+      },
+    );
+
+    const all = await origins.read();
+    expect(Object.keys(all)).toEqual(["living-room"]);
+    const after = all["living-room"];
+    expect(after?.version).toBe("1.3.0");
+    expect(Date.parse(after?.installedAt ?? "")).toBeGreaterThan(
+      Date.parse(before?.installedAt ?? ""),
+    );
+  });
+
+  it("still never overwrites a theme the catalogue did not install", async () => {
+    await store.write("living-room", themeOf("living-room", "Living Room"), {
+      expectFree: true,
+    });
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(packageOf("living-room", "Living Room")),
+    });
+
+    expect(result).toEqual({ ok: true, id: "living-room-2" });
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "living-room",
+      "living-room-2",
+    ]);
+  });
+
+  it("does not replace a theme a stale origin names but the library no longer holds", async () => {
+    await origins.write("aurora-old", {
+      catalogueId: "aurora",
+      version: "1.0.0",
+      installedAt: new Date(0).toISOString(),
+    });
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(packageOf("living-room", "Living Room")),
+    });
+
+    // The import path's id, not the deleted copy's: an origin alone is not
+    // proof a theme is there to replace.
+    expect(result).toEqual({ ok: true, id: "living-room" });
+    expect((await store.list()).map((entry) => entry.id)).toEqual([
+      "living-room",
+    ]);
+  });
 });

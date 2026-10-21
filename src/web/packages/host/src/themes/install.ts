@@ -1,20 +1,23 @@
 import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
+import { readThemePackage } from "@vigilia/theme-package";
 import type { ThemeOriginsStore } from "../settings/theme-origins.js";
 import { downloadPackage } from "./download.js";
-import { importThemePackage } from "./import.js";
+import { importThemePackage, type ThemeImportResult } from "./import.js";
 import type { ThemeStore } from "./store.js";
 import type { ThumbnailStore } from "./thumbnails.js";
 
 /**
  * One catalogue item's Install action, end to end: fetch the package, write it
- * into the library under the import's id rule, then record where this copy came
- * from.
+ * into the library, then record where this copy came from.
  *
- * The three owners stay separate — `downloadPackage` holds the trust boundary
- * for a remote address, `importThemePackage` owns the id rule and the write, and
+ * The owners stay separate — `downloadPackage` holds the trust boundary for a
+ * remote address, `importThemePackage` owns the id rule and the write, and
  * `ThemeOriginsStore` owns the provenance file. This module only orders them,
  * and its one rule is that the origin is written **after** the theme landed:
  * a refused download or a refused write leaves `theme-origins.json` untouched.
+ *
+ * An item this machine already installed is an **update**: the bytes land on
+ * that copy, in place, rather than beside it.
  */
 
 export interface InstallRequest {
@@ -72,12 +75,16 @@ export async function installCatalogueItem(
     };
   }
 
-  const imported = await importThemePackage(downloaded.bytes, {
-    store: options.store,
-    ...(options.thumbnails === undefined
-      ? {}
-      : { thumbnails: options.thumbnails }),
-  });
+  const replaceId = await catalogueCopyId(request.catalogueId, options);
+  const imported =
+    replaceId === undefined
+      ? await importThemePackage(downloaded.bytes, {
+          store: options.store,
+          ...(options.thumbnails === undefined
+            ? {}
+            : { thumbnails: options.thumbnails }),
+        })
+      : await replaceCatalogueCopy(downloaded.bytes, replaceId, options);
   if (!imported.ok) {
     return { ok: false, stage: "package", message: imported.message };
   }
@@ -91,6 +98,65 @@ export async function installCatalogueItem(
     installedAt: new Date().toISOString(),
   });
   return { ok: true, id: imported.id };
+}
+
+/**
+ * The library id this catalogue item already occupies, or nothing.
+ *
+ * Both halves are needed. The origins map says which item a library copy came
+ * from; the listing says the copy is still there. An origin whose theme was
+ * deleted — or whose origin write failed after a refused install — names an id
+ * with nothing to replace, so trusting the map alone would mint a theme under a
+ * dead key instead of updating one.
+ */
+async function catalogueCopyId(
+  catalogueId: string,
+  options: InstallOptions,
+): Promise<string | undefined> {
+  const origins = await options.origins.read();
+  if (Object.keys(origins).length === 0) return undefined;
+
+  const listed = await options.store.list();
+  return listed.find((entry) => origins[entry.id]?.catalogueId === catalogueId)
+    ?.id;
+}
+
+/**
+ * The update path: the package lands on the copy the origin names, in place.
+ *
+ * Not `importThemePackage`, whose whole rule is that it never replaces — it
+ * mints a free id. The document's id is stamped to the library id as the import
+ * path stamps it, and the write is the store's `overwrite` rather than a base,
+ * because the document being replaced is the catalogue's, not one this process
+ * read.
+ */
+async function replaceCatalogueCopy(
+  bytes: Uint8Array,
+  id: string,
+  options: InstallOptions,
+): Promise<ThemeImportResult> {
+  const parsed = readThemePackage(bytes);
+  if (!parsed.ok) return { ok: false, message: parsed.message };
+
+  try {
+    await options.store.write(
+      id,
+      { envelope: { ...parsed.envelope, id }, assets: parsed.assets },
+      { overwrite: true },
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  const { thumbnail } = parsed;
+  if (thumbnail !== undefined && options.thumbnails !== undefined) {
+    // After the theme and never a refusal, exactly as the import path does.
+    await options.thumbnails.write(id, thumbnail).catch(() => undefined);
+  }
+  return { ok: true, id };
 }
 
 /**

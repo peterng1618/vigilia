@@ -18,9 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase D's Task 3** — `installCatalogueItem` (`themes/install.ts`) downloads a catalogue package, applies the import's id rule, and records `theme-origins.json` only after the write; a kind other than `dashboard-theme` is refused by its identifier.
-- **`POST /api/themes/install`** sits beside `/api/themes/import`: loopback only, 405 on another method, 400 on a bad address, body or package, 413 on an oversized body, and 502 when the download failed.
-- **`HostServerOptions.fetch`** is the route's injected fetcher, so the route suite installs with no network; five install tests and five route tests pass, with the kind gate and the origin ordering red-proved.
+- **Phase D's Task 4** — `installCatalogueItem` (`themes/install.ts`) reads `theme-origins.json` and, when a listed library id carries the request's `catalogueId`, replaces that copy with the store's `overwrite` instead of minting a free id.
+- **An origin alone is not proof of a copy**: the id must also appear in `store.list()`, so a theme deleted from a library is not resurrected under its dead key.
+- Four `install.test.ts` cases cover replace-in-place, version/`installedAt` bump, a same-named theme the catalogue did not install, and the dangling origin; the last is red-proved by trusting the origins map alone.
 
 ## Next
 
