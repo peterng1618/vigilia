@@ -208,7 +208,8 @@ than the code.
 **Consequences to carry:** a 404 is never negatively cached, so the client's failure
 state — `region.tsx`'s existing "a failed listing is not a fact about the library",
 which leaves the listing unset rather than drawing an empty catalogue — is what stops a
-retry loop; thumbnails' freshness is a decision inside the Action (branch vs pinned
-tag), not inside the client; and the shape is parsed strictly, with a malformed entry
+retry loop; thumbnails' freshness is decided by the ref the client joins to
+(`catalogue-location.ts` pins `@main`) rather than by the Action, and the frozen
+edge window that buys is the branch's twelve hours; and the shape is parsed strictly, with a malformed entry
 skipped and counted rather than failing the listing, because the spec's rule is that a
 client which cannot parse an item "must skip it and say so, not fail the listing".

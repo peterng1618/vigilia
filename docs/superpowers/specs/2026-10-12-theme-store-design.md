@@ -937,8 +937,18 @@ document's plan, in phases that are each useful on their own:
 
 **A landed 2026-10-20.** Ten tasks, its boundary's four browser claims, a
 whole-branch review and one fix round, closed with rulings R167–R171 in
-`.superpowers/sdd/2026-10-18-theme-store/progress.md`. **B–G are unstarted**, and
-the acceptance below still decides whether A is accepted: landing is not acceptance.
+`.superpowers/sdd/2026-10-18-theme-store/progress.md`. **B and G landed
+2026-10-21** under `2026-10-21-theme-store-origin-and-style.md`.
+
+**C's implementation landed 2026-10-21** under
+`2026-10-21-theme-store-online-tab.md`: the index's wire shape and its parser in
+`renderer-core`, the generator as a command on the host binary, the online source,
+the cell's and the modal's catalogue facts, the listing with its join and its
+refusal line, and five rendered claims against a routed index. **Its
+catalogue-side half is not live yet**: the Action's commit is unpushed, so
+`index.json` answers `404` and the phase's own acceptance step — that URL
+answering `200` with zero entries — is untaken. **D–F are unstarted**, and the
+acceptance below still decides whether A is accepted: landing is not acceptance.
 
 **A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
 `index.json` and no hosting decision. **C is the last phase that dodges open
