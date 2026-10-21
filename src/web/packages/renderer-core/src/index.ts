@@ -265,8 +265,10 @@ export {
   MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
+  MAX_TAGS,
   NODE_TYPES,
   STABLE_ID_PATTERN,
+  TAG_PATTERN,
 } from "./theme/document.js";
 export type {
   IssueCode,

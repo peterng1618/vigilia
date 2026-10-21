@@ -7,7 +7,9 @@ import { ControlSelect } from "../../components/ui/control-select.js";
 import { ControlText } from "../../components/ui/control-text.js";
 import { ControlRow, useControlIds } from "../../components/ui/control-well.js";
 import { languageLabel, THEME_LANGUAGES } from "../../theme-languages.js";
+import { THEME_TAG_SEED } from "../../theme-tag-seed.js";
 import { uiCopy } from "../../ui-copy.js";
+import { TagsField } from "./tags-field.js";
 
 /**
  * The theme's own description: who it is by, what it is for, and the language
@@ -17,8 +19,9 @@ import { uiCopy } from "../../ui-copy.js";
  * the metadata is one object with one optional key per field: a commit that sent
  * only the typed value would drop the other four on the floor. `compact` is the
  * panel's long-standing rule — an emptied field loses its key rather than being
- * written as `""`, which the envelope's own validator reads as a present name —
- * and `themeLanguage` always leaves with a value, because a v2 envelope requires
+ * written as `""`, which the envelope's own validator reads as a present name,
+ * and an emptied tag list loses it rather than being written as `[]` — and
+ * `themeLanguage` always leaves with a value, because a v2 envelope requires
  * one and the control's blank reading is not a language.
  */
 interface MetadataFieldsProps {
@@ -57,6 +60,14 @@ export function MetadataFields(props: MetadataFieldsProps): React.JSX.Element {
         rows={4}
         value={metadata?.description ?? ""}
         onCommit={(value) => put({ description: value })}
+      />
+      <TagsField
+        value={metadata?.tags ?? []}
+        // The shipped seed, because this pane has no catalogue to ask. The
+        // field takes the vocabulary as a value, so the online half is a caller
+        // that hands over the catalogue's own tags rather than a second field.
+        vocabulary={THEME_TAG_SEED}
+        onCommit={(tags) => put({ tags })}
       />
       <ControlSelect
         label={uiCopy.panels.language}
@@ -128,8 +139,16 @@ function sample(themeLanguage: string): string {
   );
 }
 
+/**
+ * An emptied field loses its key rather than being written as `""`: the
+ * envelope's own validator reads a present empty string as a value, and a theme
+ * that declares no tags carries no `tags` key at all — which is the shape the
+ * validator and the facet both expect.
+ */
 function compact(metadata: ThemeMetadata): ThemeMetadata {
   return Object.fromEntries(
-    Object.entries(metadata).filter(([, value]) => value !== ""),
+    Object.entries(metadata).filter(([, value]) =>
+      Array.isArray(value) ? value.length > 0 : value !== "",
+    ),
   ) as ThemeMetadata;
 }

@@ -1228,6 +1228,23 @@ export const uiCopy = {
     name: "Name",
     author: "Author",
     description: "Description",
+    /** The style-tag field: the vocabulary an author picks from, and the one
+     *  path to a word it does not hold (spec, "Style tags are … picked, not
+     *  typed"). `tagsProposed` composes the pill a proposal is drawn as — the
+     *  drawing's own reading, `<tag> · proposed` on a dashed pill
+     *  (`store-detail.html`), so a reader knows the word is new rather than that
+     *  the facet failed to match. Each refusal names the word it refused,
+     *  because the author has to see which one, and the shape refusal states the
+     *  rule rather than pointing at it. */
+    styleTags: "Style tags",
+    tagProposePlaceholder: "Propose a tag",
+    tagAdd: "Add tag",
+    tagsProposed: (tag: string) => `${tag} · proposed`,
+    tagRefusedShape: (tag: string) =>
+      `"${tag}" is not a tag this format takes. Use 1–24 lowercase letters, digits or hyphens.`,
+    tagRefusedDuplicate: (tag: string) => `"${tag}" is already on this theme.`,
+    tagRefusedFull: (max: number) =>
+      `A theme carries at most ${max} style tags. Remove one to add another.`,
     /** A paired width/height row has no room for the full words beside both
         boxes, so the row keeps its "Size" label and marks them W and H. */
     widthMark: "W",
