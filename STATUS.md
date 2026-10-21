@@ -11,7 +11,7 @@ Give every display client its own theme, then let a person browse the themes it 
 
 - **Active plan:** `docs/superpowers/plans/2026-10-21-theme-store-install.md` — the store spec's **phase D** (install), seven tasks; Task 1 is the `download_count` re-home probe the spec deferred to this plan, and it is running.
 - **Measured for that plan, not assumed**: a release asset sends **no `access-control-allow-origin` on either hop**, so the editor's browser cannot download a package and the **host** must; `server.ts` is watchlisted, so Task 2 owes ADR `0089` before the route.
-- **Queued behind it:** `docs/superpowers/plans/2026-10-21-wallpaper-engine-import.md` (Wallpaper Engine as a background source, spec accepted 2026-10-21).
+- **Queued behind it, in order:** `docs/superpowers/plans/2026-10-21-wallpaper-engine-import.md`, then `docs/superpowers/plans/2026-10-21-asset-finder.md` (fonts, icons and Wallpaper Engine in one modal; its Task 15 extends the WE plan's credits member and Task 16 registers its host module). Neither starts until phase D closes.
 - **The catalogue repo `peterng1618/vigilia-store` is live**: the Action pins app commit `2c7e97b8e63bf78e2fddd65f814fc4b2f61b48ca`, its run `39591103310` succeeded, and `raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json` answers `200` with zero entries.
 - **Decision `docs/decisions/0088`**: the editor's **browser** fetches that index from the raw path, because it revalidates conditionally for free against a server measured to answer `304` while Node's `fetch` has no HTTP cache at all.
 - D–F cannot start: D needs open question 1 decided, E needs D and a registered OAuth app, F needs E and the ffmpeg licence read.
@@ -27,7 +27,7 @@ Give every display client its own theme, then let a person browse the themes it 
 ## Next
 
 1. **Execute `2026-10-21-theme-store-install.md`** — Task 1's probe lands the hosting ruling, then the route, the update rule and the browser boundary.
-2. **The Wallpaper Engine plan** is queued behind it and must not start until phase D closes.
+2. **The Wallpaper Engine plan, then the asset finder** are queued in that order; neither may start until phase D closes.
 3. `vg-688` asks for a spec edit and `vg-689` for a guard on a duplicated wire type; `vg-690` is the store's missing status bar — rulings or small surfaces, not this phase.
 4. Decide whether `vg-626` (the red `design:check`) blocks the next plan as it did the per-display close; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 5. User review pending: [settings pane](docs/superpowers/specs/2026-10-16-settings-pane-design.md), [colour and gradient rebuild](docs/superpowers/specs/2026-10-12-colour-and-gradient-rebuild-design.md) and [font-picker keyboard model](docs/superpowers/specs/2026-10-17-font-picker-keyboard-design.md).
