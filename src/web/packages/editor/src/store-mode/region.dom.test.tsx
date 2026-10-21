@@ -1530,6 +1530,7 @@ function installHost(options: {
   readonly fetch: typeof fetch;
   readonly posts: unknown[];
   readonly resolve: () => void;
+  readonly resolveNext: () => void;
 } {
   const posts: unknown[] = [];
   const releases: (() => void)[] = [];
@@ -1565,6 +1566,8 @@ function installHost(options: {
     resolve: () => {
       for (const release of releases.splice(0)) release();
     },
+    // The install held first, so a case can finish one of two in flight.
+    resolveNext: () => releases.shift()?.(),
   };
 }
 
@@ -2160,6 +2163,13 @@ it("announces a refusal once while its cell and its modal both draw it", async (
     live[0]?.textContent,
     "the one live region does not carry the host's sentence",
   ).toBe("That package is not a theme.");
+  // Base UI's `markOthers` spares only `[aria-live]` nodes and their ancestors
+  // when the modal hides what is outside it, so `role="status"` alone would be
+  // hidden under the open modal and the refusal would reach no live region.
+  expect(
+    live[0]?.getAttribute("aria-live"),
+    "the live region is not spared by the modal's outside-hiding",
+  ).toBe("polite");
 });
 
 /**
@@ -2206,4 +2216,87 @@ it("says the theme was installed when the re-list fails", async () => {
     installReadings(),
     "the cell moved to installed without a listing to read it from",
   ).toEqual([["office-wall", "install"]]);
+});
+
+/**
+ * **A completion clears only its own busy state.** The first of two installs to
+ * finish must re-enable its own control and leave the other one disabled while
+ * its request is still open.
+ */
+it("leaves the other item busy when one of two installs finishes", async () => {
+  const library: ThemeLibraryEntry[] = [];
+  const host = installHost({
+    entries: [
+      catalogueEntry("office-wall", "1.3.0"),
+      catalogueEntry("living-room", "1.4.0"),
+    ],
+    hold: true,
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore(library);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await act(async () => installControl("living-room").click());
+  await act(async () => host.resolveNext());
+  await settle();
+
+  expect(
+    installControl("office-wall").disabled,
+    "the finished item's control stayed busy after its own install settled",
+  ).toBe(false);
+  expect(
+    installControl("living-room").disabled,
+    "the other item's control re-enabled when a different install finished",
+  ).toBe(true);
+
+  await act(async () => host.resolve());
+  await settle();
+});
+
+/**
+ * **A library item never carries a catalogue refusal**, even when its id equals
+ * the refused catalogue item's: the sentence draws only for an item with
+ * catalogue facts, because only those draw the control it belongs beside.
+ */
+it("draws no catalogue refusal on a library item whose id collides", async () => {
+  const host = installHost({
+    entries: [catalogueEntry("office-wall", "1.3.0")],
+    refusal: "That package is not a theme.",
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([
+    fixtureEntry({
+      id: "office-wall",
+      name: "Local copy",
+      ground: DARK_GROUND,
+    }),
+  ]);
+  await showOnline();
+
+  await act(async () => installControl("office-wall").click());
+  await settle();
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-cell-install-refusal]",
+      ),
+      "the catalogue cell's refusal",
+    ).textContent,
+    "the refused catalogue install is not stated",
+  ).toBe("That package is not a theme.");
+
+  await act(async () => halves(headerRow(document.body))[0]?.click());
+  await act(async () => {});
+
+  const local = must(
+    document.body.querySelector<HTMLElement>(
+      '[data-vigilia-store-cell="office-wall"]',
+    ),
+    "the local cell whose id collides",
+  );
+  expect(
+    local.querySelector("[data-vigilia-store-cell-install-refusal]"),
+    "a library item drew a catalogue refusal it has no control for",
+  ).toBeNull();
 });

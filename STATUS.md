@@ -19,10 +19,10 @@ Give every display client its own theme, then let a person browse the themes it 
 ## Last completed change
 
 - **Phase D's Task 5** — `store-mode/install-item.ts` posts `{packageUrl, catalogueId, version, kind}` to `/api/themes/install`; both controls press it, success re-lists the library so the join reads *Installed*, a refusal states the host's sentence beside the control.
-- Review fixes: an in-flight set per item replaces the one id slot, so pressing a second item cannot re-enable the first and a repeat press posts nothing; one persistent `role="status"` region owned by the region, with the visible sentence left beside the control.
-- A failed re-list after a successful install states a sentence instead of nothing; the install's three sentences moved into `ui-copy.store.install` and are covered by `ui-copy.test.ts`.
-- Red-proved: removing the in-flight guard posts twice in one tick; re-adding `role="status"` to a cell gives two live regions.
-- 120 tests green (store-mode 108, `ui-copy.test.ts` 12), typecheck and Biome exit 0.
+- Install state moved to `store-mode/use-install.ts` (in-flight set, ref guard, refusal, announcement), so `region.tsx` is 760 lines rather than past the 800 stop.
+- One persistent `role="status" aria-live="polite"` region owned by the region; Base UI's outside-hiding spares `[aria-live]` nodes, so the announcement survives an open modal, and the cell and modal draw the visible sentence only.
+- Review fixes: an in-flight set per item, one persistent live region, a failed re-list stated, the install's sentences in `ui-copy.store.install`, and no catalogue refusal on a colliding local cell.
+- 122 tests green (store-mode 110, `ui-copy.test.ts` 12); the per-item clear, one-tick guard, live-region count and collision guard were red-proved; typecheck, Biome and `status:check` exit 0.
 
 ## Next
 

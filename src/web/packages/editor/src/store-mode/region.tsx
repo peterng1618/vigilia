@@ -5,7 +5,7 @@ import {
   semanticKeysByFamily,
 } from "@vigilia/renderer-core";
 import type * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ControlSelect } from "../components/ui/control-select.js";
 import {
   ControlWell,
@@ -29,7 +29,6 @@ import {
   toggleFacet,
 } from "./facet-row.js";
 import { Gallery } from "./gallery.js";
-import { type InstallControl, installItem } from "./install-item.js";
 import { ItemModal } from "./item-modal.js";
 import {
   type CellAction,
@@ -43,6 +42,7 @@ import {
 import { useOnlineListing } from "./online-listing.js";
 import { Pager } from "./pager.js";
 import { DEFAULT_SORT, SORT_KEYS, SORT_ORDERS } from "./sort-orders.js";
+import { useInstall } from "./use-install.js";
 
 /**
  * The store's two halves. `local` is the host's own library — what the author
@@ -489,20 +489,6 @@ function StoreRegion(props: {
   const [items, setItems] = useState<readonly StoreItem[] | undefined>(
     undefined,
   );
-  /** The items an install press is in flight for: each control disables itself
-   *  on its own id, so two items install at once and neither loses the other's
-   *  busy state. */
-  const [installingIds, setInstallingIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  /** The same set for the guard, because a second press in one tick reads the
-   *  render before the first press committed; the state alone cannot refuse it. */
-  const inFlight = useRef<Set<string>>(new Set());
-  /** The host's own reason for a refused install, and the item it names:
-   *  another item's refusal is not drawn beside this one's control. */
-  const [installRefusal, setInstallRefusal] = useState<
-    { readonly id: string; readonly message: string } | undefined
-  >(undefined);
 
   // One client and one source for the life of the region: a client built per
   // render would be a new one every time, and the listing would reach a host the
@@ -512,6 +498,9 @@ function StoreRegion(props: {
   // same host.
   const [client] = useState(() => props.client ?? createThemeLibraryClient());
   const [source] = useState(() => localThemeSource(client));
+  /** The online half's install: the press, its in-flight set, and the sentence
+   *  its last refusal announces (`use-install.ts`). */
+  const install = useInstall({ source, onListed: setItems });
   const [preference] = useState(() =>
     createPageSizePreference(browserStorage()),
   );
@@ -612,49 +601,6 @@ function StoreRegion(props: {
     }
   };
 
-  /**
-   * The online half's Install and Update.
-   *
-   * **Success re-lists the library, and nothing here writes "installed".** The
-   * host records the origin and the join reads it, so the listing is the one
-   * source of what is installed; a flag set here would be a second answer that
-   * a restart or a second window could not see.
-   *
-   * **A refusal changes nothing but its reason**: the control's state stays the
-   * listing's, and the host's own sentence is kept for the item it names. A
-   * re-list the host could not serve is stated too — the theme is installed
-   * even when this surface could not read the library back.
-   */
-  const onInstall = (item: StoreItem): void => {
-    if (inFlight.current.has(item.id)) return;
-    inFlight.current.add(item.id);
-    setInstallingIds(new Set(inFlight.current));
-    setInstallRefusal(undefined);
-    void installItem(item).then(async (outcome) => {
-      if (outcome.ok) {
-        const listed = await source.list().catch(() => undefined);
-        if (listed !== undefined) {
-          setItems(listed);
-        } else {
-          setInstallRefusal({
-            id: item.id,
-            message: uiCopy.store.install.notRefreshed,
-          });
-        }
-      } else {
-        setInstallRefusal({ id: item.id, message: outcome.message });
-      }
-      inFlight.current.delete(item.id);
-      setInstallingIds(new Set(inFlight.current));
-    });
-  };
-
-  const install: InstallControl = {
-    onInstall,
-    installingIds,
-    refusal: installRefusal,
-  };
-
   /** **A changed filter returns to page one** (R123). A narrower result would
    *  otherwise leave the viewer on a page that no longer exists, which reads as
    *  an empty store — and it is the filter's rule rather than the pager's, so
@@ -738,7 +684,7 @@ function StoreRegion(props: {
             items={body.items}
             onAction={onAction}
             onOpenItem={setOpenId}
-            install={install}
+            install={install.control}
           />
         ) : null}
       </div>
@@ -782,7 +728,7 @@ function StoreRegion(props: {
           vocabulary={settledTags(listed ?? [], openItem)}
           onClose={() => setOpenId(undefined)}
           onAction={onAction}
-          install={install}
+          install={install.control}
         />
       )}
 
@@ -804,9 +750,10 @@ function StoreRegion(props: {
       <span
         data-vigilia-store-install-announcement=""
         role="status"
+        aria-live="polite"
         className="sr-only"
       >
-        {installRefusal?.message ?? ""}
+        {install.announcement}
       </span>
     </div>
   );
