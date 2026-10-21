@@ -265,6 +265,17 @@ describe("narrowing by a facet", () => {
     expect(matchesFacets(wide, { shape: ["wide-ish"] })).toBe(false);
   });
 
+  it("matches a 19.5:9 selection against a board that reads that bucket", async () => {
+    // A bucket a person can choose must find the themes filed under it: the id
+    // carries a decimal point, so a ratio-shaped value is not only `n:n`.
+    const phone = await item(
+      envelope({ id: "phone", artboard: { width: 2340, height: 1080 } }),
+    );
+
+    expect(phone.facets.aspect).toBe("19.5:9");
+    expect(matchesFacets(phone, { shape: ["19.5:9"] })).toBe(true);
+  });
+
   it("holds the ordinary reading where a facet is not Sensors or Shape", async () => {
     const one = await item(envelope());
 

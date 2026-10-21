@@ -101,6 +101,11 @@ still. Distances measured: 2340×1080 is 0.0000% from `19.5:9`; 3840×960 is
 2350×1000 (2.35:1) is 0.712% from `21:9`, so it remains `other` rather than
 being pulled into either neighbour.
 
+Correction to a figure repeated during review: `19.5:9`'s neighbours are
+**19.78%** (`16:9`) and **7.41%** (`21:9`) away in log space, not 0.7% and 3.7%;
+the 0.7% belongs to a 2.35:1 artboard against `21:9`. The 3.2% bound above is
+unaffected and remains the tolerance's reason.
+
 ## Rung 7 — build
 
 - `facet-record.ts` — `AspectBucket` gains `"19.5:9"` and `"4:1"`; `ASPECT_BUCKETS`
@@ -111,6 +116,9 @@ being pulled into either neighbour.
 - `store-mode/region.tsx` — no table is added: `shapeOptions` names each option
   with `item.facets.aspect` and maps only `other` to `uiCopy.store.otherShape`,
   so the two new ids label themselves and need no second list.
+- `store-mode/local-source.ts` — `SHAPE_RATIO` widens from `/^\d+:\d+$/` to
+  `/^\d+(?:\.\d+)?:\d+$/`; the old form would read `19.5:9` as naming no shape
+  group, so the new option would match no theme.
 
 ## Decision
 

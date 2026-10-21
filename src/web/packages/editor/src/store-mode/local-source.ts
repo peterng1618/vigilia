@@ -118,10 +118,10 @@ const SHAPE_ORIENTATIONS: readonly Orientation[] = [
   "square",
 ];
 
-/** A bucket's form — `16:9`, `1:1`, `32:9` — and the one bucket that is a word
+/** A bucket's form — `16:9`, `1:1`, `19.5:9` — and the one bucket that is a word
  *  rather than a ratio. Recognised by form rather than by a second copy of the
  *  record's bucket list, which would be a list to keep in step for no gain. */
-const SHAPE_RATIO = /^\d+:\d+$/;
+const SHAPE_RATIO = /^\d+(?:\.\d+)?:\d+$/;
 
 /** An exact size's form: `1920x1080`. */
 const SHAPE_SIZE = /^\d+x\d+$/;
