@@ -820,10 +820,19 @@ folder↔package sync.
 
 **What it answers in v1:** *Installed*, and *Update available* when the
 catalogue's version is newer than the recorded one. **What it does not answer
-yet:** *modified locally*, which needs a content hash stable across a store round
-trip — a property `contentId` may or may not have, and therefore a one-line probe
-during implementation rather than a promise now. If the probe passes the row
-gains the third state; if it fails, the third state needs its own decision.
+yet, but *can*:** *modified locally*, which needs a content hash stable across a
+store round trip — and `contentId` **is** that hash. **Probed 2026-10-21, and it
+passes**: a theme written by the store, read back, exported with
+`writeThemePackage`, reopened with `readThemePackage` and written again under the
+same id produces **byte-identical `theme.json`**, with no assets and with one
+(`base` `3443da52c047…` and `bd04fa53d6a1…`, unchanged by the round trip). The
+reason is structural rather than lucky: the store persists
+`JSON.stringify(validatedEnvelope)` on every write, so whatever form the file
+arrived in, the bytes on disk are canonical. **The third state is therefore
+possible, and it is its own decision rather than a follow-on**: it needs the
+catalogue's package re-derived through the same validator at install time so the
+two hashes are comparable, and a rule for how an edited copy is drawn. The row
+keeps two states until that decision is taken.
 
 The listing route joins origins onto `/api/themes`, so the client needs one fetch
 for the local half. `ThemeStore` itself stays unaware of origins: it owns folders,
