@@ -39,6 +39,7 @@ type Handler = (request: Recorded) => Response | undefined;
 function recordingFetch(handler: Handler): {
   readonly fetch: typeof fetch;
   readonly seen: Recorded[];
+  readonly forkPollDelayMs: number;
 } {
   const seen: Recorded[] = [];
   const fetcher: typeof globalThis.fetch = async (input, init) => {
@@ -62,7 +63,8 @@ function recordingFetch(handler: Handler): {
     seen.push(request);
     return (await handler(request)) ?? new Response("{}", { status: 404 });
   };
-  return { fetch: fetcher, seen };
+  // A fork poll that really waited would add ten seconds to every case.
+  return { fetch: fetcher, seen, forkPollDelayMs: 0 };
 }
 
 function json(body: unknown, status = 200): Response {

@@ -26,6 +26,8 @@ export interface SubmitOptions {
   readonly fetch?: typeof fetch;
   readonly owner?: string;
   readonly repo?: string;
+  /** Overridable so a test never waits; a real fork can take seconds to appear. */
+  readonly forkPollDelayMs?: number;
 }
 
 /** The REST root is fixed, so a test's fake `fetch` matches a known path. */
@@ -39,9 +41,10 @@ const DEFAULT_BRANCH = MAIN;
  *  refused rather than committed, so no caller can choose where a file lands. */
 const CATALOGUE_DIRECTORY = /^catalogue\/([A-Za-z0-9_-]{1,64})$/;
 
-/** A fork is created asynchronously: ten short polls cover the gap. */
+/** A fork is created asynchronously. Ten polls a second apart cover ten seconds
+ *  of GitHub's own lag; the earlier 200 ms cadence gave it two. */
 const FORK_POLL_ATTEMPTS = 10;
-const FORK_POLL_DELAY_MS = 200;
+const FORK_POLL_DELAY_MS = 1_000;
 
 const ITEM_FILE = "item.json";
 const THUMBNAIL_FILE = "thumbnail.png";
@@ -71,6 +74,7 @@ export async function submitToCatalogue(
   const owner = options?.owner ?? DEFAULT_OWNER;
   const repo = options?.repo ?? DEFAULT_REPO;
   const fetcher = options?.fetch ?? fetch;
+  const pollDelay = options?.forkPollDelayMs ?? FORK_POLL_DELAY_MS;
   const token = accessToken;
   const forkPath = `/repos/${login}/${repo}`;
   const branch = `submit/${themeId}`;
@@ -93,7 +97,7 @@ export async function submitToCatalogue(
 
   let forkReady = false;
   for (let attempt = 0; attempt < FORK_POLL_ATTEMPTS; attempt += 1) {
-    if (attempt > 0) await sleep(FORK_POLL_DELAY_MS);
+    if (attempt > 0) await sleep(pollDelay);
     const polled = await call(fetcher, "GET", forkPath, token);
     if ("error" in polled) return refuse("fork", polled.error);
     await drain(polled.response);
