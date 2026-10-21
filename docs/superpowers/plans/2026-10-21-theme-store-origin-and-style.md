@@ -486,9 +486,11 @@ Not a code task. Run at the end of the plan, before the final whole-branch revie
 
   ```bash
   npm run build
-  npx playwright test tests/e2e/<the store spec> --workers=1
+  npx playwright test tests/e2e/editor-rail.spec.ts --workers=1
   ```
-  Three claims need eyes: the *Installed* badge on a cell whose theme has a seeded `theme-origins.json`, a Style facet narrowing the grid, and the Shape popover offering `19.5:9` for a theme whose artboard is that ratio — the last one because Task 1 proved the bucket at record and matcher level only. Visible behaviour needs rendered inspection, not a geometry assertion.
+  **Nothing draws the badge in the browser suite until a stub carries an `origin`**: `editor-rail.spec.ts` stubs `/api/themes` in three places and none of them has the key, so seed one entry with an `origin` (and a `theme-origins.json` the host will read) as part of this step. Without it the claim is jsdom-only and the report must say so.
+
+  Three claims need eyes: the badge reading **From the store** — the drawing's word (`store-themes.html`), not *Installed*, which `store-detail.html` reserves for the online half's footer — on a cell whose theme has a seeded `theme-origins.json`; a Style facet narrowing the grid; and the Shape popover offering `19.5:9` for a theme whose artboard is that ratio — the last one because Task 1 proved the bucket at record and matcher level only. Visible behaviour needs rendered inspection, not a geometry assertion.
 
 - [ ] **Step 3: Prove the red direction of each new guard**, then restore with `cmp`, not `git checkout` — a Windows text-mode write leaves CRLF and git normalises it, so only `cmp` shows the file is back. Break each guard, watch its test fail, restore, `cmp`, re-run.
 
