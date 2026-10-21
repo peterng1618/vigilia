@@ -50,6 +50,7 @@ import {
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import type { HostRecord } from "./settings/host-record.js";
 import type { Monitor } from "./settings/monitors.js";
+import { createThemeOriginsStore } from "./settings/theme-origins.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
@@ -959,6 +960,132 @@ describe("Host theme routes", () => {
     expect(
       (await request(hosted.server, "GET", "/api/themes/living-room")).status,
     ).toBe(200);
+  });
+
+  describe("The listing carries an origin, and a deleted theme takes its own with it", () => {
+    let originsDir: string;
+    let libraryDir: string;
+    let origins: ReturnType<typeof createThemeOriginsStore>;
+    let listing: ReturnType<typeof createHostServer>;
+
+    // Two directories, because the two facts live apart: the theme is the
+    // author's work, and where the copy came from is this machine's own record.
+    beforeEach(async () => {
+      originsDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-origins-"));
+      libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-library-"));
+      origins = createThemeOriginsStore(originsDir);
+      listing = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: libraryDir, editor: libraryDir },
+        // The real trash is a child process and a real recycle bin; the route
+        // and the sweep are what is under test, so it is a rename aside.
+        themeStore: createThemeStore(libraryDir, {
+          trash: async (folder: string) => {
+            await fs.mkdir(path.join(libraryDir, ".trashed"), {
+              recursive: true,
+            });
+            await fs.rename(
+              folder,
+              path.join(libraryDir, ".trashed", path.basename(folder)),
+            );
+          },
+        }),
+        themeOrigins: origins,
+      });
+    });
+
+    afterEach(async () => {
+      await listing.close();
+      await fs.rm(originsDir, { recursive: true, force: true });
+      await fs.rm(libraryDir, { recursive: true, force: true });
+    });
+
+    /** One entry of the listing, by id. */
+    async function listedEntry(id: string): Promise<Record<string, unknown>> {
+      const body = (
+        await request(listing.server, "GET", "/api/themes")
+      ).json() as { themes: readonly Record<string, unknown>[] };
+      const entry = body.themes.find((theme) => theme.id === id);
+
+      if (entry === undefined) throw new Error(`No "${id}" in the listing.`);
+
+      return entry;
+    }
+
+    /** The origin a case installs, so the assertions compare one value. */
+    const origin = {
+      catalogueId: "aurora",
+      version: "1.2.0",
+      installedAt: "2026-10-21T09:00:00.000Z",
+    };
+
+    async function saveTheme(): Promise<void> {
+      await request(
+        listing.server,
+        "PUT",
+        "/api/themes/living-room",
+        themeBody(validEmptyAssetTheme),
+      );
+    }
+
+    it("joins an origin onto the theme it names", async () => {
+      await saveTheme();
+      await origins.write("living-room", origin);
+
+      expect((await listedEntry("living-room")).origin).toEqual(origin);
+    });
+
+    it("leaves a theme with no origin with no key at all", async () => {
+      await saveTheme();
+
+      // Absence is the truth, the same way `author` is absent for a theme that
+      // declares none — not a key holding undefined.
+      expect(Object.hasOwn(await listedEntry("living-room"), "origin")).toBe(
+        false,
+      );
+    });
+
+    it("does not fail the listing when an origin names a theme that is gone", async () => {
+      await saveTheme();
+      await origins.write("ghost", origin);
+
+      const res = await request(listing.server, "GET", "/api/themes");
+
+      expect(res.status).toBe(200);
+      expect(
+        (res.json() as { themes: readonly { id: string }[] }).themes.map(
+          (theme) => theme.id,
+        ),
+      ).toEqual(["living-room"]);
+      // The join runs from the listing, so an entry for a theme that is gone
+      // reaches no response — it is not pruned out of one.
+      expect(Object.hasOwn(await listedEntry("living-room"), "origin")).toBe(
+        false,
+      );
+    });
+
+    it("removes a theme's origin with the theme", async () => {
+      await saveTheme();
+      await origins.write("living-room", origin);
+
+      expect(
+        (await request(listing.server, "DELETE", "/api/themes/living-room"))
+          .status,
+      ).toBe(200);
+      expect(await origins.read()).toEqual({});
+    });
+
+    it("keeps the origin when the removal failed", async () => {
+      await origins.write("living-room", origin);
+
+      expect(
+        (await request(listing.server, "DELETE", "/api/themes/living-room"))
+          .status,
+      ).toBe(404);
+      // Nothing was removed, so nothing was swept: the origin is a fact about a
+      // copy that is still on disk.
+      expect(await origins.read()).toEqual({ "living-room": origin });
+    });
   });
 
   it("imports a package into the library, and never over a theme already there", async () => {

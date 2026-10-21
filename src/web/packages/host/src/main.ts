@@ -30,6 +30,7 @@ import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { acquireHostLock } from "./settings/host-lock.js";
 import { readOrMintHostRecord } from "./settings/host-record.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
+import { createThemeOriginsStore } from "./settings/theme-origins.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
@@ -263,6 +264,10 @@ export async function run(argv: readonly string[]): Promise<number> {
     // library always has a picture for what was just saved.
     thumbnails: createThumbnailStore(themesDir),
     themeSettings: createThemeSettingsStore(settingsDir),
+    // Beside the answers and from the same directory: where a copy came from is
+    // this machine's own record about a theme, like what a consumer answered
+    // for it — not part of the author's folder.
+    themeOrigins: createThemeOriginsStore(settingsDir),
     displays,
     pairingCodes,
     devices: deviceSettings,

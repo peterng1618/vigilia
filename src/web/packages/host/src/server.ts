@@ -64,6 +64,7 @@ import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import type { HostRecord } from "./settings/host-record.js";
 import { listMonitors, type Monitor } from "./settings/monitors.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
+import type { ThemeOriginsStore } from "./settings/theme-origins.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import { importThemePackage } from "./themes/import.js";
 import {
@@ -148,6 +149,9 @@ export interface HostServerOptions {
   readonly devices?: DeviceSettingsStore;
   /** Per-theme answers. Omitted when the host stores none. */
   readonly themeSettings?: ThemeSettingsStore;
+  /** Where each library theme came from. Omitted when the host records none,
+   *  which is what a caller that only serves its own themes wants. */
+  readonly themeOrigins?: ThemeOriginsStore;
   /** Theme thumbnails. Omitted when the host stores none. */
   readonly thumbnails?: ThumbnailStore;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
@@ -760,6 +764,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const themeSettings = options.themeSettings;
+  const themeOrigins = options.themeOrigins;
   const published = options.published ?? createPublishedStore();
   const caCertificate = options.caCertificate;
   const hostRecord = options.host;
@@ -1833,8 +1838,22 @@ export function createHostServer(options: HostServerOptions): HostServer {
       // Templates travel beside the stored themes and are kept out of them: a
       // template has no file, so counting it among the author's own would be
       // counting something the PC does not have.
+      //
+      // The origins are joined *onto the listed entries*, never the other way
+      // round: an entry for a theme the library no longer holds must reach no
+      // response, and running the join from the listing is what guarantees that
+      // rather than pruning afterwards.
+      const themes = await themeStore.list();
+      const origins =
+        themeOrigins === undefined ? {} : await themeOrigins.read();
+
       sendJson(response, 200, {
-        themes: await themeStore.list(),
+        themes: themes.map((entry) => {
+          const origin = origins[entry.id];
+          // Absence is the truth, the same way `author` is absent for a theme
+          // that declares none — not a key holding undefined.
+          return { ...entry, ...(origin === undefined ? {} : { origin }) };
+        }),
         templates: SHIPPED_TEMPLATES,
       });
       return;
@@ -2347,6 +2366,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
           // answers false for anything it would not have listed, so a 404 here
           // means the same "no such theme" an open would have said.
           const removed = await themeStore.remove(rawId);
+          // The origin goes only with a removal that happened, because it is a
+          // fact about a copy that is on disk. Unguarded, like the display
+          // route's `themeSettings?.removeDisplay(id)`: a sweep that throws
+          // reaches this handler's catch and answers 500 for a request whose
+          // folder is already in the trash — a real fault the caller should
+          // hear about, not one to swallow.
+          if (removed) await themeOrigins?.removeTheme(rawId);
           sendJson(
             response,
             removed ? 200 : 404,
