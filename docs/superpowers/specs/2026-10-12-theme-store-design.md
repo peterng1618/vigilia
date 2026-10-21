@@ -944,11 +944,13 @@ whole-branch review and one fix round, closed with rulings R167–R171 in
 `2026-10-21-theme-store-online-tab.md`: the index's wire shape and its parser in
 `renderer-core`, the generator as a command on the host binary, the online source,
 the cell's and the modal's catalogue facts, the listing with its join and its
-refusal line, and five rendered claims against a routed index. **Its
-catalogue-side half is not live yet**: the Action's commit is unpushed, so
-`index.json` answers `404` and the phase's own acceptance step — that URL
-answering `200` with zero entries — is untaken. **D–F are unstarted**, and the
-acceptance below still decides whether A is accepted: landing is not acceptance.
+refusal line, and five rendered claims against a routed index. **C is live
+end to end**: the Action's first run generated `index.json` from the pinned
+generator, and `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json`
+answers `200` with zero entries — the honest empty catalogue, since items arrive
+with E. **D–F are unstarted**, each behind a decision that is the reader's, and
+the acceptance below still decides whether A is accepted: landing is not
+acceptance.
 
 **A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
 `index.json` and no hosting decision. **C is the last phase that dodges open

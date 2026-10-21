@@ -12,7 +12,7 @@
 
 **Decision:** `docs/decisions/0089-*.md`, landed in Task 1 before the first write to `host/src/server.ts` (a watchlisted path).
 
-**Status:** **Queued.** `STATUS.md` names `2026-10-21-theme-store-online-tab.md` as the active plan; do not start task 2 of this plan until that plan's phase C is closed and `STATUS.md` says so.
+**Status:** **Queued, and unblocked** — the store's phase C closed 2026-10-21 and its plan is archived. `STATUS.md` must name this plan as the active one before task 1 starts.
 
 ## Global Constraints
 
