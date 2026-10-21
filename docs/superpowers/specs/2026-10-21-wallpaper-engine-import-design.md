@@ -251,14 +251,20 @@ rest (24%)**, of which 12 carry text, 7 carry sound and 6 have no layer effect a
 all. Adding `model` and `light` to the test changes the count by zero — no still
 scene carries either key — so the rule is those two keys.
 
-**A frozen clock is still wrong.** Text does not disqualify the theme, but it
-must not reach the image: a clock, a date or a media label captured at export
-time is a wrong time or a stale label, printed permanently into a background.
-So the still path carries one required author step, and the sheet names it
-before the export rather than after: **delete the dynamic text objects in the
-editor** — the clock above all — and export the frame without them. The
-classifier reports whether the scene carries text (§5.2) so the sheet knows when
-to say it, and stays silent for the 41 still scenes that do not.
+**A clock must not reach the background, in either format.** Text does not
+disqualify the theme, but it must not be exported into the asset. Vigilia draws
+its own clock, so a burnt-in one is at best a duplicate and at worst a wrong
+time — frozen at one instant in a PNG, and looping the same minute forever in an
+MP4. Both are worse than the weather label it often sits beside. So the export
+carries one required author step, named before it happens rather than after:
+**delete the dynamic text objects in the editor** — clock, weather, media label
+— and export without them. The classifier reports whether the scene carries text
+(§5.2) so the sheet knows when to say it; an imported image or video item gets
+the same sentence as guidance, because its clock is already baked in and cannot
+be checked for.
+
+This changes nothing about the classification: a scene with a clock and no
+particles is still a static-image theme. It changes what goes into the frame.
 
 **The still path is Wallpaper Engine's own PNG export, not a `.tex` decoder.**
 The editor's format list ships `{label:"ui_editor_export_modal_settings_format_png",
@@ -341,7 +347,7 @@ GET /api/wallpaper-engine/export?name=<name>
 workshopId, title, kind (image | video | web | scene),
 previewUrl?, filesize, tags[], properties (read-only),
 stillAtRest?,                       // scene items only; absent when unclassified
-hasText?,                           // scene items only: the sheet's removal step
+hasText?,                           // scene items only: the text-removal step
 attribution: { steamId?, workshopUrl? } | absent
 ```
 
@@ -364,8 +370,10 @@ size caps and the reference model.
 The background-media picker gains a source: **From Wallpaper Engine**. It shows
 a list — thumbnail, title, kind, size — filtered by kind, with a search field
 over the title. Selecting an `image` or `video` item fetches its asset and calls
-`manager.import(file)`, then sets it as the artboard background. A `scene` item
-starts the flow in §8. A `web` item shows why it is unavailable.
+`manager.import(file)`, then sets it as the artboard background, saying once
+that a clock or weather label baked into it cannot be removed and should not be
+there (§4.1). A `scene` item starts the flow in §8. A `web` item shows why it is
+unavailable.
 
 When the host answers `available: false` the source is not drawn at all — the
 Add pane looks exactly as it does today on a machine without Wallpaper Engine.
@@ -507,13 +515,13 @@ of it that does not need the author's hands.
    last `blend` seconds into the first, which is also how stochastic content
    (particles) is made to repeat.
 
-   **First, for a still scene: delete the dynamic text.** A clock, a date or a
-   media label is captured at whatever instant the frame is taken, so it would
-   be printed permanently and wrongly into the background. The sheet lists the
+   **First: delete the dynamic text.** A clock, a weather label or a media title
+   is a wrong time frozen in a PNG and a wrong time looping forever in an MP4,
+   and Vigilia draws its own clock either way (§4.1). The sheet lists the
    deletion as a step — not a suggestion — whenever the item's `hasText` is
-   true (§4.1), and says nothing about it for a still scene without text. The
-   author deletes those objects in Wallpaper Engine's own editor, which is also
-   the answer to the deferred element-removal request without any change to
+   true, for both formats, and says nothing about it for a scene without text.
+   The author deletes those objects in Wallpaper Engine's own editor, which is
+   also the answer to the deferred element-removal request without any change to
    policy (R1); Vigilia never edits the scene for them.
 5. **The sheet watches for the result.** While it is open, it polls the host for
    files modified since it opened — `.png` or `.mp4` according to the format
