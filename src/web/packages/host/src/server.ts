@@ -67,11 +67,13 @@ import { listMonitors, type Monitor } from "./settings/monitors.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeOriginsStore } from "./settings/theme-origins.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
+import { submissionFiles } from "./themes/github-item.js";
 import {
   fetchLogin,
   pollDeviceToken,
   requestDeviceCode,
 } from "./themes/github-oauth.js";
+import { submitToCatalogue } from "./themes/github-submit.js";
 import { importThemePackage } from "./themes/import.js";
 import {
   type InstallRequest,
@@ -105,6 +107,12 @@ const SESSION_HEADER = "x-vigilia-session";
  *  simply wrong. A caller that could tell them apart could search the space. */
 const NO_PAIRING_CODE =
   "That pairing code is not the one this host is showing.";
+
+/** The one answer both routes that act as the author's GitHub account give when
+ *  this host has no OAuth app: registering one is the author's move, not a
+ *  retry. */
+const NO_GITHUB_CLIENT_ID =
+  "This host has no GitHub OAuth client id; register an OAuth app and set VIGILIA_GITHUB_CLIENT_ID.";
 
 /** What a theme read answers: the stored record, or undefined for a theme the
  *  store will not serve. */
@@ -2385,11 +2393,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
       if (githubClientId === undefined || githubClientId.trim() === "") {
-        sendText(
-          response,
-          503,
-          "This host has no GitHub OAuth client id; register an OAuth app and set VIGILIA_GITHUB_CLIENT_ID.",
-        );
+        sendText(response, 503, NO_GITHUB_CLIENT_ID);
         return;
       }
       if (githubToken === undefined) {
@@ -2466,6 +2470,119 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       await githubToken.clear();
       sendJson(response, 200, { ok: true });
+      return;
+    }
+
+    // The submission: the host reads a library theme, builds the files the
+    // catalogue commits, and opens the pull request as the author's own
+    // account. It acts as that account, so it carries the sign-in routes'
+    // guards — loopback, origin, Host — in their order.
+    if (url.pathname === "/api/themes/submit") {
+      if (request.method !== "POST") {
+        sendText(response, 405, "Only POST is supported.");
+        return;
+      }
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Theme submission is local to this PC only.");
+        return;
+      }
+      if (isForeignOrigin(request)) {
+        sendText(response, 403, "That request is from another origin.");
+        return;
+      }
+      if (githubClientId === undefined || githubClientId.trim() === "") {
+        sendText(response, 503, NO_GITHUB_CLIENT_ID);
+        return;
+      }
+      if (githubToken === undefined) {
+        sendText(response, 503, "This host keeps no GitHub token.");
+        return;
+      }
+
+      let raw: string;
+      try {
+        raw = await readBody(request);
+      } catch {
+        sendText(response, 413, "That submission request is too large.");
+        return;
+      }
+
+      let id: string | undefined;
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        const value =
+          typeof parsed === "object" &&
+          parsed !== null &&
+          !Array.isArray(parsed)
+            ? (parsed as Record<string, unknown>)["id"]
+            : undefined;
+        if (typeof value === "string" && value !== "") id = value;
+      } catch {
+        sendText(response, 400, "That submission request is not JSON.");
+        return;
+      }
+      if (id === undefined) {
+        sendText(
+          response,
+          400,
+          "A submission needs the id of a library theme.",
+        );
+        return;
+      }
+
+      // A theme that is not there is a 404 before the identity is read, so a
+      // sign-in prompt is never the answer to a mistaken id. A theme that
+      // exists but cannot be served reads as absent, as it does everywhere
+      // except the open route (ADR-0043).
+      if ((await readThemeOrAbsent(id)) === undefined) {
+        sendText(
+          response,
+          404,
+          `This PC's library holds no theme with id "${id}".`,
+        );
+        return;
+      }
+
+      // The identity is read after the guards and the theme, and before any
+      // package is built: no identity means no author to submit as.
+      const identity = await githubToken.read();
+      if (identity === undefined) {
+        sendText(response, 401, "Sign in to GitHub before submitting a theme.");
+        return;
+      }
+
+      const files = await submissionFiles(id, themeStore, {
+        ...(thumbnails === undefined ? {} : { thumbnails }),
+      });
+      if (!files.ok) {
+        sendJson(response, 422, {
+          ok: false,
+          stage: "package",
+          message: files.message,
+        });
+        return;
+      }
+
+      // The token reaches `submitToCatalogue` and nowhere else: both answers
+      // below carry a stage and a message, never the identity.
+      const submitted = await submitToCatalogue(
+        {
+          login: identity.login,
+          accessToken: identity.accessToken,
+          files: files.files,
+        },
+        fetcher === undefined ? undefined : { fetch: fetcher },
+      );
+      if (!submitted.ok) {
+        // A refusal from GitHub's side is a 502; the stage says which step.
+        sendJson(
+          response,
+          submitted.stage === "identity" ? 401 : 502,
+          submitted,
+        );
+        return;
+      }
+      sendJson(response, 200, submitted);
       return;
     }
 

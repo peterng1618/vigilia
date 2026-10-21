@@ -1708,6 +1708,234 @@ describe("Host theme routes", () => {
     });
   });
 
+  describe("The submit route", () => {
+    const CLIENT_ID = "client-from-the-registry";
+    const PR_URL = "https://github.com/peterng1618/vigilia-store/pull/7";
+    const SECRET = "ghs_the-access-token";
+    const FORK_PATH =
+      "https://api.github.com/repos/aurora-author/vigilia-store";
+    // The store's own check: a picture is any file that starts with a PNG's
+    // eight magic bytes, and a submission refuses a theme without one.
+    const PNG = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00,
+    ]);
+
+    let library: string;
+    let settings: string;
+    let submitting: ReturnType<typeof createHostServer>;
+    let token: ReturnType<typeof createGithubTokenStore>;
+    let calls: { url: string; method: string; authorization: string | null }[];
+
+    function json(body: unknown, status = 200): Response {
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    beforeEach(async () => {
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-submit-ui-"));
+      settings = await fs.mkdtemp(
+        path.join(os.tmpdir(), "vigilia-submit-settings-ui-"),
+      );
+      token = createGithubTokenStore(settings);
+      calls = [];
+
+      const store = createThemeStore(library);
+      await store.write("aurora", createValidPackage("aurora", "Aurora"));
+      await createThumbnailStore(library).write("aurora", PNG);
+      // A theme the library holds with no picture: the package step refuses it.
+      await store.write("bare", createValidPackage("bare", "Bare"));
+
+      submitting = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: store,
+        thumbnails: createThumbnailStore(library),
+        githubToken: token,
+        githubClientId: CLIENT_ID,
+        // No network: the submission is driven by this answer, and every call is
+        // recorded so a case can show what the host sent and what it did not.
+        fetch: async (input, init) => {
+          const url = String(input);
+          const method = init?.method ?? "GET";
+          calls.push({
+            url,
+            method,
+            authorization: new Headers(init?.headers).get("authorization"),
+          });
+          if (url.endsWith("/forks")) return json({}, 201);
+          if (url.endsWith("/pulls")) return json({ html_url: PR_URL }, 201);
+          if (url.endsWith("/git/ref/heads/main")) {
+            return json({ object: { sha: "head-sha" } });
+          }
+          if (url.endsWith("/git/refs")) return json({}, 201);
+          if (url.includes("/contents/")) {
+            return method === "GET"
+              ? new Response(null, { status: 404 })
+              : json({}, 201);
+          }
+          if (url === FORK_PATH) return json({ full_name: "aurora-author/x" });
+          return new Response("unknown", { status: 404 });
+        },
+      });
+    });
+
+    afterEach(async () => {
+      await submitting.close();
+      await fs.rm(library, { recursive: true, force: true });
+      await fs.rm(settings, { recursive: true, force: true });
+    });
+
+    function submitBody(id = "aurora"): string {
+      return JSON.stringify({ id });
+    }
+
+    async function signedIn(): Promise<void> {
+      await token.write({
+        accessToken: SECRET,
+        scope: "public_repo",
+        login: "aurora-author",
+        obtainedAt: "2026-10-22T00:00:00.000Z",
+      });
+    }
+
+    it("opens a pull request for a library theme and answers its URL", async () => {
+      await signedIn();
+
+      const res = await request(
+        submitting.server,
+        "POST",
+        "/api/themes/submit",
+        submitBody(),
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.json()).toEqual({ ok: true, url: PR_URL });
+      // The token only ever travels in the header.
+      expect(res.text()).not.toContain(SECRET);
+      expect(
+        calls.every((call) => call.authorization === `Bearer ${SECRET}`),
+      ).toBe(true);
+    });
+
+    it("answers 401 asking the author to sign in when no identity is stored", async () => {
+      const res = await request(
+        submitting.server,
+        "POST",
+        "/api/themes/submit",
+        submitBody(),
+      );
+
+      expect(res.status).toBe(401);
+      expect(res.text().toLowerCase()).toContain("sign in");
+      expect(calls, "an unsigned submission reached GitHub").toEqual([]);
+    });
+
+    it("refuses a non-loopback POST", async () => {
+      await signedIn();
+
+      const res = await request(
+        submitting.server,
+        "POST",
+        "/api/themes/submit",
+        submitBody(),
+        { remoteAddress: "10.0.0.2" },
+      );
+
+      expect(res.status).toBe(403);
+      expect(calls).toEqual([]);
+    });
+
+    it("refuses a cross-origin POST", async () => {
+      await signedIn();
+
+      const res = await request(
+        submitting.server,
+        "POST",
+        "/api/themes/submit",
+        submitBody(),
+        {
+          headers: {
+            origin: "https://evil.example",
+            host: "127.0.0.1:5173",
+          },
+        },
+      );
+
+      expect(res.status).toBe(403);
+      expect(calls).toEqual([]);
+    });
+
+    it("refuses a name that only resolves to this machine", async () => {
+      // DNS rebinding: Origin and Host agree with each other, and only the name
+      // itself says the request was not addressed to this host.
+      await signedIn();
+
+      const res = await request(
+        submitting.server,
+        "POST",
+        "/api/themes/submit",
+        submitBody(),
+        {
+          headers: {
+            origin: "http://evil.example:5173",
+            host: "evil.example:5173",
+          },
+        },
+      );
+
+      expect(res.status).toBe(403);
+      expect(calls).toEqual([]);
+    });
+
+    it("names the package stage that refused a theme with no picture", async () => {
+      await signedIn();
+
+      const res = await request(
+        submitting.server,
+        "POST",
+        "/api/themes/submit",
+        submitBody("bare"),
+      );
+
+      expect(res.status).toBe(422);
+      expect(res.json()).toEqual({
+        ok: false,
+        stage: "package",
+        message: expect.stringContaining("picture"),
+      });
+      expect(calls, "a theme with no picture reached GitHub").toEqual([]);
+    });
+
+    it("answers 503 naming registration when no client id is configured", async () => {
+      await signedIn();
+      const saved = process.env.VIGILIA_GITHUB_CLIENT_ID;
+      delete process.env.VIGILIA_GITHUB_CLIENT_ID;
+      const unregistered = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        githubToken: token,
+      });
+
+      try {
+        const res = await request(
+          unregistered.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+        expect(res.status).toBe(503);
+        expect(res.text().toLowerCase()).toContain("register");
+      } finally {
+        await unregistered.close();
+        if (saved !== undefined) process.env.VIGILIA_GITHUB_CLIENT_ID = saved;
+      }
+    });
+  });
+
   it("reports requested keys no provider answered through /api/health", async () => {
     const health = await request(hosted.server, "GET", "/api/health");
     const body = health.json() as { unmapped: readonly string[] };
