@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildCatalogueIndexCommand } from "./catalogue/build-index.js";
 import { DEFAULT_HOST, isLoopbackHost, parseArgs } from "./cli/args.js";
 import { createHostBinding, type HostBinding } from "./cli/hosting.js";
 import {
@@ -84,6 +85,9 @@ function hostCommand(argv: readonly string[]): string {
 }
 
 export async function run(argv: readonly string[]): Promise<number> {
+  const catalogue = await buildCatalogueIndexCommand(argv);
+  if (catalogue !== undefined) return catalogue;
+
   const parsed = parseArgs(argv, VERSION);
 
   if (parsed.kind === "message") {
