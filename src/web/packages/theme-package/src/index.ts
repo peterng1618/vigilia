@@ -16,7 +16,9 @@ const THUMBNAIL = "thumbnail.png";
  *  the library, and a package must not carry a picture that store refuses. */
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const MAX_ARCHIVE_BYTES = 64 * 1024 * 1024;
+/** Exported so a downloader can stop at the same cap *while reading*: the
+ *  reader only ever sees bytes that are already in memory. */
+export const MAX_ARCHIVE_BYTES = 64 * 1024 * 1024;
 const MAX_ENTRIES = 128;
 const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
 const MAX_EXPANDED_BYTES = 128 * 1024 * 1024;

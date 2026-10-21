@@ -18,10 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase C's Task 3, the push and the measurement** — `develop` to `origin/develop` (159 commits) then the catalogue repo, both exit 0.
-- **The raw URL was read back, not assumed**: `200`, body `{"generatedAt": "2026-10-21T17:57:43+07:00", "entries": []}`.
-- **Both final-review BLOCKING findings now closed** — the live index by this push, the parser by `7e006cca` and `2c7e97b8` with a scoped re-review that reproduced each fix failing under its own mutation.
-- **The plan is archived** and the spec's landing note records C live rather than half-landed.
+- **Phase D's Task 2** — ADR `0089` claims `server.ts` for the install route and gives the download module (`themes/download.ts`): https only, four GitHub hosts, one redirect within them, and the reader's 64 MiB enforced while the body streams.
+- **`MAX_ARCHIVE_BYTES` is exported by `@vigilia/theme-package`**, so the download cap and the reader's cap are one number; `download.test.ts` proves the allowlist, the redirect policy, both cap paths, a stalled body and a good response through an injected `fetch`.
+- **No new dependency**: Node 22 `fetch`, `AbortController` and a stream reader, with a 60 s default timeout.
 
 ## Next
 
