@@ -114,14 +114,14 @@ it("names the dashboard theme kind the way the drawings badge it", () => {
 
 /**
  * **The counts' nouns are pinned as literals, because the reading is the
- * claim.** Both surfaces draw the figure the drawing draws and hide the noun, so
- * a case asserting the key alone would stay green through the noun changing to a
- * word that does not complete `1,204` — the accessible reading is what these
- * two strings exist for.
+ * claim** — see `uiCopy.store.counts` for the whole rule. One is a real case,
+ * so both the singular and the plural are pinned.
  */
-it("names the catalogue's two counts as the nouns a reader hears", () => {
-  expect(uiCopy.store.counts.downloads).toBe("downloads");
-  expect(uiCopy.store.counts.favorites).toBe("favorites");
+it("inflects each catalogue count's noun for the number it counts", () => {
+  expect(uiCopy.store.counts.downloads(1)).toBe("download");
+  expect(uiCopy.store.counts.downloads(2)).toBe("downloads");
+  expect(uiCopy.store.counts.favorites(1)).toBe("favorite");
+  expect(uiCopy.store.counts.favorites(2)).toBe("favorites");
 });
 
 /**

@@ -82,7 +82,7 @@ const FOOTER_BUTTON = `${ACTION_BUTTON} disabled:text-faint`;
  *  formatter instance is a presentation choice rather than a business rule, and
  *  the caption and the cell's facts band are two surfaces. `en-US` because
  *  `uiCopy` is one English table — the drawing's `1,204`, not the machine's. */
-const COUNT = new Intl.NumberFormat("en-US");
+const CATALOGUE_COUNT = new Intl.NumberFormat("en-US");
 
 /** One pill: the drawing's `--panel-2` inside a 1px `--edge` at a full radius.
  *  `mono` is the size's own treatment — two numbers read as one measurement
@@ -252,11 +252,7 @@ function Caption(props: {
   // The catalogue's two counts join that same end for the same reason: they are
   // facts about the item rather than about any facet, so they take no group and
   // no row. A library item has no catalogue to read them from and draws neither.
-  //
-  // **The figure is visible and the noun is read.** The cell's download mark is
-  // `aria-hidden`, and a bare number is announced as an isolated figure, so each
-  // count carries its own `sr-only` noun: the eye still sees `1,204`, a screen
-  // reader hears `1,204 downloads`.
+  // The nouns are read, not seen — see `uiCopy.store.counts`.
   const stamp: { readonly key: string; readonly node: React.ReactNode }[] = [];
   if (item.version !== undefined && item.version !== "") {
     stamp.push({ key: "version", node: item.version });
@@ -271,8 +267,10 @@ function Caption(props: {
         key: "downloads",
         node: (
           <>
-            {COUNT.format(downloads)}
-            <span className="sr-only">{` ${uiCopy.store.counts.downloads}`}</span>
+            {CATALOGUE_COUNT.format(downloads)}
+            <span className="sr-only">
+              {` ${uiCopy.store.counts.downloads(downloads)}`}
+            </span>
           </>
         ),
       },
@@ -280,8 +278,10 @@ function Caption(props: {
         key: "favorites",
         node: (
           <>
-            {COUNT.format(favorites)}
-            <span className="sr-only">{` ${uiCopy.store.counts.favorites}`}</span>
+            {CATALOGUE_COUNT.format(favorites)}
+            <span className="sr-only">
+              {` ${uiCopy.store.counts.favorites(favorites)}`}
+            </span>
           </>
         ),
       },

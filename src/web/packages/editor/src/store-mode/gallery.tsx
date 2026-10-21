@@ -201,11 +201,11 @@ function Cell(props: {
                 <span className="flex-none text-faint">
                   <Glyph icon={EXPORT_ITEM_GLYPH} size={12} />
                 </span>
-                {/* The figure is what the eye reads and the noun is what a
-                    screen reader hears: a bare `1,204` beside an aria-hidden
-                    glyph is an isolated number with no meaning. */}
+                {/* The noun is read, not seen — see `uiCopy.store.counts`. */}
                 {DOWNLOAD_COUNT.format(catalogue.downloads)}
-                <span className="sr-only">{` ${uiCopy.store.counts.downloads}`}</span>
+                <span className="sr-only">
+                  {` ${uiCopy.store.counts.downloads(catalogue.downloads)}`}
+                </span>
               </span>
             </>
           )}

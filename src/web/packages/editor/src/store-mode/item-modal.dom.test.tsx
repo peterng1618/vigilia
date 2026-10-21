@@ -216,25 +216,23 @@ function visibleText(node: Element): string {
   return copy.textContent?.trim() ?? "";
 }
 
-/** The words a screen reader hears: every `sr-only` node's text. */
-function hiddenWords(node: Element): readonly string[] {
-  return Array.from(node.querySelectorAll<HTMLElement>(".sr-only")).map(
-    (hidden) => hidden.textContent?.trim() ?? "",
-  );
+/** The reading a screen reader hears: the node's whole text, whitespace runs
+ *  collapsed, so a missing figure–noun space cannot be trimmed away. */
+function spokenText(node: Element): string {
+  return (node.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 /** The caption's right-hand end: the version, the date, and the catalogue's
- *  counts where the item has them. The counts' nouns are read separately,
- *  because what the eye sees is the figure alone. */
-function dateLine(): string {
-  return visibleText(
-    must(
-      document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-item-date]",
-      ),
-      "caption date line",
-    ),
+ *  counts where the item has them. */
+function caption(): HTMLElement {
+  return must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-item-date]"),
+    "caption date line",
   );
+}
+
+function dateLine(): string {
+  return visibleText(caption());
 }
 
 /** One group's eyebrow and its pills, as the words a reader sees. */
@@ -621,37 +619,28 @@ it("joins the catalogue's counts to the caption's right-hand end", async () => {
     "an online item does not draw the catalogue's two counts beside its version and date",
   ).toBe(["1.4.0", "2026-10-14", "1,204", "38"].join(separator));
 
-  // The figure alone is an isolated number to a reader — `Glyph` is aria-hidden
-  // and nothing else names it — so each count carries its noun as `sr-only`
-  // text. This is the reading the modal owes, not the visible digits.
+  // The figure is visible and its noun is read — see `uiCopy.store.counts` —
+  // so the composed reading is figure, one space, noun.
   expect(
-    hiddenWords(
-      must(
-        document.body.querySelector<HTMLElement>(
-          "[data-vigilia-store-item-date]",
-        ),
-        "caption date line",
-      ),
-    ),
-    "a caption count is a bare number to a screen reader",
-  ).toEqual([uiCopy.store.counts.downloads, uiCopy.store.counts.favorites]);
+    spokenText(caption()),
+    "the caption's composed reading is not each figure, a space, and its noun",
+  ).toBe(
+    [
+      "1.4.0",
+      "2026-10-14",
+      `1,204 ${uiCopy.store.counts.downloads(1204)}`,
+      `38 ${uiCopy.store.counts.favorites(38)}`,
+    ].join(separator),
+  );
 
   await mount(modalFor(fixtureItem(LANDSCAPE)));
   expect(
     dateLine(),
     "a library item drew counts it has no catalogue to read",
   ).toBe(["1.4.0", "2026-10-14"].join(separator));
-  expect(
-    hiddenWords(
-      must(
-        document.body.querySelector<HTMLElement>(
-          "[data-vigilia-store-item-date]",
-        ),
-        "caption date line",
-      ),
-    ),
-    "a library item drew a count's noun",
-  ).toEqual([]);
+  expect(spokenText(caption()), "a library item drew a count's noun").toBe(
+    ["1.4.0", "2026-10-14"].join(separator),
+  );
 });
 
 /**

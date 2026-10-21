@@ -668,14 +668,19 @@ export const uiCopy = {
      *  only where both readings exist. */
     readingSeparator: " · ",
     /** **The catalogue's two counts are numbers, so they need a noun to be a
-     *  reading.** The figure is what the eye sees and the noun follows it as
-     *  `sr-only` text, because `Glyph` is `aria-hidden` and a bare `1,204` is
-     *  announced as an isolated number with nothing saying what it counts. The
-     *  cell draws downloads and the modal draws both, so the words live here
-     *  rather than beside either surface. */
+     *  reading, and the noun inflects.** The figure is what the eye sees and
+     *  the noun follows it as `sr-only` text, with the separating space part of
+     *  that text: `Glyph` is `aria-hidden`, so a bare `1,204` is announced as an
+     *  isolated number with nothing saying what it counts, and without the space
+     *  a reader hears `1,204downloads`. One is a real case — a new item has one
+     *  favourite — so each word answers the number it is counted with. The cell
+     *  draws downloads and the modal draws both, so the words live here rather
+     *  than beside either surface. */
     counts: {
-      downloads: "downloads",
-      favorites: "favorites",
+      downloads: (count: number): string =>
+        count === 1 ? "download" : "downloads",
+      favorites: (count: number): string =>
+        count === 1 ? "favorite" : "favorites",
     },
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */

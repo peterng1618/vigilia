@@ -104,11 +104,10 @@ function visibleText(node: Element): string {
   return copy.textContent?.trim() ?? "";
 }
 
-/** The words a screen reader hears: every `sr-only` node's text. */
-function hiddenWords(node: Element): readonly string[] {
-  return Array.from(node.querySelectorAll<HTMLElement>(".sr-only")).map(
-    (hidden) => hidden.textContent?.trim() ?? "",
-  );
+/** The reading a screen reader hears: the node's whole text, whitespace runs
+ *  collapsed, so a missing figure–noun space cannot be trimmed away. */
+function spokenText(node: Element): string {
+  return (node.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -581,12 +580,12 @@ it("draws the kind badge and the download count for an online item, and neither 
     visibleText(downloads),
     "the count is not the drawing's thousand-separated reading",
   ).toBe("1,204");
-  // The figure beside an `aria-hidden` glyph is an isolated number to a reader,
-  // so the cell owes the noun as `sr-only` text while the eye still sees `1,204`.
+  // The figure is visible and its noun is read — see `uiCopy.store.counts` —
+  // so the composed reading is figure, one space, noun.
   expect(
-    hiddenWords(downloads),
-    "the count is a bare number to a screen reader",
-  ).toEqual([uiCopy.store.counts.downloads]);
+    spokenText(downloads),
+    "the reading a screen reader hears is not the figure, a space, and its noun",
+  ).toBe(`1,204 ${uiCopy.store.counts.downloads(1204)}`);
   expect(
     must(
       band("living-room").querySelector<HTMLElement>(
@@ -608,12 +607,6 @@ it("draws the kind badge and the download count for an online item, and neither 
   expect(
     band("workshop-bench").querySelector("[data-vigilia-store-cell-downloads]"),
     "the library cell drew a catalogue count",
-  ).toBeNull();
-  expect(
-    band("workshop-bench").querySelector(
-      "[data-vigilia-store-cell-downloads] .sr-only",
-    ),
-    "the library cell drew a count's noun",
   ).toBeNull();
 });
 
