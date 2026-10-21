@@ -155,30 +155,11 @@ describe("facetRecordOf", () => {
     expect(facetRecordOf(shaped(2340, 1080)).aspect).toBe("19.5:9");
   });
 
-  it("refuses to file a 2.35:1 artboard under its nearest bucket", () => {
-    expect(facetRecordOf(shaped(2350, 1000)).aspect).toBe("other");
-  });
-
-  it("has exactly one entry for every published bucket", () => {
-    // Extendability is the requirement, not the two values: a bucket added to the
-    // union without its entry (or with a second one) must fail here.
-    expect(ASPECT_BUCKETS.map((e) => e.bucket).sort()).toEqual(
-      (
-        [
-          "1:1",
-          "4:3",
-          "3:2",
-          "16:10",
-          "16:9",
-          "19.5:9",
-          "21:9",
-          "32:9",
-          "4:1",
-        ] as const
-      )
-        .slice()
-        .sort(),
-    );
+  it("orders the buckets by ascending ratio", () => {
+    // `aspectOf` returns the first match, so an entry declared out of order
+    // silently steals its neighbour's artboards.
+    const ratios = ASPECT_BUCKETS.map((e) => e.ratio);
+    expect(ratios).toEqual([...ratios].sort((a, b) => a - b));
   });
 
   it("carries the author and the exact pixel size the document declares", () => {

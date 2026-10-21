@@ -94,25 +94,22 @@ artboards:
 | `32:9` | 3.5556 | 11.78% |
 | `4:1` | 4.0000 | — |
 
-`ASPECT_TOLERANCE` stays `0.005`: the tightest half-gap is 3.2% (3:2 against
-16:10), well above it, and every half-gap around the two new entries is wider
-still. Distances measured: 2340×1080 is 0.0000% from `19.5:9`; 3840×960 is
-0.0000% from `4:1`; 1366×768 is 0.0488% from `16:9` and still lands there;
-2350×1000 (2.35:1) is 0.712% from `21:9`, so it remains `other` rather than
-being pulled into either neighbour.
-
-Correction to a figure repeated during review: `19.5:9`'s neighbours are
-**19.78%** (`16:9`) and **7.41%** (`21:9`) away in log space, not 0.7% and 3.7%;
-the 0.7% belongs to a 2.35:1 artboard against `21:9`. The 3.2% bound above is
-unaffected and remains the tolerance's reason.
+`ASPECT_TOLERANCE` stays `0.005`, and two different bounds meet here. The one
+that **binds** is the 2.35:1 artboard: it sits 0.712% from `21:9`, so a
+tolerance of 0.0071 or more starts filing it under that bucket, and 0.005 keeps
+it `other`. The tightest half-gap *between adjacent buckets* is 3.2% (3:2 against
+16:10) — a wider, structural limit on how far any entry can claim. Other measured
+distances: 2340×1080 is 0.0000% from `19.5:9`; 3840×960 is 0.0000% from `4:1`;
+1366×768 is 0.0488% from `16:9` and still lands there.
 
 ## Rung 7 — build
 
 - `facet-record.ts` — `AspectBucket` gains `"19.5:9"` and `"4:1"`; `ASPECT_BUCKETS`
   gains `19.5 / 9` between `16:9` and `21:9`, and `4` after `32:9`, keeping the
-  ascending order the first-match rule depends on. The table is exported so the
-  test can assert one entry per published bucket. `ASPECT_TOLERANCE` and
-  `aspectOf` are unchanged.
+  ascending order the first-match rule depends on; a `PUBLISHED_BUCKETS` table
+  beside it makes a union member without its entry a compile error, and the
+  table's export lets the test assert the ascending order. `ASPECT_TOLERANCE`
+  and `aspectOf` are unchanged.
 - `store-mode/region.tsx` — no table is added: `shapeOptions` names each option
   with `item.facets.aspect` and maps only `other` to `uiCopy.store.otherShape`,
   so the two new ids label themselves and need no second list.

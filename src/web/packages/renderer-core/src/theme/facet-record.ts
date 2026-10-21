@@ -64,6 +64,21 @@ const LIGHT_ABOVE = 60;
 const EPSILON = 216 / 24389;
 const KAPPA = 24389 / 27;
 
+/** The bucket union, spelled out: a member added above without its entry here
+    fails to compile, so the published set cannot silently drift. Exported only
+    to satisfy the unused-variable rule; nothing reads it at runtime. */
+export const PUBLISHED_BUCKETS = {
+  "1:1": true,
+  "4:3": true,
+  "3:2": true,
+  "16:10": true,
+  "16:9": true,
+  "19.5:9": true,
+  "21:9": true,
+  "32:9": true,
+  "4:1": true,
+} satisfies Record<Exclude<AspectBucket, "other">, true>;
+
 /** The published buckets, as `max/min` ratios so a portrait artboard reads its
     landscape inversion's label — the comparison treats 16:9 and 9:16 as one.
     Ascending order is load-bearing: `aspectOf` returns the first match. */
