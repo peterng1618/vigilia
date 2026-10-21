@@ -12,22 +12,22 @@ Give every display client its own theme, then let a person browse the themes it 
 - **Active plan:** `docs/superpowers/plans/2026-10-21-theme-store-online-tab.md` — the store spec's **phase C**, eight tasks dispatched one seat at a time; its ledger is `.superpowers/sdd/2026-10-21-theme-store-online-tab/progress.md`.
 - Its scope: the online half as a second `ItemSource` over the catalogue's `index.json`, that index's shape owned by `renderer-core`, the generator the catalogue's Action runs, the online cell and the modal's online facts.
 - **Decision `docs/decisions/0088`**: the editor's **browser** fetches the index from the raw path, because it revalidates conditionally for free against a server measured to answer `304` while Node's `fetch` has no HTTP cache at all; a script cannot set `If-None-Match` on either route (preflight `403`).
-- **The catalogue repo is `peterng1618/vigilia-store`**, which the agent is authorised to create and has not yet created; its Action checks out this repo at a pinned commit.
+- **The catalogue repo is `peterng1618/vigilia-store`**, created public; its workflow and README are committed locally in `C:\tmp\vigilia-store` and **not pushed**, because the Action pins `dfb51024` and `origin/develop` is 48 commits behind.
 - D–F cannot start: D needs open question 1 decided, E needs D and a registered OAuth app, F needs E and the ffmpeg licence read.
 - **The drain still has no executable work left** — its ledger is `.superpowers/sdd/2026-10-12-the-backlog-drain/progress.md`, and the panel work sits behind the store's remaining phases.
 
 ## Last completed change
 
-- **The theme-store plan closed** — eight tasks, a boundary, one seat at a time in the main `develop` checkout, every task reviewed with its own fix rounds, and a final whole-branch review on the most capable model returning **PASS, no BLOCKING**.
-- **Its one SHOULD-FIX discharged**: `docs/architecture/ownership.md` gains the two rows this plan's new owners were missing — `editor/src/theme-tag-seed.ts` (`THEME_TAG_SEED`) and `host/src/settings/theme-origins.ts`.
-- **Two rows filed rather than fixed**: `vg-688` (the accepted spec still calls the badge *Installed* at three lines, Acceptance B among them, where the shipped word is the drawing's *From the store*) and `vg-689` (`ThemeOrigin` is declared twice with nothing keeping the two in step, so a host-side rename renders `From the store · undefined · undefined` with every test green).
-- **Evidence**: `npm run gate` exit 1 at the pre-existing `design:check` ceiling (`vg-626`) with the five steps before it green; `typecheck` exit 0, the suite exit 0 at **289 files / 3980 tests**, `backlog:check` exit 0; the boundary's four claims rendered in Chromium with four red-proofs restored by `cmp`, one of them re-run independently by the final reviewer.
-- **Seven rows now stand from this plan** — `vg-684` through `vg-690`.
+- **Phase C's Task 4: the online source** — `onlineThemeSource` reads `index.json` through the shared parser and maps each entry to a `StoreItem` carrying its `catalogue` facts, its CDN thumbnail and no `origin`.
+- **`DASHBOARD_THEME_KIND` now has one owner** in `renderer-core`'s `catalogue-index.ts`; the host's private copy and the editor's duplicate are gone, which closes a finding raised three times.
+- **Two fix rounds, both red-proofed**: `refused()` clears **before** the read so a failed list answers none, and the discriminating case is a fetch that **rejects** — a clear placed after the `await` keeps the non-ok case green, which is why round 2 exists.
+- **Evidence**: store-mode 6 files / 79 tests green, `typecheck` and `biome check ..` exit 0, and the reviewer's independent red proof caught a two-slash thumbnail join.
+- **Tasks 1–3 also stand**: the index's wire shape and parser, the generator as a host-binary command, and the catalogue repo's workflow — committed locally, unpushed, because the pin does not resolve on `origin` yet.
 
 ## Next
 
 1. **Execute phase C's eight tasks**, ending at the boundary's five rendered claims driven against a routed `index.json` rather than the live origin.
-2. **Create `peterng1618/vigilia-store`** (Task 3) with its Action, and read the raw URL back before the client's address is fixed in `catalogue-location.ts`.
+2. **Push `develop`, then push the catalogue repo** — Task 3's one remaining step, and one action; a shared-branch push is why it waits for the user.
 3. `vg-688` asks for a spec edit and `vg-689` for a guard on a duplicated wire type; `vg-690` is the store's missing status bar — all three are rulings or small surfaces rather than this plan's tasks.
 4. Decide whether `vg-626` (the red `design:check`) blocks the next plan as it did the per-display close; `vg-620` is the next to weigh, since a client disconnecting mid-stream kills the host.
 5. User review pending: [settings pane](docs/superpowers/specs/2026-10-16-settings-pane-design.md), [colour and gradient rebuild](docs/superpowers/specs/2026-10-12-colour-and-gradient-rebuild-design.md) and [font-picker keyboard model](docs/superpowers/specs/2026-10-17-font-picker-keyboard-design.md); decisions remain for `vg-546`, `vg-559`, `vg-350`, `vg-354` and `vg-191`.
