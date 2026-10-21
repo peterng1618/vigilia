@@ -1,0 +1,181 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import {
+  DASHBOARD_THEME_KIND,
+  type FabricThemeEnvelope,
+} from "@vigilia/renderer-core";
+import { writeThemePackage } from "@vigilia/theme-package";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  createThemeOriginsStore,
+  type ThemeOriginsStore,
+} from "../settings/theme-origins.js";
+import { type InstallRequest, installCatalogueItem } from "./install.js";
+import {
+  createThemeStore,
+  type ThemeContent,
+  type ThemeStore,
+} from "./store.js";
+
+const PACKAGE_URL =
+  "https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip";
+
+function themeOf(id: string, name: string): ThemeContent {
+  const envelope: FabricThemeEnvelope = {
+    schemaVersion: 2,
+    fabricVersion: "7.4.0",
+    id,
+    artboard: { width: 1920, height: 1080 },
+    metadata: { name, themeLanguage: "en" },
+    scene: { version: "7.4.0", objects: [] },
+  };
+  return { envelope, assets: {} };
+}
+
+function packageOf(id: string, name: string): Uint8Array {
+  const written = writeThemePackage(themeOf(id, name));
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
+}
+
+/** An injected fetcher that records every URL it was asked for, so a case can
+ *  prove the kind gate refused before the network. */
+function recorded(answer: () => Response): {
+  readonly fetch: typeof fetch;
+  readonly seen: string[];
+} {
+  const seen: string[] = [];
+  const fetcher: typeof globalThis.fetch = async (input) => {
+    seen.push(
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url,
+    );
+    return answer();
+  };
+  return { fetch: fetcher, seen };
+}
+
+function serving(bytes: Uint8Array): typeof fetch {
+  // `new Uint8Array(bytes)` is ArrayBuffer-backed, which is what `Response`
+  // accepts; the writer's return type is the wider `ArrayBufferLike`.
+  return async () => new Response(new Uint8Array(bytes));
+}
+
+const REQUEST: InstallRequest = {
+  packageUrl: PACKAGE_URL,
+  catalogueId: "aurora",
+  version: "1.2.0",
+  kind: DASHBOARD_THEME_KIND,
+};
+
+describe("installCatalogueItem", () => {
+  let libraryDir: string;
+  let originsDir: string;
+  let store: ThemeStore;
+  let origins: ThemeOriginsStore;
+
+  beforeEach(async () => {
+    libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-install-"));
+    originsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-install-origins-"),
+    );
+    store = createThemeStore(libraryDir);
+    origins = createThemeOriginsStore(originsDir);
+  });
+
+  afterEach(async () => {
+    await fs.rm(libraryDir, { recursive: true, force: true });
+    await fs.rm(originsDir, { recursive: true, force: true });
+  });
+
+  it("installs an item and records its origin", async () => {
+    const startedAt = Date.now();
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(packageOf("living-room", "Living Room")),
+    });
+
+    expect(result).toEqual({ ok: true, id: "living-room" });
+
+    const all = await origins.read();
+    // Keyed by the library id, not the catalogue id — the two are deliberately
+    // different here, so a write that swapped them fails.
+    expect(Object.keys(all)).toEqual(["living-room"]);
+    const origin = all["living-room"];
+    expect(origin?.catalogueId).toBe("aurora");
+    expect(origin?.version).toBe("1.2.0");
+    const installedAt = Date.parse(origin?.installedAt ?? "");
+    expect(Number.isNaN(installedAt)).toBe(false);
+    expect(installedAt).toBeGreaterThanOrEqual(startedAt);
+  });
+
+  it("records no origin when the write was refused", async () => {
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(new Uint8Array([1, 2, 3])),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.message).toContain(
+      "not a readable theme package",
+    );
+    expect(await origins.read()).toEqual({});
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("refuses a kind this build does not run", async () => {
+    const { fetch, seen } = recorded(() => new Response("no"));
+
+    const result = await installCatalogueItem(
+      { ...REQUEST, kind: "widget-preset" },
+      { store, origins, fetch },
+    );
+
+    expect(result.ok).toBe(false);
+    // The identifier, never a display word.
+    expect(result.ok ? "" : result.message).toContain("widget-preset");
+    // Refused before anything was fetched or written.
+    expect(seen).toEqual([]);
+    expect(await origins.read()).toEqual({});
+  });
+
+  it("stamps the library id into the document", async () => {
+    await store.write("living-room", themeOf("living-room", "Mine"), {
+      expectFree: true,
+    });
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(packageOf("living-room", "Living Room")),
+    });
+
+    expect(result).toEqual({ ok: true, id: "living-room-2" });
+    expect((await store.read("living-room-2"))?.envelope.id).toBe(
+      "living-room-2",
+    );
+    expect(Object.keys(await origins.read())).toEqual(["living-room-2"]);
+  });
+
+  it("records no origin when the download was refused", async () => {
+    const { fetch } = recorded(() => new Response("no", { status: 404 }));
+
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.stage).toBe("download");
+    expect(await origins.read()).toEqual({});
+    expect(await store.list()).toEqual([]);
+  });
+});

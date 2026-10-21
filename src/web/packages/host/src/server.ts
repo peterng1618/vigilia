@@ -68,6 +68,11 @@ import type { ThemeOriginsStore } from "./settings/theme-origins.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import { importThemePackage } from "./themes/import.js";
 import {
+  type InstallRequest,
+  installCatalogueItem,
+  parseInstallRequest,
+} from "./themes/install.js";
+import {
   createThemeStore,
   isValidThemeId,
   ThemeAssetLimitError,
@@ -154,6 +159,9 @@ export interface HostServerOptions {
   readonly themeOrigins?: ThemeOriginsStore;
   /** Theme thumbnails. Omitted when the host stores none. */
   readonly thumbnails?: ThumbnailStore;
+  /** The fetcher the install route uses. Omitted uses the global; supplied so a
+   *  route test can install without a network. */
+  readonly fetch?: typeof fetch;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
   readonly activeTheme?: ActiveThemeStore;
   /** The consumer's display preferences. Omit when the host stores none. */
@@ -763,6 +771,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const fontFavorites = options.fontFavorites;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
+  const fetcher = options.fetch;
   const themeSettings = options.themeSettings;
   const themeOrigins = options.themeOrigins;
   const published = options.published ?? createPublishedStore();
@@ -2206,6 +2215,66 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
       sendJson(response, 200, { ok: true, id: imported.id });
+      return;
+    }
+
+    // The catalogue's Install action. The host fetches the package because the
+    // editor's browser cannot (docs/decisions/0089), and the operation records
+    // the origin after the write so the listing can say where a theme came from.
+    // Matched here, before `/api/themes/:id`, for the same reason `import` is.
+    if (url.pathname === "/api/themes/install") {
+      if (request.method !== "POST") {
+        sendText(response, 405, "Only POST is supported.");
+        return;
+      }
+      // Installing is a theme modification: a paired phone reads themes, it does
+      // not add to the library.
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Theme modification is loopback only.");
+        return;
+      }
+      // No origin owner, no install: the record is half of what this route
+      // promises, and a theme that lands without one reads as a theme that did
+      // not come from the catalogue.
+      if (themeOrigins === undefined) {
+        sendText(response, 503, "This host records no theme origins.");
+        return;
+      }
+
+      let install: InstallRequest;
+      try {
+        const parsed = parseInstallRequest(JSON.parse(await readBody(request)));
+        if (parsed === undefined) {
+          sendText(
+            response,
+            400,
+            "An install needs packageUrl, catalogueId, version and kind.",
+          );
+          return;
+        }
+        install = parsed;
+      } catch {
+        sendText(response, 400, "That install request is not JSON.");
+        return;
+      }
+
+      const installed = await installCatalogueItem(install, {
+        store: themeStore,
+        origins: themeOrigins,
+        ...(thumbnails === undefined ? {} : { thumbnails }),
+        ...(fetcher === undefined ? {} : { fetch: fetcher }),
+      });
+      if (!installed.ok) {
+        // The refusing owner's own words. 502 when the remote end failed and
+        // 400 when the request asked for a package this build will not take.
+        sendText(
+          response,
+          installed.stage === "download" ? 502 : 400,
+          installed.message,
+        );
+        return;
+      }
+      sendJson(response, 200, { ok: true, id: installed.id });
       return;
     }
 

@@ -14,6 +14,7 @@ import { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import {
   createAssetResolver,
+  DASHBOARD_THEME_KIND,
   decodeBatch,
   type FabricThemeEnvelope,
   SAMPLE_STREAM_PATH,
@@ -1218,6 +1219,123 @@ describe("Host theme routes", () => {
         )
       ).status,
     ).toBe(403);
+  });
+
+  describe("The install route", () => {
+    const PACKAGE_URL =
+      "https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip";
+    let library: string;
+    let settings: string;
+    let installing: ReturnType<typeof createHostServer>;
+    let answer: () => Response;
+
+    beforeEach(async () => {
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-install-ui-"));
+      settings = await fs.mkdtemp(
+        path.join(os.tmpdir(), "vigilia-install-origins-ui-"),
+      );
+      const bytes = packageBytes(
+        createValidPackage("family-room", "Family Room"),
+      );
+      answer = () => new Response(new Uint8Array(bytes));
+      installing = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        themeOrigins: createThemeOriginsStore(settings),
+        // No network: the route's download is driven by this answer.
+        fetch: async () => answer(),
+      });
+    });
+
+    afterEach(async () => {
+      await installing.close();
+      await fs.rm(library, { recursive: true, force: true });
+      await fs.rm(settings, { recursive: true, force: true });
+    });
+
+    function installBody(kind = DASHBOARD_THEME_KIND): string {
+      return JSON.stringify({
+        packageUrl: PACKAGE_URL,
+        catalogueId: "aurora",
+        version: "1.2.0",
+        kind,
+      });
+    }
+
+    it("installs a loopback POST and records its origin", async () => {
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        installBody(),
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.json()).toEqual({ ok: true, id: "family-room" });
+
+      const listing = (
+        await request(installing.server, "GET", "/api/themes")
+      ).json() as { themes: readonly Record<string, unknown>[] };
+      expect(listing.themes).toHaveLength(1);
+      expect(listing.themes[0]?.id).toBe("family-room");
+      expect(listing.themes[0]?.origin).toEqual({
+        catalogueId: "aurora",
+        version: "1.2.0",
+        installedAt: expect.any(String),
+      });
+    });
+
+    it("refuses a non-loopback POST, and installs nothing", async () => {
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        installBody(),
+        { remoteAddress: "10.0.0.2" },
+      );
+
+      expect(res.status).toBe(403);
+      const listing = (
+        await request(installing.server, "GET", "/api/themes")
+      ).json() as { themes: readonly unknown[] };
+      expect(listing.themes).toEqual([]);
+    });
+
+    it("answers 405 to another method", async () => {
+      expect(
+        (await request(installing.server, "GET", "/api/themes/install")).status,
+      ).toBe(405);
+    });
+
+    it("answers 400 to a body that is not the four strings", async () => {
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        JSON.stringify({
+          packageUrl: PACKAGE_URL,
+          catalogueId: "aurora",
+          version: "1.2.0",
+        }),
+      );
+
+      expect(res.status).toBe(400);
+    });
+
+    it("answers 502 when the download failed", async () => {
+      answer = () => new Response("no", { status: 404 });
+
+      const res = await request(
+        installing.server,
+        "POST",
+        "/api/themes/install",
+        installBody(),
+      );
+
+      expect(res.status).toBe(502);
+      expect(res.text()).toContain("404");
+    });
   });
 
   it("reports requested keys no provider answered through /api/health", async () => {

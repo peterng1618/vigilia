@@ -18,9 +18,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase D's Task 2** — ADR `0089` claims `server.ts` for the install route and gives the download module (`themes/download.ts`): https only, four GitHub hosts, one redirect within them, and the reader's 64 MiB enforced while the body streams.
-- **`MAX_ARCHIVE_BYTES` is exported by `@vigilia/theme-package`**, so the download cap and the reader's cap are one number; `download.test.ts` proves the allowlist, the redirect policy, both cap paths, a stalled body and a good response through an injected `fetch`.
-- **No new dependency**: Node 22 `fetch`, `AbortController` and a stream reader, with a 60 s default timeout.
+- **Phase D's Task 3** — `installCatalogueItem` (`themes/install.ts`) downloads a catalogue package, applies the import's id rule, and records `theme-origins.json` only after the write; a kind other than `dashboard-theme` is refused by its identifier.
+- **`POST /api/themes/install`** sits beside `/api/themes/import`: loopback only, 405 on another method, 400 on a bad body or a refused package, and 502 when the download failed.
+- **`HostServerOptions.fetch`** is the route's injected fetcher, so the route suite installs with no network; five install tests and five route tests pass, with the kind gate and the origin ordering red-proved.
 
 ## Next
 
