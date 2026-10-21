@@ -19,9 +19,9 @@ import type { StoreTab } from "./region.js";
  * an item was published and how often it was taken, and the host's library knows
  * only what the author wrote.
  *
- * The keys are the record's own field names — `updatedAt` is the theme's, the
- * catalogue's is `updated` — so a key here cannot drift from the thing it sorts
- * by without a rename in one place.
+ * A key names the order the row offers, not necessarily a field: the catalogue
+ * carries `createdAt`/`updatedAt` and offers them as `created`/`updated`, so
+ * `SORT_ORDERS` below is the one place that says which fact an id reads.
  */
 export const SORT_KEYS: Readonly<Record<StoreTab, readonly ControlOption[]>> = {
   local: [

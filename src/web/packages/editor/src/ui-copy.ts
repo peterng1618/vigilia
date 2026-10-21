@@ -6,11 +6,12 @@
  * so splitting it by namespace would file the same words across five tables
  * and buy the count nothing but a fifth owner of one convention. */
 
-import type {
-  ChartFamily,
-  ColourMode,
-  Orientation,
-  SemanticFamily,
+import {
+  type ChartFamily,
+  type ColourMode,
+  DASHBOARD_THEME_KIND,
+  type Orientation,
+  type SemanticFamily,
 } from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
 import type { AssignableGroup } from "./host-settings-mode/client.js";
@@ -779,7 +780,9 @@ export const uiCopy = {
        *  item's own surface draws the same word (`store-detail.html`). A kind
        *  this build does not know prints its own identifier, which is what the
        *  spec requires of a client older than the kind. */
-      kinds: { "dashboard-theme": "Theme" } as Readonly<Record<string, string>>,
+      kinds: { [DASHBOARD_THEME_KIND]: "Theme" } as Readonly<
+        Record<string, string>
+      >,
     },
     /** The display choice a cell's **Assign to display** opens. Its name is the
      *  action's own word (`cell.actions.assign`), so the two cannot disagree. */

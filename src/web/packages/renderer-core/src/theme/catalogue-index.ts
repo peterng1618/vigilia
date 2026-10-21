@@ -261,16 +261,34 @@ function facetsOf(entry: Record<string, unknown>): FacetRecord | undefined {
   }
 
   const facets = value as Record<string, unknown>;
+  const author = field(facets, "author");
+  const sensors = field(facets, "sensors");
+  const tags = field(facets, "tags");
   const complete =
+    (author === undefined || typeof author === "string") &&
     typeof field(facets, "colourMode") === "string" &&
     typeof field(facets, "orientation") === "string" &&
     typeof field(facets, "aspect") === "string" &&
-    Array.isArray(field(facets, "sensors")) &&
-    Array.isArray(field(facets, "tags")) &&
+    Array.isArray(sensors) &&
+    sensors.every(isSensor) &&
+    Array.isArray(tags) &&
+    tags.every((tag) => typeof tag === "string") &&
     isDimension(field(facets, "width")) &&
     isDimension(field(facets, "height"));
 
   return complete ? (value as FacetRecord) : undefined;
+}
+
+/** One sensor a reader iterates for its `family`, `key` and `label`: an object
+    holding the two strings, with a `family` that is absent or a string. */
+function isSensor(value: unknown): boolean {
+  if (!isObject(value)) return false;
+  const family = field(value, "family");
+  return (
+    typeof field(value, "key") === "string" &&
+    typeof field(value, "label") === "string" &&
+    (family === undefined || typeof family === "string")
+  );
 }
 
 /** An artboard size: zero and `NaN` are not dimensions. */

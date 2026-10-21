@@ -1695,6 +1695,33 @@ it("says the store has nothing yet in its own words", async () => {
 });
 
 /**
+ * **An all-refused catalogue is not "the store has nothing yet"**: the grid is
+ * empty because everything in it was unreadable, and the refusal line is the
+ * sentence that says so. Drawing both would print two contradictory claims.
+ */
+it("draws only the refusal line when every catalogue entry was refused", async () => {
+  vi.stubGlobal(
+    "fetch",
+    catalogueServing([catalogueEntry("widget", "1.0.0", "widget-preset")]),
+  );
+  await mountStore([]);
+
+  await showOnline();
+
+  expect(
+    document.body.querySelector("[data-vigilia-store-empty]"),
+    "an all-refused catalogue draws the empty-catalogue sentence",
+  ).toBeNull();
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-vigilia-store-refusal]"),
+      "refusal line",
+    ).textContent,
+    "the refusal line does not say what the catalogue held",
+  ).toBe(uiCopy.store.catalogueRefused("widget-preset", 1));
+});
+
+/**
  * **The skipped-kind line names the identifier the catalogue used**, never a
  * display word: this build has no vocabulary for `widget-preset`, and inventing
  * one would be §9's word for something nothing declared. The line sits below the

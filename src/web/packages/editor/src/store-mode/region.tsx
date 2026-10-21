@@ -540,7 +540,13 @@ function StoreRegion(props: {
     listed === undefined
       ? { kind: "none" }
       : listed.length === 0
-        ? { kind: tab === "local" ? "empty-library" : "empty-catalogue" }
+        ? tab === "local"
+          ? { kind: "empty-library" }
+          : online.refused.length > 0
+            ? // Everything the catalogue held was unreadable, so the refusal
+              // line below is the sentence: "nothing yet" would contradict it.
+              { kind: "none" }
+            : { kind: "empty-catalogue" }
         : sorted.length === 0
           ? { kind: "empty-filter" }
           : { kind: "items", items: pageItems(sorted, current, size) };

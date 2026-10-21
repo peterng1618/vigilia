@@ -64,6 +64,17 @@ function unreadable(id: string): Record<string, unknown> {
   return value;
 }
 
+/** The fields `asEntry` holds for presence: each omitted-field case must fail
+    when its own check is removed. */
+const REQUIRED_ENTRY_FIELDS = [
+  "version",
+  "createdAt",
+  "updatedAt",
+  "packageUrl",
+  "thumbnail",
+  "favorites",
+] as const;
+
 function document(entries: readonly unknown[]): Record<string, unknown> {
   return { generatedAt: "2026-10-21T00:00:00Z", entries: [...entries] };
 }
@@ -210,6 +221,39 @@ describe("parseCatalogueIndex", () => {
     ]);
   });
 
+  it("refuses a facets record whose members are the wrong type", () => {
+    const parsed = parseCatalogueIndex(
+      document([
+        entry({ id: "null-sensor", facets: facets({ sensors: [null] }) }),
+        entry({
+          id: "unlabelled-sensor",
+          facets: facets({ sensors: [{ key: "cpu.load" }] }),
+        }),
+        entry({ id: "numeric-tag", facets: facets({ tags: [1] }) }),
+        entry({ id: "numeric-author", facets: facets({ author: 5 }) }),
+      ]),
+      KNOWN,
+    );
+
+    expect(parsed.entries).toStrictEqual([]);
+    expect(parsed.refused).toStrictEqual([
+      { kind: "dashboard-theme", reason: "malformed", count: 4 },
+    ]);
+  });
+
+  it("refuses an entry that omits any required field", () => {
+    for (const key of REQUIRED_ENTRY_FIELDS) {
+      const parsed = parseCatalogueIndex(document([without(key)]), KNOWN);
+
+      expect(parsed.entries, `an entry omitting ${key} was read`).toStrictEqual(
+        [],
+      );
+      expect(parsed.refused, `${key}'s refusal`).toStrictEqual([
+        { kind: "dashboard-theme", reason: "malformed", count: 1 },
+      ]);
+    }
+  });
+
   it("refuses an entry whose counts are not counts", () => {
     const parsed = parseCatalogueIndex(
       document([
@@ -309,6 +353,19 @@ describe("parseCatalogueItemFile", () => {
       ok: false,
       reason: `item.json's "name" must be a non-empty string.`,
     });
+  });
+
+  it("refuses an authored header that omits any required field", () => {
+    for (const key of REQUIRED_ENTRY_FIELDS) {
+      const header = entry();
+      delete header[key];
+      const parsed = parseCatalogueItemFile(header);
+
+      expect(parsed.ok, `an item.json omitting ${key} was read`).toBe(false);
+      expect(parsed.ok ? "" : parsed.reason, `${key}'s refusal`).toContain(
+        `"${key}"`,
+      );
+    }
   });
 
   it("refuses a count that is not a count", () => {
