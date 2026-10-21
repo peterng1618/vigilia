@@ -55,23 +55,50 @@ entry is not imported. The entry is written into the theme package's
 and cannot be removed from the registry by configuration. Everything else is
 pluggable.
 
+**R9 — One grid per category, sources mixed.** The tab is the category, never a
+provider. Every enabled source's results share one grid, interleaved, and each
+row is badged with the source that supplied it — the licence differs per row, and
+the author is choosing a legal obligation without changing tabs. Sources are
+enabled and disabled by chips above the grid.
+
+**R10 — v1 authenticates with a bearer credential only.** The store's type admits
+a `cookie` kind so a future account-login source has somewhere to land, but no
+cookie handler ships and no source may declare one: a session cookie is a
+credential with more power than a scoped key, it expires silently, and driving a
+provider's login is the automation this product has already refused elsewhere.
+
 ## 1. The surface
 
 ```
 ┌─ Assets ────────────────────────────────────────────────┐
 │ Fonts  Icons  Wallpaper Engine                          │  tabs, derived
 ├─────────────────────────────────────────────────────────┤
-│ [ search… ]                            [source: Lucide ▾]│
+│ [ search… ]                                             │
+│ [x] Lucide  [x] Font Awesome Free          sources      │
 │ ┌─────────────────────────────────────────────────────┐ │
-│ │  ░░░ ░░░ ░░░ ░░░ ░░░ ░░░                            │ │  results grid
-│ │  name name name name name name                      │ │
+│ │  ░house      ░house      ░home       ░house         │ │  mixed grid
+│ │  house·Lucide house·FA   home·Lucide house·FA       │ │  + source badge
 │ └─────────────────────────────────────────────────────┘ │
-│ 261 results            [Cancel]  [Place on canvas]      │
+│ 40 results · 2 sources      [Cancel]  [Place on canvas] │
 └─────────────────────────────────────────────────────────┘
 ```
 
-- The source picker appears only when the current category has more than one
-  source; a single-source tab does not offer a choice it does not have.
+- **One query, every enabled source.** The grid is a round-robin interleave of
+  each source's first page, so the mix is visible before scrolling and no source
+  is buried by another's better ranking. There is deliberately **no cross-source
+  rank**: the sources' own scores are not comparable, and pretending otherwise
+  would be a relevance claim the code cannot support.
+- **Load more** asks every source that still has a cursor and appends its next
+  page to the same interleave. A source that has run out simply stops
+  contributing; the pager stays while any source has more.
+- **Result ids are namespaced** as `<source id>:<result id>` on the wire, so two
+  sources cannot collide and a result names its origin without a lookup.
+- **A failing source does not blank the grid.** Its chip says it failed and the
+  other results stay; a source that fails with a credential reason says
+  `needs-credential` on its own chip.
+- Sources are enabled or disabled per category and the choice is remembered in
+  the browser, not on the host: it is a per-viewer convenience, and it must not
+  travel to another display. At least one source is always enabled.
 - Search is debounced and cancellable. **A late response for an abandoned query
   is discarded**, not rendered as the current result set.
 - Paging is the source's: a `cursor` in, a `next` cursor out. A source that
@@ -87,7 +114,7 @@ pluggable.
 export type SourceCategory = "font" | "icon" | "image" | "video";
 
 export interface AssetResult {
-  readonly id: string;                 // the source's own id, stable
+  readonly id: string;                 // the source's own id; the host prefixes it
   readonly name: string;
   readonly preview: string;            // a URL the editor may render, or ""
   readonly subtitle: string | undefined; // author, family, collection
@@ -129,6 +156,12 @@ export interface SourceContext {
 keyless (Font Awesome Free) and one that is local and keyless (Lucide, the
 curated catalogue, Wallpaper Engine) differ only in what `search` does, so the
 modal has no branch per source.
+
+The search route takes the **enabled source ids** and answers one merged page per
+enabled source, with every `id` prefixed by its source's id and every row's
+`source` named. A source missing from the enabled list is not called at all —
+which is what makes a disabled chip a saving rather than a filter over work
+already done.
 
 ## 3. The sources in v1
 
@@ -176,11 +209,17 @@ value. No route logs a body, and a write failure names the credential, never its
 content.
 
 The registry of **known** credentials is a table beside the sources: `{ id,
-label, verify? }`. A key for an id the table does not know is refused, so a
-request cannot fill the file with arbitrary entries. `verify` is optional and, if
-present, the Connections tab's **Verify** button calls it through
-`POST /api/credentials/<id>/verify` — a typo should fail at the field, not as an
-empty search result later.
+label, kind, verify? }`. `kind` is `"bearer" | "cookie"`, and **only `bearer` is
+implemented in v1** (R10): a `cookie` entry is refused at write time with a
+message naming the reason, so the type records the shape without shipping a
+handler that would store a full session. A key for an id the table does not know
+is refused, so a request cannot fill the file with arbitrary entries. `verify` is
+optional and, if present, the Connections tab's **Verify** button calls it
+through `POST /api/credentials/<id>/verify` — a typo should fail at the field,
+not as an empty search result later.
+
+A credential's value never crosses to the browser in any form, and a source
+receives it only through `SourceContext.credential`, inside the host process.
 
 **The Connections tab** is the fourth tab in the editor's Settings dialog
 (`settings.tsx:33`'s `SettingsTab`, whose comment already requires the column and
@@ -263,9 +302,12 @@ port.
 
 | Situation | Behaviour |
 |---|---|
-| A source is unreachable | `source-failed` with the source's own message; the other tabs still work |
-| A source needs a credential that is unset | `needs-credential`, naming the id and linking the Settings tab; no call is made |
+| A source is unreachable | its chip says `source-failed` with the source's own message; the other sources' results stay in the grid |
+| Every enabled source fails | the grid says so once, naming each source; it is not an empty result |
+| A source needs a credential that is unset | its chip says `needs-credential` and links the Settings tab; no call is made for that source |
 | A credential is wrong | `source-failed` after `verify`, with the host's status code; the value is never echoed |
+| A credential is declared `cookie` | refused at write time with the reason; v1 stores bearers only (R10) |
+| A source is disabled while a search is in flight | its late page is discarded; the grid keeps the enabled sources' |
 | A late search response | discarded, never rendered |
 | A result's bytes are missing | that row's action refuses, naming the item; the grid stays |
 | An import exceeds the asset caps | the asset manager's own refusal, unchanged and shown |
@@ -277,6 +319,11 @@ port.
 
 - Stock image and stock video providers, and their keys. The registry is ready;
   the providers are their own decision, because each brings its own terms.
+- **Account-login sources** — providers whose access is a signed-in session
+  rather than a token. The type has a place for one (R10) and no handler ships.
+  Choosing one is a decision about a named provider's terms, not a generic
+  capability: some forbid redistributing an asset inside a theme at all, which
+  no auth mechanism can fix.
 - Live Fontsource search (R4 defers it).
 - Recolour beyond the existing `monochrome` treatment.
 - Where a keyed provider's rate limit is enforced: this spec expects the source's
@@ -334,8 +381,9 @@ one credential store, one modal. No dependency, no second asset model.
 3. **The modal, fonts only** — tabs, search, grid, `Apply to preset`, and the
    font picker's move out of the selection inspector.
 4. **Lucide** — the local adapter and the Icons tab. Proves "add a source without
-   touching the UI".
-5. **Font Awesome Free** — the remote adapter, the first-search host notice, and
+   touching the UI", with one source in the category.
+5. **Font Awesome Free** — the remote adapter, which is also the second icon
+   source and therefore the first mixed grid, the first-search host notice, and
    the credits entry at import.
 6. **Wallpaper Engine** — register the WE module as a local source, with the WE
    plan's export flow as its per-kind action. Lands after that plan's host tasks.
@@ -348,12 +396,19 @@ discharge; it should land together with the credits member.
 
 - Adding `lucide` to the registry draws the Icons tab and changes no file under
   `asset-finder/` — the registry is data.
-- A category with one source draws no source picker; with two, it draws one.
+- One search with both icon sources enabled answers results from both, each row
+  naming its source, and no two rows share an id.
+- Disabling a source removes its rows and issues no call for it.
+- A failing source leaves the other source's results in the grid, and its chip
+  names the failure.
+- `Load more` advances every source with a cursor and appends without reordering
+  the rows already shown.
+- A credential id the registry does not know is refused with 400; a credential
+  declared `cookie` is refused with a message naming R10.
 - `GET /api/credentials` returns `set` and `hint` and **no value**, for a stored
   key and for an unset one.
 - `PUT` then `GET` shows `set: true` and a four-character hint; `DELETE` returns
   it to `set: false`.
-- A credential id the registry does not know is refused with 400.
 - A source whose `requires` is unset answers `needs-credential` and makes no
   outbound call (asserted with a fetch spy that is never called).
 - An abandoned search's late response never renders (asserted with two deferred
