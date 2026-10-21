@@ -233,6 +233,12 @@ export {
   transformPropertiesFor,
 } from "./theme/capabilities.js";
 export type {
+  CatalogueEntry,
+  CatalogueIndex,
+  CatalogueRefusal,
+} from "./theme/catalogue-index.js";
+export { parseCatalogueIndex } from "./theme/catalogue-index.js";
+export type {
   Artboard,
   AssetLicense,
   AssetReference,
