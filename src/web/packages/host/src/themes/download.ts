@@ -36,7 +36,12 @@ const ALLOWED_HOSTS = new Set([
   "raw.githubusercontent.com",
 ]);
 
-const DEFAULT_TIMEOUT_MS = 60_000;
+/**
+ * Two minutes: the reader's 64 MiB cap at a slow line is a legitimate package,
+ * not a stuck one. A 25 MiB item on a 3 Mbps link takes about 67 s, so a 60 s
+ * default would refuse a download that was still arriving.
+ */
+export const DEFAULT_TIMEOUT_MS = 120_000;
 
 /** A release asset is exactly one hop (`github.com` → the asset host), so a
  *  second is a redirect this module did not ask for. */

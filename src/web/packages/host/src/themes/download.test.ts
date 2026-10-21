@@ -1,6 +1,6 @@
 import { MAX_ARCHIVE_BYTES } from "@vigilia/theme-package";
 import { describe, expect, it } from "vitest";
-import { downloadPackage } from "./download.js";
+import { DEFAULT_TIMEOUT_MS, downloadPackage } from "./download.js";
 
 /** A release asset on an allowed host, and the hop GitHub actually answers. */
 const ASSET =
@@ -212,6 +212,13 @@ describe("downloadPackage", () => {
     // Cancelling mid-stream is the difference between a cap and a complaint
     // after the whole body has already been held in memory.
     expect(counted.cancelled()).toBe(true);
+  });
+
+  it("allows two minutes for a legitimate package on a slow line", () => {
+    // A 25 MiB item on a 3 Mbps line takes about 67 s, so a 60 s default
+    // refuses a download that is still arriving. Pinned as a literal, because
+    // a shorter default is otherwise only visible by waiting for it.
+    expect(DEFAULT_TIMEOUT_MS).toBe(120_000);
   });
 
   it("refuses a body that stops arriving", async () => {
