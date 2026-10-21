@@ -2532,7 +2532,7 @@ test("the online half draws Installed, Update and Install for the library's thre
     "an item held at an older version does not read Update",
   ).toBeVisible();
   await expect(update, "Update's word is not Update").toHaveText("Update");
-  await expect(update, "Update is drawn as a dead control").toBeEnabled();
+  await expect(update, "Update is drawn as a live control").toBeEnabled();
 
   // Not held at all: Install, live for the same reason.
   const install = actionOf("cat-ember", "install");
@@ -2541,7 +2541,7 @@ test("the online half draws Installed, Update and Install for the library's thre
     "an item the library does not hold does not read Install",
   ).toBeVisible();
   await expect(install, "Install's word is not Install").toHaveText("Install");
-  await expect(install, "Install is drawn as a dead control").toBeEnabled();
+  await expect(install, "Install is drawn as a live control").toBeEnabled();
 
   await captureVisualReview(
     page,
@@ -2613,7 +2613,7 @@ test("an item the library holds at an older version reads Update before the pres
     update,
     "an item held at an older version does not read Update",
   ).toHaveText("Update");
-  await expect(update, "Update is drawn as a dead control").toBeEnabled();
+  await expect(update, "Update is drawn as a live control").toBeEnabled();
 
   let library: readonly unknown[] = ONLINE_LIBRARY;
   await routeInstallingHost(page, {
@@ -2750,7 +2750,7 @@ test("the online item's own surface shows its counts and its install action", as
   );
   await expect(
     install,
-    "the install action is drawn as a dead control",
+    "the install action is drawn as a live control",
   ).toBeEnabled();
 
   await captureVisualReview(page, testInfo, "store-online-modal");
