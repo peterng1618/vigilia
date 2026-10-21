@@ -176,6 +176,20 @@ result, not merely a mounted editor.
 | Design language | Mount the control set over the built stylesheet and read it in a panel | `control-set` / `the control set renders in the design language` — two files, `-desktop-chromium` (graphite, the ground the mockup is drawn on) and `-editorial-desktop-chromium` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
+## Theme store
+
+| Domain | Visible action | Capture / title regex |
+|---|---|---|
+| Theme store | List the catalogue on the online half and read a cell's kind badge and download count | `store-online-catalogue` / `lists the catalogue, its kind badge and a thousands-separated count` |
+| Theme store | Narrow the online grid with a style tag, and read the tag only one item holds | `store-online-facet` / `narrows the online grid, and the tag one item holds is still offered` |
+| Theme store | Read a cell's three install answers against the library | `store-online-install-states` / `draws Installed, Update and Install for the library's three cases` |
+| Theme store | Read the line naming a kind the catalogue read skipped | `store-online-refusal` / `names the identifier the catalogue declared` |
+| Theme store | Open an online item and read its counts and install action | `store-online-modal` / `shows its counts and its install action` |
+
+The catalogue and the library are both answered by `page.route`, so these five
+show a routed fixture and not the live origin — the real catalogue is empty
+until phase E.
+
 ## Settings page (`/settings`, real host)
 
 | Domain | Visible action | Capture / title regex |

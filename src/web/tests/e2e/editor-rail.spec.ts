@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
   type FabricThemeEnvelope,
   facetRecordOf,
@@ -7,7 +7,7 @@ import { writeThemePackage } from "@vigilia/theme-package";
 import { DARK_GROUND } from "../../packages/editor/src/store-mode/item-fixture.js";
 import type { ThemeOrigin } from "../../packages/editor/src/theme-library-client.js";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
-import { answerDialogIfShown } from "./editor-canvas.js";
+import { answerDialogIfShown, captureVisualReview } from "./editor-canvas.js";
 import { openEveryGroup, openPane, paneBody } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
@@ -2149,6 +2149,412 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   ).toHaveAttribute("data-vigilia-store-cell", "boundary-wide");
   record("store-shape-filter", `19.5:9 kept ${shaped} of 4 cells`);
   await page.keyboard.press("Escape");
+});
+
+/**
+ * **The online half, on a real browser** (A.8): the catalogue's items, the three
+ * install answers the library's join produces, what a kind this build does not
+ * ship is called, and the item's own surface.
+ *
+ * **The index is routed, never fetched.** `page.route("**\/index.json", …)`
+ * intercepts before the browser's cache, so what the half reads is this document
+ * and not whatever the origin answers — and the real catalogue is empty until
+ * phase E, so a case that reached it would assert nothing. The CDN the pictures
+ * come from is routed to a stand-in for the same reason: this case claims no
+ * picture, and the network is not what it is measuring.
+ *
+ * The three readable entries carry one fact each: `cat-skyline` is held at the
+ * catalogue's own version, `cat-tide` at an older one, and `cat-ember` not at
+ * all — the three install answers. `ambient` is a tag exactly one item declares.
+ * The fourth entry is of a kind this build does not ship.
+ */
+const ONLINE_FACETS = {
+  author: "mira-k",
+  colourMode: "dark",
+  sensors: [],
+  orientation: "landscape",
+  aspect: "16:9",
+  width: 1920,
+  height: 1080,
+} as const;
+
+/** One `index.json` entry, in the wire shape `parseCatalogueIndex` reads. */
+function onlineEntry(input: {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly updatedAt: string;
+  readonly downloads: number;
+  readonly favorites: number;
+  readonly tags: readonly string[];
+  readonly kind?: string;
+}): Record<string, unknown> {
+  return {
+    id: input.id,
+    kind: input.kind ?? "dashboard-theme",
+    name: input.name,
+    version: input.version,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: input.updatedAt,
+    downloads: input.downloads,
+    favorites: input.favorites,
+    packageUrl: `https://catalogue.test/${input.id}.zip`,
+    thumbnail: `${input.id}/thumbnail.png`,
+    facets: { ...ONLINE_FACETS, tags: [...input.tags] },
+  };
+}
+
+const ONLINE_CATALOGUE = {
+  generatedAt: "2026-10-21T00:00:00.000Z",
+  entries: [
+    onlineEntry({
+      id: "cat-skyline",
+      name: "Skyline",
+      version: "1.4.0",
+      updatedAt: "2026-10-18T00:00:00.000Z",
+      downloads: 1_204,
+      favorites: 86,
+      tags: ["ambient", "dashboard"],
+    }),
+    onlineEntry({
+      id: "cat-tide",
+      name: "Tide",
+      version: "1.4.0",
+      updatedAt: "2026-10-17T00:00:00.000Z",
+      downloads: 42,
+      favorites: 9,
+      tags: ["dashboard"],
+    }),
+    onlineEntry({
+      id: "cat-ember",
+      name: "Ember",
+      version: "2.0.0",
+      updatedAt: "2026-10-16T00:00:00.000Z",
+      downloads: 17,
+      favorites: 3,
+      tags: ["minimal"],
+    }),
+    onlineEntry({
+      id: "cat-sketch",
+      name: "Sketch",
+      version: "1.0.0",
+      updatedAt: "2026-10-15T00:00:00.000Z",
+      downloads: 0,
+      favorites: 0,
+      tags: [],
+      kind: "widget-preset",
+    }),
+  ],
+};
+
+/**
+ * The library the online half joins against: two copies, each carrying the
+ * origin record the host keeps — the catalogue item and the version it was
+ * installed from. `cat-ember` is absent, which is the third answer.
+ */
+const ONLINE_LIBRARY = [
+  {
+    id: "library-skyline",
+    name: "Skyline",
+    author: "mira-k",
+    version: "1.4.0",
+    updatedAt: "2026-10-18T00:00:00.000Z",
+    ground: DARK_GROUND,
+    origin: {
+      catalogueId: "cat-skyline",
+      version: "1.4.0",
+      installedAt: "2026-10-19T00:00:00.000Z",
+    },
+    facets: { ...ONLINE_FACETS, tags: [] },
+  },
+  {
+    id: "library-tide",
+    name: "Tide",
+    author: "mira-k",
+    version: "1.4.0",
+    updatedAt: "2026-10-17T00:00:00.000Z",
+    ground: DARK_GROUND,
+    origin: {
+      catalogueId: "cat-tide",
+      version: "1.3.0",
+      installedAt: "2026-10-05T00:00:00.000Z",
+    },
+    facets: { ...ONLINE_FACETS, tags: [] },
+  },
+];
+
+/**
+ * The store, on its online half: the catalogue and the library both routed, the
+ * region mounted and its Store segment chosen, and the readable entries listed.
+ */
+async function showOnlineStore(page: Page): Promise<Locator> {
+  await page.route("**/index.json", (route) =>
+    route.fulfill({
+      // A fulfilled response still passes the browser's CORS check, and the
+      // origin this stands in for answers with the header.
+      headers: { "access-control-allow-origin": "*" },
+      json: ONLINE_CATALOGUE,
+    }),
+  );
+  await page.route("**/api/themes", (route) =>
+    route.fulfill({ json: { themes: ONLINE_LIBRARY } }),
+  );
+  // The pictures come from a CDN this case claims nothing about, and the real
+  // catalogue always holds one: a 1×1 PNG stands in, so no cell and no stage
+  // draws the browser's broken-image mark, which would read as a defect in the
+  // surface rather than as a fixture that left the network alone. The pixel is
+  // the panel ground, so the stand-in reads as an empty picture box.
+  await page.route(
+    (url) => url.hostname === "cdn.jsdelivr.net",
+    (route) =>
+      route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOQVjEAAADNAHAfna9TAAAAAElFTkSuQmCC",
+          "base64",
+        ),
+      }),
+  );
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  // A page size another case left behind would page this listing differently.
+  await page.evaluate(() =>
+    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+  );
+  await page
+    .locator(".editor-shell-mode-switch")
+    .getByRole("button", { name: uiCopy.modes.themes, exact: true })
+    .click();
+
+  const region = page.locator("[data-vigilia-mode-region='themes']");
+  await expect(region, "the themes mode renders no region").toBeVisible();
+  const halves = region.locator("[data-vigilia-store-halves] button");
+  await expect(halves, "the region draws no halves").toHaveCount(2);
+  await halves.nth(1).click();
+  await expect(
+    halves.nth(1),
+    "the Store half is not the one chosen",
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    region.locator("[data-vigilia-store-cell]"),
+    "the online half does not list the catalogue's readable items",
+  ).toHaveCount(3);
+  return region;
+}
+
+test("the online half lists the catalogue, its kind badge and a thousands-separated count", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  await expect(
+    region.locator("[data-vigilia-store-cell-name]"),
+    "the online half does not list the catalogue's items",
+  ).toHaveText(["Skyline", "Tide", "Ember"]);
+
+  const cell = region.locator("[data-vigilia-store-cell='cat-skyline']");
+  // **The literal, not `uiCopy.store.cell.kinds`**: the badge's whole value is
+  // that a renamed word fails here, the rule the origin badge's case states for
+  // its own word.
+  await expect(
+    cell.locator("[data-vigilia-store-cell-kind]"),
+    "the catalogue cell's kind badge does not read Theme",
+  ).toHaveText("Theme");
+  // `1,204` and not `1204`: the separator is the claim, and `Intl` is what
+  // draws it.
+  await expect(
+    cell.locator("[data-vigilia-store-cell-downloads]"),
+    "the download count is not drawn with a thousands separator",
+  ).toHaveText("1,204 downloads");
+
+  await captureVisualReview(page, testInfo, "store-online-catalogue", region);
+});
+
+test("the Style facet narrows the online grid, and the tag one item holds is still offered", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  const styleFacet = region.locator("[data-vigilia-facet='style']");
+  await styleFacet.click();
+  const popup = page.locator(`[aria-label='${uiCopy.store.facets.style}']`);
+  await expect(popup, "the Style facet opens no popover").toBeVisible();
+  // `ambient` is declared by exactly one item, and is a value all the same: a
+  // tag is what a facet exists to find, where a size one item declares is not.
+  // The values are most-carried first, then by name, so `dashboard` heads the
+  // row and the single-holder tag sits among the rest.
+  await expect(
+    popup.locator("[data-vigilia-facet-option-name]"),
+    "the Style facet does not offer every tag the listing carries",
+  ).toHaveText(["dashboard", "ambient", "minimal"]);
+
+  await popup.locator("[data-vigilia-facet-option='ambient']").click();
+  const cells = region.locator("[data-vigilia-store-cell]");
+  await expect(
+    cells,
+    "choosing a tag does not narrow the online grid",
+  ).toHaveCount(1);
+  await expect(
+    cells.first(),
+    "the tag filter kept a theme that does not hold it",
+  ).toHaveAttribute("data-vigilia-store-cell", "cat-skyline");
+
+  // The popover stays open for the frame, so the image reads both halves of the
+  // claim: the tags offered, and the grid they narrowed.
+  await captureVisualReview(page, testInfo, "store-online-facet", region);
+  await page.keyboard.press("Escape");
+});
+
+test("the online half draws Installed, Update and Install for the library's three cases", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  const actionOf = (id: string, state: string): Locator =>
+    region.locator(
+      `[data-vigilia-store-cell='${id}'] [data-vigilia-store-cell-install='${state}']`,
+    );
+  const reasonOf = async (control: Locator): Promise<string> => {
+    const id = await control.getAttribute("aria-describedby");
+    expect(
+      id,
+      "a disabled action describes itself by no reason",
+    ).not.toBeNull();
+    return `#${id ?? ""}`;
+  };
+
+  // Held at the catalogue's own version: a mark, because there is nothing to do.
+  const installed = actionOf("cat-skyline", "installed");
+  await expect(
+    installed,
+    "an item held at the same version is not marked Installed",
+  ).toBeVisible();
+  await expect(
+    installed,
+    "the Installed mark does not read Installed",
+  ).toHaveText("Installed");
+  expect(
+    await installed.evaluate((node) => node.tagName),
+    "Installed is drawn as a control rather than a mark",
+  ).toBe("SPAN");
+
+  // Held at an older version: Update, disabled, with its reason beside it.
+  const update = actionOf("cat-tide", "update");
+  await expect(
+    update,
+    "an item held at an older version does not read Update",
+  ).toBeVisible();
+  await expect(update, "Update's word is not Update").toHaveText("Update");
+  await expect(update, "Update is drawn as a live control").toBeDisabled();
+  await expect(
+    page.locator(await reasonOf(update)),
+    "Update's reason is not the surface's own words",
+  ).toHaveText(uiCopy.store.cell.unavailable);
+
+  // Not held at all: Install, disabled, with the same reason.
+  const install = actionOf("cat-ember", "install");
+  await expect(
+    install,
+    "an item the library does not hold does not read Install",
+  ).toBeVisible();
+  await expect(install, "Install's word is not Install").toHaveText("Install");
+  await expect(install, "Install is drawn as a live control").toBeDisabled();
+  await expect(
+    page.locator(await reasonOf(install)),
+    "Install's reason is not the surface's own words",
+  ).toHaveText(uiCopy.store.cell.unavailable);
+
+  await captureVisualReview(
+    page,
+    testInfo,
+    "store-online-install-states",
+    region,
+  );
+});
+
+test("the line for a skipped kind names the identifier the catalogue declared", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  const line = region.locator("[data-vigilia-store-refusal]");
+  await expect(
+    line,
+    "what the catalogue read left out is not named",
+  ).toHaveCount(1);
+  // **The identifier, as a literal** — `widget-preset` is a kind this build has
+  // no word for, and a display word invented here would be a name nothing
+  // declared (§9). The rest of the sentence is the surface's own.
+  await expect(
+    line,
+    "the skipped-kind line does not name the wire identifier",
+  ).toHaveText("1 entry of kind widget-preset could not be read.");
+  await expect(
+    region.locator("[data-vigilia-store-cell]"),
+    "a skipped entry is drawn or a readable one is missing",
+  ).toHaveCount(3);
+
+  await captureVisualReview(page, testInfo, "store-online-refusal", region);
+});
+
+test("the online item's own surface shows its counts and its install action", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  await region
+    .locator(
+      "[data-vigilia-store-cell='cat-ember'] [data-vigilia-store-cell-surface]",
+    )
+    .click();
+  const modal = page.locator("[data-vigilia-store-item]");
+  await expect(modal, "a cell opens no item's surface").toBeVisible();
+  await expect(modal.locator("[data-vigilia-store-item-name]")).toHaveText(
+    "Ember",
+  );
+
+  // Both counts, each with the noun it is counted with, on the caption line.
+  const stamp = modal.locator("[data-vigilia-store-item-date]");
+  await expect(
+    stamp,
+    "the item's surface does not print its download count",
+  ).toContainText("17 downloads");
+  await expect(
+    stamp,
+    "the item's surface does not print its favourite count",
+  ).toContainText("3 favorites");
+
+  const install = modal.locator("[data-vigilia-store-item-install='install']");
+  await expect(
+    install,
+    "the item's surface draws no install action",
+  ).toBeVisible();
+  await expect(install, "the install action does not read Install").toHaveText(
+    "Install",
+  );
+  await expect(
+    install,
+    "the install action is drawn as a live control",
+  ).toBeDisabled();
+  const reason = await install.getAttribute("aria-describedby");
+  expect(
+    reason,
+    "the install action describes itself by no reason",
+  ).not.toBeNull();
+  await expect(
+    page.locator(`#${reason ?? ""}`),
+    "the install action's reason is not the surface's own words",
+  ).toHaveText(uiCopy.store.cell.unavailable);
+
+  await captureVisualReview(page, testInfo, "store-online-modal");
 });
 
 /**
