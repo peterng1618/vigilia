@@ -20,9 +20,9 @@ Give every display client its own theme, then let a person browse the themes it 
 
 - **Phase C's Task 5: the online cell** — an item carrying `catalogue` facts draws the kind badge and the thousand-separated download count in the band's left slot; a library item keeps the origin pill and the four actions.
 - **`installStateOf` is the one owner of the install decision** — `none`/`install`/`installed`/`update`, with a set `installedVersion` against an absent `version` pinned as `update`.
-- **The action slot**: `Installed` is a check mark in `--accent` with no control, and `Install`/`Update` are disabled with `uiCopy.store.cell.unavailable` beside them (R164); phase D owns the wiring.
-- **Two copy drifts fixed** — `store.cell.kinds["dashboard-theme"]` is `Theme` and the halves are `Your themes`/`Store`, each pinned against the drawing's literal.
-- **Evidence**: store-mode + copy 7 files / 92 tests green, `npm run typecheck` and `npx biome check ..` exit 0; both required red proofs failed as specified and were restored, checked by `cmp`.
+- **The action slot** follows the drawing: `Installed` is a control-free mark whose word is `--muted` and whose check alone is `--accent`, and `Install`/`Update` are disabled with their reason (R164); phase D owns the wiring.
+- **Two copy drifts fixed** — `store.cell.kinds["dashboard-theme"]` is `Theme` and the halves are `Your themes`/`Store`, each pinned against the drawing's literal, plus an unknown kind printing its own identifier.
+- **Evidence**: store-mode 6 files / 85 tests and copy 8 green, `typecheck` and `biome check ..` exit 0; the controller re-ran the badge red proof and watched exactly the unknown-kind case fail.
 
 ## Next
 
