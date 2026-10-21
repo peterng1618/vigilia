@@ -185,10 +185,13 @@ result, not merely a mounted editor.
 | Theme store | Read a cell's three install answers against the library | `store-online-install-states` / `draws Installed, Update and Install for the library's three cases` |
 | Theme store | Read the line naming a kind the catalogue read skipped | `store-online-refusal` / `names the identifier the catalogue declared` |
 | Theme store | Open an online item and read its counts and install action | `store-online-modal` / `shows its counts and its install action` |
+| Theme store | Press Install on an item the library does not hold, and read the cell after the host answers `ok` | `store-online-install-installed` / `draws the item as Installed once the host answers ok` |
+| Theme store | Press Update on an item the library holds at an older version, and read the cell before and after | `store-online-install-updated` / `reads Update before the press and Installed after` |
+| Theme store | Read a cell after the host refuses its install | `store-online-install-refused` / `leaves the cell as it was and states the host's reason` |
 
-The catalogue and the library are both answered by `page.route`, so these five
-show a routed fixture and not the live origin — the real catalogue is empty
-until phase E. Each cell's picture is a 1×1 PNG served by the fixture at the
+The catalogue, the library and `/api/themes/install` are all answered by
+`page.route`, so these eight show a routed fixture and not the live origin — the
+real catalogue is empty until phase E. Each cell's picture is a 1×1 PNG served by the fixture at the
 panel ground, so the empty picture boxes are the stand-in, not a defect in the
 catalogue's thumbnails or their CDN.
 

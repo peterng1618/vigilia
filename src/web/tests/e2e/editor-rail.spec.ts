@@ -2309,6 +2309,69 @@ const ONLINE_LIBRARY = [
   },
 ];
 
+/** The library copy a successful install of `cat-ember` leaves behind: the
+ *  host's own write, listed at the catalogue's version, which is what makes the
+ *  cell read Installed on the re-list. */
+const INSTALLED_EMBER = {
+  id: "library-ember",
+  name: "Ember",
+  author: ONLINE_FACETS.author,
+  version: "2.0.0",
+  updatedAt: "2026-10-16T00:00:00.000Z",
+  ground: DARK_GROUND,
+  origin: {
+    catalogueId: "cat-ember",
+    version: "2.0.0",
+    installedAt: "2026-10-21T00:00:00.000Z",
+  },
+  facets: { ...ONLINE_FACETS, tags: [] },
+};
+
+/** The copy a successful update of `cat-tide` leaves behind: the same library
+ *  theme, with its origin moved to the catalogue's version. */
+const UPDATED_TIDE = {
+  id: "library-tide",
+  name: "Tide",
+  author: ONLINE_FACETS.author,
+  version: "1.4.0",
+  updatedAt: "2026-10-17T00:00:00.000Z",
+  ground: DARK_GROUND,
+  origin: {
+    catalogueId: "cat-tide",
+    version: "1.4.0",
+    installedAt: "2026-10-05T00:00:00.000Z",
+  },
+  facets: { ...ONLINE_FACETS, tags: [] },
+};
+
+/**
+ * The host's two answers for a case that presses an install: the install
+ * itself, and the library listing the surface re-reads after it.
+ *
+ * **`library` is read on every request rather than captured once.** A
+ * successful install is the host's own write, so the re-list is how the cell
+ * learns what the host wrote — and `onInstall` runs before the answer, so a
+ * host that accepts has already listed the copy the re-list reads.
+ */
+async function routeInstallingHost(
+  page: Page,
+  options: {
+    readonly library: () => readonly unknown[];
+    readonly onInstall?: () => void;
+    readonly refusal?: string;
+  },
+): Promise<void> {
+  await page.route("**/api/themes/install", (route) => {
+    options.onInstall?.();
+    return options.refusal === undefined
+      ? route.fulfill({ json: { ok: true, id: "installed" } })
+      : route.fulfill({ status: 400, body: options.refusal });
+  });
+  await page.route("**/api/themes", (route) =>
+    route.fulfill({ json: { themes: options.library() } }),
+  );
+}
+
 /**
  * The store, on its online half: the catalogue and the library both routed, the
  * region mounted and its Store segment chosen, and the readable entries listed.
@@ -2446,14 +2509,6 @@ test("the online half draws Installed, Update and Install for the library's thre
     region.locator(
       `[data-vigilia-store-cell='${id}'] [data-vigilia-store-cell-install='${state}']`,
     );
-  const reasonOf = async (control: Locator): Promise<string> => {
-    const id = await control.getAttribute("aria-describedby");
-    expect(
-      id,
-      "a disabled action describes itself by no reason",
-    ).not.toBeNull();
-    return `#${id ?? ""}`;
-  };
 
   // Held at the catalogue's own version: a mark, because there is nothing to do.
   const installed = actionOf("cat-skyline", "installed");
@@ -2470,36 +2525,163 @@ test("the online half draws Installed, Update and Install for the library's thre
     "Installed is drawn as a control rather than a mark",
   ).toBe("SPAN");
 
-  // Held at an older version: Update, disabled, with its reason beside it.
+  // Held at an older version: Update, live, because the press installs it.
   const update = actionOf("cat-tide", "update");
   await expect(
     update,
     "an item held at an older version does not read Update",
   ).toBeVisible();
   await expect(update, "Update's word is not Update").toHaveText("Update");
-  await expect(update, "Update is drawn as a live control").toBeDisabled();
-  await expect(
-    page.locator(await reasonOf(update)),
-    "Update's reason is not the surface's own words",
-  ).toHaveText(uiCopy.store.cell.unavailable);
+  await expect(update, "Update is drawn as a dead control").toBeEnabled();
 
-  // Not held at all: Install, disabled, with the same reason.
+  // Not held at all: Install, live for the same reason.
   const install = actionOf("cat-ember", "install");
   await expect(
     install,
     "an item the library does not hold does not read Install",
   ).toBeVisible();
   await expect(install, "Install's word is not Install").toHaveText("Install");
-  await expect(install, "Install is drawn as a live control").toBeDisabled();
-  await expect(
-    page.locator(await reasonOf(install)),
-    "Install's reason is not the surface's own words",
-  ).toHaveText(uiCopy.store.cell.unavailable);
+  await expect(install, "Install is drawn as a dead control").toBeEnabled();
 
   await captureVisualReview(
     page,
     testInfo,
     "store-online-install-states",
+    region,
+  );
+});
+
+test("pressing Install on an online cell draws the item as Installed once the host answers ok", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  let library: readonly unknown[] = ONLINE_LIBRARY;
+  await routeInstallingHost(page, {
+    library: () => library,
+    onInstall: () => {
+      library = [...ONLINE_LIBRARY, INSTALLED_EMBER];
+    },
+  });
+
+  const cell = region.locator("[data-vigilia-store-cell='cat-ember']");
+  const install = cell.locator("[data-vigilia-store-cell-install='install']");
+  await expect(
+    install,
+    "an item the library does not hold does not offer Install",
+  ).toHaveText("Install");
+  await install.click();
+
+  // **The re-list is the evidence**: the host answered `ok`, the surface read
+  // the library back, and the join drew what the host wrote. A word set on the
+  // press would still read Installed if the re-list never happened.
+  const installed = cell.locator(
+    "[data-vigilia-store-cell-install='installed']",
+  );
+  await expect(
+    installed,
+    "the cell the host installed is not drawn as Installed",
+  ).toBeVisible();
+  await expect(
+    installed,
+    "the installed cell does not read Installed",
+  ).toHaveText("Installed");
+  expect(
+    await installed.evaluate((node) => node.tagName),
+    "Installed is drawn as a control rather than a mark",
+  ).toBe("SPAN");
+
+  await captureVisualReview(
+    page,
+    testInfo,
+    "store-online-install-installed",
+    region,
+  );
+});
+
+test("an item the library holds at an older version reads Update before the press and Installed after", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  const cell = region.locator("[data-vigilia-store-cell='cat-tide']");
+  // The origin says `1.3.0` was installed and the catalogue holds `1.4.0`.
+  const update = cell.locator("[data-vigilia-store-cell-install='update']");
+  await expect(
+    update,
+    "an item held at an older version does not read Update",
+  ).toHaveText("Update");
+  await expect(update, "Update is drawn as a dead control").toBeEnabled();
+
+  let library: readonly unknown[] = ONLINE_LIBRARY;
+  await routeInstallingHost(page, {
+    library: () => library,
+    onInstall: () => {
+      library = ONLINE_LIBRARY.map((item) =>
+        item.origin.catalogueId === "cat-tide" ? UPDATED_TIDE : item,
+      );
+    },
+  });
+  await update.click();
+
+  const installed = cell.locator(
+    "[data-vigilia-store-cell-install='installed']",
+  );
+  await expect(
+    installed,
+    "the updated item is not drawn as Installed",
+  ).toBeVisible();
+  await expect(
+    installed,
+    "the updated cell does not read Installed",
+  ).toHaveText("Installed");
+
+  await captureVisualReview(
+    page,
+    testInfo,
+    "store-online-install-updated",
+    region,
+  );
+});
+
+test("a refused install leaves the cell as it was and states the host's reason", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page);
+  const reason = "That package is not a theme.";
+  await routeInstallingHost(page, {
+    library: () => ONLINE_LIBRARY,
+    refusal: reason,
+  });
+
+  const cell = region.locator("[data-vigilia-store-cell='cat-ember']");
+  const install = cell.locator("[data-vigilia-store-cell-install='install']");
+  await expect(
+    install,
+    "the cell before the press does not read Install",
+  ).toHaveText("Install");
+  await install.click();
+
+  // **The host's sentence, verbatim** — a reason composed on this side would
+  // hide which part of the install the host refused.
+  await expect(
+    cell.locator("[data-vigilia-store-cell-install-refusal]"),
+    "the refused install is not stated beside its cell",
+  ).toHaveText(reason);
+  const after = cell.locator("[data-vigilia-store-cell-install='install']");
+  await expect(after, "a refused install moved the cell's state").toHaveText(
+    "Install",
+  );
+  await expect(after, "a refused install left the control dead").toBeEnabled();
+
+  await captureVisualReview(
+    page,
+    testInfo,
+    "store-online-install-refused",
     region,
   );
 });
@@ -2568,17 +2750,8 @@ test("the online item's own surface shows its counts and its install action", as
   );
   await expect(
     install,
-    "the install action is drawn as a live control",
-  ).toBeDisabled();
-  const reason = await install.getAttribute("aria-describedby");
-  expect(
-    reason,
-    "the install action describes itself by no reason",
-  ).not.toBeNull();
-  await expect(
-    page.locator(`#${reason ?? ""}`),
-    "the install action's reason is not the surface's own words",
-  ).toHaveText(uiCopy.store.cell.unavailable);
+    "the install action is drawn as a dead control",
+  ).toBeEnabled();
 
   await captureVisualReview(page, testInfo, "store-online-modal");
 });
