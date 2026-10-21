@@ -3,7 +3,6 @@ import { Fragment, useState } from "react";
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import {
   ASSIGN_ITEM_GLYPH,
-  CHECK_GLYPH,
   DELETE_ITEM_GLYPH,
   EXPORT_ITEM_GLYPH,
   Glyph,
@@ -144,21 +143,19 @@ function Cell(props: {
       </span>
       <div className="px-[var(--space-10)] pb-[var(--space-10)]">
         <span className="flex h-[26px] items-center gap-[var(--space-6)]">
-          {/* **The origin badge sits in the band's left slot**, which is where
-              the drawing puts it — beside the name it would make this half's
-              cells taller than the online half's (`store-themes.html`). It is
-              drawn only for a theme the host holds a record of: a theme the
-              author made here came from nowhere, and a badge saying so would be
-              a fact no record carries. */}
+          {/* **The origin badge is the drawing's pill, in the band's left
+              slot** — not beside the name, where it would make this half's
+              cells taller than the online half's, and the cell is one cell
+              shared by both halves (`store-themes.html`). It is drawn only for a
+              theme the host holds a record of: a theme the author made here came
+              from nowhere, and a badge saying so would be a fact no record
+              carries. */}
           {item.origin === undefined ? null : (
             <span
               data-vigilia-store-cell-origin=""
-              className="flex flex-none items-center gap-[var(--space-6)] text-xs text-muted"
+              className="flex-none rounded-full border border-edge bg-panel px-[var(--space-8)] py-[var(--space-4)] text-2xs font-medium text-muted"
             >
-              <span className="flex-none text-accent">
-                <Glyph icon={CHECK_GLYPH} size={13} />
-              </span>
-              {uiCopy.store.cell.installed}
+              {uiCopy.store.fromStore}
             </span>
           )}
           <span className="flex-1" />

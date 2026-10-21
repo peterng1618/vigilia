@@ -447,6 +447,9 @@ it("writes the byline the drawing draws, and says so when there is no author", a
  * so the badge's absence on the second is a reading of that cell rather than a
  * case that never drew anything — a cell badging every theme, or one badging
  * none, fails here either way.
+ *
+ * **The word is the local half's own**, *From the store*, and not the online
+ * half's *Installed*: `uiCopy.store.fromStore` carries why.
  */
 it("badges the cell whose theme came from the store, and leaves the other unbadged", async () => {
   const container = await mount(
@@ -468,9 +471,9 @@ it("badges the cell whose theme came from the store, and leaves the other unbadg
   }
 
   expect(
-    must(badge("living-room"), "installed badge").textContent,
+    must(badge("living-room"), "origin badge").textContent,
     "the badge is not the copy table's word for where a theme came from",
-  ).toBe(uiCopy.store.cell.installed);
+  ).toBe(uiCopy.store.fromStore);
   expect(
     badge("workshop-bench"),
     "the cell badged a theme the host has no origin for",

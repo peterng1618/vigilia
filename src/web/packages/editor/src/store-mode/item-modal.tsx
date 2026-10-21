@@ -37,10 +37,10 @@ import type { CellAction, StoreItem } from "./local-source.js";
  * pills appear and which actions the footer offers — the online half's footer
  * carries Install, Installed or Update in place of the four below.
  *
- * **The origin is pills like every other fact here** — the catalogue item and
- * the version installed, under their own eyebrow — and the group is drawn only
- * where the host holds a record, because a cell can say *Installed* and cannot
- * say *installed from where* (spec, "Provenance").
+ * **The provenance is one muted line under the band**, not a group of pills: it
+ * is what a cell has no room for, and a cell can say *From the store* and cannot
+ * say from where (spec, "Provenance"). Its first clause is `uiCopy.store.fromStore`,
+ * the same word the cell's badge draws.
  */
 
 /**
@@ -173,24 +173,6 @@ function shapeReadings(item: StoreItem): readonly Reading[] {
   return readings;
 }
 
-/**
- * The origin group's readings: the catalogue item this copy was installed from
- * and the version it holds.
- *
- * **The record's own strings, and the caption's version is a different one**:
- * that is the document's, this is the catalogue's. A theme the host holds no
- * record of answers nothing, and a group over an empty list is not drawn — which
- * is the whole of what "the author made this one here" looks like.
- */
-function originReadings(item: StoreItem): readonly Reading[] {
-  const { origin } = item;
-  if (origin === undefined) return [];
-  return [
-    { id: "catalogue", name: origin.catalogueId, mono: true },
-    { id: "version", name: origin.version, mono: true },
-  ];
-}
-
 /** The caption band: what the item is called and who made it, then the pills.
  *  Nothing in it is a row. */
 function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
@@ -263,15 +245,25 @@ function Caption(props: { readonly item: StoreItem }): React.JSX.Element {
           name={uiCopy.store.pillGroups.shape}
           pills={shapeReadings(item)}
         />
-        {/* Where the item came from, which is the one thing a cell's badge
-            cannot say — and the group is not drawn at all for a theme the host
-            holds no record of. */}
-        <PillGroup
-          id="origin"
-          name={uiCopy.store.pillGroups.origin}
-          pills={originReadings(item)}
-        />
       </span>
+      {/* **The provenance line, which is what a cell has no room for**: where the
+          item came from, as one muted line rather than another group of pills
+          (`store-detail.html`). **Only the origin clause is drawn** — *Shows on
+          …* is an assignment fact no item carries yet, and the surface that owns
+          assignment owns that clause. A theme the host holds no record of draws
+          no line at all. */}
+      {item.origin === undefined ? null : (
+        <span
+          data-vigilia-store-item-origin=""
+          className="truncate text-xs text-faint"
+        >
+          {[
+            uiCopy.store.fromStore,
+            item.origin.catalogueId,
+            item.origin.version,
+          ].join(uiCopy.store.readingSeparator)}
+        </span>
+      )}
     </span>
   );
 }

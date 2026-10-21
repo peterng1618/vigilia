@@ -401,31 +401,37 @@ it("draws no version and no separator for a theme that declares none", async () 
 
 /**
  * **The modal says where the item came from**, which is the one thing a cell's
- * badge cannot (spec, "Provenance": *a cell can say Installed and cannot say
- * installed from where*). The two facts are the record's own strings — the
- * catalogue item's id and the version this copy was installed from — and they
- * are pills in a group like every other fact here.
+ * badge cannot (spec, "Provenance": *a cell can say From the store and cannot
+ * say from where*). It is one muted line under the band rather than a group of
+ * pills, and it names the catalogue item and the version this copy was installed
+ * from — the record's own strings, not the caption's document version.
  *
- * **A theme the host has no record for draws no group at all**, which is what
- * `PillGroup` already refuses to render over an empty list: an eyebrow over
- * nothing is a word that says nothing (§9).
+ * **A theme the host has no record for draws no line at all**, and the line
+ * carries the origin clause alone: *Shows on …* is an assignment fact no item
+ * carries yet.
  */
-it("names the catalogue item and the installed version, and draws no group without one", async () => {
+it("names the catalogue item and the installed version on one line, and draws none without one", async () => {
   await mount(modalFor({ ...fixtureItem(LANDSCAPE), origin: ORIGIN }));
 
-  const origin = group("origin");
-  expect(origin.name, "the origin pills sit under no eyebrow").toBe(
-    uiCopy.store.pillGroups.origin,
+  const line = must(
+    document.body.querySelector<HTMLElement>(
+      "[data-vigilia-store-item-origin]",
+    ),
+    "provenance line",
   );
   expect(
-    origin.pills,
-    "the modal does not name the catalogue item and the version installed",
-  ).toEqual([ORIGIN.catalogueId, ORIGIN.version]);
+    line.textContent,
+    "the line does not name the catalogue item and the version installed",
+  ).toBe(
+    [uiCopy.store.fromStore, ORIGIN.catalogueId, ORIGIN.version].join(
+      uiCopy.store.readingSeparator,
+    ),
+  );
 
   await mount(modal(LANDSCAPE));
   expect(
-    document.body.querySelector('[data-vigilia-store-item-group="origin"]'),
-    "the modal drew an origin group for a theme with no origin",
+    document.body.querySelector("[data-vigilia-store-item-origin]"),
+    "the modal drew a provenance line for a theme with no origin",
   ).toBeNull();
 });
 
