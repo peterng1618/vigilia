@@ -1237,14 +1237,22 @@ export const uiCopy = {
      *  drawing's own reading, `<tag> · proposed` on a dashed pill
      *  (`store-detail.html`), so a reader knows the word is new rather than that
      *  the facet failed to match. Each refusal names the word it refused,
-     *  because the author has to see which one, and the shape refusal states the
-     *  rule rather than pointing at it. */
+     *  because the author has to see which one.
+     *
+     *  **`tagRefusedShape` reads its bound off the pattern it is handed**, which
+     *  is `TAG_PATTERN`'s own source: a sentence that restated `1–24` is a
+     *  second copy of the rule, and the two drift the moment either moves. A
+     *  pattern with no `{min,max}` says the rule without a number rather than
+     *  inventing one. */
     styleTags: "Style tags",
     tagProposePlaceholder: "Propose a tag",
     tagAdd: "Add tag",
     tagsProposed: (tag: string) => `${tag} · proposed`,
-    tagRefusedShape: (tag: string) =>
-      `"${tag}" is not a tag this format takes. Use 1–24 lowercase letters, digits or hyphens.`,
+    tagRefusedShape: (tag: string, pattern: string) => {
+      const bounds = /\{(\d+),(\d+)\}/.exec(pattern);
+      const length = bounds === null ? "" : `${bounds[1]}–${bounds[2]} `;
+      return `"${tag}" is not a tag this format takes. Use ${length}lowercase letters, digits or hyphens.`;
+    },
     tagRefusedDuplicate: (tag: string) => `"${tag}" is already on this theme.`,
     tagRefusedFull: (max: number) =>
       `A theme carries at most ${max} style tags. Remove one to add another.`,

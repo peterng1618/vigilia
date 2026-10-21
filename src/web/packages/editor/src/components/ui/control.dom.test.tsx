@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { act } from "react";
@@ -37,6 +37,97 @@ function design(): string {
     "utf8",
   );
 }
+
+/** The editor's own sources — this file is `components/ui/`, two levels in. */
+const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+/** Every shipped editor source file, tests excluded: the same walk
+ *  `react-root-disposal.dom.test.ts` makes, and for the same reason — a rule
+ *  about the product's files has to read the product's files. */
+function sourceFiles(dir = SRC): readonly string[] {
+  // `readdirSync(path)` plus `statSync`, not `withFileTypes`: the editor's Node
+  // typings are deliberately narrow (`node-builtins.d.ts`), and widening them
+  // for a test's convenience is the act that file exists to make visible.
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return sourceFiles(path);
+    if (!/\.tsx?$/.test(name)) return [];
+    if (/\.test\.tsx?$/.test(name) || /\.test-stage\.tsx?$/.test(name))
+      return [];
+    return [path];
+  });
+}
+
+/**
+ * A file's source with its comments blanked to spaces.
+ *
+ * A comment that *names* an `<input>` is not one, and four files do:
+ * `colour-maths.ts` and `colour-picker.tsx` explain why they do not use
+ * `<input type="color">`, `control-well.tsx` says a replaced element has no
+ * `::before`, and `navigation.ts` describes the ones that reach it. A raw
+ * search reads every one of those as a control.
+ */
+function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, " "))
+    .replace(/\/\/[^\n]*/g, (line) => line.replace(/[^\n]/g, " "));
+}
+
+/** The shipped files that render an input of their own, with their source. */
+function inputFiles(): readonly {
+  readonly file: string;
+  readonly source: string;
+}[] {
+  return sourceFiles().flatMap((path) => {
+    const source = readFileSync(path, "utf8");
+    if (!/<(?:input|textarea)\b/.test(withoutComments(source))) return [];
+    return [{ file: relative(SRC, path).split("\\").join("/"), source }];
+  });
+}
+
+/**
+ * The input-taking files that do **not** take the decision from
+ * `useDraftCommit`, each with the reason it does not.
+ *
+ * **The default is to fail.** A file the walk finds that is neither a hook
+ * caller nor named here is red, so a new control has to use the hook or write
+ * down why not — which is the shape the list of two files had inverted, and why
+ * `panes/document/tags-field.tsx` shipped owning its own Enter and Escape
+ * (`vg-203`'s defect, one control later).
+ *
+ * **Three entries are copies rather than sanctions.** They reimplement the
+ * decision — their own Enter, and for the rename field an Escape too — with no
+ * composing guard, which is exactly the defect this walk exists to see. They
+ * are named so the gap is visible rather than silent, and each belongs to a
+ * surface this change does not own.
+ */
+const EXEMPT: readonly (readonly [string, string])[] = [
+  [
+    "components/ui/colour-picker.tsx",
+    "the hex field commits on each parseable keystroke, so there is no draft to commit or cancel",
+  ],
+  [
+    "font-picker/font-picker.tsx",
+    'a `type="search"` filter and a checkbox: neither holds an authored value',
+  ],
+  [
+    "host-settings-mode/region.tsx",
+    "a copy: its own Enter and blur commit, with no Escape and no composing guard",
+  ],
+  [
+    "panes/add/file-section.tsx",
+    'two hidden `type="file"` inputs, driven by their own buttons',
+  ],
+  [
+    "panes/composition/composition-pane.tsx",
+    "a copy: the inline rename field is uncontrolled and keeps its own Enter, Escape and blur",
+  ],
+  [
+    "selection-inspector/runs.tsx",
+    "a copy: the run format field keeps its own Enter and Escape, with no composing guard",
+  ],
+  ["store-mode/region.tsx", "the search well: a filter, not an authored value"],
+];
 
 /**
  * The shared rules of the one control set — the two that are defects rather
@@ -804,24 +895,57 @@ it("takes the draft/commit keyboard decision from one owner, for the text and nu
   }
 });
 
-it("keeps the composing guard in the one hook, not in a copy inside a control", () => {
-  // vg-203: the case above runs the shared contract, but both copies of the
-  // decision were *correct* when the row was filed, so a behavioural case cannot
-  // see a copy coming back — it passes against either shape. Reading the two
-  // controls is what sees it: neither may carry a composing ref or a composition
-  // handler of its own, and both must take the decision from `useDraftCommit`.
-  for (const file of ["control-text.tsx", "control-number.tsx"]) {
-    const source = readFileSync(
-      fileURLToPath(new URL(file, import.meta.url)),
-      "utf8",
-    );
-    expect(source, `${file}: calls the shared hook`).toMatch(/useDraftCommit/);
-    expect(source, `${file}: a composing ref of its own`).not.toMatch(
-      /\buseRef\b/,
-    );
-    expect(source, `${file}: a composition handler of its own`).not.toMatch(
-      /onComposition(Start|End)/,
-    );
+it("takes the draft/commit decision from the one hook, in every file that holds an input", () => {
+  // vg-203: the composing ref, the Enter/IME guard and the Escape reset live in
+  // `useDraftCommit`, and this walk is what requires every control to take them
+  // from there. It fails by default — a file that holds an input is red until
+  // it calls the hook or is named in `EXEMPT` with a reason — because the
+  // earlier version of this case listed the two files that did, which let a
+  // third one omit the decision in silence.
+  const files = inputFiles();
+  const named = files.map((entry) => entry.file);
+
+  // **The walk must be able to see the real case.** These two are its floor: a
+  // regex narrowed until it stopped matching a raw `<input>` would pass the
+  // assertion below by finding nothing to object to.
+  for (const known of [
+    "components/ui/control-text.tsx",
+    "components/ui/control-number.tsx",
+  ]) {
+    expect(named, `the walk no longer sees ${known}`).toContain(known);
+  }
+
+  const exempt = new Map(EXEMPT);
+  expect(
+    files
+      .filter(
+        (entry) =>
+          !/\buseDraftCommit\b/.test(entry.source) && !exempt.has(entry.file),
+      )
+      .map((entry) => entry.file),
+    "an input-taking file neither calls useDraftCommit nor says why it does not",
+  ).toEqual([]);
+
+  // And a file that calls the hook may not keep a copy of the decision beside
+  // it. Both copies were *correct* when vg-203 was filed, so only reading the
+  // source sees one coming back — the behavioural cases pass against either.
+  for (const entry of files.filter((file) =>
+    /\buseDraftCommit\b/.test(file.source),
+  )) {
+    expect(
+      entry.source,
+      `${entry.file}: a composing handler of its own`,
+    ).not.toMatch(/onComposition(Start|End)/);
+    expect(
+      entry.source,
+      `${entry.file}: a composing ref of its own`,
+    ).not.toMatch(/\buseRef\b/);
+  }
+
+  // An exemption for a file that no longer holds an input is a reason nobody can
+  // check, so it goes red rather than staying in the list for ever.
+  for (const file of exempt.keys()) {
+    expect(named, `${file} is exempted and holds no input`).toContain(file);
   }
 });
 

@@ -6,8 +6,10 @@ import {
   ControlRow,
   ControlWell,
   describedBy,
+  hitTargetClasses,
   plainButtonClasses,
   useControlIds,
+  useDraftCommit,
 } from "../../components/ui/control-well.js";
 import { uiCopy } from "../../ui-copy.js";
 
@@ -32,6 +34,11 @@ import { uiCopy } from "../../ui-copy.js";
  * The pills are drawn in the **value's order first**, then the vocabulary's
  * remaining entries: the tags a theme carries are what an author reads, and the
  * offer is what they are added from.
+ *
+ * **The draft's keyboard contract is `useDraftCommit`'s, not this field's** —
+ * Escape, the Enter/IME guard and the composing ref are the one owner's
+ * (`vg-203`), which is what the guard in `control.dom.test.tsx` requires of
+ * every file that holds an input.
  */
 interface TagsFieldProps {
   readonly value: readonly string[];
@@ -44,7 +51,9 @@ interface TagsFieldProps {
 export function TagsField(props: TagsFieldProps): React.JSX.Element {
   const { value, onCommit, vocabulary } = props;
   const ids = useControlIds(undefined);
-  const [draft, setDraft] = useState("");
+  // `null` is not editing: the proposal box is empty and nothing else may fill
+  // it. Any other string is the person's own draft.
+  const [draft, setDraft] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
 
   const held = new Set(value);
@@ -54,7 +63,8 @@ export function TagsField(props: TagsFieldProps): React.JSX.Element {
    *  the fault the author can act on, and a full list is only the reason once
    *  the word itself is one. */
   const refusalFor = (tag: string): string | undefined => {
-    if (!TAG_PATTERN.test(tag)) return uiCopy.panels.tagRefusedShape(tag);
+    if (!TAG_PATTERN.test(tag))
+      return uiCopy.panels.tagRefusedShape(tag, TAG_PATTERN.source);
     if (held.has(tag)) return uiCopy.panels.tagRefusedDuplicate(tag);
     if (value.length >= MAX_TAGS) return uiCopy.panels.tagRefusedFull(MAX_TAGS);
     return undefined;
@@ -79,15 +89,28 @@ export function TagsField(props: TagsFieldProps): React.JSX.Element {
     onCommit(value.filter((entry) => entry !== tag));
   };
 
-  const propose = (): void => {
-    // An empty field is no proposal rather than a refused one: nothing was
-    // typed, so there is no word to name a rule against.
-    if (draft === "") {
+  /** What a draft becomes. **Only a draft commits**, which is what makes the
+   *  Enter's own blur a no-op rather than a second write: a successful commit
+   *  empties the box, and a refused one keeps its word to be corrected (§5).
+   *  A word the author never typed is not a proposal, so there is nothing to
+   *  refuse and nothing to say. */
+  const commit = (): void => {
+    const tag = draft ?? "";
+    if (tag === "") {
       setRefusal(undefined);
       return;
     }
-    if (offer(draft)) setDraft("");
+    if (offer(tag)) setDraft(null);
   };
+
+  const keys = useDraftCommit({
+    draft,
+    setDraft,
+    commit,
+    // Escape drops the draft *and* the refusal that draft earned: the words
+    // beside the field are about a value that is no longer there.
+    reset: () => setRefusal(undefined),
+  });
 
   // Deduped for the list's own keys: a hand-edited document may declare the same
   // tag twice, and the facet is what collapses duplicates, not this field.
@@ -114,7 +137,11 @@ export function TagsField(props: TagsFieldProps): React.JSX.Element {
                 data-vigilia-tag={tag}
                 aria-pressed={picked}
                 onClick={() => toggle(tag)}
-                className={`rounded-full border px-[var(--space-10)] py-[var(--space-4)] text-2xs ${
+                // `hitTargetClasses` carries §5's 24×24 target the way it does
+                // for a segment: a pill is a button, so it can take the
+                // `::before` a replaced element cannot, and its own box stays
+                // the 22px the drawing gives it.
+                className={`${hitTargetClasses} rounded-full border px-[var(--space-10)] py-[var(--space-4)] text-2xs ${
                   picked
                     ? // `--stage` through the shorthand: `bg-stage` is the
                       // utility the theme block deliberately does not declare
@@ -137,31 +164,20 @@ export function TagsField(props: TagsFieldProps): React.JSX.Element {
         <div className="flex items-center gap-[var(--space-6)]">
           <ControlWell>
             <input
+              {...keys}
               id={ids.control}
               type="text"
               data-vigilia-tag-proposal=""
-              value={draft}
+              value={draft ?? ""}
               placeholder={uiCopy.panels.tagProposePlaceholder}
               aria-describedby={describedBy(
                 refusal === undefined ? undefined : ids.invalid,
               )}
               onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                // An IME's Enter ends a composition, and the string it would
-                // commit is not finished yet.
-                if (event.key !== "Enter" || event.nativeEvent.isComposing)
-                  return;
-                event.preventDefault();
-                propose();
-              }}
               className="h-full w-full bg-transparent text-sm text-text outline-none"
             />
           </ControlWell>
-          <button
-            type="button"
-            onClick={propose}
-            className={plainButtonClasses}
-          >
+          <button type="button" onClick={commit} className={plainButtonClasses}>
             {uiCopy.panels.tagAdd}
           </button>
         </div>
