@@ -154,9 +154,9 @@ Measured 2026-10-21 in this checkout, before the change.
    that is the reason `KNOWN_KEYS.metadata` gains the key while the values get
    nothing. Measured as the red run of the cases this change adds
    (`npx vitest run packages/renderer-core/src/theme/fabric-envelope-validate.test.ts`
-   from `src/web/`: 7 failed, 44 passed, every failure `unknown-field` at
-   `/metadata/tags`); the consequence is accepted rather than softened, so no
-   compatibility path is added for it.
+   from `src/web/`, with the rule absent: every new case red, each with
+   `unknown-field` at `/metadata/tags`); the consequence is accepted rather than
+   softened, so no compatibility path is added for it.
 
 ## Rung 7 — build
 

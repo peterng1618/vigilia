@@ -221,10 +221,11 @@ describe("published Fabric theme schema", () => {
   });
 
   it("publishes the tag shape the validator enforces, and no vocabulary with it", () => {
-    // The pattern and the cap are stated twice — in `document.ts` and in this
-    // file — so they are compared against the constants rather than against
-    // copied literals, for the reason the glass and object-name bounds above
-    // give: a theme accepted by one side and refused by the other is silent.
+    // The pattern and the cap are stated twice — in `document.ts` and in
+    // `schema/theme-document.schema.json` — and this file is the comparison
+    // between them, so they are read from the constants rather than from copied
+    // literals, for the reason the glass and object-name bounds above give: a
+    // theme accepted by one side and refused by the other is silent.
     const tags = (
       schema().$defs["metadata"]!["properties"] as Record<
         string,
@@ -236,6 +237,9 @@ describe("published Fabric theme schema", () => {
     expect(tags["type"]).toBe("array");
     expect(tags["maxItems"]).toBe(MAX_TAGS);
     expect(items["pattern"]).toBe(TAG_PATTERN.source);
+    // The source alone would leave a stray flag unpinned: `i` accepts `Retro`
+    // here while the schema, which has no flags to give, keeps refusing it.
+    expect(TAG_PATTERN.flags).toBe("");
     // And no vocabulary in the format, on either level. This is the decision's
     // whole content (docs/decisions/0087): an enum here would make a style the
     // catalogue does not yet have wait for a schema release.
