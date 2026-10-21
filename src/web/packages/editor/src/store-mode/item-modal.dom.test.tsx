@@ -25,7 +25,7 @@ import type { ThemeOrigin } from "../theme-library-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { DARK_GROUND, type FixtureTheme, fixtureItem } from "./item-fixture.js";
 import { ItemModal } from "./item-modal.js";
-import type { StoreItem } from "./local-source.js";
+import type { CatalogueFacts, StoreItem } from "./local-source.js";
 
 // Base UI's dialog needs three browser APIs jsdom has none of: floating-ui
 // observes its anchor, the popup waits for its own open transition, and it asks
@@ -161,6 +161,29 @@ const ORIGIN: ThemeOrigin = {
   installedAt: "2026-10-14T00:00:00.000Z",
 };
 
+/** The catalogue's facts about one online item, with the field the join fills
+ *  — what this PC has installed — left to each case. */
+function catalogueFacts(
+  overrides: Partial<CatalogueFacts> = {},
+): CatalogueFacts {
+  return {
+    id: "kitchen-strip",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-14T00:00:00.000Z",
+    downloads: 1204,
+    favorites: 38,
+    packageUrl: "https://example.invalid/kitchen-strip.vtheme",
+    installedVersion: undefined,
+    ...overrides,
+  };
+}
+
+/** An online item: the same library record with the catalogue's facts attached,
+ *  which is the only thing that separates the two halves' modals. */
+function onlineItem(overrides: Partial<CatalogueFacts> = {}): StoreItem {
+  return fixtureItem(LANDSCAPE, catalogueFacts(overrides));
+}
+
 /** The stage and the picture inside it, from the portalled popup. */
 function stage(): HTMLElement {
   return must(
@@ -183,6 +206,19 @@ function box(): HTMLElement {
   return must(
     document.body.querySelector<HTMLElement>("[data-vigilia-store-item]"),
     "modal box",
+  );
+}
+
+/** The caption's right-hand end: the version, the date, and the catalogue's
+ *  counts where the item has them. */
+function dateLine(): string {
+  return (
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-item-date]",
+      ),
+      "caption date line",
+    ).textContent?.trim() ?? ""
   );
 }
 
@@ -548,4 +584,126 @@ it("reports its own close rather than closing itself", async () => {
   );
 
   expect(closed, "the close control does not report a close").toHaveLength(1);
+});
+
+/**
+ * **The catalogue's counts are facts about the item rather than about a facet**,
+ * so they join the caption's right-hand end — the drawing's `1.4.0 · 2026-10-14`
+ * plus the cell's two numbers — rather than taking a row or a pill group of
+ * their own (`store-browse.html:126-128`). `1,204` rather than `1204` is the
+ * formatter's, and both are counted against the literal because the separator
+ * alone would pass either.
+ *
+ * **A library item draws neither count**: it has no catalogue to read them off,
+ * which is the guard this case's second half holds.
+ */
+it("joins the catalogue's counts to the caption's right-hand end", async () => {
+  const separator = uiCopy.store.readingSeparator;
+
+  await mount(modalFor(onlineItem()));
+  expect(
+    dateLine(),
+    "an online item does not draw the catalogue's two counts beside its version and date",
+  ).toBe(["1.4.0", "2026-10-14", "1,204", "38"].join(separator));
+
+  await mount(modalFor(fixtureItem(LANDSCAPE)));
+  expect(
+    dateLine(),
+    "a library item drew counts it has no catalogue to read",
+  ).toBe(["1.4.0", "2026-10-14"].join(separator));
+});
+
+/**
+ * **The online footer carries the same install reading the cell does** — the
+ * drawing's *Install*, *Installed* or *Update* in place of the library's four
+ * actions (`store-detail.html:42`).
+ *
+ * Installed is a **mark**, not a control, because there is nothing to do; the
+ * check carries the rationed accent and the word stays `--muted`, exactly as
+ * the cell draws it (`store-browse.html:128-131`). Install and Update are
+ * **disabled with their reason** (R164), in the tree beside the control rather
+ * than in a tooltip, because a disabled control is one the pointer cannot ask.
+ */
+it("carries the cell's install reading in the footer instead of the library's four", async () => {
+  const cases = [
+    { state: "installed", catalogue: { installedVersion: "1.4.0" } },
+    { state: "install", catalogue: {} },
+    { state: "update", catalogue: { installedVersion: "1.3.0" } },
+  ] as const;
+
+  for (const sample of cases) {
+    await mount(modalFor(onlineItem(sample.catalogue)));
+    const word = uiCopy.store.cell.installStates[sample.state];
+
+    expect(
+      document.body.querySelector("[data-vigilia-store-item-action]"),
+      `${sample.state}: the library's four actions are drawn beside the catalogue's reading`,
+    ).toBeNull();
+
+    const reading = must(
+      document.body.querySelector<HTMLElement>(
+        `[data-vigilia-store-item-install="${sample.state}"]`,
+      ),
+      `${sample.state} reading`,
+    );
+    expect(
+      reading.textContent,
+      `${sample.state}: the footer is not the copy table's word`,
+    ).toBe(word);
+
+    if (sample.state === "installed") {
+      expect(reading.tagName, "the installed state drew a control").toBe(
+        "SPAN",
+      );
+      expect(
+        reading.className,
+        "the mark's word is not drawn in the drawing's muted colour",
+      ).toContain("text-muted");
+      expect(
+        must(
+          reading.querySelector<HTMLElement>("span.text-accent"),
+          "the check's accent colour",
+        ).textContent,
+        "the accent is not on the check alone",
+      ).toBe("");
+      expect(
+        reading.querySelector("button"),
+        "the installed state drew a button it has no action for",
+      ).toBeNull();
+      continue;
+    }
+
+    const button = must(
+      document.body.querySelector<HTMLButtonElement>(
+        `[data-vigilia-store-item-install="${sample.state}"]`,
+      ),
+      `${sample.state} action`,
+    );
+    expect(button.disabled, `${word} is drawn live`).toBe(true);
+    const describedBy = button.getAttribute("aria-describedby") ?? "";
+    expect(describedBy, `${word} states no reason`).not.toBe("");
+    expect(
+      must(
+        document.body.querySelector<HTMLElement>(`#${describedBy}`),
+        `${word}'s reason`,
+      ).textContent,
+      `${word}'s reason is not the copy table's`,
+    ).toBe(uiCopy.store.cell.unavailable);
+  }
+});
+
+/** **A library item's footer is untouched** — the four actions, in the
+ *  drawing's order, and no catalogue reading among them. This is the half of the
+ *  guard that keeps phase A's surface intact. */
+it("draws no catalogue reading for a library item", async () => {
+  await mount(modalFor(fixtureItem(LANDSCAPE)));
+
+  expect(
+    document.body.querySelector("[data-vigilia-store-item-install]"),
+    "a library item drew a catalogue install reading",
+  ).toBeNull();
+  expect(
+    document.body.querySelectorAll("[data-vigilia-store-item-action]"),
+    "a library item lost the footer's four actions",
+  ).toHaveLength(4);
 });

@@ -18,11 +18,10 @@ Give every display client its own theme, then let a person browse the themes it 
 
 ## Last completed change
 
-- **Phase C's Task 5: the online cell** — an item carrying `catalogue` facts draws the kind badge and the thousand-separated download count in the band's left slot; a library item keeps the origin pill and the four actions.
-- **`installStateOf` is the one owner of the install decision** — `none`/`install`/`installed`/`update`, with a set `installedVersion` against an absent `version` pinned as `update`.
-- **The action slot** follows the drawing: `Installed` is a control-free mark whose word is `--muted` and whose check alone is `--accent`, and `Install`/`Update` are disabled with their reason (R164); phase D owns the wiring.
-- **Two copy drifts fixed** — `store.cell.kinds["dashboard-theme"]` is `Theme` and the halves are `Your themes`/`Store`, each pinned against the drawing's literal, plus an unknown kind printing its own identifier.
-- **Evidence**: store-mode 6 files / 85 tests and copy 8 green, `typecheck` and `biome check ..` exit 0; the controller re-ran the badge red proof and watched exactly the unknown-kind case fail.
+- **Phase C's Task 6: the modal's online facts** — an item carrying `catalogue` joins its downloads and favourites to the caption's right-hand end (`1.4.0 · 2026-10-14 · 1,204 · 38`); a library item's caption is unchanged.
+- **The footer's action set is a function of `installStateOf(item)`** — `none` keeps the library's four, `installed` draws the control-free mark, and `install`/`update` draw disabled buttons with their reason; the modal never compares a version itself.
+- **No new copy** — the footer readings and the disabled reason reuse `store.cell.installStates` and `store.cell.unavailable`, and each count is a bare number through the modal's own `Intl.NumberFormat("en-US")`, as the cell's is.
+- **Evidence**: store-mode 6 files / 88 tests, copy 8, `typecheck` and `biome check ..` exit 0; both red proofs measured — the comparison mutated to `installed` failed the Install arm, the update branch failed the Update arm, and removing the catalogue guard threw `Cannot read properties of undefined (reading 'downloads')`.
 
 ## Next
 

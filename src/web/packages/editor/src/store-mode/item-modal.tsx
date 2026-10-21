@@ -3,10 +3,11 @@ import type * as React from "react";
 import { Fragment } from "react";
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import { ACTION_BUTTON } from "../components/ui/dialog.js";
-import { CLOSE_GLYPH, Glyph } from "../editor-shell/icons.js";
+import { CHECK_GLYPH, CLOSE_GLYPH, Glyph } from "../editor-shell/icons.js";
 import { destructiveMarker } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import { CELL_ACTION_REASONS } from "./cell-actions.js";
+import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
 
 /**
@@ -76,6 +77,12 @@ const DESTRUCTIVE: Readonly<Record<`data-${string}`, string>> =
  *  verb whose ink is the mark — an accent-filled footer would be the one act
  *  among four, and none of these four is *the* act. */
 const FOOTER_BUTTON = `${ACTION_BUTTON} disabled:text-faint`;
+
+/** The counts' reader, declared here rather than hoisted beside the cell's: a
+ *  formatter instance is a presentation choice rather than a business rule, and
+ *  the caption and the cell's facts band are two surfaces. `en-US` because
+ *  `uiCopy` is one English table — the drawing's `1,204`, not the machine's. */
+const COUNT = new Intl.NumberFormat("en-US");
 
 /** One pill: the drawing's `--panel-2` inside a 1px `--edge` at a full radius.
  *  `mono` is the size's own treatment — two numbers read as one measurement
@@ -241,9 +248,21 @@ function Caption(props: {
   // version alone. Composing the sentence here rather than in `uiCopy` is the
   // caption's own punctuation — the `@` on the author is the same kind of mark,
   // and neither is a word a person reads as one.
+  //
+  // The catalogue's two counts join that same end for the same reason: they are
+  // facts about the item rather than about any facet, so they take no group and
+  // no row. A library item has no catalogue to read them from and draws neither.
+  const counts =
+    item.catalogue === undefined
+      ? []
+      : [
+          COUNT.format(item.catalogue.downloads),
+          COUNT.format(item.catalogue.favorites),
+        ];
   const stamp = [
     item.version,
     day === undefined || day === "" ? undefined : day,
+    ...counts,
   ].filter((part) => part !== undefined && part !== "");
   return (
     <span className="flex flex-col gap-[var(--space-12)] px-[var(--space-24)] py-[var(--space-20)]">
@@ -335,6 +354,56 @@ function Caption(props: {
   );
 }
 
+/**
+ * The online half's footer reading: one of the drawing's three answers in place
+ * of the library's four actions (`store-detail.html:42`).
+ *
+ * **Installed is a mark, not a control** — there is nothing to do, and the
+ * drawing draws no button there. The check carries the rationed accent and the
+ * word stays `--muted`, as the cell draws it (`store-browse.html:128-131`).
+ * **Install and Update are disabled with their reason** (R164): phase D owns
+ * the install, so neither is an act this build runs, and the reason travels in
+ * the tree beside the control because a disabled control is one the pointer
+ * cannot ask.
+ */
+function InstallFooter(props: {
+  readonly state: Exclude<InstallState, "none">;
+}): React.JSX.Element {
+  const { state } = props;
+
+  if (state === "installed") {
+    return (
+      <span
+        data-vigilia-store-item-install={state}
+        className="flex items-center gap-[var(--space-6)] text-sm text-muted"
+      >
+        <span className="flex-none text-accent">
+          <Glyph icon={CHECK_GLYPH} size={14} />
+        </span>
+        {uiCopy.store.cell.installStates.installed}
+      </span>
+    );
+  }
+
+  return (
+    <Fragment>
+      <button
+        type="button"
+        id="vigilia-store-item-install"
+        data-vigilia-store-item-install={state}
+        disabled
+        aria-describedby="vigilia-store-item-install-reason"
+        className={FOOTER_BUTTON}
+      >
+        {uiCopy.store.cell.installStates[state]}
+      </button>
+      <span id="vigilia-store-item-install-reason" className="sr-only">
+        {uiCopy.store.cell.unavailable}
+      </span>
+    </Fragment>
+  );
+}
+
 export function ItemModal(props: {
   readonly item: StoreItem;
   /** The style tags the vocabulary holds, built from the listing by the surface
@@ -348,6 +417,9 @@ export function ItemModal(props: {
   readonly onAction: (action: CellAction, id: string) => void;
 }): React.JSX.Element {
   const { item, onClose, onAction } = props;
+  // The one owner of the decision (`install-state.ts`): this surface draws what
+  // it answers and never compares a version itself.
+  const installState = installStateOf(item);
 
   return (
     <DialogPrimitive.Root
@@ -417,43 +489,48 @@ export function ItemModal(props: {
 
           <span className="flex items-center gap-[var(--space-8)] border-t border-edge px-[var(--space-24)] py-[var(--space-16)]">
             <span className="flex-1" />
-            {/* **The four are drawn and the two a build does not run are
-                disabled** (R164), with their reason in the tree beside them: a
-                disabled control is one the pointer cannot ask, so a tooltip
-                would reach nobody. Delete keeps its mark but paints `--faint`
-                rather than `--hot` — §4's rule for a destructive control that
-                cannot run, which the shell's own selector holds. */}
-            {FOOTER_ACTIONS.map((action) => {
-              const reason = CELL_ACTION_REASONS[action];
-              const controlId = `vigilia-store-item-${action}`;
-              return (
-                <Fragment key={action}>
-                  <button
-                    type="button"
-                    id={controlId}
-                    data-vigilia-store-item-action={action}
-                    {...(action === "delete" ? DESTRUCTIVE : {})}
-                    disabled={reason !== undefined}
-                    aria-describedby={
-                      reason === undefined ? undefined : `${controlId}-reason`
-                    }
-                    onClick={() => onAction(action, item.id)}
-                    className={
-                      action === "delete"
-                        ? "rounded-sm px-[var(--space-12)] py-[var(--space-6)] text-sm disabled:text-faint"
-                        : FOOTER_BUTTON
-                    }
-                  >
-                    {uiCopy.store.cell.actions[action]}
-                  </button>
-                  {reason === undefined ? null : (
-                    <span id={`${controlId}-reason`} className="sr-only">
-                      {reason}
-                    </span>
-                  )}
-                </Fragment>
-              );
-            })}
+            {/* **A library item's four are drawn and the two a build does not
+                run are disabled** (R164), with their reason in the tree beside
+                them: a disabled control is one the pointer cannot ask, so a
+                tooltip would reach nobody. Delete keeps its mark but paints
+                `--faint` rather than `--hot` — §4's rule for a destructive
+                control that cannot run, which the shell's own selector holds.
+                An online item draws its install reading instead. */}
+            {installState !== "none" ? (
+              <InstallFooter state={installState} />
+            ) : (
+              FOOTER_ACTIONS.map((action) => {
+                const reason = CELL_ACTION_REASONS[action];
+                const controlId = `vigilia-store-item-${action}`;
+                return (
+                  <Fragment key={action}>
+                    <button
+                      type="button"
+                      id={controlId}
+                      data-vigilia-store-item-action={action}
+                      {...(action === "delete" ? DESTRUCTIVE : {})}
+                      disabled={reason !== undefined}
+                      aria-describedby={
+                        reason === undefined ? undefined : `${controlId}-reason`
+                      }
+                      onClick={() => onAction(action, item.id)}
+                      className={
+                        action === "delete"
+                          ? "rounded-sm px-[var(--space-12)] py-[var(--space-6)] text-sm disabled:text-faint"
+                          : FOOTER_BUTTON
+                      }
+                    >
+                      {uiCopy.store.cell.actions[action]}
+                    </button>
+                    {reason === undefined ? null : (
+                      <span id={`${controlId}-reason`} className="sr-only">
+                        {reason}
+                      </span>
+                    )}
+                  </Fragment>
+                );
+              })
+            )}
           </span>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
