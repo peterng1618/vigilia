@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -92,9 +92,16 @@ async function readOrigins(file: string): Promise<Record<string, ThemeOrigin>> {
 export function createThemeOriginsStore(directory: string): ThemeOriginsStore {
   const file = path.join(directory, FILE);
 
+  // Written beside the target and renamed over it, so a crash mid-write loses
+  // the write rather than the whole map. Readers go through the queue below:
+  // on Windows a rename over a file another handle holds open fails with
+  // EPERM instead of waiting, so the two must never overlap.
+  const temporary = `${file}.tmp`;
+
   const save = async (all: Record<string, ThemeOrigin>): Promise<void> => {
     await mkdir(directory, { recursive: true });
-    await writeFile(file, `${JSON.stringify(all, null, 2)}\n`, "utf8");
+    await writeFile(temporary, `${JSON.stringify(all, null, 2)}\n`, "utf8");
+    await rename(temporary, file);
   };
 
   // Two mutators can overlap now — an install's write beside a delete's
@@ -113,7 +120,10 @@ export function createThemeOriginsStore(directory: string): ThemeOriginsStore {
 
   return {
     async read() {
-      return readOrigins(file);
+      // Behind the same queue as the mutators: a read landing inside a save
+      // would otherwise read the file before the write it is racing lands, and
+      // `/api/themes` would drop every origin for that answer.
+      return writeExclusively(() => readOrigins(file));
     },
 
     async write(themeId, origin) {

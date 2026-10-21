@@ -65,6 +65,57 @@ describe("theme origins", () => {
     expect(await store.read()).toEqual(expected);
   });
 
+  it("never answers a reader racing a write with a half-written map", async () => {
+    // Seeded so an empty answer is visibly wrong: `readOrigins` swallows a
+    // parse error into `{}`, so a reader landing inside a truncating save
+    // silently drops every origin rather than reporting a fault.
+    const seeded = Object.fromEntries(
+      Array.from({ length: 3000 }, (_unused, index) => [
+        `theme-${index}`,
+        origin(`catalogue-${index}`),
+      ]),
+    );
+    await seed(JSON.stringify(seeded));
+
+    // The reads are staggered rather than all issued at t=0: they must land
+    // inside the writes' window, not all resolve before the first one starts.
+    // Every write keeps every seeded key, so a whole answer always holds them.
+    const writes = Promise.all(
+      Array.from({ length: 30 }, (_unused, index) =>
+        store.write(`theme-${index}`, origin("catalogue-moved")),
+      ),
+    );
+    const answers = await Promise.all(
+      Array.from({ length: 60 }, async (_unused, index) => {
+        await new Promise((resolve) => setTimeout(resolve, index));
+        return store.read();
+      }),
+    );
+    await writes;
+
+    for (const answer of answers) {
+      expect(
+        Object.keys(answer).length,
+        "a read racing a write lost the map",
+      ).toBeGreaterThanOrEqual(Object.keys(seeded).length);
+    }
+  });
+
+  it("answers a read issued during a write with the completed write", async () => {
+    await store.write("wall", origin("catalogue-wall"));
+
+    // The read is requested before the write settles; it must still see the
+    // write, not the map the write started from.
+    const writing = store.write("office", origin("catalogue-office"));
+    const reading = store.read();
+    const [, read] = await Promise.all([writing, reading]);
+
+    expect(read).toEqual({
+      wall: origin("catalogue-wall"),
+      office: origin("catalogue-office"),
+    });
+  });
+
   it("drops an entry whose fields are not the three strings", async () => {
     await seed(
       JSON.stringify({
