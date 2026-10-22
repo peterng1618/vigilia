@@ -6,7 +6,10 @@ import {
   type Background,
   type BackgroundMedia,
   type FabricGlobals,
+  type GlobalRef,
+  MAX_BACKGROUND_OFFSET,
   MAX_BACKGROUND_SCALE,
+  MIN_BACKGROUND_OFFSET,
   MIN_BACKGROUND_SCALE,
   paletteTokenOptions,
 } from "@yunari/renderer-core";
@@ -104,7 +107,7 @@ function boundsField(media: BackgroundMedia | undefined): FieldView {
     value: media?.bounds ?? "theme",
     options: BACKGROUND_MEDIA_BOUNDS.map((bounds) => ({
       id: bounds,
-      name: uiCopy.fitModes[bounds],
+      name: uiCopy.backgroundBounds[bounds],
     })),
     data: { "data-yunari-background-bounds": "" },
   };
@@ -185,4 +188,94 @@ export function backgroundColumn(input: {
       offsetField(media),
     ]),
   ];
+}
+
+/**
+ * One background field, written as a whole new `Background`.
+ *
+ * The layer has one owner — the document's envelope — so a field is not a
+ * property write but a replacement of the value the document stores. The file
+ * that projects a field knows how its value is stored, so the rule lives beside
+ * it; `index.ts` routes the id and hands the result to the document.
+ *
+ * `undefined` is a value the model would refuse: the paired offsets carry no
+ * bounds in the view, and a media field has no media to write without a picture.
+ */
+export function writeBackgroundField(
+  background: Background | undefined,
+  fieldId: string,
+  value: string | number | boolean,
+): Background | undefined {
+  const current = background ?? {};
+  const media = current.media;
+
+  switch (fieldId) {
+    case "background.color": {
+      if (typeof value !== "string") return undefined;
+      if (value === "") {
+        // Omit rather than store undefined, for `exactOptionalPropertyTypes`.
+        const { color: _color, ...withoutColor } = current;
+        return withoutColor;
+      }
+      if (!value.startsWith("palette.")) return undefined;
+      return { ...current, color: { ref: value as GlobalRef } };
+    }
+    case "background.media": {
+      if (typeof value !== "string") return undefined;
+      if (value === "") {
+        const { media: _media, ...withoutMedia } = current;
+        return withoutMedia;
+      }
+      // A new picture keeps the box and transform the author set for the last
+      // one: changing which picture is shown is not a reset of how.
+      return {
+        ...current,
+        media: { ...(media ?? { bounds: "theme" }), assetId: value },
+      };
+    }
+    case "background.bounds": {
+      if (media === undefined || typeof value !== "string") return undefined;
+      const bounds = BACKGROUND_MEDIA_BOUNDS.find((mode) => mode === value);
+      if (bounds === undefined) return undefined;
+      return { ...current, media: { ...media, bounds } };
+    }
+    case "background.fit": {
+      if (media === undefined || typeof value !== "string") return undefined;
+      const fit = BACKGROUND_MEDIA_FITS.find((mode) => mode === value);
+      if (fit === undefined) return undefined;
+      return { ...current, media: { ...media, fit } };
+    }
+    case "background.scale": {
+      if (
+        media === undefined ||
+        typeof value !== "number" ||
+        value < MIN_BACKGROUND_SCALE ||
+        value > MAX_BACKGROUND_SCALE
+      )
+        return undefined;
+      return { ...current, media: { ...media, scale: value } };
+    }
+    case "background.offsetX": {
+      if (
+        media === undefined ||
+        typeof value !== "number" ||
+        value < MIN_BACKGROUND_OFFSET ||
+        value > MAX_BACKGROUND_OFFSET
+      )
+        return undefined;
+      return { ...current, media: { ...media, offsetX: value } };
+    }
+    case "background.offsetY": {
+      if (
+        media === undefined ||
+        typeof value !== "number" ||
+        value < MIN_BACKGROUND_OFFSET ||
+        value > MAX_BACKGROUND_OFFSET
+      )
+        return undefined;
+      return { ...current, media: { ...media, offsetY: value } };
+    }
+    default:
+      return undefined;
+  }
 }

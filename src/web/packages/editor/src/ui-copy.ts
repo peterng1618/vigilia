@@ -1161,11 +1161,11 @@ export const uiCopy = {
   artboardOrientations: { landscape: "Landscape", portrait: "Portrait" },
   artboardResolutions: { "1080p": "1080p", "2k": "2K", "4k": "4K" },
   /**
-   * The two boxes a background picture can fill, spelled once. Background
-   * media's fit is the only fit an author sets; the artboard's content fit is a
-   * guarantee of the model, so there is one control left to name them.
+   * The two boxes a background picture is clipped to, spelled once. This is the
+   * layer's own `bounds`; the artboard's content fit is a guarantee of the
+   * model rather than a choice, so it has no words here.
    */
-  fitModes: { theme: "Fill theme", display: "Fill display" },
+  backgroundBounds: { theme: "Fill theme", display: "Fill display" },
   /**
    * The four ways a reading may print its unit, keyed by what is stored.
    *

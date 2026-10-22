@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import type { Binding, ChartContent, ChartFamily } from "@yunari/renderer-core";
+import type {
+  AssetReference,
+  Background,
+  Binding,
+  ChartContent,
+  ChartFamily,
+} from "@yunari/renderer-core";
 import {
   defaultGaugeSettings,
   instantIn,
@@ -107,6 +113,10 @@ function setup(
       bindings: readonly Binding[],
     ) => void;
     readonly objects?: () => readonly unknown[];
+    readonly backgroundSelected?: () => boolean;
+    readonly background?: () => Background | undefined;
+    readonly assets?: () => readonly AssetReference[];
+    readonly onBackgroundChange?: (next: Background | undefined) => void;
   } = {},
 ) {
   const history = { saveState: vi.fn() };
@@ -218,6 +228,72 @@ describe("the selection inspector", () => {
     ).toBe(uiCopy.inspectorFields.nothingSelected);
     expect(host.querySelectorAll("[data-yunari-section]")).toHaveLength(0);
     expect(host.querySelectorAll("[data-yunari-geometry]")).toHaveLength(0);
+  });
+
+  /**
+   * The background is a selected subject that is no Fabric object, so the
+   * column describes it through `backgroundColumn` rather than through
+   * `perKindColumn` — and its writes leave through the document setter, because
+   * there is no object to save a Fabric history entry for.
+   */
+  describe("the background layer", () => {
+    function backgroundSelected(
+      background: Background = {
+        media: { assetId: "loop", bounds: "theme" },
+      },
+    ) {
+      const onBackgroundChange = vi.fn();
+      const built = setup(undefined, {
+        backgroundSelected: () => true,
+        background: () => background,
+        assets: () => [],
+        onBackgroundChange,
+      });
+      return { ...built, onBackgroundChange };
+    }
+
+    it("describes the background when the bridge says it is selected", () => {
+      const { host } = backgroundSelected();
+
+      expect(host.textContent).toContain("Background");
+      expect(host.querySelector("[data-yunari-background]")).toBeTruthy();
+    });
+
+    it("writes a background edit through the document setter and no Fabric field", async () => {
+      const { host, history, onBackgroundChange } = backgroundSelected();
+      // The scale is stored as a fraction and shown as a percentage, so 140 is
+      // the 1.4 the document holds.
+      const scale = host.querySelector<HTMLInputElement>(
+        "[data-yunari-background-scale]",
+      )!;
+      expect(scale.value).toBe("100");
+
+      await edit(scale, "140");
+
+      expect(onBackgroundChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          media: expect.objectContaining({ scale: 1.4 }),
+        }),
+      );
+      // A background write is envelope state, not a Fabric edit: no scene
+      // history entry records it.
+      expect(history.saveState).not.toHaveBeenCalled();
+    });
+
+    it("refuses an offset outside -1..1 at the write boundary", async () => {
+      // A paired half carries no bounds (`PairHalfView` has none), so the only
+      // guard for this value is the one behind the commit.
+      const { host, editor, onBackgroundChange } = backgroundSelected();
+      const offsetX = host.querySelector<HTMLInputElement>(
+        "[data-yunari-background-offset-x]",
+      )!;
+      expect(offsetX.value).toBe("0");
+
+      await edit(offsetX, "150");
+
+      expect(onBackgroundChange).not.toHaveBeenCalled();
+      expect(editor.errorManager.warn).toHaveBeenCalled();
+    });
   });
 
   it("shows the selected object's geometry in whole units", () => {

@@ -1,5 +1,6 @@
 import {
   type Artboard,
+  type Background,
   type Binding,
   bumpSemanticVersion,
   type FabricPalette,
@@ -382,6 +383,22 @@ export class EditorDocument {
     this.#consumers.artboard().render(artboard, this.#envelope.metadata);
   }
 
+  /**
+   * Writes the background layer: the envelope section the shell paints from and
+   * a save ships. A whole value, because the layer has one owner — a field
+   * writes the bag it read back, and nothing here keeps a second copy of it.
+   */
+  setBackground(background: Background | undefined): void {
+    if (background === undefined) {
+      // Omitted rather than stored undefined, for `exactOptionalPropertyTypes`.
+      const { background: _background, ...withoutBackground } = this.#envelope;
+      this.#writeEnvelope(withoutBackground);
+    } else {
+      this.#writeEnvelope({ ...this.#envelope, background });
+    }
+    this.#shell.setBackground(background);
+  }
+
   setMetadata(metadata: FabricThemeEnvelopeInput["metadata"]): void {
     if (metadata === undefined || Object.keys(metadata).length === 0) {
       const { metadata: _metadata, ...withoutMetadata } = this.#envelope;
@@ -481,7 +498,6 @@ export class EditorDocument {
     this.#consumers.runtime().setGlobals(globals);
     this.#consumers.charts().setGlobals(globals);
     this.#consumers.newObjects().setGlobals(globals);
-    this.#consumers.artboard().setGlobals(globals);
     this.#consumers.selection().setGlobals(globals);
   }
 

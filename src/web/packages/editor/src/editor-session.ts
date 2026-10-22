@@ -155,6 +155,8 @@ export class EditorSession {
   readonly #document: EditorDocument;
   /** The source the runtime reads, which a new source replaces. */
   #source: SampleSource;
+  /** Releases the shell-selection subscription the background column follows. */
+  #unsubscribeSelection: (() => void) | undefined;
 
   constructor(options: EditorSessionOptions) {
     if (options.shell.scene === undefined) {
@@ -235,10 +237,8 @@ export class EditorSession {
     });
     this.#artboard = createArtboardPanel(
       options.panelHosts.document,
-      this.#document.envelope.globals,
       (artboard) => this.#document.setArtboard(artboard),
       {
-        assets: this.#assets.declarations,
         onMetadataChange: (metadata) => this.#document.setMetadata(metadata),
         // The panel's own comment said the scene was not its to read, so it
         // stated a rule true at every size and therefore said nothing. It is
@@ -346,6 +346,16 @@ export class EditorSession {
       // above, before the inspector that reads it.
       chartFields: () => this.charts.fields,
       chartEdits: () => this.charts.edits,
+      // The background is envelope state rather than a Fabric object, so its
+      // four answers come from the shell's selection and the live document:
+      // the flag from the shell's own projection, the value and the declared
+      // pictures pulled at render time, and every write through the document
+      // that owns the envelope.
+      backgroundSelected: () =>
+        options.selection?.get().activeKind === "background",
+      background: () => this.#document.envelope.background,
+      assets: () => this.#assets.declarations,
+      onBackgroundChange: (next) => this.#document.setBackground(next),
       // The face field's writes are the catalogue's own, above; the favourites
       // it browses by are the host's, so the client travels rather than a list.
       fontActions,
@@ -354,6 +364,14 @@ export class EditorSession {
         : { favoritesClient: options.favoritesClient }),
     });
     this.#selection.setLocale(this.#document.envelope.metadata?.themeLanguage);
+    // Selecting the background row is a shell selection with no Fabric object:
+    // its `selection:cleared` fires before the bridge sets the flag, so the
+    // canvas events the inspector already follows cannot report it. The store
+    // notifies after the flag moves, and that is the render that shows the
+    // background's column.
+    this.#unsubscribeSelection = options.selection?.subscribe(() =>
+      this.#selection.render(),
+    );
     // Entering inline editing asks the runtime for the authoring view: the
     // shell built the text manager before this session existed, so the
     // dependency is installed here rather than passed in.
@@ -378,7 +396,10 @@ export class EditorSession {
       {
         manager: this.#assets,
         changed: () => {
-          this.#artboard.setAssets(this.#assets.declarations);
+          // The background column offers the declared pictures, so a picture
+          // that lands while the background is selected is offered then rather
+          // than at the next selection change.
+          this.#selection.render();
           this.#document.refreshBackgroundMedia();
         },
         isReferenced: (assetId) => this.#document.holdsAsset(assetId),
@@ -644,6 +665,7 @@ export class EditorSession {
   }
 
   destroy(): void {
+    this.#unsubscribeSelection?.();
     this.#shortcuts.destroy();
     this.#nudge.dispose();
     this.#document.destroy();
