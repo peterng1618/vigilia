@@ -4,6 +4,7 @@ import {
 } from "@vigilia/renderer-core";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
+export * from "./version-ladder";
 export * from "./video-envelope";
 
 const MANIFEST = "manifest.json";

@@ -17,10 +17,9 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Theme versioning plan written** (`2026-10-22-theme-versioning.md`): 15 tasks in five phases — the ladder, identity, publishing, attribution, CI — each with its tests and exact interfaces.
-- **Phase 1 is pure**: the classifier plus a coverage test that fails when a schema member arrives unclassified, and errs upward for an unknown one.
-- **Phase 3 writes with the store's base**, so a save landing mid-submit refuses instead of half-applying a version.
-- **Phase 5 re-derives the version in the catalogue's CI** from the base commit and proves it with two pull requests; no code changed in this commit.
+- **Task 1.1 landed**: `theme-package/src/version-ladder.ts` holds the document's own version shape — `isSemanticVersion`, `bumpVersion`, `versionFor` — re-exported from the package barrel.
+- **Arithmetic is narrow on purpose**: three integers only, so a semver prefix, prerelease or build is refused rather than half-parsed.
+- **20 cases green** in `version-ladder.test.ts`; the classifier and the ladder itself stay queued for Tasks 1.2/1.3.
 
 ## Next
 
