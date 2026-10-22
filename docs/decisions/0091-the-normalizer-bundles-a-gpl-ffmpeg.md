@@ -95,6 +95,12 @@ Found:
 
 - `npm view ffmpeg-static license` → `GPL-3.0-or-later`; `npm pack ffmpeg-static`
   → 36 KB tarball, no binary, `install.js` present.
+- `node install.js` for `ffmpeg-static@5.3.0` on this box **succeeded**: it wrote
+  an 82.8 MB `ffmpeg.exe` (and the `ffmpeg.exe.LICENSE` beside it) from
+  `ffmpeg version 6.1.1-essentials_build-www.gyan.dev`, whose configuration line
+  carries `--enable-gpl --enable-version3 --enable-libx264`. The bundled
+  `ffmpeg.exe.LICENSE` is the **GNU GPL Version 3** text. The package's declared
+  licence is therefore accurate, and the download works in this environment.
 - `npm pack @ffmpeg-installer/win32-x64` → 21.2 MB tarball, 61.5 MB
   `ffmpeg.exe`, **no licence file of its own**.
 - `grep -a -o -- "--enable-[a-z0-9-]*" ffmpeg.exe | sort -u` → the configure line
