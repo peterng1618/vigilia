@@ -193,7 +193,7 @@ result, not merely a mounted editor.
 | Theme store | Read a submitted library theme's pull request link, and the control after it | `store-submit-submitted` / `a submitted theme shows its pull request link and the control no longer offers Submit` |
 | Theme store | Read a library theme's surface after the host refuses its submission | `store-submit-refused` / `a refused submission states the host's own sentence` |
 | Theme store | Read the version a submission published, and the caption after the library is re-read | `store-submit-version` / `a submitted theme states the version it published, and the caption reads it back` |
-| Theme store | Read a remix's credit for a parent the index lists | `store-remix-credit` / `a remix credits its parent, linking it when listed and naming it when not` |
+| Theme store | Read a remix's credit, for a parent the index lists and for one it does not | `store-remix-credit` / `a remix credits its parent, linking it when listed and naming it when not` |
 
 The catalogue, the library, `/api/themes/install`, `/api/themes/submit` and both
 `/api/github/device` routes are all answered by `page.route`, so these thirteen

@@ -10,18 +10,16 @@ The theme store spec (phases A–G) and the theme-versioning spec are **landed a
 ## Active work
 
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; the user picks when one starts.
-- **The catalogue repo `peterng1618/vigilia-store` is live** and empty; `main`'s `validate` still pins `0a417ff`, and a catalogue merge regenerates the listing.
-- **Store branch `ci/catalogue-workflows` (`9e9ca44`) waits to merge**: the new pin and UUID regex are not live until it lands.
+- **The catalogue repo `peterng1618/vigilia-store` is live** and empty; `main`'s `index.yml` still pins the stale `0a417ff`, while branch `ci/catalogue-workflows` bumps it to `682379fc` (its `validate.yml` already carried that pin), and a catalogue merge regenerates the listing.
+- **Store branch `ci/catalogue-workflows` (`c907bf9`) waits to merge**: the new pin and UUID regex are not live until it lands.
 - **Decisions `0088`–`0091`** carry the store's measured choices: raw-path index, host-side download, a hand-rolled GitHub client, and a bundled GPL `ffmpeg-static`.
 - **Captures `store-submit-version` and `store-remix-credit`** are the newest registered actions, beside the install and submission ones.
 
 ## Last completed change
 
-- **Final review fix wave** (theme-versioning): the library chooser gains Duplicate for origin-less themes beside Remix for installed ones, and a duplicate mounts under a fresh UUID with no credit; the remix base now clears after the handover.
-- **Catalogue CI**: a first submission's package must record `metadata.version` 1.0.0, so header and package agree before the ladder runs.
-- **Docs**: the ignored-field list names `id`, the ownership map names the ladder, the catalogue-id shape and `published-item`, and the screenshot checklist's stale "eleven" and two truncated titles were corrected.
-- **Store**: `index.yml` pins app `682379fc`, whose catalogue reader carries `remixOf`; branch `ci/catalogue-workflows` pushed at `c907bf9`.
-- **Verification**: focused suites 67/67 green, `typecheck` and `biome check` on changed files green, and each behavioural test was red-proofed by reverting its fix.
+- **Residual from re-review** (theme-versioning): Duplicate now deletes `metadata.remixOf`, so a saved remix offered Duplicate does not pass its parent credit into the copy; the fixture carries a credit and the test was red-proofed.
+- **Docs**: STATUS states the store pins correctly (`main`'s `index.yml` stale at `0a417ff`, branch bumped to `682379fc`), and the remix capture row names both a listed and an unlisted parent.
+- **Verification**: manager suite 16/16 green; `typecheck`, `biome check` on the changed files and `status:check` green.
 
 ## Next
 

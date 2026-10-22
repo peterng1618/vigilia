@@ -30,7 +30,8 @@ const envelope: FabricThemeEnvelope = {
 };
 
 /** An installed theme as the library stored it: it declares everything the
- *  remix has to drop. */
+ *  remix has to drop, including a credit of its own — a saved remix has no
+ *  host origin record, so the chooser offers it Duplicate. */
 const storedInstalled: FabricThemeEnvelope = {
   ...envelope,
   metadata: {
@@ -40,6 +41,11 @@ const storedInstalled: FabricThemeEnvelope = {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-02-01T00:00:00.000Z",
     themeLanguage: "en",
+    remixOf: {
+      catalogueId: "9a8b7c6d-5e4f-4a3b-8c2d-1e0f2a3b4c5d",
+      name: "Ancestor",
+      version: "1.0.0",
+    },
   },
 };
 

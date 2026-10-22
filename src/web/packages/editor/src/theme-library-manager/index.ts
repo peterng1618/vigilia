@@ -82,14 +82,20 @@ function remixedEnvelope(
  * The document a duplicate opens as: a new document with no credit and its own
  * name.
  *
- * The same four fields are **deleted, not blanked**, for the same reason: they
- * describe the stored copy, and a duplicate is a first version of its own. A
- * duplicate names no parent, because the host held no origin record for the
- * theme it copied.
+ * The same fields are **deleted, not blanked**, for the same reason: they
+ * describe the stored copy, and a duplicate is a first version of its own. The
+ * credit goes too: a source without a host origin may itself be a saved remix,
+ * and the spec says a duplicate carries no credit.
  */
 function duplicatedEnvelope(stored: FabricThemeEnvelope): FabricThemeEnvelope {
   const kept: Record<string, unknown> = { ...(stored.metadata ?? {}) };
-  for (const key of ["version", "createdAt", "updatedAt", "author"]) {
+  for (const key of [
+    "version",
+    "createdAt",
+    "updatedAt",
+    "author",
+    "remixOf",
+  ]) {
     delete kept[key];
   }
   return {
