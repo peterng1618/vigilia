@@ -4,6 +4,8 @@ export interface Env {
   DB: D1Database;
   BUCKET: R2Bucket;
   BETTER_AUTH_SECRET: string;
+  /** The Worker's public origin; `signInSocial` runs without a request to infer it. */
+  BETTER_AUTH_URL: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   GOOGLE_CLIENT_ID: string;

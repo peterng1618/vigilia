@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution, Phase 1**: Tasks 1.1–1.2 complete; Task 1.3 is in a coverage fix round, then Phase 2 starts.
+- **Subagent-driven execution**: Phase 1 complete (Tasks 1.1–1.3); Task 2.1 is dispatched. Phases 2–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,8 +18,11 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Counter tests prove the no-count cases**: a deleted R2 object answers 404 and leaves `downloads` at 0, and favourites are asserted non-zero from the `favorite` table in both `item.json` and the index.
-- **Both cases were red-proved**: counting before the object open made the missing-object test read 2, and a constant zero from `favoritesOf` failed the favourites assertion.
+- **Better Auth runs on D1**: `createAuth` wires GitHub/Google, `bearer()` and `oneTimeToken()`, with `testUtils()` only under `TEST_MODE`.
+- **`POST /migrate` creates Better Auth's tables** behind `x-migrate-token` (404 missing, 403 wrong) and answers 200 on a second run.
+- **`GET /api/me` returns exactly `{ userId, email }`** through `sessionOf`; a forged bearer is 401 and a real session reaches it.
+- **`/auth/start` redirects to the provider** for github|google; `/auth/return` exchanges the cookie session for a one-time token, loopback hosts only.
+- **The vitest config resolves its files from its own directory** (`fileURLToPath`), closing the carried Task 1.1 review item.
 
 ## Next
 

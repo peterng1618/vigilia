@@ -17,3 +17,5 @@ bucket_name = "yunari-store-packages"
 [vars]
 # No secrets here. BETTER_AUTH_SECRET, the OAuth pairs, the R2 credentials,
 # OWNER_EMAILS and MIGRATE_TOKEN are `wrangler secret put` values.
+# Task 5.2 updates this to the deployed origin.
+BETTER_AUTH_URL = "https://yunari-store.workers.dev"
