@@ -1,0 +1,66 @@
+/**
+ * The author limits the spec sets to fit the free tier. They are defaults, not
+ * measured against usage ("Security and abuse", open question 5).
+ */
+const MAX_AUTHOR_ITEMS = 20;
+const MAX_AUTHOR_BYTES = 1024 * 1024 * 1024;
+const PRESIGN_WINDOW_MS = 60 * 60 * 1000;
+const PRESIGN_LIMIT = 60;
+
+/**
+ * Whether one more version request would break an author's quota.
+ *
+ * The object's real size is unknown until finalize, so `extraBytes` is the
+ * archive cap: the check is conservative, and a request that passes may still
+ * be refused at finalize if the package is larger than the remaining budget.
+ * `creatingNewItem` is the route's own knowledge — an existing item's new
+ * version does not count against the item limit.
+ */
+export async function authorQuotaExceeded(
+  db: D1Database,
+  userId: string,
+  extraBytes: number,
+  creatingNewItem: boolean,
+): Promise<"items" | "bytes" | undefined> {
+  if (!Number.isFinite(extraBytes) || extraBytes < 0) {
+    throw new RangeError(
+      `extraBytes must be a finite non-negative number, got ${extraBytes}.`,
+    );
+  }
+  if (creatingNewItem) {
+    const owned = await db
+      .prepare("SELECT COUNT(*) AS n FROM item WHERE author_user_id = ?")
+      .bind(userId)
+      .first<{ n: number }>();
+    if ((owned?.n ?? 0) >= MAX_AUTHOR_ITEMS) return "items";
+  }
+
+  const stored = await db
+    .prepare(
+      `SELECT COALESCE(SUM(v.bytes), 0) AS total FROM item_version v
+       JOIN item i ON i.id = v.item_id WHERE i.author_user_id = ?`,
+    )
+    .bind(userId)
+    .first<{ total: number }>();
+  return (stored?.total ?? 0) + extraBytes > MAX_AUTHOR_BYTES
+    ? "bytes"
+    : undefined;
+}
+
+/**
+ * At most 60 presigns in the trailing hour. Instants are ISO text, so a lexical
+ * comparison against the cutoff orders them; the route records the event only
+ * after this answers true, so a refused request burns no budget.
+ */
+export async function presignAllowed(
+  db: D1Database,
+  userId: string,
+  now: Date,
+): Promise<boolean> {
+  const cutoff = new Date(now.getTime() - PRESIGN_WINDOW_MS).toISOString();
+  const recent = await db
+    .prepare("SELECT COUNT(*) AS n FROM presign_event WHERE user_id = ? AND at >= ?")
+    .bind(userId, cutoff)
+    .first<{ n: number }>();
+  return (recent?.n ?? 0) < PRESIGN_LIMIT;
+}

@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1 complete; Task 2.1 is in an OAuth test-proof fix round, then Task 2.2. Phases 2–5 follow in plan order.
+- **Subagent-driven execution**: Phase 1 and Task 2.1 complete; Task 2.2 is dispatched (presigned uploads, version authority). Phases 2–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,9 +18,10 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Auth tests prove the OAuth return destination**: the start test reads the stored OAuth state and asserts its `callbackURL` carries the loopback `host` and the caller's `state`.
-- **The return page is proven, not just served**: the test asserts `credentials: "include"` and the encoded `searchParams.set("token"`, and that host and state never appear literally in the markup.
-- **Each assertion was red-proved**: dropping the callback parameters and baking literals into the page failed exactly those assertions; restored files verified with `cmp`.
+- **Author version requests are presigned, never client-named**: `POST /api/me/items/:id/versions` validates the envelope, requires path id = envelope id, and signs `packages/<id>/<computed version>.zip` for 15 minutes.
+- **Limits precede any row or signature**: `presignAllowed` caps an account at 60 uploads an hour, `authorQuotaExceeded` at 20 items / 1 GiB; a foreign id is 404 and a `removed` item is 409 with its reason.
+- **`presign_event` now carries `item_id`, `version` and `envelope_json`**, so finalize can write the version row from the validated envelope.
+- **`GET /api/me/items/:id/baseline`** answers the latest stored version in any state; the RED run failed all five route cases with the default 404.
 
 ## Next
 

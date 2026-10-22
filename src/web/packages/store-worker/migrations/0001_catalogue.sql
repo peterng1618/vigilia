@@ -47,11 +47,16 @@ CREATE TABLE author_profile (
   display_name TEXT
 );
 
--- Task 2.2 counts a user's rows in the trailing hour to enforce the presign limit.
+-- A presign is the pending-upload record: finalize's body is only the
+-- thumbnail, so the validated envelope and computed version a version request
+-- carried are persisted here, and counted per user in the trailing hour.
 CREATE TABLE presign_event (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT NOT NULL,
-  at TEXT NOT NULL
+  at TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  version TEXT NOT NULL,
+  envelope_json TEXT NOT NULL
 );
 
 CREATE INDEX presign_event_user_id_at ON presign_event (user_id, at);

@@ -101,6 +101,97 @@ export async function seedPublished(options: SeedOptions = {}): Promise<void> {
   }
 }
 
+/**
+ * One item row and nothing else — no version, no objects. That is the shape a
+ * presign leaves between the version request and the finalize supposed to
+ * follow it, and it is what the quota and ownership tests need.
+ */
+export async function seedItem(
+  id: string,
+  owner: string,
+  options: {
+    readonly status?: CatalogueStatus;
+    readonly statusReason?: string;
+  } = {},
+): Promise<void> {
+  await env.DB.prepare("DELETE FROM item_version WHERE item_id = ?")
+    .bind(id)
+    .run();
+  await env.DB.prepare("DELETE FROM item WHERE id = ?").bind(id).run();
+  await env.DB.prepare(
+    `INSERT INTO item (id, kind, author_user_id, name, status, status_reason,
+       created_at, updated_at, published_at, unpublished_at, removed_at,
+       downloads, remix_of_id)
+     VALUES (?, 'dashboard-theme', ?, 'Seeded theme', ?, ?, ?, ?, NULL, NULL,
+       NULL, 0, NULL)`,
+  )
+    .bind(
+      id,
+      owner,
+      options.status ?? "draft",
+      options.statusReason ?? null,
+      CREATED_AT,
+      CREATED_AT,
+    )
+    .run();
+}
+
+/**
+ * `count` versionless items owned by one account. The first is `ITEM_ID`, so a
+ * spec can name it after seeding; the rest are valid catalogue ids of their own.
+ * The owner's rows are cleared first, because the pool keeps D1 rows between
+ * tests in a file.
+ */
+export async function seedItems(options: {
+  readonly userId: string;
+  readonly count: number;
+}): Promise<readonly string[]> {
+  await env.DB.prepare(
+    "DELETE FROM item_version WHERE item_id IN (SELECT id FROM item WHERE author_user_id = ?)",
+  )
+    .bind(options.userId)
+    .run();
+  await env.DB.prepare("DELETE FROM item WHERE author_user_id = ?")
+    .bind(options.userId)
+    .run();
+
+  const ids: string[] = [];
+  for (let index = 0; index < options.count; index += 1) {
+    const id =
+      index === 0
+        ? ITEM_ID
+        : `10000000-0000-4000-8000-${index.toString(16).padStart(12, "0")}`;
+    await seedItem(id, options.userId);
+    ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * Presign rows for the rate-limit test. `envelope_json` is a placeholder: the
+ * count is what `presignAllowed` reads, and nothing parses these rows.
+ */
+export async function seedPresigns(options: {
+  readonly userId: string;
+  readonly count: number;
+  readonly withinHour: boolean;
+}): Promise<void> {
+  await env.DB.prepare("DELETE FROM presign_event WHERE user_id = ?")
+    .bind(options.userId)
+    .run();
+  const at = new Date(
+    Date.now() - (options.withinHour ? 60_000 : 2 * 60 * 60 * 1000),
+  );
+  for (let index = 0; index < options.count; index += 1) {
+    await env.DB.prepare(
+      `INSERT INTO presign_event (user_id, at, item_id, version, envelope_json)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(options.userId, at.toISOString(), ITEM_ID, "1.0.0", "{}")
+      .run();
+  }
+}
+
 export async function putPackage(
   key: string,
   bytes: Uint8Array,
