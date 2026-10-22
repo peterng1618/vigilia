@@ -17,6 +17,17 @@ export {
   toCssTransform,
   viewportToDocument,
 } from "./artboard.js";
+export type {
+  AssetPage,
+  AssetResult,
+  AssetSearchAnswer,
+  AssetSearchRequest,
+  AssetSourceListing,
+  CredentialRow,
+  ListingCategory,
+  SourceCategory,
+} from "./assets/wire.js";
+export { parseAssetSearchRequest } from "./assets/wire.js";
 /**
  * The animation block's own defaults, exported beside the four families' because
  * a surface has to show the value a chart draws with: `AnimationSettings` is an

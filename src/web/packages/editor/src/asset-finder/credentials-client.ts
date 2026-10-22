@@ -1,17 +1,12 @@
+import type { CredentialRow } from "@yunari/renderer-core";
+
 /**
  * The Connections tab's half: list, save, clear and verify through the host.
  *
  * A credential value goes one way. `listCredentials` answers `set` and a hint;
  * nothing this module returns can echo a value back into the page.
  */
-export interface CredentialRow {
-  readonly id: string;
-  readonly label: string;
-  readonly set: boolean;
-  readonly hint: string;
-  /** Whether the host has a check for it, which is what the Verify button reads. */
-  readonly verify: boolean;
-}
+export type { CredentialRow };
 
 export interface ClientOptions {
   readonly baseUrl?: string;

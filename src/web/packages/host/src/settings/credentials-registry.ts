@@ -1,3 +1,5 @@
+import type { CredentialRow } from "@yunari/renderer-core";
+
 /**
  * The credentials this host knows how to store.
  *
@@ -21,14 +23,6 @@ export interface KnownCredential {
 }
 
 /** What `GET /api/credentials` answers. Never carries the value. */
-export interface CredentialRow {
-  readonly id: string;
-  readonly label: string;
-  readonly set: boolean;
-  /** The last four characters, or "" when unset. */
-  readonly hint: string;
-  /** Whether this host has a check to run, which is what enables Verify. */
-  readonly verify: boolean;
-}
+export type { CredentialRow };
 
 export const KNOWN_CREDENTIALS: readonly KnownCredential[] = [];
