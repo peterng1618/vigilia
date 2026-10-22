@@ -28,6 +28,8 @@ describe("bumpVersion", () => {
   );
   it("answers undefined for a previous that is not a version", () =>
     expect(bumpVersion("v1.4", "patch")).toBeUndefined());
+  it("answers undefined for digits past the safe-integer range", () =>
+    expect(bumpVersion("9007199254740992.0.0", "patch")).toBeUndefined());
 });
 
 describe("versionFor", () => {

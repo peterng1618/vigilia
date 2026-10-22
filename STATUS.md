@@ -9,7 +9,7 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Active work
 
-- **No plan is running.** The versioning plan is written; on approval it becomes the one this session executes, and every queued plan waits.
+- **Active plan:** `2026-10-22-theme-versioning.md`, executing subagent-driven through Phase 1 (Tasks 1.1–1.3), then Phases 2–5.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; the user picks when one starts.
 - **The catalogue repo `peterng1618/vigilia-store` is live** and empty; `validate` pins the app at `0a417ff`, and a merge regenerates the listing.
 - **Decisions `0088`–`0091`** carry the store's measured choices: raw-path index, host-side download, a hand-rolled GitHub client, and a bundled GPL `ffmpeg-static`.
@@ -23,7 +23,7 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Next
 
-1. User reviews the versioning plan, then chooses subagent-driven or native execution.
+1. Continue the active versioning plan task by task through its ledger.
 2. The plan's Task 5.2 pushes to the catalogue repo and opens two proof PRs — external actions, confirmed at the time.
 3. Weigh `vg-620` (a client disconnecting mid-stream kills the host) and `vg-626` (the red `design:check`) before the next plan opens.
 4. The next register pass starts from `vg-691`…`vg-697`.
