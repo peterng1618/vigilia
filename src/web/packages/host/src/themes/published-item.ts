@@ -4,6 +4,7 @@ import {
 } from "@vigilia/renderer-core";
 import { isSemanticVersion, readThemePackage } from "@vigilia/theme-package";
 import { CATALOGUE_RAW_BASE, cataloguePackageUrl } from "./catalogue-source.js";
+import { downloadPackage } from "./download.js";
 
 /**
  * What the store already holds for an id, read before a submission computes its
@@ -29,8 +30,10 @@ const ITEM_UNREADABLE =
 const PACKAGE_UNOPENABLE =
   "The store's copy of this theme cannot be opened, so its version cannot be computed.";
 
-/** Long enough for a slow line, short enough that a stuck store is a refusal. */
-const FETCH_TIMEOUT_MS = 15_000;
+/** Long enough for a slow line, short enough that a stuck store is a refusal.
+ *  The package uses `downloadPackage`'s own two minutes: a 64 MiB package at a
+ *  slow line is legitimate, and this timeout would abort it mid-body. */
+const ITEM_TIMEOUT_MS = 15_000;
 
 export async function readPublishedItem(
   id: string,
@@ -48,7 +51,7 @@ export async function readPublishedItem(
     await drain(itemResponse);
     return { ok: true };
   }
-  if (!itemResponse.ok) {
+  if (itemResponse.status !== 200) {
     await drain(itemResponse);
     return refused(ITEM_UNREADABLE);
   }
@@ -69,20 +72,14 @@ export async function readPublishedItem(
   }
 
   // The fixed catalogue address, not the item's own `packageUrl`: a header
-  // cannot choose where the host downloads from.
-  const packageResponse = await get(fetcher, cataloguePackageUrl(id));
-  if (packageResponse === undefined || !packageResponse.ok) {
-    if (packageResponse !== undefined) await drain(packageResponse);
-    return refused(PACKAGE_UNOPENABLE);
-  }
+  // cannot choose where the host downloads from. The existing downloader holds
+  // the host allowlist, the streaming size cap and the reader's patience.
+  const downloaded = await downloadPackage(cataloguePackageUrl(id), {
+    fetch: fetcher,
+  });
+  if (!downloaded.ok) return refused(PACKAGE_UNOPENABLE);
 
-  let bytes: Uint8Array;
-  try {
-    bytes = new Uint8Array(await packageResponse.arrayBuffer());
-  } catch {
-    return refused(PACKAGE_UNOPENABLE);
-  }
-  const opened = readThemePackage(bytes);
+  const opened = readThemePackage(downloaded.bytes);
   if (!opened.ok) return refused(PACKAGE_UNOPENABLE);
   // A package served under this id but carrying another item's envelope would
   // compute a version against the wrong document.
@@ -107,7 +104,7 @@ async function get(
 ): Promise<Response | undefined> {
   try {
     return await fetcher(url, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(ITEM_TIMEOUT_MS),
     });
   } catch {
     return undefined;

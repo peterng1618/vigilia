@@ -120,6 +120,29 @@ describe("readPublishedItem", () => {
     });
   });
 
+  it("refuses an answer that is not 200", async () => {
+    const { fetch } = routeFetch({
+      item: () => new Response(null, { status: 204 }),
+    });
+
+    expect(await readPublishedItem(ID, { fetch })).toEqual({
+      ok: false,
+      message: UNREADABLE,
+    });
+  });
+
+  it("refuses a parseable item.json that is not a catalogue item", async () => {
+    const { fetch, seen } = routeFetch({
+      item: () => new Response(JSON.stringify({ kind: "dashboard-theme" })),
+    });
+
+    expect(await readPublishedItem(ID, { fetch })).toEqual({
+      ok: false,
+      message: UNREADABLE,
+    });
+    expect(seen).toEqual([ITEM_URL]);
+  });
+
   it("refuses a recorded version that cannot be bumped", async () => {
     const { fetch, seen } = routeFetch({
       item: () => new Response(itemJson({ version: "v1" })),

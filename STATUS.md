@@ -21,6 +21,7 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 - **Two refusals only**: an unreadable store and an unopenable package, each one fixed sentence with no URL, path or body.
 - **Version is checked, never invented**: an item whose `version` is not `major.minor.patch` is refused with the recorded value quoted.
 - **Package id must match**: the opened envelope's id is compared to the requested id before any of its fields are returned.
+- **Fix round 1**: the package goes through `downloadPackage`, so its 120 s patience and streaming 64 MiB cap apply; only `item.json` keeps 15 s.
 
 ## Next
 
