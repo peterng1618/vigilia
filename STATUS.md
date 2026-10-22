@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1 and Phase 2 complete; Task 3.1 is dispatched (owner queue, takedown, verification). Phases 4–5 follow in plan order.
+- **Subagent-driven execution**: Phase 1, Phase 2 and Task 3.1 complete; Task 3.2 is dispatched (author unpublish/republish). Tasks 3.3–3.4 and Phase 4–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,8 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Owner match refuses a blank session**: `isOwner` answers false before comparing when the session email trims empty, so a whitespace-only `OWNER_EMAILS` cannot admit a session with no email.
-- **Admin tests harden the contract**: anti-enumeration 401 before 404, non-owner 404 across queue/approve/remove/restore, two concurrent approves yielding one 200 and one 409, a second restore 409, and the exact verify/unverify bodies.
+- **Author transitions land in `/api/me`**: `POST /api/me/items/:id/unpublish` and `/publish` reuse `setStatus`, 404 a foreign or missing id, and never touch counters, versions or objects.
+- **`removed` stays the owner's**: republish answers 403 with the stored reason, and any state but `unpublished` is a 409 naming what it is.
+- **`tests/unpublish.spec.ts` proves both**: every public read 404s while downloads, favourites, versions and R2 objects survive, and the listing returns on republish.
 
 ## Next
 

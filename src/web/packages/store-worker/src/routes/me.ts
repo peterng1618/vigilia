@@ -15,6 +15,7 @@ import {
   latestVersion,
   markFinalized,
   presignEventOf,
+  setStatus,
   versionOf,
 } from "../db/items.js";
 import { authorQuotaExceeded, presignAllowed } from "../db/quota.js";
@@ -69,7 +70,72 @@ export async function handleMe(
     return baseline(request, env, itemId);
   if (action === "versions" && request.method === "POST")
     return requestVersion(request, env, itemId);
+  if (action === "unpublish" && request.method === "POST")
+    return unpublish(request, env, itemId);
+  if (action === "publish" && request.method === "POST")
+    return publish(request, env, itemId);
   return undefined;
+}
+
+/**
+ * Withdraws the item from every public read. The record, its versions, its
+ * counters, its favourites and its objects all stay: only the status moves.
+ */
+async function unpublish(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const item = await ownedItem(env, session, itemId);
+  if (item === undefined) return notFound();
+
+  const now = new Date().toISOString();
+  if (!(await setStatus(env.DB, itemId, ["published"], "unpublished", now)))
+    return conflict(await currentStatus(env, itemId, item), "published");
+
+  return Response.json({ ok: true, status: "unpublished" });
+}
+
+/**
+ * The author's own way back. `removed` is the owner's verdict and is refused
+ * with the reason; every other state is not a republish, so it is a 409.
+ */
+async function publish(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const item = await ownedItem(env, session, itemId);
+  if (item === undefined) return notFound();
+  if (item.status === "removed") {
+    return new Response(
+      item.status_reason ?? "This item was removed from the store.",
+      { status: 403 },
+    );
+  }
+  if (item.status !== "unpublished")
+    return conflict(item.status, "unpublished");
+
+  const now = new Date().toISOString();
+  if (!(await setStatus(env.DB, itemId, ["unpublished"], "published", now)))
+    return conflict(await currentStatus(env, itemId, item), "unpublished");
+
+  return Response.json({ ok: true, status: "published" });
+}
+
+/** A guarded write that changed no row raced another actor; name what won. */
+async function currentStatus(
+  env: Env,
+  itemId: string,
+  read: ItemRow,
+): Promise<string> {
+  return (await itemById(env.DB, itemId))?.status ?? read.status;
 }
 
 /** `{ version, createdAt, envelope, status }` for any state, or 404. */
@@ -442,6 +508,12 @@ function badRequest(message: string): Response {
 
 function tooMany(message: string): Response {
   return new Response(message, { status: 429 });
+}
+
+function conflict(status: string, needs: string): Response {
+  return new Response(`Item is ${status}; this action needs ${needs}.`, {
+    status: 409,
+  });
 }
 
 function unprocessable(message: string): Response {
