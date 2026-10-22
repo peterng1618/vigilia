@@ -171,6 +171,7 @@ const NO_INSTALL: InstallControl = {
  *  with nothing asked for and nothing answered. */
 const NO_SUBMIT: SubmitControl = {
   onSubmit: () => undefined,
+  itemId: undefined,
   state: "idle",
   userCode: undefined,
   verificationUri: undefined,

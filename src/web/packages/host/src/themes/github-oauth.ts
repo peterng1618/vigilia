@@ -59,7 +59,9 @@ export async function requestDeviceCode(
   const body = answer.parsed;
   const deviceCode = asText(body["device_code"]);
   const userCode = asText(body["user_code"]);
-  const verificationUri = asText(body["verification_uri"]);
+  // The editor draws this as a link, so only an `https://` URL is a usable
+  // answer; anything else refuses the flow rather than being rendered.
+  const verificationUri = asHttpsUrl(body["verification_uri"]);
   const expiresIn = asCount(body["expires_in"]);
   const interval = asCount(body["interval"]);
   if (
@@ -218,11 +220,22 @@ function asText(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-/** A non-negative integer. GitHub's `expires_in` and `interval` are seconds. */
+/** A positive integer. GitHub's `expires_in` and `interval` are seconds, and a
+ *  zero of either would poll in a tight loop or start already over. */
 function asCount(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0
+  return typeof value === "number" && Number.isInteger(value) && value > 0
     ? value
     : undefined;
+}
+
+/** An `https://` URL, or nothing. The one shape a browser is handed as a link. */
+function asHttpsUrl(value: unknown): string | undefined {
+  if (typeof value !== "string" || value === "") return undefined;
+  try {
+    return new URL(value).protocol === "https:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function refuse(message: string): { readonly error: string } {

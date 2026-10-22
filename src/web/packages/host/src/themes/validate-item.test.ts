@@ -27,10 +27,15 @@ function itemFor(id: string): Record<string, unknown> {
     updatedAt: "2026-10-02T00:00:00Z",
     downloads: 0,
     favorites: 0,
-    packageUrl: `https://raw.githubusercontent.com/x/y/main/catalogue/${id}/${id}.zip`,
+    packageUrl: `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${id}/${id}.zip`,
     thumbnail: `catalogue/${id}/thumbnail.png`,
   };
 }
+
+/** PNG magic: enough for the package writer's picture check. */
+const PNG = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4,
+]);
 
 /** ZIP magic and nothing else: a package `readThemePackage` refuses. */
 const NOT_A_PACKAGE = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
@@ -48,6 +53,7 @@ async function itemDirectory(input: {
   readonly id: string;
   readonly item?: Record<string, unknown> | null;
   readonly packageBytes?: Uint8Array | null;
+  readonly thumbnail?: Uint8Array | null;
 }): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "vigilia-catalogue-"));
   temporary.push(root);
@@ -59,18 +65,29 @@ async function itemDirectory(input: {
       JSON.stringify(input.item ?? itemFor(input.id)),
     );
   }
+  if (input.thumbnail !== null) {
+    await writeFile(
+      path.join(directory, "thumbnail.png"),
+      input.thumbnail ?? PNG,
+    );
+  }
   if (input.packageBytes !== null) {
-    const written = writeThemePackage({
-      envelope: themeFor(input.id),
-      assets: {},
-    });
-    if (!written.ok) throw new Error(written.message);
     await writeFile(
       path.join(directory, `${input.id}.zip`),
-      input.packageBytes ?? written.bytes,
+      input.packageBytes ?? packageBytesFor(input.id),
     );
   }
   return directory;
+}
+
+/** A package carrying the theme `id`, written by the app's own writer. */
+function packageBytesFor(id: string): Uint8Array {
+  const written = writeThemePackage({
+    envelope: themeFor(id),
+    assets: {},
+  });
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
 }
 
 describe("validateCatalogueItem", () => {
@@ -135,7 +152,69 @@ describe("validateCatalogueItem", () => {
     expect(checked).toMatchObject({
       ok: false,
       reason:
-        'packageUrl must end with catalogue/aurora/aurora.zip, not "https://example.test/aurora.zip".',
+        'packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip, not "https://example.test/aurora.zip".',
+    });
+  });
+
+  it("refuses a packageUrl whose path is right but whose host is not the store's", async () => {
+    const directory = await itemDirectory({
+      id: "aurora",
+      item: {
+        ...itemFor("aurora"),
+        packageUrl: "https://attacker.example/catalogue/aurora/aurora.zip",
+      },
+    });
+
+    const checked = await validateCatalogueItem(directory);
+
+    expect(checked).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining(
+        "packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip",
+      ),
+    });
+  });
+
+  it("refuses a directory with no thumbnail beside item.json", async () => {
+    const directory = await itemDirectory({ id: "aurora", thumbnail: null });
+
+    const checked = await validateCatalogueItem(directory);
+
+    expect(checked).toMatchObject({
+      ok: false,
+      reason: "thumbnail.png is missing.",
+    });
+  });
+
+  it("refuses a thumbnail header that names another directory", async () => {
+    const directory = await itemDirectory({
+      id: "aurora",
+      item: {
+        ...itemFor("aurora"),
+        thumbnail: "catalogue/elsewhere/thumbnail.png",
+      },
+    });
+
+    const checked = await validateCatalogueItem(directory);
+
+    expect(checked).toMatchObject({
+      ok: false,
+      reason:
+        'thumbnail must be catalogue/aurora/thumbnail.png, not "catalogue/elsewhere/thumbnail.png".',
+    });
+  });
+
+  it("refuses a package whose own id is another item's", async () => {
+    const directory = await itemDirectory({
+      id: "aurora",
+      packageBytes: packageBytesFor("elsewhere"),
+    });
+
+    const checked = await validateCatalogueItem(directory);
+
+    expect(checked).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining('holds theme "elsewhere"'),
     });
   });
 

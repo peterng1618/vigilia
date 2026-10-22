@@ -1,3 +1,4 @@
+import { randomFillSync } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -6,7 +7,7 @@ import {
   type FabricThemeEnvelope,
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
-import { readThemePackage } from "@vigilia/theme-package";
+import { MAX_ARCHIVE_BYTES, readThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { submissionFiles } from "./github-item.js";
 import {
@@ -133,6 +134,48 @@ describe("submissionFiles", () => {
     expect(result.ok).toBe(false);
     expect(result.ok ? "" : result.message).toContain("../aurora");
     expect(result.ok ? "" : result.message).toContain("not a theme id");
+  });
+
+  it("refuses a package over the reader's cap before uploading it", async () => {
+    // Incompressible, so the zip's own size stays over the cap: the check is on
+    // the bytes that would be committed, not on the assets' declared sizes.
+    const big = new Uint8Array(MAX_ARCHIVE_BYTES + 1024);
+    randomFillSync(big);
+    const envelope: FabricThemeEnvelope = {
+      ...themeOf("big", "Big", "1.0.0").envelope,
+      assets: [{ id: "big", kind: "image", path: "assets/big.bin" }],
+    };
+    const oversized = {
+      read: async () => ({ envelope, assets: { "assets/big.bin": big } }),
+    } as unknown as ThemeStore;
+    const picture = { read: async () => PNG } as unknown as ThumbnailStore;
+
+    const result = await submissionFiles("big", oversized, {
+      thumbnails: picture,
+      now: () => NOW,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.message).toContain(
+      "That package is too large to open",
+    );
+    expect(result.ok ? "" : result.message).toContain(
+      String(MAX_ARCHIVE_BYTES),
+    );
+  }, 30_000);
+
+  it("does not put a store failure's path in the refusal", async () => {
+    const failing = {
+      read: async () => {
+        throw new Error("EPERM: D:\\Users\\peter\\library\\aurora.json");
+      },
+    } as unknown as ThemeStore;
+
+    const result = await submissionFiles("aurora", failing, { thumbnails });
+
+    expect(result.ok ? "" : result.message).toBe(
+      'This PC\'s library could not read theme "aurora".',
+    );
   });
 
   it("refuses an id the library does not hold", async () => {

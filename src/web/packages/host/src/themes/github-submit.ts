@@ -1,3 +1,4 @@
+import { isGithubLogin } from "../settings/github-token.js";
 import type { SubmissionFiles } from "./github-item.js";
 
 /**
@@ -58,6 +59,13 @@ export async function submitToCatalogue(
   const { login, accessToken, files } = input;
   if (login.trim() === "")
     return refuse("identity", "Sign in to GitHub before submitting a theme.");
+  // A login is interpolated into two paths; a corrupted identity is refused
+  // where it would be used rather than sent to the API.
+  if (!isGithubLogin(login))
+    return refuse(
+      "identity",
+      "The stored GitHub account name is not a login; sign in again.",
+    );
   if (accessToken.trim() === "")
     return refuse(
       "identity",
@@ -206,8 +214,11 @@ export async function submitToCatalogue(
   );
   if ("error" in pull) return refuse("pull", pull.error);
   if (pull.response.status === 422) {
+    // A repeat submission updated the branch in place, which is what the author
+    // wanted; the open PR carries it. Answering "refused" here would hide that
+    // the update landed and lose the link.
     await drain(pull.response);
-    return refuse("pull", "A pull request for this item is already open.");
+    return existingPullUrl(fetcher, owner, repo, login, branch, token);
   }
   if (!pull.response.ok) {
     await drain(pull.response);
@@ -217,13 +228,64 @@ export async function submitToCatalogue(
     );
   }
   const opened = await readObject(pull.response);
-  const url = opened?.["html_url"];
-  if (typeof url !== "string" || url === "")
+  const url = pullUrlOf(opened?.["html_url"]);
+  if (url === undefined)
     return refuse(
       "pull",
-      "GitHub opened the pull request but returned no address for it.",
+      "GitHub opened the pull request but returned no github.com address for it.",
     );
   return { ok: true, url };
+}
+
+/**
+ * The open pull request for this submission branch, as the link the editor may
+ * draw. Only `https://github.com/...` is accepted: the editor renders this as a
+ * link target, so a `javascript:` value is refused here rather than clicked.
+ */
+async function existingPullUrl(
+  fetcher: typeof fetch,
+  owner: string,
+  repo: string,
+  login: string,
+  branch: string,
+  token: string,
+): Promise<SubmitResult> {
+  const head = encodeURIComponent(`${login}:${branch}`);
+  const answer = await call(
+    fetcher,
+    "GET",
+    `/repos/${owner}/${repo}/pulls?head=${head}&state=open&per_page=1`,
+    token,
+  );
+  if ("error" in answer) return refuse("pull", answer.error);
+
+  let listed: unknown;
+  try {
+    listed = await answer.response.json();
+  } catch {
+    listed = undefined;
+  }
+  const first = Array.isArray(listed) ? (listed[0] as unknown) : undefined;
+  const url = pullUrlOf(
+    typeof first === "object" && first !== null
+      ? (first as Record<string, unknown>)["html_url"]
+      : undefined,
+  );
+  return url === undefined
+    ? refuse("pull", "A pull request for this item is already open.")
+    : { ok: true, url };
+}
+
+function pullUrlOf(value: unknown): string | undefined {
+  if (typeof value !== "string" || value === "") return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "github.com"
+      ? value
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The file's version on the submission branch, or nothing on a first submit. */

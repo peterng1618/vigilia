@@ -18,11 +18,10 @@ Give every display client its own theme, then let a person browse and install th
 
 ## Last completed change
 
-- **Phase D closed** (`2026-10-21-theme-store-install.md`, seven tasks): `downloadPackage` behind a host allowlist with a cap and one re-checked redirect, `installCatalogueItem`, and `POST /api/themes/install` — loopback only, origin- and Host-checked.
-- **Only a newer catalogue version is offered as *Update***; an incomparable or held-newer pair answers *Installed*, because the press overwrites with no undo.
-- **The origin is recorded only after the write lands**: a fresh import is rolled back when it cannot be recorded, an update keeps the person's copy, and each path has its own sentence.
-- **Editor**: Install / Update / Installed from the listing's join, per-item busy state, the host's refusals verbatim, and one live region announcing a refusal or a finished install.
-- **Evidence**: 4101 unit tests in 295 files, 29 browser claims including three install captures, typecheck, Biome and build all exit 0; a whole-branch review, one fix round and a scoped re-review, each finding red-proved.
+- **Phase E's whole-branch review fixed** (17 findings): author check fails the auto-merge job and gates every later step, ownership read from the directory's latest `main` commit, renames and deletions counted, and `workflow_run` retries after validate.
+- **App guards**: `packageUrl` must equal the store's canonical URL, the package is capped before upload, the login is validated, temp token files are cleared, a repeat submission answers the open PR's link, and remote links must be `https://`.
+- **Submit state is scoped by item id**, so one theme's link, refusal or device code can never draw on another theme's surface.
+- **Evidence**: typecheck exit 0; `npm run test` exit 0 with 4198 tests in 300 files; workflow YAML parses; six guards red-proved by disabling each and watching its test fail.
 
 ## Next
 

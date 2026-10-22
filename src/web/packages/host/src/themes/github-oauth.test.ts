@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { pollDeviceToken, requestDeviceCode } from "./github-oauth.js";
+import {
+  fetchLogin,
+  pollDeviceToken,
+  requestDeviceCode,
+} from "./github-oauth.js";
 
 const DEVICE_ENDPOINT = "https://github.com/login/device/code";
 const TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token";
+const USER_ENDPOINT = "https://api.github.com/user";
 
 interface Call {
   readonly url: string;
@@ -107,6 +112,29 @@ describe("requestDeviceCode", () => {
 
     expect(result).toHaveProperty("error");
     expect(calls).toHaveLength(0);
+  });
+
+  it("refuses a zero interval or expiry instead of poll-looping", async () => {
+    const zeroInterval = await requestDeviceCode("client-abc", {
+      fetch: injectedFetch({ ...DOCUMENTED, interval: 0 }).fetch,
+    });
+    const zeroExpiry = await requestDeviceCode("client-abc", {
+      fetch: injectedFetch({ ...DOCUMENTED, expires_in: 0 }).fetch,
+    });
+
+    expect(zeroInterval).toHaveProperty("error");
+    expect(zeroExpiry).toHaveProperty("error");
+  });
+
+  it("refuses a verification link that is not https", async () => {
+    const { fetch } = injectedFetch({
+      ...DOCUMENTED,
+      verification_uri: "http://github.com/login/device",
+    });
+
+    await expect(requestDeviceCode("client-abc", { fetch })).resolves.toEqual({
+      error: "GitHub's device code response was incomplete.",
+    });
   });
 });
 
@@ -213,5 +241,87 @@ describe("pollDeviceToken", () => {
     const result = await pollDeviceToken("client-abc", DEVICE_CODE, { fetch });
 
     expect(result).toHaveProperty("error");
+  });
+});
+
+/**
+ * The one request that carries the token to a second endpoint. What matters
+ * here is that its refusals stay sentences and never echo the token, and that
+ * the token travels only in the `Authorization` header.
+ */
+describe("fetchLogin", () => {
+  const TOKEN = "gho_secret_token_value";
+
+  it("reads the account and sends the token only in the header", async () => {
+    const { fetch, calls } = injectedFetch({ login: "octocat" });
+
+    await expect(fetchLogin(TOKEN, { fetch })).resolves.toEqual({
+      login: "octocat",
+    });
+
+    expect(calls).toHaveLength(1);
+    const call = calls[0]!;
+    expect(call.url).toBe(USER_ENDPOINT);
+    expect(call.url).not.toContain(TOKEN);
+    expect(call.init?.body).toBeUndefined();
+    expect(new Headers(call.init?.headers).get("authorization")).toBe(
+      `Bearer ${TOKEN}`,
+    );
+  });
+
+  it("refuses a non-OK answer without naming the token", async () => {
+    const { fetch } = injectedFetch({ message: "Bad credentials" }, 401);
+
+    const result = await fetchLogin(TOKEN, { fetch });
+
+    expect(result).toEqual({
+      error: "GitHub refused the user request (HTTP 401).",
+    });
+    expect(JSON.stringify(result)).not.toContain(TOKEN);
+  });
+
+  it("refuses a body that is not JSON", async () => {
+    const { fetch } = injectedFetch("<html>not json</html>");
+
+    await expect(fetchLogin(TOKEN, { fetch })).resolves.toEqual({
+      error: "GitHub answered the user request with a body that is not JSON.",
+    });
+  });
+
+  it("refuses a body that is not an object", async () => {
+    const { fetch } = injectedFetch([{ login: "octocat" }]);
+
+    await expect(fetchLogin(TOKEN, { fetch })).resolves.toEqual({
+      error:
+        "GitHub answered the user request with a body that is not an object.",
+    });
+  });
+
+  it("refuses a body with no login", async () => {
+    const { fetch } = injectedFetch({ id: 1 });
+
+    await expect(fetchLogin(TOKEN, { fetch })).resolves.toEqual({
+      error: "GitHub's user response had no login.",
+    });
+  });
+
+  it("refuses an unreachable endpoint without naming the token", async () => {
+    const fetch = (async () => {
+      throw new Error("network down");
+    }) as unknown as typeof globalThis.fetch;
+
+    const result = await fetchLogin(TOKEN, { fetch });
+
+    expect(result).toEqual({ error: "GitHub could not be reached." });
+    expect(JSON.stringify(result)).not.toContain(TOKEN);
+  });
+
+  it("refuses an empty token without sending it", async () => {
+    const { fetch, calls } = injectedFetch({ login: "octocat" });
+
+    const result = await fetchLogin("", { fetch });
+
+    expect(result).toHaveProperty("error");
+    expect(calls).toHaveLength(0);
   });
 });

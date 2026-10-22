@@ -36,6 +36,14 @@ export interface GithubTokenStore {
 const FILE = "github-token.json";
 const MODE = 0o600;
 
+/** GitHub's own login shape. A login is interpolated into API paths, so a
+ *  hand-edited file cannot be allowed to say `../something`. */
+const GITHUB_LOGIN = /^[A-Za-z0-9-]{1,39}$/;
+
+export function isGithubLogin(login: string): boolean {
+  return GITHUB_LOGIN.test(login);
+}
+
 /**
  * Four usable strings, or nothing.
  *
@@ -59,7 +67,7 @@ function asIdentity(value: unknown): GithubIdentity | undefined {
     typeof scope !== "string" ||
     scope === "" ||
     typeof login !== "string" ||
-    login === "" ||
+    !isGithubLogin(login) ||
     typeof obtainedAt !== "string" ||
     Number.isNaN(Date.parse(obtainedAt))
   ) {
@@ -90,6 +98,9 @@ export function createGithubTokenStore(directory: string): GithubTokenStore {
 
   const save = async (identity: GithubIdentity): Promise<void> => {
     await mkdir(directory, { recursive: true });
+    // A failed rename leaves the plaintext token in the temporary file; it is
+    // cleared here and on `clear` rather than waiting for a later write.
+    await rm(temporary, { force: true });
     // The mode applies when the temporary file is created, and that file is
     // ours alone; the rename carries it to the target.
     await writeFile(temporary, `${JSON.stringify(identity, null, 2)}\n`, {
@@ -131,7 +142,12 @@ export function createGithubTokenStore(directory: string): GithubTokenStore {
     },
 
     async clear() {
-      await exclusively(() => rm(file, { force: true }));
+      await exclusively(async () => {
+        // Both halves: a rename that failed earlier left the token in the
+        // temporary file, and signing out has to mean it is gone.
+        await rm(temporary, { force: true });
+        await rm(file, { force: true });
+      });
     },
   };
 }

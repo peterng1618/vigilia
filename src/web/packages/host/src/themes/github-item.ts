@@ -2,7 +2,8 @@ import {
   DASHBOARD_THEME_KIND,
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { MAX_ARCHIVE_BYTES, writeThemePackage } from "@vigilia/theme-package";
+import { cataloguePackageUrl } from "./catalogue-source.js";
 import { isValidThemeId, type ThemeStore } from "./store.js";
 import type { ThumbnailStore } from "./thumbnails.js";
 
@@ -14,10 +15,6 @@ import type { ThumbnailStore } from "./thumbnails.js";
  * host writes is the file the catalogue accepts, checked by the one parser that
  * decides that.
  */
-
-/** Option B: the package rides beside `item.json` in the catalogue repo. */
-const CATALOGUE_RAW_BASE =
-  "https://raw.githubusercontent.com/peterng1618/vigilia-store/main";
 
 /** The picture's name inside a catalogue item's directory, as in the library. */
 const THUMBNAIL_FILE = "thumbnail.png";
@@ -55,10 +52,12 @@ export async function submissionFiles(
   let theme: Awaited<ReturnType<ThemeStore["read"]>>;
   try {
     theme = await store.read(themeId);
-  } catch (error) {
+  } catch {
+    // A store failure can name an absolute path from this PC; the browser is
+    // told what happened to the theme, not where the library lives.
     return {
       ok: false,
-      message: error instanceof Error ? error.message : String(error),
+      message: `This PC's library could not read theme "${themeId}".`,
     };
   }
   if (theme === undefined) {
@@ -90,6 +89,18 @@ export async function submissionFiles(
   });
   if (!written.ok) return { ok: false, message: written.message };
 
+  // The reader refuses a package this large, and the catalogue's CI reads it
+  // with that reader: saying so here is the last chance to spare the author a
+  // failed upload.
+  if (written.bytes.byteLength > MAX_ARCHIVE_BYTES) {
+    return {
+      ok: false,
+      message:
+        `That package is too large to open: ${written.bytes.byteLength} bytes, ` +
+        `and a package may be at most ${MAX_ARCHIVE_BYTES} bytes.`,
+    };
+  }
+
   // The submission instant, not the document's: the catalogue derives an item's
   // real history from git, and these fields must be the instants this file
   // claims.
@@ -108,7 +119,7 @@ export async function submissionFiles(
     // Option B has no download counter and no reactions for repository files.
     downloads: 0,
     favorites: 0,
-    packageUrl: `${CATALOGUE_RAW_BASE}/catalogue/${themeId}/${themeId}.zip`,
+    packageUrl: cataloguePackageUrl(themeId),
     // The picture this submission commits, beside `item.json`.
     thumbnail: `catalogue/${themeId}/${THUMBNAIL_FILE}`,
   });

@@ -334,8 +334,9 @@ function isLoopbackName(name: string | undefined): boolean {
  * **The `Host` must also be a loopback name.** Origin and Host agreeing is not
  * enough on its own: a page served from `http://evil.example:5173`, whose name
  * later resolves to 127.0.0.1, sends both headers naming itself and would
- * otherwise pass. Only this route makes that check — it is the one that
- * overwrites a library copy, so it is the one worth the alias it costs.
+ * otherwise pass. Every route that changes something — install, device start,
+ * poll, sign-out and submit — calls this, because a request to `localhost` that
+ * the page did not mean to make is that page acting as this machine.
  */
 function isForeignOrigin(request: http.IncomingMessage): boolean {
   const host = request.headers.host;

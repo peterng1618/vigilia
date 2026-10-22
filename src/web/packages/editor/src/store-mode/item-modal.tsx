@@ -460,14 +460,24 @@ function SubmitFooter(props: {
   readonly submit: SubmitControl;
 }): React.JSX.Element {
   const { item, submit } = props;
-  const busy = submit.state === "submitting" || submit.state === "authorising";
-  const submitted = submit.state === "submitted";
+  // **Only this item's own answer is drawn**, on the same rule the install
+  // footer follows: the flow lives on the region and outlives the modal, so a
+  // state kept without an id would show theme A's link, refusal or device code
+  // on theme B, and disable B's control with A's success.
+  const mine = submit.itemId === item.id;
+  const state = mine ? submit.state : "idle";
+  const userCode = mine ? submit.userCode : undefined;
+  const verificationUri = mine ? submit.verificationUri : undefined;
+  const url = mine ? submit.url : undefined;
+  const refusal = mine ? submit.refusal : undefined;
+  const busy = state === "submitting" || state === "authorising";
+  const submitted = state === "submitted";
   return (
     <Fragment>
       <button
         type="button"
         id="vigilia-store-item-submit"
-        data-vigilia-store-item-submit={submit.state}
+        data-vigilia-store-item-submit={state}
         disabled={busy || submitted}
         aria-busy={busy}
         onClick={() => submit.onSubmit(item)}
@@ -479,17 +489,17 @@ function SubmitFooter(props: {
           function rather than a composed sentence here. The link is the control
           the sentence tells the author to use, and it opens a new tab so the
           editor is not replaced mid-flow. */}
-      {submit.state === "authorising" &&
-      submit.userCode !== undefined &&
-      submit.verificationUri !== undefined ? (
+      {state === "authorising" &&
+      userCode !== undefined &&
+      verificationUri !== undefined ? (
         <span
           data-vigilia-store-item-submit-code=""
           className="max-w-[40ch] text-xs text-muted"
         >
-          {uiCopy.store.submit.authorising(submit.userCode)}{" "}
+          {uiCopy.store.submit.authorising(userCode)}{" "}
           <a
             data-vigilia-store-item-submit-open=""
-            href={submit.verificationUri}
+            href={verificationUri}
             target="_blank"
             rel="noreferrer"
             className="underline"
@@ -498,26 +508,26 @@ function SubmitFooter(props: {
           </a>
         </span>
       ) : null}
-      {submitted && submit.url !== undefined ? (
+      {submitted && url !== undefined ? (
         <span className="max-w-[40ch] text-xs text-muted">
           {uiCopy.store.submit.submitted}{" "}
           <a
             data-vigilia-store-item-submit-url=""
-            href={submit.url}
+            href={url}
             target="_blank"
             rel="noreferrer"
             className="underline"
           >
-            {submit.url}
+            {url}
           </a>
         </span>
       ) : null}
-      {submit.state === "refused" && submit.refusal !== undefined ? (
+      {state === "refused" && refusal !== undefined ? (
         <span
           data-vigilia-store-item-submit-refusal=""
           className="max-w-[40ch] text-xs text-warn"
         >
-          {submit.refusal}
+          {refusal}
         </span>
       ) : null}
     </Fragment>

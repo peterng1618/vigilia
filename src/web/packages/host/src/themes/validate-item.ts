@@ -5,6 +5,7 @@ import {
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
 import { MAX_ARCHIVE_BYTES, readThemePackage } from "@vigilia/theme-package";
+import { cataloguePackageUrl } from "./catalogue-source.js";
 
 /**
  * One `catalogue/<id>/` directory, checked the way the catalogue's CI checks
@@ -12,9 +13,10 @@ import { MAX_ARCHIVE_BYTES, readThemePackage } from "@vigilia/theme-package";
  *
  * The header is `renderer-core`'s own parser and the package is
  * `theme-package`'s own reader, so a PR this command accepts is a PR the host
- * can install. What is checked here and nowhere else is the one fact a PR can
- * get wrong while both documents are individually valid: `packageUrl` naming a
- * file this directory does not carry.
+ * can install. What is checked here and nowhere else are the facts a PR can get
+ * wrong while both documents are individually valid: `packageUrl` naming
+ * somewhere other than this directory's file, a picture the directory does not
+ * carry, and a package whose own id is another item's.
  */
 
 const USAGE = "usage: vigilia validate-item <catalogueDir>";
@@ -53,11 +55,25 @@ async function firstRefusal(
   }
 
   // Option B: the package rides beside the header, and the raw URL is where the
-  // host will download it from. A URL naming anything else would make the host
-  // fetch a file this PR does not carry.
-  const expected = `catalogue/${id}/${id}.zip`;
-  if (!parsed.file.packageUrl.endsWith(expected)) {
-    return `packageUrl must end with ${expected}, not "${parsed.file.packageUrl}".`;
+  // host will download it from. The whole URL is required, not a suffix: a URL
+  // ending with this path on another host would make the host fetch bytes this
+  // PR does not carry.
+  const expected = cataloguePackageUrl(id);
+  if (parsed.file.packageUrl !== expected) {
+    return `packageUrl must be ${expected}, not "${parsed.file.packageUrl}".`;
+  }
+
+  // The layout the catalogue's listing points at: header, package, and one
+  // picture beside them.
+  const expectedThumbnail = `catalogue/${id}/thumbnail.png`;
+  if (parsed.file.thumbnail !== expectedThumbnail) {
+    return `thumbnail must be ${expectedThumbnail}, not "${parsed.file.thumbnail}".`;
+  }
+  try {
+    await stat(path.join(directory, "thumbnail.png"));
+  } catch (error) {
+    if (isMissing(error)) return "thumbnail.png is missing.";
+    return `thumbnail.png cannot be read: ${messageOf(error)}`;
   }
 
   const packageFile = path.join(directory, `${id}.zip`);
@@ -82,7 +98,15 @@ async function firstRefusal(
     return `${id}.zip cannot be read: ${messageOf(error)}`;
   }
   const read = readThemePackage(bytes);
-  return read.ok ? undefined : read.message;
+  if (!read.ok) return read.message;
+  // The directory's name is the item's id, and the package cannot mean another.
+  if (read.envelope.id !== id) {
+    return (
+      `${id}.zip holds theme "${read.envelope.id}"; ` +
+      `the directory is the item's id, so the package must be "${id}".`
+    );
+  }
+  return undefined;
 }
 
 /**

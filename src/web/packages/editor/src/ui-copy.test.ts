@@ -193,6 +193,9 @@ it("pins the submission's sentences as literals", () => {
   expect(uiCopy.store.submit.expired).toBe(
     "The GitHub sign-in expired. Submit again.",
   );
+  expect(uiCopy.store.submit.denied).toBe(
+    "The GitHub sign-in was denied. Submit again.",
+  );
 });
 
 /**

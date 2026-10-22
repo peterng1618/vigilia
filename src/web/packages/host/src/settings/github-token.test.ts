@@ -66,6 +66,30 @@ describe("github token", () => {
     await expect(readFile(tokenFile(dir), "utf8")).rejects.toThrow();
   });
 
+  it("clears a token a failed rename left in the temporary file", async () => {
+    // The rename can fail with the target held open; the token then sits in
+    // `.tmp`, and signing out has to mean it is gone.
+    await writeFile(
+      `${tokenFile(dir)}.tmp`,
+      JSON.stringify(identity()),
+      "utf8",
+    );
+
+    await store.clear();
+
+    await expect(readFile(`${tokenFile(dir)}.tmp`, "utf8")).rejects.toThrow();
+  });
+
+  it("reads a login that is not a GitHub login as no identity", async () => {
+    await writeFile(
+      tokenFile(dir),
+      JSON.stringify({ ...identity(), login: "../evil" }),
+      "utf8",
+    );
+
+    expect(await store.read()).toBeUndefined();
+  });
+
   it("clears a store that has nothing stored, without failing", async () => {
     await store.clear();
 

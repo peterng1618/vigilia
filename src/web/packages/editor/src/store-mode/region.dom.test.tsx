@@ -2663,6 +2663,66 @@ it("states the host's refusal beside the control and re-enables it", async () =>
 });
 
 /**
+ * **One theme's submission answer belongs to that theme.** The flow lives on
+ * the region and outlives the modal, so a state kept without an id would draw
+ * theme A's refusal or link on theme B and disable B's control with A's
+ * success; the id travels with the state for that reason.
+ */
+it("keeps one theme's submission answer off another theme's surface", async () => {
+  const refusal = "That theme has no picture to put in the store.";
+  vi.stubGlobal(
+    "fetch",
+    submitHost({
+      submit: [new Response(refusal, { status: 422 })],
+    }).fetch,
+  );
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+    fixtureEntry({
+      id: "office-wall",
+      name: "Office wall",
+      ground: DARK_GROUND,
+    }),
+  ]);
+
+  await pressCellSurface("living-room");
+  await pressSubmit();
+  await settle();
+  expect(
+    document.body.querySelector("[data-vigilia-store-item-submit-refusal]"),
+    "the theme that was refused stated nothing",
+  ).not.toBeNull();
+
+  await closeItem();
+  await pressCellSurface("office-wall");
+
+  expect(
+    document.body.querySelector("[data-vigilia-store-item-submit-refusal]"),
+    "another theme's refusal is drawn on this theme",
+  ).toBeNull();
+  expect(
+    submitControl().disabled,
+    "another theme's refusal disabled this theme's control",
+  ).toBe(false);
+
+  // The answer is kept for the theme it belongs to, not discarded.
+  await closeItem();
+  await pressCellSurface("living-room");
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-item-submit-refusal]",
+      ),
+      "the refused theme's own sentence",
+    ).textContent,
+  ).toBe(refusal);
+});
+
+/**
  * **An expired sign-in is a refusal the surface can name**, because the poll
  * answers a state and no sentence: the author is told to submit again, and the
  * control is their way to.

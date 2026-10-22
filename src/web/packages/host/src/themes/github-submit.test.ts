@@ -192,19 +192,50 @@ describe("submitToCatalogue", () => {
     expect(String(body["title"])).toContain("aurora");
   });
 
-  it("answers an already-open pull request with a sentence, not GitHub's body", async () => {
+  it("answers a repeat submission with the open pull request it updated", async () => {
+    const { result, seen } = await submit(
+      withRoute((request) => {
+        if (request.method === "POST" && request.url === `${CATALOGUE}/pulls`)
+          return json(
+            {
+              message:
+                "A pull request already exists for octocat:submit/aurora.",
+            },
+            422,
+          );
+        if (
+          request.method === "GET" &&
+          request.url.startsWith(`${CATALOGUE}/pulls?`)
+        )
+          return json([{ html_url: PR_URL }]);
+        return undefined;
+      }),
+    );
+
+    // The files were updated on the branch; the link says so rather than
+    // answering with a refusal that hides the landed update.
+    expect(result).toEqual({ ok: true, url: PR_URL });
+    const lookup = seen.find(
+      (request) =>
+        request.method === "GET" &&
+        request.url.startsWith(`${CATALOGUE}/pulls?`),
+    );
+    expect(lookup?.path).toContain("head=octocat%3Asubmit%2Faurora");
+    expect(lookup?.path).toContain("state=open");
+  });
+
+  it("refuses a repeat submission when no open pull request is found", async () => {
     const { result } = await submit(
-      withRoute((request) =>
-        request.url === `${CATALOGUE}/pulls`
-          ? json(
-              {
-                message:
-                  "A pull request already exists for peterng1618:submit/aurora.",
-              },
-              422,
-            )
-          : undefined,
-      ),
+      withRoute((request) => {
+        if (request.method === "POST" && request.url === `${CATALOGUE}/pulls`)
+          return json({ message: "A pull request already exists." }, 422);
+        if (
+          request.method === "GET" &&
+          request.url.startsWith(`${CATALOGUE}/pulls?`)
+        )
+          return json([]);
+        return undefined;
+      }),
     );
 
     expect(result).toEqual({
@@ -212,6 +243,33 @@ describe("submitToCatalogue", () => {
       stage: "pull",
       message: "A pull request for this item is already open.",
     });
+  });
+
+  it("refuses a pull request address that is not a github.com page", async () => {
+    const { result } = await submit(
+      withRoute((request) =>
+        request.method === "POST" && request.url === `${CATALOGUE}/pulls`
+          ? json({ html_url: "javascript:alert(1)" }, 201)
+          : undefined,
+      ),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      stage: "pull",
+      message:
+        "GitHub opened the pull request but returned no github.com address for it.",
+    });
+  });
+
+  it("refuses a stored account name that is not a login", async () => {
+    const { result, seen } = await submit(GITHUB, {
+      ...INPUT,
+      login: "../evil",
+    });
+
+    expect(result).toMatchObject({ ok: false, stage: "identity" });
+    expect(seen, "a corrupted login reached the API").toEqual([]);
   });
 
   it("waits for GitHub to finish creating the fork", async () => {

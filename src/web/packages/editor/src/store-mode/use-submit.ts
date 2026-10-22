@@ -20,6 +20,10 @@ export type SubmitState =
  */
 export interface SubmitControl {
   readonly onSubmit: (item: StoreItem) => void;
+  /** The item every other field belongs to. A surface draws this state only
+   *  when the id is the item it is showing: another theme's link or refusal is
+   *  not this one's answer. */
+  readonly itemId: string | undefined;
   readonly state: SubmitState;
   readonly userCode: string | undefined;
   readonly verificationUri: string | undefined;
@@ -91,6 +95,7 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
   readonly control: SubmitControl;
   readonly announcement: string;
 } {
+  const [itemId, setItemId] = useState<string | undefined>(undefined);
   const [state, setState] = useState<SubmitState>("idle");
   const [userCode, setUserCode] = useState<string | undefined>(undefined);
   const [verificationUri, setVerificationUri] = useState<string | undefined>(
@@ -265,6 +270,8 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
     if (busy.current) return;
     busy.current = true;
     clearTimer();
+    // The whole outcome belongs to this item from the press onward.
+    setItemId(item.id);
     setState("submitting");
     setRefusal(undefined);
     setUrl(undefined);
@@ -283,7 +290,15 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
           : "";
 
   return {
-    control: { onSubmit, state, userCode, verificationUri, url, refusal },
+    control: {
+      onSubmit,
+      itemId,
+      state,
+      userCode,
+      verificationUri,
+      url,
+      refusal,
+    },
     announcement,
   };
 }
