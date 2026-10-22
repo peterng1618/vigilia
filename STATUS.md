@@ -17,11 +17,10 @@ Give every display client its own theme, then let a person browse, install and s
 
 ## Last completed change
 
-- **Phase E closed** (`2026-10-22-theme-store-submission.md`, ten tasks): the device flow with the token at `0600` and never in the browser, the fork-and-PR client, `validate-item` for CI, the catalogue workflows, and the editor's Submit control.
-- **A whole-branch review found the auto-merge gate was not a gate** — an unverified author's PR would have merged — plus an ownership rule that did not check ownership and a `packageUrl` check that accepted any host; two fix rounds closed all three.
-- **The workflow is proved on the real repo**: a verified author's first submission merged and the listing regenerated; a diff escaping `catalogue/<id>/` was refused. **The unverified-author arm is not proved** — it needs a second account.
-- **Evidence**: 4199 unit tests in 300 files, 31 browser claims in `editor-rail` (0 unexpected, 0 flaky), typecheck and biome exit 0.
-- **One register row filed**: `vg-696` (the submit route refuses for a client id it never uses).
+- **Phase F task 4 landed**: `normalizeVideo` copies a conforming video as the same bytes object, refuses a source over 30 s, and otherwise re-encodes through the bundled GPL ffmpeg into the envelope (High/4:2:0, even, 30 fps CFR, silent, faststart).
+- **End-to-end proof**: `wide.mp4` (2048×180) normalized with the real binary to 1920×168, and the output re-read by `readVideoFacts` has no refusals; `conforming.mp4` returns `reencoded: false` and the identical object.
+- **Doors**: `POST /api/themes/normalize-video` behind the install route's loopback + foreign-origin guard and the 96 MB upload cap; `vigilia normalize-video <in> <out>` sits beside `validate-item`.
+- **Evidence**: 6 normalizer unit tests green, `server.test.ts` 194 green, typecheck and biome exit 0.
 
 ## Next
 

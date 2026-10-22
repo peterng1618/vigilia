@@ -80,6 +80,7 @@ import {
   installCatalogueItem,
   parseInstallRequest,
 } from "./themes/install.js";
+import { normalizeVideo } from "./themes/normalize-video.js";
 import {
   createThemeStore,
   isValidThemeId,
@@ -290,7 +291,7 @@ export interface HostServer {
 export const DEFAULT_SAMPLE_INTERVAL_MS = 1000;
 /** A save is JSON with base64 assets, so the wire is a third larger than the
  *  archive it replaced; the store enforces its own bounds on the decoded side. */
-const MAX_THEME_UPLOAD_BYTES = 96 * 1024 * 1024;
+export const MAX_THEME_UPLOAD_BYTES = 96 * 1024 * 1024;
 /** A dashboard screenshot; the store enforces the same bound. */
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
@@ -2289,6 +2290,72 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
       sendJson(response, 200, { ok: true, id: imported.id });
+      return;
+    }
+
+    // A source video brought into the publish envelope, or copied untouched
+    // when it already conforms. Like every theme modification it is this PC's
+    // business; the encoder never sees a peer's bytes. Matched before
+    // `/api/themes/:id` for the same reason `import` is.
+    if (url.pathname === "/api/themes/normalize-video") {
+      if (request.method !== "POST") {
+        sendText(response, 405, "Only POST is supported.");
+        return;
+      }
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Theme modification is loopback only.");
+        return;
+      }
+      if (isForeignOrigin(request)) {
+        sendText(response, 403, "That request is from another origin.");
+        return;
+      }
+
+      let raw: string;
+      try {
+        raw = await readBody(request, MAX_THEME_UPLOAD_BYTES);
+      } catch {
+        sendText(response, 413, "That video is too large to normalize.");
+        return;
+      }
+
+      let body: { bytesBase64?: unknown; fit?: unknown };
+      try {
+        body = JSON.parse(raw) as { bytesBase64?: unknown; fit?: unknown };
+      } catch {
+        sendText(response, 400, "That normalize request is not JSON.");
+        return;
+      }
+      if (typeof body.bytesBase64 !== "string") {
+        sendText(response, 400, "A normalize needs bytesBase64.");
+        return;
+      }
+      const fit =
+        body.fit === undefined
+          ? undefined
+          : body.fit === "cover" || body.fit === "contain"
+            ? body.fit
+            : null;
+      if (fit === null) {
+        sendText(response, 400, "fit must be cover or contain.");
+        return;
+      }
+
+      const normalized = await normalizeVideo(
+        new Uint8Array(Buffer.from(body.bytesBase64, "base64")),
+        fit === undefined ? {} : { fit },
+      );
+      if (!normalized.ok) {
+        // The normalizer's own sentence: it names which rule was broken, and a
+        // sentence composed here would lose that.
+        sendJson(response, 200, { ok: false, message: normalized.message });
+        return;
+      }
+      sendJson(response, 200, {
+        ok: true,
+        bytesBase64: Buffer.from(normalized.bytes).toString("base64"),
+        reencoded: normalized.reencoded,
+      });
       return;
     }
 

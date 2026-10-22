@@ -1,0 +1,119 @@
+import { readFileSync } from "node:fs";
+import fs from "node:fs/promises";
+import { describe, expect, it, vi } from "vitest";
+import { ffmpegArgs, normalizeVideo } from "./normalize-video.js";
+
+// The real module resolves to a bundled binary on this machine; the missing-
+// encoder case is a module that gave none, which is what a build without the
+// optional download looks like.
+vi.mock("ffmpeg-static", () => ({ default: null }));
+
+function fixture(name: string): Uint8Array {
+  return new Uint8Array(
+    readFileSync(
+      new URL(`../../../theme-package/test-fixtures/${name}`, import.meta.url),
+    ),
+  );
+}
+
+function runWriting(output: Uint8Array) {
+  return vi.fn(async (args: readonly string[]) => {
+    const file = args.at(-1);
+    if (file === undefined) throw new Error("no output path");
+    await fs.writeFile(file, output);
+    return { code: 0, stderr: "" };
+  });
+}
+
+describe("normalizeVideo", () => {
+  it("returns the same bytes object for a conforming input", async () => {
+    const bytes = fixture("conforming.mp4");
+    const run = vi.fn(async () => ({ code: 0, stderr: "" }));
+
+    const result = await normalizeVideo(bytes, { run });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.bytes).toBe(bytes);
+    expect(result.reencoded).toBe(false);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("refuses a 31-second input without spawning the encoder", async () => {
+    const run = vi.fn(async () => ({ code: 0, stderr: "" }));
+
+    const result = await normalizeVideo(fixture("long.mp4"), { run });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("30000");
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("re-encodes an out-of-envelope input once and returns what the encoder wrote", async () => {
+    const encoded = new Uint8Array([1, 2, 3, 4]);
+    const run = runWriting(encoded);
+
+    const result = await normalizeVideo(fixture("wide.mp4"), {
+      ffmpegPath: "ffmpeg-stub",
+      run,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.reencoded).toBe(true);
+    expect(result.bytes).toEqual(encoded);
+    expect(run).toHaveBeenCalledTimes(1);
+    // `contain` by default: the long edge is capped at 1920 and the frame is
+    // padded to the even box rather than cropped.
+    const args = run.mock.calls[0]?.[0] ?? [];
+    expect(args).toContain("-vf");
+    expect(args[args.indexOf("-vf") + 1]).toMatch(/^scale=1920:168:.*,pad=/);
+  });
+
+  it("refuses a non-zero exit without echoing the raw stderr", async () => {
+    const result = await normalizeVideo(fixture("wide.mp4"), {
+      ffmpegPath: "ffmpeg-stub",
+      run: async () => ({ code: 1, stderr: "ENCODER INTERNAL DETAIL" }),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("code 1");
+    expect(result.message).not.toContain("ENCODER INTERNAL DETAIL");
+  });
+
+  it("names the missing encoder when the module supplied none", async () => {
+    const run = vi.fn(async () => ({ code: 0, stderr: "" }));
+
+    const result = await normalizeVideo(fixture("wide.mp4"), { run });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("ffmpeg");
+    expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe("ffmpegArgs", () => {
+  it("fills the box and crops for cover", () => {
+    const facts = {
+      width: 2048,
+      height: 180,
+      durationMs: 1000,
+      frameRate: 30,
+      constantFrameRate: true,
+      codec: "avc1",
+      profile: 100,
+      chromaFormat: 1,
+      hasAudio: false,
+      faststart: true,
+    };
+
+    const args = ffmpegArgs("in.mp4", "out.mp4", facts, "cover");
+
+    expect(args[args.indexOf("-vf") + 1]).toMatch(
+      /^scale=1920:168:.*force_original_aspect_ratio=increase.*,crop=1920:168$/,
+    );
+  });
+});

@@ -34,6 +34,7 @@ import { readOrMintHostRecord } from "./settings/host-record.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
 import { createThemeOriginsStore } from "./settings/theme-origins.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
+import { normalizeVideoCommand } from "./themes/normalize-video.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
 import { validateItemCommand } from "./themes/validate-item.js";
@@ -89,6 +90,9 @@ function hostCommand(argv: readonly string[]): string {
 export async function run(argv: readonly string[]): Promise<number> {
   const item = await validateItemCommand(argv);
   if (item !== undefined) return item;
+
+  const normalized = await normalizeVideoCommand(argv);
+  if (normalized !== undefined) return normalized;
 
   const catalogue = await buildCatalogueIndexCommand(argv);
   if (catalogue !== undefined) return catalogue;

@@ -29,6 +29,7 @@ import { ProviderRegistry } from "./providers/registry.js";
 import { createDisplayLauncher } from "./serve/display-launcher.js";
 import {
   CA_CERTIFICATE_PATH,
+  MAX_THEME_UPLOAD_BYTES,
   createHostServer,
   displayKeyFor,
   type HostingState,
@@ -1492,6 +1493,55 @@ describe("Host theme routes", () => {
 
       expect(res.status).toBe(502);
       expect(res.text()).toContain("404");
+    });
+  });
+
+  describe("The normalize-video route", () => {
+    let library: string;
+    let normalizing: ReturnType<typeof createHostServer>;
+
+    beforeEach(async () => {
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-normalize-"));
+      normalizing = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+      });
+    });
+
+    afterEach(async () => {
+      await normalizing.close();
+      await fs.rm(library, { recursive: true, force: true });
+    });
+
+    it("refuses a cross-origin POST", async () => {
+      const res = await request(
+        normalizing.server,
+        "POST",
+        "/api/themes/normalize-video",
+        JSON.stringify({ bytesBase64: "" }),
+        {
+          headers: {
+            origin: "https://evil.example",
+            host: "127.0.0.1:5173",
+          },
+        },
+      );
+
+      expect(res.status).toBe(403);
+    });
+
+    it("answers 413 to a body over the upload cap", async () => {
+      // One byte past the cap the import route uses; the body is refused
+      // before it is parsed or decoded.
+      const res = await request(
+        normalizing.server,
+        "POST",
+        "/api/themes/normalize-video",
+        new Uint8Array(MAX_THEME_UPLOAD_BYTES + 1),
+      );
+
+      expect(res.status).toBe(413);
     });
   });
 
