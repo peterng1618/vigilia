@@ -167,3 +167,18 @@ things nobody intends to convert is a count with no finish, which is the failure
 
 Measured 2026-10-16: **120 gated files clean, remainder 19, ceiling 19** — and
 `components/ui/colour-picker.tsx`, the instance the row names, is one of the 19.
+
+## Extended 2026-10-22 — the remainder is scoped to reachable surfaces
+
+The paragraph above says tests and fixtures are the lines out of the count. The
+second line is reachability: a file that cannot resolve a design token is not a
+surface that went around the scales. The count covered every package's `src`,
+and `vg-626` measured what that costs — the 20th file was the player's
+`theme-chooser.ts`, which loads no editor stylesheet and has no token to
+consume. Narrowing the scope is a policy call `vg-426` deliberately left open;
+the user ruled it on 2026-10-22, and
+[`0092`](0092-the-remainder-counts-only-surfaces-the-design-language-reaches.md)
+records the ruling, the ten excluded-package and seven excluded-editor files,
+and the cost: player and host chrome are no longer held to the editor's scales.
+The ceiling falls from 19 to 3 in the same commit. **Raising the ceiling is
+still refused**; it remains the one move this instrument exists to prevent.

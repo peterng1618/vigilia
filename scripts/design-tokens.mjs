@@ -425,9 +425,13 @@ export async function selectTestFiles(root) {
  * remainder growing, and it takes no position on where a new component's tokens
  * come from, which the row records as a policy call rather than a scanner edit.
  *
- * Every package's `src`, not the editor's alone: the scales are the design
- * language for the whole product, and a surface that writes `7px` has gone
- * around them wherever it lives.
+ * Only surfaces the design language can reach (decision 0092): the editor's DOM
+ * package. A custom property resolves only in a document that loaded
+ * `editor-shell.css`, so a canvas context, a Fabric object, a standalone player
+ * or host page and a persisted theme value cannot consume it whatever they
+ * write. The unreachable paths are excluded by rule and reported every run, so
+ * the scope is visible rather than implied; a package the rule does not name
+ * is still counted, which is what stops a new UI package escaping unnamed.
  *
  * **Tests and fixtures are out of the count.** A test that asserts `#ff0000` is
  * a test *about* a literal, and a fixture is a document rather than a surface —
@@ -438,15 +442,38 @@ export async function selectTestFiles(root) {
  */
 const NOT_PRODUCT_SOURCE = /\.test\.tsx?$|\.spec\.ts$|-fixture\.tsx?$/;
 
+/**
+ * Where the design language cannot reach, and the reason beside each rule
+ * (decision 0092). A path is excluded only when its surface cannot resolve a
+ * custom property; "not converted yet" is not a reason to exclude anything.
+ */
+const OUTSIDE_DESIGN_LANGUAGE = [
+  // No editor stylesheet: the host's standalone pages, the player's own chrome.
+  /^src\/web\/packages\/(host|player)\//,
+  // Architecture: renderer-core is Fabric/DOM-free; scene-fabric paints a canvas.
+  /^src\/web\/packages\/(renderer-core|scene-fabric)\//,
+  // Editor surfaces that paint through Fabric or a 2D context, not CSS.
+  /^src\/web\/packages\/editor\/src\/(snap-manager|controls-manager|crop-manager)\//,
+  // The starter theme's persisted paint is document data, not editor chrome.
+  /^src\/web\/packages\/editor\/src\/new-fabric-theme-(globals|objects)\.ts$/,
+  // Fixed ink and paper: a themed QR inverts under half the shell palettes.
+  /^src\/web\/packages\/editor\/src\/editor-shell\/qr-symbol\.tsx$/,
+];
+
+function outsideDesignLanguage(relPath) {
+  return OUTSIDE_DESIGN_LANGUAGE.some((rule) => rule.test(relPath));
+}
+
 export async function remainderFiles(root, gated, designLanguagePx = []) {
   const packages = resolve(root, "src", "web", "packages");
   let entries;
   try {
     entries = await readdir(packages, { withFileTypes: true });
   } catch {
-    return [];
+    return { files: [], excluded: [] };
   }
   const found = [];
+  const excluded = [];
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     for (const path of await walkFiles(join(packages, entry.name, "src"), [".ts", ".tsx"])) {
@@ -458,10 +485,11 @@ export async function remainderFiles(root, gated, designLanguagePx = []) {
       } catch {
         continue;
       }
-      if (check(relPath, source, designLanguagePx).length > 0) found.push(relPath);
+      if (check(relPath, source, designLanguagePx).length === 0) continue;
+      (outsideDesignLanguage(relPath) ? excluded : found).push(relPath);
     }
   }
-  return found.sort();
+  return { files: found.sort(), excluded: excluded.sort() };
 }
 
 /**
@@ -702,12 +730,14 @@ async function selfTest() {
 
   // The remainder (`vg-426`), both directions, over a tree this repo does not
   // own. Every file that must NOT be counted carries a literal of its own, so a
-  // count of one is a fact about the rule rather than about a clean tree.
+  // count of two is a fact about the rule rather than about a clean tree, and
+  // the out-of-scope files are literal-holding too, so the excluded count is
+  // measured rather than implied.
   const remainderTree = await scratchTree({
     "scripts/design-tokens.gated.json": JSON.stringify({
       gated: ["src/web/packages/editor/src/listed.tsx"],
       designLanguagePx: [],
-      remainderCeiling: 1,
+      remainderCeiling: 2,
     }),
     "src/web/packages/editor/src/listed.tsx": "export const listed = 1;",
     "src/web/packages/editor/src/selected.dom.test.tsx": "export const selected = 1;",
@@ -715,16 +745,28 @@ async function selfTest() {
     "src/web/packages/editor/src/unconverted.tsx": 'const s = { color: "#00ff00" };',
     "src/web/packages/editor/src/fixture-fixture.ts": 'export const f = "#123456";',
     "src/web/packages/editor/src/thing.test.ts": 'export const t = "#654321";',
+    "src/web/packages/fresh-ui/src/chart.ts": 'const s = { color: "#abcdef" };',
+    "src/web/packages/player/src/strip.ts": 'const s = { color: "#111111" };',
+    "src/web/packages/renderer-core/src/defaults.ts": 'const s = { color: "#222222" };',
+    "src/web/packages/editor/src/snap-manager/guides.ts": 'const s = { color: "#333333" };',
+    "src/web/packages/editor/src/new-fabric-theme-globals.ts": 'const s = { color: "#444444" };',
+    "src/web/packages/editor/src/editor-shell/qr-symbol.tsx": 'const s = { color: "#555555" };',
   });
   try {
     const atCeiling = runOver(remainderTree);
     report(
-      "the remainder counts product source and stops at its ceiling",
+      "the remainder counts reachable product source, reports the rest, and stops at its ceiling",
       atCeiling.status === 0 &&
-        atCeiling.stdout.includes("the remainder is 1 file(s)") &&
+        atCeiling.stdout.includes("the remainder is 2 file(s)") &&
+        atCeiling.stdout.includes("5 file(s) outside the design language's reach") &&
         !atCeiling.stdout.includes("fixture-fixture") &&
-        !atCeiling.stdout.includes("thing.test"),
-      `exit ${atCeiling.status}, stdout ${JSON.stringify(atCeiling.stdout.slice(-260))}`,
+        !atCeiling.stdout.includes("thing.test") &&
+        !atCeiling.stdout.includes("player/src/strip") &&
+        !atCeiling.stdout.includes("renderer-core/src/defaults") &&
+        !atCeiling.stdout.includes("snap-manager/guides") &&
+        !atCeiling.stdout.includes("new-fabric-theme-globals") &&
+        !atCeiling.stdout.includes("qr-symbol"),
+      `exit ${atCeiling.status}, stdout ${JSON.stringify(atCeiling.stdout.slice(-420))}`,
     );
 
     await writeFile(
@@ -737,11 +779,13 @@ async function selfTest() {
     );
     const overCeiling = runOver(remainderTree);
     report(
-      "a remainder past its ceiling fails and names the file",
+      "a remainder past its ceiling fails and names the reachable file",
       overCeiling.status === 1 &&
-        overCeiling.stderr.includes("the remainder grew to 1") &&
-        overCeiling.stderr.includes("unconverted: src/web/packages/editor/src/unconverted.tsx"),
-      `exit ${overCeiling.status}, stderr ${JSON.stringify(overCeiling.stderr.slice(-260))}`,
+        overCeiling.stderr.includes("the remainder grew to 2") &&
+        overCeiling.stderr.includes("unconverted: src/web/packages/editor/src/unconverted.tsx") &&
+        overCeiling.stderr.includes("unconverted: src/web/packages/fresh-ui/src/chart.ts") &&
+        !overCeiling.stderr.includes("player/src/strip"),
+      `exit ${overCeiling.status}, stderr ${JSON.stringify(overCeiling.stderr.slice(-420))}`,
     );
 
     await writeFile(
@@ -965,9 +1009,16 @@ if (isEntryPoint) {
     );
     process.exit(1);
   }
-  const remainder = await remainderFiles(root, new Set(files), designLanguagePx);
+  const { files: remainder, excluded } = await remainderFiles(
+    root,
+    new Set(files),
+    designLanguagePx,
+  );
   notices.push(
     `design-tokens: the remainder is ${remainder.length} file(s) off the gated list that still hold a literal, against a ceiling of ${ceiling}`,
+  );
+  notices.push(
+    `design-tokens: ${excluded.length} file(s) outside the design language's reach are not counted (decision 0092)`,
   );
   if (remainder.length > ceiling) {
     console.error(
