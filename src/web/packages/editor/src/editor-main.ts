@@ -316,6 +316,7 @@ async function start(): Promise<void> {
       },
       onImportPackage: () => picker.click(),
       onShowShortcuts: () => layout.showShortcuts(),
+      onFindAssets: () => layout.showFinder(),
       // The header's own chord, routed to the control it is printed beside:
       // both open the surface, and the switch inside it is the one owner of
       // whether the host is serving.

@@ -86,6 +86,31 @@ export function useSheet(store: SheetStore): boolean {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
 
+/** Whether the asset finder is open, as external state.
+ *
+ * Same shape and same reason as `SheetStore`: the finder's chord is dispatched
+ * by `EditorSession`, the modal is the shell's, and the two never share a
+ * component tree.
+ */
+export class FinderStore {
+  #open = false;
+  readonly #listeners = new Set<() => void>();
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+  readonly get = (): boolean => this.#open;
+  set(open: boolean): void {
+    if (this.#open === open) return;
+    this.#open = open;
+    for (const listener of this.#listeners) listener();
+  }
+}
+
+export function useFinder(store: FinderStore): boolean {
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
 /** Whether the publish surface is open, as external state.
  *
  * The header's chord is dispatched by `EditorSession`, which never sees React,

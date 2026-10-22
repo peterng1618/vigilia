@@ -3,6 +3,7 @@ import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { AssetFinder } from "../asset-finder/modal.js";
 import { CARD_LIBRARY } from "../card-library.js";
 import { hitTargetClasses } from "../components/ui/control-well.js";
 import {
@@ -46,9 +47,11 @@ import type { EditorViewControls } from "./session-facade.js";
 import { Settings } from "./settings.js";
 import { ShellMenuBar } from "./shell-menu-bar.js";
 import {
+  FinderStore,
   PublishSurfaceStore,
   SelectionStore,
   SheetStore,
+  useFinder,
   useSelection,
   useSheet,
 } from "./shell-stores.js";
@@ -183,6 +186,9 @@ export interface ShellLayout {
   /** Opens §7's reference sheet. The session owns the `?` dispatcher and never
    *  sees React, so `editor-main` routes the gesture here. */
   showShortcuts(): void;
+  /** Opens the asset finder. The chord and the menu row reach the same store
+   *  the modal is bound to. */
+  showFinder(): void;
   /** Opens the publish surface — the act the header's own control performs on a
    *  press. The session's `publish.surface` chord routes through here rather
    *  than through a second publish path, and it moves no host state: the switch
@@ -263,6 +269,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const store = new SelectionStore();
   const sheet = new SheetStore();
   const publishSurface = new PublishSurfaceStore();
+  const finder = new FinderStore();
   const hosting = new HostingStore();
   const getView = (): EditorViewControls | undefined => view;
 
@@ -312,6 +319,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       tokenCount,
     } = useSelection(store);
     const sheetOpen = useSheet(sheet);
+    const finderOpen = useFinder(finder);
     /** Re-frame on the panel toggle, once the viewport has the new width.
      *
      * A resize does not need this any more: the viewport derives whether the
@@ -424,7 +432,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               surface that cannot answer them. */}
           {mode === "editor" && (
             <>
-              <ShellMenuBar store={store} getView={getView} />
+              <ShellMenuBar
+                store={store}
+                getView={getView}
+                onFindAssets={() => finder.set(true)}
+              />
               <PublishControl
                 session={store.bridge?.session}
                 publish={publish}
@@ -581,6 +593,22 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {/* §7's settings modal. The gear's route is the rail's
                 `onOpenSettings`; the modal returns focus to the gear itself.
                 `storage` is the browser-local store the palette already uses. */}
+            {/* The one place the finder is mounted. Its chord and its two menu
+                entries all move this one store, the same way `?` moves the
+                sheet's. */}
+            <AssetFinder
+              open={finderOpen}
+              onOpenChange={(next) => finder.set(next)}
+              bodies={{ "font-picker": null, "wallpaper-engine": null }}
+              onAction={async () => ({
+                ok: false,
+                message: uiCopy.assets.actionUnavailable,
+              })}
+              onOpenConnections={() => {
+                finder.set(false);
+                setSettingsOpen(true);
+              }}
+            />
             <Settings
               open={settingsOpen}
               onOpenChange={setSettingsOpen}
@@ -776,6 +804,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       // The gesture arrives from outside React, so the store writes and the
       // subscription re-renders; `flushSync` settles it before this returns.
       flushSync(() => sheet.set(true));
+    },
+    showFinder() {
+      flushSync(() => finder.set(true));
     },
     showPublishing() {
       // The gesture arrives from outside React and lands on the popover's own

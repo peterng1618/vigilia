@@ -109,6 +109,10 @@ interface EditorSessionOptions {
    *  existing construction sites — and every test that builds a session — keep
    *  compiling and simply do nothing. */
   readonly onShowShortcuts?: () => void;
+  /** The asset finder's modal lives in the shell, and its chord belongs to this
+   *  dispatcher, so the gesture leaves through the shell's own door. Optional,
+   *  like the two below, so a session built without chrome has no finder row. */
+  readonly onFindAssets?: () => void;
   /** §7.1's `⌘⇧P`. The chord opens the publish surface and moves nothing: the
    *  host's switch is inside that surface, and reaching it is the author's
    *  second, deliberate press. Optional, like the one above, so a session built
@@ -382,6 +386,7 @@ export class EditorSession {
           this.#document.refreshBackgroundMedia();
         },
         isReferenced: (assetId) => this.#document.holdsAsset(assetId),
+        onFindAssets: () => options.onFindAssets?.(),
       },
     );
     this.#source = options.source;
@@ -426,6 +431,9 @@ export class EditorSession {
     });
     this.#shortcuts.register("file.new", () => {
       void this.#document.newDocument();
+    });
+    this.#shortcuts.register("file.findAssets", () => {
+      options.onFindAssets?.();
     });
     this.#shortcuts.register("edit.undo", () => {
       // First: a burst's entry is not recorded until it closes, so an undo

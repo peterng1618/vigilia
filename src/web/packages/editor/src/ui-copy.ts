@@ -546,6 +546,9 @@ export const uiCopy = {
   },
   file: {
     newDocument: "New theme",
+    /** The finder's one entry in this menu. It sits above *Import package*
+     *  because both add something and the finder is the one that fetches. */
+    findAssets: "Find assets…",
     /** The reference composition, offered as what it is: a template the
      *  product ships. `New` is the author's own blank document; this is the one
      *  they can open a copy of. */
@@ -945,6 +948,7 @@ export const uiCopy = {
       local: "Open in Wallpaper Engine",
     } satisfies Record<ListingCategory, string>,
     searchPlaceholder: "Search assets…",
+    actionUnavailable: "Importing from the finder is not connected yet.",
     results: (count: number, sources: number): string =>
       `${count} ${count === 1 ? "result" : "results"} · ${sources} ${sources === 1 ? "source" : "sources"}`,
     noResults: "No results. Try another word.",
