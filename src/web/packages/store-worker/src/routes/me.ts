@@ -18,7 +18,7 @@ import {
   versionOf,
 } from "../db/items.js";
 import { authorQuotaExceeded, presignAllowed } from "../db/quota.js";
-import type { ItemRow, VersionRow } from "../db/types.js";
+import type { ItemRow } from "../db/types.js";
 import type { Env } from "../env.js";
 import { packageKey, thumbnailKey } from "../storage/keys.js";
 import { inspectObject } from "../storage/objects.js";
@@ -279,9 +279,7 @@ async function finalizeVersion(
     item_id: itemId,
     version,
     envelope_json: presign.envelope_json,
-    facets_json: JSON.stringify(
-      facetRecordOf(JSON.parse(presign.envelope_json) as FabricThemeEnvelope),
-    ),
+    facets_json: JSON.stringify(facetRecordOf(parseEnvelope(presign))),
     package_key: key,
     thumbnail_key: thumbnailKey(itemId),
     bytes: inspected.bytes,
@@ -367,7 +365,9 @@ async function previousEnvelope(
 }
 
 /** Written by this Worker from a validated envelope, so the parse is trusted. */
-function parseEnvelope(row: VersionRow): FabricThemeEnvelope {
+function parseEnvelope(row: {
+  readonly envelope_json: string;
+}): FabricThemeEnvelope {
   return JSON.parse(row.envelope_json) as FabricThemeEnvelope;
 }
 

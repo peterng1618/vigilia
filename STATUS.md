@@ -20,7 +20,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 - **Finalize turns an uploaded object into a version**: `POST /api/me/items/:id/versions/:version/finalize` reads the `presign_event` envelope and refuses a missing object (404), an oversized one (422) or a version nobody requested (409).
 - **The thumbnail is validated, not trusted**: a base64 PNG signature and a 2 MiB cap are checked before the write, and the `item_version` row records the R2 keys, `bytes`, `sha256` and `facetRecordOf(envelope)`.
-- **The status machine is applied once at finalize**: verified authors publish, unverified authors queue, `rejected` returns to `pending` even for a verified author, and `removed` is 409 with its reason.
+- **The status machine is applied once at finalize**: verified authors publish, unverified authors queue, `rejected` returns to `pending` even for a verified author and clears its reason, and `removed` is 409 with its reason.
 - **A repeated finalize of the same bytes is a no-op**; a different hash or size for an existing version is 409, and `published_at` is stamped only on entry into `published`.
 
 ## Next

@@ -24,7 +24,10 @@ const FOREIGN_ID = "00000000-0000-4000-8000-000000000000";
 const PNG_SIGNATURE = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
 ]);
-const THUMBNAIL_PNG = base64Of(PNG_SIGNATURE);
+/** Two distinct valid PNGs, so a repeat finalize can prove it wrote neither. */
+const FIRST_PNG = pngWith(0x01);
+const SECOND_PNG = pngWith(0x02);
+const THUMBNAIL_PNG = base64Of(FIRST_PNG);
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
 describe("finalize", () => {
@@ -68,12 +71,20 @@ describe("finalize", () => {
     expect(row?.package_key).toBe(packageKey(ITEM_ID, version));
     expect(row?.thumbnail_key).toBe(thumbnailKey(ITEM_ID));
     expect(row?.bytes).toBe(PACKAGE_BYTES.byteLength);
-    expect(row?.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(row?.sha256).toBe(await sha256Hex(PACKAGE_BYTES));
     expect(row?.facets_json).toBe(
       JSON.stringify(
         facetRecordOf(candidate(ITEM_ID) as unknown as FabricThemeEnvelope),
       ),
     );
+    const presign = await env.DB.prepare(
+      `SELECT envelope_json FROM presign_event
+       WHERE user_id = ? AND item_id = ? AND version = ?
+       ORDER BY id DESC LIMIT 1`,
+    )
+      .bind(USER_ID, ITEM_ID, version)
+      .first<{ envelope_json: string }>();
+    expect(row?.envelope_json).toBe(presign?.envelope_json);
 
     const thumbnail = await env.BUCKET.get(thumbnailKey(ITEM_ID));
     expect(thumbnail?.httpMetadata?.contentType).toBe("image/png");
@@ -105,12 +116,7 @@ describe("finalize", () => {
       status: "rejected",
       statusReason: "Not yet.",
     });
-    await env.DB.prepare(
-      `INSERT INTO author_profile (user_id, verified) VALUES (?, 1)
-       ON CONFLICT(user_id) DO UPDATE SET verified = 1`,
-    )
-      .bind(USER_ID)
-      .run();
+    await verifyAuthor(1);
     const { version } = await requestVersion(headers);
     await putPackage(packageKey(ITEM_ID, version), PACKAGE_BYTES);
 
@@ -123,21 +129,23 @@ describe("finalize", () => {
       version,
     });
     expect(await statusOf(env.DB, ITEM_ID)).toBe("pending");
+    // The rejection sentence must not survive the transition.
+    const reason = await env.DB.prepare(
+      "SELECT status_reason FROM item WHERE id = ?",
+    )
+      .bind(ITEM_ID)
+      .first<{ status_reason: string | null }>();
+    expect(reason?.status_reason).toBeNull();
   });
 
   it("publishes a verified author's upload and is idempotent per version", async () => {
     const headers = await sessionHeaders();
     await reset();
-    await env.DB.prepare(
-      `INSERT INTO author_profile (user_id, verified) VALUES (?, 1)
-       ON CONFLICT(user_id) DO UPDATE SET verified = 1`,
-    )
-      .bind(USER_ID)
-      .run();
+    await verifyAuthor(1);
     const { version } = await requestVersion(headers);
     await putPackage(packageKey(ITEM_ID, version), PACKAGE_BYTES);
 
-    const first = await finalize(headers, version);
+    const first = await finalize(headers, version, base64Of(FIRST_PNG));
     expect(first.status).toBe(200);
     expect(await first.json()).toEqual({
       ok: true,
@@ -145,14 +153,11 @@ describe("finalize", () => {
       version,
     });
     expect(await indexIds()).toContain(ITEM_ID);
-    const published = await env.DB.prepare(
-      "SELECT published_at FROM item WHERE id = ?",
-    )
-      .bind(ITEM_ID)
-      .first<{ published_at: string | null }>();
-    expect(published?.published_at).not.toBeNull();
+    const publishedBefore = await publishedAtOf();
+    expect(publishedBefore).not.toBeNull();
 
-    const again = await finalize(headers, version);
+    // Same version, different valid thumbnail: a no-op, nothing is rewritten.
+    const again = await finalize(headers, version, base64Of(SECOND_PNG));
     expect(again.status).toBe(200);
     expect(await again.json()).toEqual({
       ok: true,
@@ -160,12 +165,84 @@ describe("finalize", () => {
       version,
     });
     expect(await versionsOf(env.DB, ITEM_ID)).toEqual([version]);
+    expect(await publishedAtOf()).toBe(publishedBefore);
+    expect(await thumbnailBytes()).toEqual(Array.from(FIRST_PNG));
 
     await putPackage(
       packageKey(ITEM_ID, version),
       new TextEncoder().encode("different bytes"),
     );
     expect((await finalize(headers, version)).status).toBe(409);
+  });
+
+  it("advances published_at when a new version returns an unpublished item", async () => {
+    const headers = await sessionHeaders();
+    await reset();
+    await verifyAuthor(1);
+    const first = await requestVersion(headers);
+    await putPackage(packageKey(ITEM_ID, first.version), PACKAGE_BYTES);
+    expect((await finalize(headers, first.version)).status).toBe(200);
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("published");
+
+    const old = "2020-01-01T00:00:00.000Z";
+    await env.DB.prepare(
+      `UPDATE item SET status = 'unpublished', unpublished_at = ?,
+         published_at = ? WHERE id = ?`,
+    )
+      .bind(old, old, ITEM_ID)
+      .run();
+
+    const next = await requestVersion(headers, nextCandidate("1.1.0"));
+    expect(next.version).toBe("1.1.0");
+    await putPackage(packageKey(ITEM_ID, next.version), PACKAGE_BYTES);
+    const response = await finalize(headers, next.version);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: true,
+      status: "published",
+      version: next.version,
+    });
+    expect(await publishedAtOf()).not.toBe(old);
+    expect(await indexIds()).toContain(ITEM_ID);
+
+    // A new version on a still-published item is not a transition into
+    // `published`, so the instant recorded by the re-entry stays put.
+    const pinned = "2021-01-01T00:00:00.000Z";
+    await env.DB.prepare("UPDATE item SET published_at = ? WHERE id = ?")
+      .bind(pinned, ITEM_ID)
+      .run();
+    const third = await requestVersion(
+      headers,
+      nextCandidate("1.2.0", ["minimal", "retro"]),
+    );
+    expect(third.version).toBe("1.2.0");
+    await putPackage(packageKey(ITEM_ID, third.version), PACKAGE_BYTES);
+    expect((await finalize(headers, third.version)).status).toBe(200);
+    expect(await publishedAtOf()).toBe(pinned);
+  });
+
+  it("queues a new version when the author is no longer verified", async () => {
+    const headers = await sessionHeaders();
+    await reset();
+    await verifyAuthor(1);
+    const first = await requestVersion(headers);
+    await putPackage(packageKey(ITEM_ID, first.version), PACKAGE_BYTES);
+    expect((await finalize(headers, first.version)).status).toBe(200);
+    expect(await indexIds()).toContain(ITEM_ID);
+
+    await verifyAuthor(0);
+    const next = await requestVersion(headers, nextCandidate("1.1.0"));
+    expect(next.version).toBe("1.1.0");
+    await putPackage(packageKey(ITEM_ID, next.version), PACKAGE_BYTES);
+    const response = await finalize(headers, next.version);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: true,
+      status: "pending",
+      version: next.version,
+    });
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("pending");
+    expect(await indexIds()).not.toContain(ITEM_ID);
   });
 
   it("refuses a foreign or removed item and a version nobody requested", async () => {
@@ -197,6 +274,8 @@ describe("finalize", () => {
 
     const notPng = await finalize(headers, version, base64Of(utf8("GIF89a")));
     expect(notPng.status).toBe(422);
+
+    expect((await finalize(headers, version, "not base64!")).status).toBe(422);
 
     const big = new Uint8Array(MAX_THUMBNAIL_BYTES + 1);
     big.set(PNG_SIGNATURE);
@@ -231,10 +310,63 @@ async function reset(): Promise<void> {
 /** Requests a version as the session's author and returns its computed version. */
 async function requestVersion(
   headers: Record<string, string>,
+  envelope?: Record<string, unknown>,
 ): Promise<{ version: string; status: string }> {
-  const response = await createVersion(headers, ITEM_ID);
-  expect(response.status).toBe(200);
+  const response = await createVersion(
+    headers,
+    ITEM_ID,
+    envelope === undefined ? {} : { envelope },
+  );
+  expect(response.status, await response.clone().text()).toBe(200);
   return (await response.json()) as { version: string; status: string };
+}
+
+/** The same theme with a different tag set, so the ladder mints a minor bump. */
+function nextCandidate(
+  version: string,
+  tags: readonly string[] = ["minimal"],
+): Record<string, unknown> {
+  const envelope = candidate(ITEM_ID, version);
+  const metadata = envelope["metadata"] as Record<string, unknown>;
+  metadata["tags"] = tags;
+  return envelope;
+}
+
+async function verifyAuthor(verified: 0 | 1): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO author_profile (user_id, verified) VALUES (?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET verified = excluded.verified`,
+  )
+    .bind(USER_ID, verified)
+    .run();
+}
+
+async function publishedAtOf(): Promise<string | null> {
+  const row = await env.DB.prepare("SELECT published_at FROM item WHERE id = ?")
+    .bind(ITEM_ID)
+    .first<{ published_at: string | null }>();
+  return row?.published_at ?? null;
+}
+
+async function thumbnailBytes(): Promise<number[] | undefined> {
+  const object = await env.BUCKET.get(thumbnailKey(ITEM_ID));
+  return object === null
+    ? undefined
+    : Array.from(new Uint8Array(await object.arrayBuffer()));
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    bytes as unknown as BufferSource,
+  );
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function pngWith(tail: number): Uint8Array {
+  return new Uint8Array([...PNG_SIGNATURE, tail]);
 }
 
 async function finalize(

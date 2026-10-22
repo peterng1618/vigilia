@@ -134,8 +134,10 @@ export async function insertVersion(
 }
 
 /**
- * Finalize's status write. `published_at` is stamped only on entry into
- * `published`; counters, favourites and older versions are never touched here.
+ * Finalize's status write. `published_at` is the last transition *into*
+ * `published`, so a new version on a still-published item keeps it; the
+ * pre-update `status` is what makes that distinction. A rejection reason never
+ * outlives `rejected`. Counters, favourites and older versions are untouched.
  */
 export async function markFinalized(
   db: D1Database,
@@ -146,10 +148,15 @@ export async function markFinalized(
   await db
     .prepare(
       `UPDATE item SET status = ?, updated_at = ?,
-         published_at = COALESCE(?, published_at)
+         published_at = CASE
+           WHEN ? = 'published' AND status <> 'published' THEN ?
+           ELSE published_at
+         END,
+         status_reason = CASE WHEN status = 'rejected' THEN NULL
+           ELSE status_reason END
        WHERE id = ?`,
     )
-    .bind(status, now, status === "published" ? now : null, itemId)
+    .bind(status, now, status, now, itemId)
     .run();
 }
 
