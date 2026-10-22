@@ -1,4 +1,12 @@
+import type { CatalogueStatus } from "@yunari/renderer-core";
 import type { ItemRow, VersionRow } from "./types.js";
+
+/** The pending-upload record finalize reads its envelope and version from. */
+export interface PresignRow {
+  readonly item_id: string;
+  readonly version: string;
+  readonly envelope_json: string;
+}
 
 /** One stored item and the version a listing shows it at. */
 export interface Listing {
@@ -79,6 +87,70 @@ export async function versionOf(
       .bind(itemId, version)
       .first<VersionRow>()) ?? undefined
   );
+}
+
+/** The most recent signed upload for one author's item version, if any. */
+export async function presignEventOf(
+  db: D1Database,
+  userId: string,
+  itemId: string,
+  version: string,
+): Promise<PresignRow | undefined> {
+  return (
+    (await db
+      .prepare(
+        `SELECT item_id, version, envelope_json FROM presign_event
+         WHERE user_id = ? AND item_id = ? AND version = ?
+         ORDER BY id DESC LIMIT 1`,
+      )
+      .bind(userId, itemId, version)
+      .first<PresignRow>()) ?? undefined
+  );
+}
+
+/** A version row is written once, at finalize. */
+export async function insertVersion(
+  db: D1Database,
+  row: VersionRow,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO item_version (item_id, version, envelope_json, facets_json,
+         package_key, thumbnail_key, bytes, sha256, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      row.item_id,
+      row.version,
+      row.envelope_json,
+      row.facets_json,
+      row.package_key,
+      row.thumbnail_key,
+      row.bytes,
+      row.sha256,
+      row.created_at,
+    )
+    .run();
+}
+
+/**
+ * Finalize's status write. `published_at` is stamped only on entry into
+ * `published`; counters, favourites and older versions are never touched here.
+ */
+export async function markFinalized(
+  db: D1Database,
+  itemId: string,
+  status: CatalogueStatus,
+  now: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE item SET status = ?, updated_at = ?,
+         published_at = COALESCE(?, published_at)
+       WHERE id = ?`,
+    )
+    .bind(status, now, status === "published" ? now : null, itemId)
+    .run();
 }
 
 /**

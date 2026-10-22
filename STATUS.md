@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1 and Task 2.1 complete; Task 2.2 is dispatched (presigned uploads, version authority). Phases 2–5 follow in plan order.
+- **Subagent-driven execution**: Phase 1 and Tasks 2.2–2.3 complete (presigned uploads, version authority, finalize and review gate); Phase 3 is next in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,10 +18,10 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Author version requests are presigned, never client-named**: `POST /api/me/items/:id/versions` validates the envelope, requires path id = envelope id, and signs `packages/<id>/<computed version>.zip` for 15 minutes.
-- **Limits precede any row or signature**: `presignAllowed` caps 60 uploads an hour and `authorQuotaExceeded` 20 items / 1 GiB; a foreign id is 404 and a `removed` item is 409 with its reason.
-- **The `presign_event` row is written after signing**, so a failed sign burns no budget; a parallel first submission inserts `OR IGNORE` and re-reads instead of 500ing.
-- **A rejected item's resubmission answers `pending` even for a verified author** (status machine), and `GET /api/me/items/:id/baseline` answers the latest version in any state.
+- **Finalize turns an uploaded object into a version**: `POST /api/me/items/:id/versions/:version/finalize` reads the `presign_event` envelope and refuses a missing object (404), an oversized one (422) or a version nobody requested (409).
+- **The thumbnail is validated, not trusted**: a base64 PNG signature and a 2 MiB cap are checked before the write, and the `item_version` row records the R2 keys, `bytes`, `sha256` and `facetRecordOf(envelope)`.
+- **The status machine is applied once at finalize**: verified authors publish, unverified authors queue, `rejected` returns to `pending` even for a verified author, and `removed` is 409 with its reason.
+- **A repeated finalize of the same bytes is a no-op**; a different hash or size for an existing version is 409, and `published_at` is stamped only on entry into `published`.
 
 ## Next
 

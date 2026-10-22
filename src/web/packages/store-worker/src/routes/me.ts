@@ -1,21 +1,36 @@
-import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import type {
+  CatalogueStatus,
+  FabricThemeEnvelope,
+} from "@yunari/renderer-core";
 import {
   DASHBOARD_THEME_KIND,
+  facetRecordOf,
   validateFabricThemeEnvelope,
 } from "@yunari/renderer-core";
 import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
-import { sessionOf, type Session } from "../auth/session.js";
-import { itemById, latestVersion } from "../db/items.js";
+import { type Session, sessionOf } from "../auth/session.js";
+import {
+  insertVersion,
+  itemById,
+  latestVersion,
+  markFinalized,
+  presignEventOf,
+  versionOf,
+} from "../db/items.js";
 import { authorQuotaExceeded, presignAllowed } from "../db/quota.js";
 import type { ItemRow, VersionRow } from "../db/types.js";
 import type { Env } from "../env.js";
-import { packageKey } from "../storage/keys.js";
+import { packageKey, thumbnailKey } from "../storage/keys.js";
+import { inspectObject } from "../storage/objects.js";
 import { presignPut } from "../storage/presign.js";
 import { planVersion } from "../version/plan.js";
 
 const ITEMS_PREFIX = "/api/me/items/";
 /** The spec's upload window; the object is signed, never buffered, by us. */
 const UPLOAD_EXPIRY_SECONDS = 900;
+/** The thumbnail is rewritten on every version, so it is kept small. */
+const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 /**
  * The author's own half of the store. Returns `undefined` for a path this
@@ -31,11 +46,24 @@ export async function handleMe(
 ): Promise<Response | undefined> {
   if (!url.pathname.startsWith(ITEMS_PREFIX)) return undefined;
   const parts = url.pathname.slice(ITEMS_PREFIX.length).split("/");
-  if (parts.length !== 2) return undefined;
   const itemId = parts[0];
+  if (itemId === undefined || itemId.length === 0) return undefined;
+
+  // `:id/versions/:version/finalize`, beside the version request that signed it.
+  const version = parts[2];
+  if (
+    parts.length === 4 &&
+    parts[1] === "versions" &&
+    parts[3] === "finalize" &&
+    version !== undefined &&
+    version.length > 0 &&
+    request.method === "POST"
+  )
+    return finalizeVersion(request, env, itemId, version);
+
+  if (parts.length !== 2) return undefined;
   const action = parts[1];
-  if (itemId === undefined || itemId.length === 0 || action === undefined)
-    return undefined;
+  if (action === undefined) return undefined;
 
   if (action === "baseline" && request.method === "GET")
     return baseline(request, env, itemId);
@@ -182,6 +210,136 @@ async function requestVersion(
   return Response.json({ version: plan.version, status, uploadUrl });
 }
 
+/**
+ * The uploaded object becomes a version only here: the envelope is the one the
+ * version request validated, the bytes and hash are read from R2, and the
+ * status transition is applied last. A finalize of the same bytes is a no-op so
+ * a retried request cannot double-write.
+ */
+async function finalizeVersion(
+  request: Request,
+  env: Env,
+  itemId: string,
+  version: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const item = await ownedItem(env, session, itemId);
+  if (item === undefined) return notFound();
+  if (item.status === "removed") {
+    return new Response(
+      item.status_reason ?? "This item was removed from the store.",
+      { status: 409 },
+    );
+  }
+
+  const presign = await presignEventOf(env.DB, session.userId, itemId, version);
+  if (presign === undefined)
+    return new Response(`No upload was requested for version "${version}".`, {
+      status: 409,
+    });
+
+  const body = await readBody(request);
+  if (body === undefined)
+    return badRequest("A JSON body with a thumbnail is required.");
+  const thumbnail = decodeThumbnail(body["thumbnail"]);
+  if (!thumbnail.ok) return unprocessable(thumbnail.message);
+
+  const key = packageKey(itemId, version);
+  // The size is refused from HEAD, before the body is read or stored.
+  const head = await env.BUCKET.head(key);
+  if (head === null) return notFound();
+  if (head.size > MAX_ARCHIVE_BYTES)
+    return unprocessable(
+      `The uploaded package exceeds the ${MAX_ARCHIVE_BYTES / (1024 * 1024)} MiB limit.`,
+    );
+
+  const inspected = await inspectObject(env.BUCKET, key);
+  if (inspected === undefined) return notFound();
+
+  const existing = await versionOf(env.DB, itemId, version);
+  if (existing !== undefined) {
+    if (
+      existing.sha256 === inspected.sha256 &&
+      existing.bytes === inspected.bytes
+    )
+      return Response.json({ ok: true, status: item.status, version });
+    return new Response(
+      `Version "${version}" already exists with different bytes.`,
+      { status: 409 },
+    );
+  }
+
+  const now = new Date().toISOString();
+  await env.BUCKET.put(thumbnailKey(itemId), thumbnail.bytes, {
+    httpMetadata: { contentType: "image/png" },
+  });
+  await insertVersion(env.DB, {
+    item_id: itemId,
+    version,
+    envelope_json: presign.envelope_json,
+    facets_json: JSON.stringify(
+      facetRecordOf(JSON.parse(presign.envelope_json) as FabricThemeEnvelope),
+    ),
+    package_key: key,
+    thumbnail_key: thumbnailKey(itemId),
+    bytes: inspected.bytes,
+    sha256: inspected.sha256,
+    created_at: now,
+  });
+
+  const status = nextStatus(
+    item.status,
+    await isVerified(env.DB, session.userId),
+  );
+  await markFinalized(env.DB, itemId, status, now);
+
+  return Response.json({ ok: true, status, version });
+}
+
+/**
+ * `rejected -> pending` outranks the verified author's publish rule: the owner
+ * re-approves a resubmission. Every other state publishes for a verified author
+ * and queues for an unverified one, `published` included.
+ */
+function nextStatus(
+  current: CatalogueStatus,
+  verified: boolean,
+): CatalogueStatus {
+  if (current === "rejected") return "pending";
+  return verified ? "published" : "pending";
+}
+
+type Thumbnail =
+  | { readonly ok: true; readonly bytes: Uint8Array }
+  | { readonly ok: false; readonly message: string };
+
+function decodeThumbnail(value: unknown): Thumbnail {
+  if (typeof value !== "string" || value.length === 0)
+    return { ok: false, message: "A base64 PNG thumbnail is required." };
+
+  let binary: string;
+  try {
+    binary = atob(value);
+  } catch {
+    return { ok: false, message: "The thumbnail is not valid base64." };
+  }
+  if (binary.length > MAX_THUMBNAIL_BYTES)
+    return {
+      ok: false,
+      message: "The thumbnail exceeds the 2 MiB limit.",
+    };
+
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  if (
+    bytes.length < PNG_SIGNATURE.length ||
+    PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)
+  )
+    return { ok: false, message: "The thumbnail is not a PNG." };
+  return { ok: true, bytes };
+}
+
 /** A foreign item is indistinguishable from a missing one. */
 async function ownedItem(
   env: Env,
@@ -199,7 +357,8 @@ async function previousEnvelope(
   env: Env,
   itemId: string,
 ): Promise<
-  { readonly version: string; readonly envelope: FabricThemeEnvelope } | undefined
+  | { readonly version: string; readonly envelope: FabricThemeEnvelope }
+  | undefined
 > {
   const row = await latestVersion(env.DB, itemId);
   return row === undefined
@@ -283,4 +442,8 @@ function badRequest(message: string): Response {
 
 function tooMany(message: string): Response {
   return new Response(message, { status: 429 });
+}
+
+function unprocessable(message: string): Response {
+  return new Response(message, { status: 422 });
 }
