@@ -1,6 +1,6 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { favoritesOf } from "../src/db/items";
+import { favoriteCount } from "../src/db/favorites";
 import { packageKey, thumbnailKey } from "../src/storage/keys";
 import { BASE, sessionHeaders, USER_ID } from "./helpers";
 import {
@@ -54,7 +54,7 @@ describe("unpublish and republish", () => {
 
     // Nothing else changed: counters, favourites, versions and objects stay.
     expect(await downloads(env.DB, ITEM_ID)).toBe(4);
-    expect(await favoritesOf(env.DB, ITEM_ID)).toBe(2);
+    expect(await favoriteCount(env.DB, ITEM_ID)).toBe(2);
     expect(await versionsOf(env.DB, ITEM_ID)).toEqual(["1.0.0", "1.0.1"]);
     for (const version of ["1.0.0", "1.0.1"])
       expect(await env.BUCKET.get(packageKey(ITEM_ID, version))).not.toBeNull();

@@ -199,10 +199,9 @@ export function createStoreClient(options: {
     },
 
     favorite(id, on) {
-      return send(
-        `/api/me/favorites/${encodeURIComponent(id)}`,
-        on ? "PUT" : "DELETE",
-      ).then((response) => payload<{ favorites: number }>(response));
+      return send(`${itemPath(id)}/favorite`, on ? "PUT" : "DELETE").then(
+        (response) => payload<{ favorites: number }>(response),
+      );
     },
   };
 }

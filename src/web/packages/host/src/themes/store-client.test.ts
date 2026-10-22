@@ -82,6 +82,26 @@ describe("createStoreClient", () => {
     expect(authorization).toEqual(["Bearer t", "Bearer t", null, "Bearer t"]);
   });
 
+  it("toggles the favourite under the item, never under /api/me/favorites", async () => {
+    const calls: { url: string; method: string | undefined }[] = [];
+    const client = createStoreClient({
+      origin: ORIGIN,
+      token: "t",
+      fetch: (async (input: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(input), method: init?.method });
+        return json({ ok: true, favorites: 1 });
+      }) as typeof fetch,
+    });
+
+    await client.favorite(ITEM_ID, true);
+    await client.favorite(ITEM_ID, false);
+
+    expect(calls).toEqual([
+      { url: `${ORIGIN}/api/me/items/${ITEM_ID}/favorite`, method: "PUT" },
+      { url: `${ORIGIN}/api/me/items/${ITEM_ID}/favorite`, method: "DELETE" },
+    ]);
+  });
+
   it("answers undefined for a baseline the store does not hold", async () => {
     const client = createStoreClient({
       origin: ORIGIN,

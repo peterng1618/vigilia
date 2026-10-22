@@ -1,9 +1,9 @@
 import type { CatalogueEntry } from "@yunari/renderer-core";
 import { entryOf, indexDocument, itemFileOf } from "../catalogue/entry.js";
+import { countsByItem, favoriteCount } from "../db/favorites.js";
 import type { Listing } from "../db/items.js";
 import {
   bumpDownloads,
-  favoritesOf,
   itemById,
   latestVersion,
   publishedListings,
@@ -69,9 +69,16 @@ async function indexResponse(
   url: URL,
 ): Promise<Response> {
   const listings = await publishedListings(env.DB);
+  // One count query for the whole listing, not one per entry.
+  const counts = await countsByItem(
+    env.DB,
+    listings.map(({ item }) => item.id),
+  );
   const entries: CatalogueEntry[] = [];
   for (const { item, version } of listings) {
-    entries.push(await entryOfListing(env, url, item, version));
+    entries.push(
+      await entryOfListing(env, url, item, version, counts.get(item.id) ?? 0),
+    );
   }
   // `generatedAt` is the newest instant the listing depends on, not the clock:
   // a per-request stamp would change the ETag on every call and no 304 could
@@ -101,7 +108,14 @@ async function itemResponse(
   if (item === undefined || item.status !== "published") return notFound();
   const version = await latestVersion(env.DB, item.id);
   if (version === undefined) return notFound();
-  const entry = await entryOfListing(env, url, item, version);
+  // One item is one query, so the batched map would be ceremony here.
+  const entry = await entryOfListing(
+    env,
+    url,
+    item,
+    version,
+    await favoriteCount(env.DB, item.id),
+  );
   // The id is redundant with the directory name but is what a caller that
   // fetched this file by id already holds; `facets` stays the index's.
   const body = JSON.stringify({ id: item.id, ...itemFileOf(entry) });
@@ -156,11 +170,12 @@ async function entryOfListing(
   url: URL,
   item: ItemRow,
   version: VersionRow,
+  favorites: number,
 ): Promise<CatalogueEntry> {
   return entryOf(
     item,
     version,
-    await favoritesOf(env.DB, item.id),
+    favorites,
     `${url.origin}/catalogue/${item.id}/${version.version}.zip`,
     `catalogue/${item.id}/thumbnail.png`,
   );

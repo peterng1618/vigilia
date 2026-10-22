@@ -208,15 +208,3 @@ export async function bumpDownloads(
     .run();
   return result.meta.changes > 0;
 }
-
-/** Counted live per item; Task 3.3 replaces this with one batched read. */
-export async function favoritesOf(
-  db: D1Database,
-  itemId: string,
-): Promise<number> {
-  const row = await db
-    .prepare("SELECT COUNT(*) AS n FROM favorite WHERE item_id = ?")
-    .bind(itemId)
-    .first<{ n: number }>();
-  return row?.n ?? 0;
-}

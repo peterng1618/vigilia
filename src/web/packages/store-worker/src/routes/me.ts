@@ -9,6 +9,7 @@ import {
 } from "@yunari/renderer-core";
 import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 import { type Session, sessionOf } from "../auth/session.js";
+import { favoriteCount, toggleFavorite } from "../db/favorites.js";
 import {
   insertVersion,
   itemById,
@@ -74,7 +75,38 @@ export async function handleMe(
     return unpublish(request, env, itemId);
   if (action === "publish" && request.method === "POST")
     return publish(request, env, itemId);
+  if (
+    action === "favorite" &&
+    (request.method === "PUT" || request.method === "DELETE")
+  )
+    return favorite(request, env, itemId);
   return undefined;
+}
+
+/**
+ * Any signed-in account's toggle, not only the author's. The answer is the
+ * item's total after the write, which is what the public listing will show.
+ */
+async function favorite(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const result = await toggleFavorite(
+    env.DB,
+    session.userId,
+    itemId,
+    request.method === "PUT",
+  );
+  if (result === "not-found") return notFound();
+
+  return Response.json({
+    ok: true,
+    favorites: await favoriteCount(env.DB, itemId),
+  });
 }
 
 /**

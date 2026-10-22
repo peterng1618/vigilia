@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1, Phase 2 and Task 3.1 complete; Task 3.2 is dispatched (author unpublish/republish). Tasks 3.3–3.4 and Phase 4–5 follow in plan order.
+- **Subagent-driven execution**: Phase 1, Phase 2 and Tasks 3.1–3.2 complete; Task 3.3 is dispatched (favourites, live counts, host path correction). Task 3.4 and Phases 4–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,9 +18,10 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Author transitions land in `/api/me`**: `POST /api/me/items/:id/unpublish` and `/publish` reuse `setStatus`, 404 a foreign or missing id, and never touch counters, versions or objects.
-- **`removed` stays the owner's**: republish answers 403 with the stored reason, and any state but `unpublished` is a 409 naming what it is.
-- **`tests/unpublish.spec.ts` proves both**: every public read 404s while downloads, favourites, versions and R2 objects survive, and the listing returns on republish.
+- **Favourites have a write path**: `PUT|DELETE /api/me/items/:id/favorite` calls `toggleFavorite`, which inserts idempotently, refuses a PUT on an unpublished item, and keeps rows across status changes.
+- **Public reads count live**: `db/favorites.ts` owns `favoriteCount`/`countsByItem`; the index batches one `GROUP BY` query and `item.json` runs one, replacing `favoritesOf`.
+- **`tests/favorites.spec.ts` proves the count follows a PUT and a DELETE** through `index.json` and `item.json`, plus 401/404 and survival across unpublish.
+- **The host toggles the corrected path**: `store-client.ts` calls `/api/me/items/:id/favorite`; `store-client.test.ts` pins the exact PUT/DELETE URLs.
 
 ## Next
 
