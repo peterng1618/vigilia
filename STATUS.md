@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution, Phase 1**: Tasks 1.1–1.2 complete; Task 1.3 next. Phases 2–5 follow in plan order.
+- **Subagent-driven execution, Phase 1**: Tasks 1.1–1.2 complete; Task 1.3 is in a coverage fix round, then Phase 2 starts.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,10 +18,8 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Public reads**: `/index.json`, `item.json` and `thumbnail.png` answer published items only, with the spec's cache windows, an ETag revalidated to 304, and CORS on every answer including 404s.
-- **Packages stream from R2** through the Worker: the download counter increments before the body, and an update that changes no row cancels the body and answers 404.
-- **`db/items.ts`** owns the published listing (latest version by finalize instant), version lookups, `bumpDownloads` and the per-item favourite count.
-- **`tests/seed.ts`** seeds an item's rows, packages, thumbnail and favourites for later specs; the public suite covers unpublish, double counting, latest-version order and the ETag revalidation.
+- **Counter tests prove the no-count cases**: a deleted R2 object answers 404 and leaves `downloads` at 0, and favourites are asserted non-zero from the `favorite` table in both `item.json` and the index.
+- **Both cases were red-proved**: counting before the object open made the missing-object test read 2, and a constant zero from `favoritesOf` failed the favourites assertion.
 
 ## Next
 

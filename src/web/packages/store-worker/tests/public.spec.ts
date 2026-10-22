@@ -1,5 +1,6 @@
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
+import { packageKey } from "../src/storage/keys";
 import {
   downloads,
   ITEM_ID,
@@ -81,15 +82,33 @@ describe("public reads", () => {
   });
 
   it("answers the item's own cache window and CORS on every public answer", async () => {
-    await seedPublished();
+    await seedPublished({ favorites: 2 });
     const item = await SELF.fetch(`${BASE}/catalogue/${ITEM_ID}/item.json`);
+    expect(((await item.json()) as { favorites: number }).favorites).toBe(2);
     expect(item.headers.get("cache-control")).toContain("max-age=60");
     expect(item.headers.get("access-control-allow-origin")).toBe("*");
     const index = await SELF.fetch(`${BASE}/index.json`);
     expect(index.headers.get("access-control-allow-origin")).toBe("*");
+    const entries = (
+      (await index.json()) as {
+        entries: { favorites: number }[];
+      }
+    ).entries;
+    expect(entries[0]?.favorites).toBe(2);
     const missing = await SELF.fetch(`${BASE}/catalogue/${ITEM_ID}/9.9.9.zip`);
     expect(missing.status).toBe(404);
     expect(missing.headers.get("access-control-allow-origin")).toBe("*");
+  });
+
+  it("does not count a download when the object is missing", async () => {
+    await seedPublished({ versions: ["1.0.0"] });
+    await env.BUCKET.delete(packageKey(ITEM_ID, "1.0.0"));
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      expect(
+        (await SELF.fetch(`${BASE}/catalogue/${ITEM_ID}/1.0.0.zip`)).status,
+      ).toBe(404);
+    }
+    expect(await downloads(env.DB, ITEM_ID)).toBe(0);
   });
 
   it("answers 304 for a matching index ETag and 404 for unknown ids", async () => {
