@@ -48,8 +48,10 @@ const envelope = (id: string) => ({
     width: ARTBOARD.width,
     height: ARTBOARD.height,
     contentFit: "cover" as const,
-    background: { ref: "palette.none" as const },
-    backgroundMedia: { assetId: "loop", fit: "theme" as const },
+  },
+  background: {
+    color: { ref: "palette.none" as const },
+    media: { assetId: "loop", bounds: "theme" as const },
   },
   globals: {
     palette: {
@@ -886,8 +888,10 @@ test.describe("changing media on the real player", () => {
           width: 640,
           height: 360,
           contentFit: "cover",
-          background: { ref: "palette.none" },
-          backgroundMedia: { assetId: "badge", fit: "display" },
+          background: {
+            color: { ref: "palette.none" },
+            media: { assetId: "badge", bounds: "display" },
+          },
         };
         handle.updateArtboard(artboard);
         const layer = document.querySelector("[data-yunari-background-media]");

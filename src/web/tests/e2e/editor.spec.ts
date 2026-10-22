@@ -2006,8 +2006,8 @@ test.describe("Fabric editor route", () => {
         artboard: {
           width: 1000,
           height: 720,
-          background: { value: ARTBOARD_BACKGROUND_PAINT },
         },
+        background: { color: { value: ARTBOARD_BACKGROUND_PAINT } },
         scene: { version: "7.4.0", objects: [] },
       },
       /Invalid theme/,
@@ -2031,8 +2031,8 @@ test.describe("Fabric editor route", () => {
       artboard: {
         width: 1000,
         height: 720,
-        background: { ref: "palette.background" },
       },
+      background: { color: { ref: "palette.background" } },
       globals: {
         palette: {
           none: {
@@ -2123,10 +2123,10 @@ test.describe("Fabric editor route", () => {
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {
-      artboard: { background?: { ref: string } };
+      background?: { color?: { ref: string } };
       globals: { palette: Record<string, unknown> };
     };
-    expect(envelope.artboard.background).toEqual({ ref: "palette.panel" });
+    expect(envelope.background?.color).toEqual({ ref: "palette.panel" });
     expect(envelope.globals.palette.bars).toBeUndefined();
   });
 
@@ -2475,18 +2475,20 @@ test.describe("Fabric editor route", () => {
       artboard: {
         contentFit?: string;
         width: number;
-        background?: { ref: string };
-        backgroundMedia?: { fit: string };
+      };
+      background?: {
+        color?: { ref: string };
+        media?: { bounds: string; fit?: string };
       };
       scene: { objects: Array<{ id?: string; left?: number }> };
     };
     // The only fit an author sets is the media's. The artboard's own content
     // fit is a guarantee of the model, so this asserts the control that does
     // exist writes what it says and the one that does not is not invented.
-    expect(envelope.artboard.backgroundMedia?.fit).toBe("display");
+    expect(envelope.background?.media?.bounds).toBe("display");
     expect(envelope.artboard.contentFit ?? "contain").toBe("contain");
     expect(envelope.artboard.width).toBe(1000);
-    expect(envelope.artboard.background).toEqual({ ref: "palette.bars" });
+    expect(envelope.background?.color).toEqual({ ref: "palette.bars" });
     expect(leftFor(envelope, "wordmark")).toBe(118);
   });
 
@@ -2641,8 +2643,8 @@ test.describe("Fabric editor route", () => {
       artboard: {
         width: 320,
         height: 180,
-        background: { ref: "palette.background" },
       },
+      background: { color: { ref: "palette.background" } },
       globals: {
         palette: {
           none: {
@@ -3226,9 +3228,9 @@ test.describe("Fabric editor route", () => {
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
-    expect(saved.parsed.envelope.artboard.backgroundMedia).toEqual({
+    expect(saved.parsed.envelope.background?.media).toEqual({
       assetId: "hero",
-      fit: "display",
+      bounds: "display",
     });
     expect(saved.parsed.assets["assets/hero.png"]).toBeDefined();
   });
@@ -3775,8 +3777,8 @@ test.describe("Fabric editor route", () => {
       artboard: {
         width: STARTER_WIDTH,
         height: 941,
-        background: { ref: "palette.none" },
       },
+      background: { color: { ref: "palette.none" } },
       globals: {
         palette: {
           none: {

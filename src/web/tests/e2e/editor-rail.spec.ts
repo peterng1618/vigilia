@@ -1462,8 +1462,8 @@ const STORE_LIBRARY = Array.from({ length: 30 }, (_unused, at) => {
     artboard: {
       width: portrait ? 1080 : 1920,
       height: portrait ? 1920 : 1080,
-      background: { value: DARK_GROUND },
     },
+    background: { color: { value: DARK_GROUND } },
     metadata: { name, themeLanguage: "en", author },
     scene: { version: "7.4.0", objects: [] },
   };
@@ -1864,8 +1864,8 @@ function boundaryEnvelope(input: {
     artboard: {
       width: input.width,
       height: input.height,
-      background: { value: DARK_GROUND },
     },
+    background: { color: { value: DARK_GROUND } },
     metadata: {
       name: input.name,
       themeLanguage: "en",

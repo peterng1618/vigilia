@@ -138,8 +138,8 @@ const envelopeFor = (
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" as const },
   },
+  background: { color: { ref: "palette.bar" as const } },
   globals: {
     palette: {
       none: {
@@ -301,8 +301,8 @@ const chartEnvelope = {
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" as const },
   },
+  background: { color: { ref: "palette.bar" as const } },
   globals: {
     palette: {
       // Required by the envelope validator on every v2 document, used or not.
@@ -370,8 +370,10 @@ const mediaEnvelope = {
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" as const },
-    backgroundMedia: { assetId: "badge", fit: "display" as const },
+  },
+  background: {
+    color: { ref: "palette.bar" as const },
+    media: { assetId: "badge", bounds: "display" as const },
   },
   globals: {
     palette: {
@@ -407,8 +409,10 @@ const videoEnvelope = {
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" as const },
-    backgroundMedia: { assetId: "loop", fit: "theme" as const },
+  },
+  background: {
+    color: { ref: "palette.bar" as const },
+    media: { assetId: "loop", bounds: "theme" as const },
   },
   globals: {
     palette: {
@@ -441,8 +445,8 @@ const overhangEnvelope = {
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" as const },
   },
+  background: { color: { ref: "palette.bar" as const } },
   globals: {
     palette: {
       none: {
@@ -571,8 +575,8 @@ const groupedGlassEnvelope = {
     width: 640,
     height: 480,
     contentFit: "contain" as const,
-    background: { ref: "palette.none" as const },
   },
+  background: { color: { ref: "palette.none" as const } },
   globals: {
     palette: {
       none: {

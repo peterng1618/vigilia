@@ -2534,8 +2534,10 @@ test.describe("background media", () => {
 
     const saved = await savePackage(page);
     const background = (
-      saved.envelope["artboard"] as { backgroundMedia?: { assetId: string } }
-    ).backgroundMedia;
+      saved.envelope["background"] as
+        | { media?: { assetId: string } }
+        | undefined
+    )?.media;
     expect(background?.assetId).toBe("hero-2");
     // Whatever the artboard names is a declared asset, and the layer is
     // showing that one — the reference, not a count.
@@ -2584,8 +2586,11 @@ test.describe("background media", () => {
       expect.objectContaining({ id: "loop", kind: "video" }),
     );
     expect(
-      (saved.envelope["artboard"] as { backgroundMedia?: { assetId: string } })
-        .backgroundMedia?.assetId,
+      (
+        saved.envelope["background"] as
+          | { media?: { assetId: string } }
+          | undefined
+      )?.media?.assetId,
     ).toBe("loop");
   });
 });

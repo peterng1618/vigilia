@@ -51,8 +51,8 @@ const envelope = {
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" as const },
   },
+  background: { color: { ref: "palette.bar" as const } },
   globals: {
     palette: {
       // The immutable transparent token every package must carry.
