@@ -222,6 +222,14 @@ describe("classifyThemeChange — scene objects", () => {
       reasons: ["content"],
     });
   });
+  it("is patch when an id-less object's geometry changes", () => {
+    const before = base({ scene: scene([{ type: "Rect", left: 10 }]) });
+    const after = base({ scene: scene([{ type: "Rect", left: 20 }]) });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
   it("is patch when an object gains an unknown member carrying an id", () => {
     const before = base({ scene: scene([{ id: "panel", type: "Rect" }]) });
     const after = base({

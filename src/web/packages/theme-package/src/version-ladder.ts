@@ -295,6 +295,12 @@ function objectOrderChange(
     : undefined;
 }
 
+/** Ids are usable only when every element carries one; otherwise the array is
+ *  compared by position, as a document without ids requires. */
+function fullyIdentified(value: unknown): boolean {
+  return Array.isArray(value) && value.every(hasId);
+}
+
 /** A scene object's own members; its `objects` children are matched
  *  document-wide, so only their order is compared here. */
 function compareSceneNode(
@@ -310,7 +316,16 @@ function compareSceneNode(
     const inBefore = Object.hasOwn(before, key);
     const inAfter = Object.hasOwn(after, key);
     if (key === "objects" && inBefore && inAfter) {
-      changes.push(objectOrderChange(before[key], after[key]));
+      const a = before[key];
+      const b = after[key];
+      changes.push(
+        fullyIdentified(a) && fullyIdentified(b)
+          ? objectOrderChange(a, b)
+          : compareByIndex(
+              Array.isArray(a) ? a : [],
+              Array.isArray(b) ? b : [],
+            ),
+      );
       continue;
     }
     if (!inBefore || !inAfter) {
