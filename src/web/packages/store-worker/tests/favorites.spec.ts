@@ -2,10 +2,12 @@ import { env, SELF } from "cloudflare:test";
 import type { TestHelpers } from "better-auth/plugins";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createAuth } from "../src/auth";
+import { countsByItem } from "../src/db/favorites";
 import { BASE, USER_ID } from "./helpers";
 import { ITEM_ID, indexIds, seedPublished } from "./seed";
 
 const MISSING_ID = "00000000-0000-4000-8000-000000000000";
+const CREATED_AT = "2026-10-01T00:00:00.000Z";
 
 describe("favourites", () => {
   beforeAll(async () => {
@@ -30,6 +32,7 @@ describe("favourites", () => {
     expect(removed.status).toBe(200);
     expect(await removed.json()).toEqual({ ok: true, favorites: 0 });
     expect((await indexEntry(ITEM_ID)).favorites).toBe(0);
+    expect((await itemFile(ITEM_ID)).favorites).toBe(0);
   });
 
   it("answers the item's total, not the caller's own count", async () => {
@@ -74,6 +77,42 @@ describe("favourites", () => {
 
     await setStatus("published");
     expect((await indexEntry(ITEM_ID)).favorites).toBe(1);
+  });
+
+  it("counts 150 ids across the 100-parameter chunk boundary", async () => {
+    const ids = Array.from(
+      { length: 150 },
+      (_, index) => `chunk-${String(index).padStart(3, "0")}`,
+    );
+    await env.DB.prepare(
+      "DELETE FROM favorite WHERE item_id LIKE 'chunk-%'",
+    ).run();
+    // Ids 99 and 100 sit on either side of the 100-parameter chunk boundary and
+    // 149 is the last id overall; their distinct counts say which chunk's
+    // query produced each answer after the merge.
+    const distinct = new Map<number, number>([
+      [0, 1],
+      [99, 2],
+      [100, 3],
+      [149, 4],
+    ]);
+    for (const [index, id] of ids.entries()) {
+      for (let row = 0; row < (distinct.get(index) ?? 1); row += 1) {
+        await env.DB.prepare(
+          "INSERT INTO favorite (user_id, item_id, created_at) VALUES (?, ?, ?)",
+        )
+          .bind(`fan-${id}-${row}`, id, CREATED_AT)
+          .run();
+      }
+    }
+
+    const counts = await countsByItem(env.DB, ids);
+
+    expect(counts.size).toBe(150);
+    expect(counts.get(ids[0]!)).toBe(1);
+    expect(counts.get(ids[99]!)).toBe(2);
+    expect(counts.get(ids[100]!)).toBe(3);
+    expect(counts.get(ids[149]!)).toBe(4);
   });
 });
 

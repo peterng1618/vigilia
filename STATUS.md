@@ -19,7 +19,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 ## Last completed change
 
 - **Favourites have a write path**: `PUT|DELETE /api/me/items/:id/favorite` calls `toggleFavorite`, which inserts idempotently, refuses a PUT on an unpublished item, and keeps rows across status changes.
-- **Public reads count live**: `db/favorites.ts` owns `favoriteCount`/`countsByItem`; the index batches one `GROUP BY` query and `item.json` runs one, replacing `favoritesOf`.
+- **Public reads count live**: `db/favorites.ts` owns `favoriteCount`/`countsByItem`; the index batches one `GROUP BY` per 100-id chunk (D1's bound-parameter cap) and `item.json` runs one, replacing `favoritesOf`.
 - **`tests/favorites.spec.ts` proves the count follows a PUT and a DELETE** through `index.json` and `item.json`, plus 401/404 and survival across unpublish.
 - **The host toggles the corrected path**: `store-client.ts` calls `/api/me/items/:id/favorite`; `store-client.test.ts` pins the exact PUT/DELETE URLs.
 

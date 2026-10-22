@@ -6,6 +6,9 @@
  * a status change and no cleanup runs on a schedule.
  */
 
+/** D1's documented ceiling on bound parameters in one statement. */
+const MAX_BOUND_PARAMETERS = 100;
+
 /**
  * Adds or removes one account's favourite. The answer is only about the write:
  * the route reads the item's total afterwards.
@@ -58,9 +61,12 @@ export async function favoriteCount(
 }
 
 /**
- * Every named item's total in one query, for the index: a per-entry read would
- * be one round-trip per listed theme. Missing ids are absent, so the caller
- * treats `map.get(id) ?? 0` as zero.
+ * Every named item's total, for the index: a per-entry read would be one
+ * round-trip per listed theme. Missing ids are absent, so the caller treats
+ * `map.get(id) ?? 0` as zero.
+ *
+ * D1 caps bound parameters per statement at 100, so the ids are read in chunks
+ * and the answers merged; one statement per chunk, not one per id.
  *
  * An id always comes from a stored row here, never from a client, so an empty
  * string is a bug rather than a bad request.
@@ -74,13 +80,19 @@ export async function countsByItem(
     if (typeof id !== "string" || id.length === 0)
       throw new Error("countsByItem needs non-empty item ids.");
   }
-  const placeholders = ids.map(() => "?").join(", ");
-  const rows = await db
-    .prepare(
-      `SELECT item_id, COUNT(*) AS n FROM favorite
-       WHERE item_id IN (${placeholders}) GROUP BY item_id`,
-    )
-    .bind(...ids)
-    .all<{ item_id: string; n: number }>();
-  return new Map(rows.results.map((row) => [row.item_id, row.n]));
+
+  const counts = new Map<string, number>();
+  for (let start = 0; start < ids.length; start += MAX_BOUND_PARAMETERS) {
+    const chunk = ids.slice(start, start + MAX_BOUND_PARAMETERS);
+    const placeholders = chunk.map(() => "?").join(", ");
+    const rows = await db
+      .prepare(
+        `SELECT item_id, COUNT(*) AS n FROM favorite
+         WHERE item_id IN (${placeholders}) GROUP BY item_id`,
+      )
+      .bind(...chunk)
+      .all<{ item_id: string; n: number }>();
+    for (const row of rows.results) counts.set(row.item_id, row.n);
+  }
+  return counts;
 }

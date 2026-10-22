@@ -42,12 +42,7 @@ describe("unpublish and republish", () => {
     });
     expect(await statusOf(env.DB, ITEM_ID)).toBe("unpublished");
     expect(await indexIds()).not.toContain(ITEM_ID);
-    for (const path of [
-      "item.json",
-      "thumbnail.png",
-      "1.0.0.zip",
-      "1.0.1.zip",
-    ])
+    for (const path of ["item.json", "thumbnail.png", "1.0.0.zip", "1.0.1.zip"])
       expect(
         (await SELF.fetch(`${BASE}/catalogue/${ITEM_ID}/${path}`)).status,
       ).toBe(404);
@@ -122,7 +117,12 @@ describe("unpublish and republish", () => {
   it("409s a publish from any state but unpublished", async () => {
     const headers = await sessionHeaders();
 
-    for (const status of ["draft", "pending", "published", "rejected"] as const) {
+    for (const status of [
+      "draft",
+      "pending",
+      "published",
+      "rejected",
+    ] as const) {
       await seedPublished({ owner: USER_ID, status });
       const response = await publish(headers, ITEM_ID);
       expect(response.status).toBe(409);

@@ -2,10 +2,10 @@ import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   BASE,
-  USER_ID,
   candidate,
   createVersion,
   sessionHeaders,
+  USER_ID,
 } from "./helpers";
 import {
   ITEM_ID,
@@ -162,10 +162,9 @@ describe("version requests", () => {
   it("answers the author's baseline in any state and hides a foreign one", async () => {
     const headers = await sessionHeaders();
     await seedPublished({ owner: USER_ID, status: "unpublished" });
-    const own = await SELF.fetch(
-      `${BASE}/api/me/items/${ITEM_ID}/baseline`,
-      { headers },
-    );
+    const own = await SELF.fetch(`${BASE}/api/me/items/${ITEM_ID}/baseline`, {
+      headers,
+    });
     expect(own.status).toBe(200);
     expect(await own.json()).toEqual({
       version: "1.0.0",

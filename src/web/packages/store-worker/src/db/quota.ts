@@ -59,7 +59,9 @@ export async function presignAllowed(
 ): Promise<boolean> {
   const cutoff = new Date(now.getTime() - PRESIGN_WINDOW_MS).toISOString();
   const recent = await db
-    .prepare("SELECT COUNT(*) AS n FROM presign_event WHERE user_id = ? AND at >= ?")
+    .prepare(
+      "SELECT COUNT(*) AS n FROM presign_event WHERE user_id = ? AND at >= ?",
+    )
     .bind(userId, cutoff)
     .first<{ n: number }>();
   return (recent?.n ?? 0) < PRESIGN_LIMIT;
