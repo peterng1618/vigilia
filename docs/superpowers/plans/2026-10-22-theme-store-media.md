@@ -78,7 +78,7 @@ export interface VideoFacts {
   readonly constantFrameRate: boolean;
   readonly codec: string | undefined;  // sample entry fourcc, e.g. "avc1"
   readonly profile: number | undefined;// avcC profile_idc
-  readonly chromaFormat: number | undefined; // SPS chroma_format_idc; 0 is 4:2:0
+  readonly chromaFormat: number | undefined; // SPS chroma_format_idc; 1 is 4:2:0
   readonly hasAudio: boolean;
   readonly faststart: boolean;         // `moov` before the first `mdat`
 }
