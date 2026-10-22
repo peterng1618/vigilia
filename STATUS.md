@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1 and Tasks 2.2–2.3 complete (presigned uploads, version authority, finalize and review gate); Phase 3 is next in plan order.
+- **Subagent-driven execution**: Phase 1 and Tasks 2.2–2.3 complete; Task 2.4 is dispatched (host session storage, OAuth start/return). Tasks 2.5 and Phases 3–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,10 +18,11 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Finalize turns an uploaded object into a version**: `POST /api/me/items/:id/versions/:version/finalize` reads the `presign_event` envelope and refuses a missing object (404), an oversized one (422) or a version nobody requested (409).
-- **The thumbnail is validated, not trusted**: a base64 PNG signature and a 2 MiB cap are checked before the write, and the `item_version` row records the R2 keys, `bytes`, `sha256` and `facetRecordOf(envelope)`.
-- **The status machine is applied once at finalize**: verified authors publish, unverified authors queue, `rejected` returns to `pending` even for a verified author and clears its reason, and `removed` is 409 with its reason.
-- **A repeated finalize of the same bytes is a no-op**; a different hash or size for an existing version is 409, and `published_at` is stamped only on entry into `published`.
+- **The host holds a store session**: `createStoreSessionStore` writes `settings/store-session.json` at mode `0600` and reads a malformed or incomplete file as no session.
+- **Sign-in runs through the Worker**: `POST /api/store/auth/start` answers the Worker's `/auth/start` URL carrying this host's loopback origin and a ten-minute state.
+- **The return redeems the token server-side**: `GET /api/store/auth/return` verifies the one-time token, reads `set-auth-token` or the session cookie, calls `/api/me` and answers a page that closes the popup.
+- **The token never reaches the browser**: `GET /api/store/session` answers `{ signedIn, email }` only, and `POST /api/store/auth/sign-out` clears the file.
+- **The Worker's return page names the callback path** it redirects to (`/api/store/auth/return`) rather than the host root.
 
 ## Next
 

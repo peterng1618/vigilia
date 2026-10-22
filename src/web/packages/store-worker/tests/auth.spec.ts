@@ -132,6 +132,8 @@ describe("auth", () => {
     expect(html).toContain("/api/auth/one-time-token/generate");
     expect(html).toContain('credentials: "include"');
     expect(html).toContain('searchParams.set("token"');
+    // The popup comes back to the route that redeems the token, not the root.
+    expect(html).toContain("/api/store/auth/return");
     // The page reads host and state at runtime; echoing them would bake a
     // caller-supplied destination into the markup.
     expect(html).not.toContain(host);

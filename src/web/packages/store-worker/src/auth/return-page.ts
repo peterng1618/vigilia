@@ -26,7 +26,9 @@ const RETURN_HTML = `<!doctype html>
     return;
   }
   const { token } = await answer.json();
-  const target = new URL(params.get("host") ?? "");
+  // The origin the flow started at, and the route that redeems the token: the
+  // host never reads a one-time token at its root.
+  const target = new URL("/api/store/auth/return", params.get("host") ?? "");
   target.searchParams.set("token", token);
   target.searchParams.set("state", params.get("state") ?? "");
   location.replace(target.toString());

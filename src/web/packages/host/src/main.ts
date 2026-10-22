@@ -29,6 +29,7 @@ import { createDisplaySettingsStore } from "./settings/display.js";
 import { createDisplayStore } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createGithubTokenStore } from "./settings/github-token.js";
+import { createStoreSessionStore } from "./settings/store-session.js";
 import { acquireHostLock } from "./settings/host-lock.js";
 import { readOrMintHostRecord } from "./settings/host-record.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
@@ -198,6 +199,10 @@ export async function run(argv: readonly string[]): Promise<number> {
   // The GitHub identity the author signed in as, beside the other records this
   // machine keeps. The browser never reads it; the host uses it to submit.
   const githubToken = createGithubTokenStore(settingsDir);
+  // The store session the author signed in to, in the same folder for the same
+  // reason. Which store it belongs to is a build-time address, passed at the
+  // server below rather than stored here.
+  const storeSession = createStoreSessionStore(settingsDir);
   // Which host this app folder is, read or minted after the lock so a second
   // host cannot answer with the same identity: `GET /api/host` gives it to
   // anyone who asks, and it is what a display stores to re-find this host after
@@ -285,6 +290,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     // for it — not part of the author's folder.
     themeOrigins: createThemeOriginsStore(settingsDir),
     githubToken,
+    storeSession,
     displays,
     pairingCodes,
     devices: deviceSettings,

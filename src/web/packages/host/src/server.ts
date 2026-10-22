@@ -10,6 +10,7 @@ import {
   validateFabricThemeEnvelope,
 } from "@yunari/renderer-core";
 import type { ChartRefreshRate } from "@yunari/scene-fabric";
+import { handleCatalogueRoutes } from "./catalogue/routes.js";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
@@ -65,6 +66,7 @@ import type { GithubTokenStore } from "./settings/github-token.js";
 import type { HostRecord } from "./settings/host-record.js";
 import { listMonitors, type Monitor } from "./settings/monitors.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
+import type { StoreSessionStore } from "./settings/store-session.js";
 import type { ThemeOriginsStore } from "./settings/theme-origins.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import { submissionFiles } from "./themes/github-item.js";
@@ -187,6 +189,12 @@ export interface HostServerOptions {
   /** Where the signed-in GitHub identity is kept. Omitted when the host keeps
    *  none; the routes then say so rather than signing in to nowhere. */
   readonly githubToken?: GithubTokenStore;
+  /** The Worker's origin, as the store session routes reach it. Omitted falls
+   *  back to `YUNARI_STORE_ORIGIN`; without either, those routes say the host
+   *  has no store rather than inventing an address. */
+  readonly storeOrigin?: string;
+  /** The store session this host holds. Omitted when it keeps none. */
+  readonly storeSession?: StoreSessionStore;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
   readonly activeTheme?: ActiveThemeStore;
   /** The consumer's display preferences. Omit when the host stores none. */
@@ -299,7 +307,7 @@ export const MAX_THEME_UPLOAD_BYTES = 96 * 1024 * 1024;
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
 /** Recognizes loopback forms Node may report. */
-function isLoopbackRemote(address: string | undefined): boolean {
+export function isLoopbackRemote(address: string | undefined): boolean {
   if (address === undefined) {
     return false;
   }
@@ -310,7 +318,7 @@ function isLoopbackRemote(address: string | undefined): boolean {
 }
 
 /** The hostname an authority (`host:port`, `[::1]:port`) names, or nothing. */
-function hostnameOf(authority: string): string | undefined {
+export function hostnameOf(authority: string): string | undefined {
   try {
     return new URL(`http://${authority}`).hostname.toLowerCase();
   } catch {
@@ -319,7 +327,7 @@ function hostnameOf(authority: string): string | undefined {
 }
 
 /** A name that can only mean this machine. */
-function isLoopbackName(name: string | undefined): boolean {
+export function isLoopbackName(name: string | undefined): boolean {
   if (name === undefined) return false;
   return (
     name === "localhost" || name === "[::1]" || /^127(\.\d{1,3}){3}$/.test(name)
@@ -342,7 +350,7 @@ function isLoopbackName(name: string | undefined): boolean {
  * poll, sign-out and submit — calls this, because a request to `localhost` that
  * the page did not mean to make is that page acting as this machine.
  */
-function isForeignOrigin(request: http.IncomingMessage): boolean {
+export function isForeignOrigin(request: http.IncomingMessage): boolean {
   const host = request.headers.host;
   if (host === undefined || !isLoopbackName(hostnameOf(host))) return true;
 
@@ -674,6 +682,21 @@ function sendText(
   response.end(body);
 }
 
+/** A route module's answer, written as the node response this server speaks. */
+async function writeWebResponse(
+  response: http.ServerResponse,
+  answered: Response,
+): Promise<void> {
+  response.writeHead(answered.status, {
+    // Every route that answers this way keeps its own cache rule, and the two
+    // it can say are the two the host ever sets.
+    "content-type":
+      answered.headers.get("content-type") ?? "text/plain; charset=utf-8",
+    "cache-control": answered.headers.get("cache-control") ?? "no-store",
+  });
+  response.end(Buffer.from(await answered.arrayBuffer()));
+}
+
 /**
  * Serves a bundle file. An extension-less path is a client route and may fall
  * back to `index.html` — but only where the bundle actually has client routes.
@@ -869,6 +892,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const githubClientId =
     options.githubClientId ?? process.env.YUNARI_GITHUB_CLIENT_ID;
   const githubToken = options.githubToken;
+  const storeOrigin = options.storeOrigin ?? process.env.YUNARI_STORE_ORIGIN;
+  const storeSession = options.storeSession;
   /** The single device flow this host is waiting on. The browser sends nothing
    *  that could name another, so there is one value rather than a map. */
   let pendingDevice: string | undefined;
@@ -1153,6 +1178,19 @@ export function createHostServer(options: HostServerOptions): HostServer {
         "/pair.html",
         "The pairing page is missing from this installation.",
       );
+      return;
+    }
+
+    // The store session: signing in, coming back, reading the state and
+    // signing out. In a module of its own, because this file is already past
+    // the size a reader can hold.
+    const answered = await handleCatalogueRoutes(request, url, {
+      origin: storeOrigin,
+      sessionStore: storeSession,
+      fetch: options.fetch ?? fetch,
+    });
+    if (answered !== undefined) {
+      await writeWebResponse(response, answered);
       return;
     }
 

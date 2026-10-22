@@ -51,6 +51,7 @@ import {
 } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createGithubTokenStore } from "./settings/github-token.js";
+import { createStoreSessionStore } from "./settings/store-session.js";
 import type { HostRecord } from "./settings/host-record.js";
 import type { Monitor } from "./settings/monitors.js";
 import { createThemeOriginsStore } from "./settings/theme-origins.js";
@@ -1792,6 +1793,321 @@ describe("Host theme routes", () => {
       } finally {
         await unregistered.close();
         if (saved !== undefined) process.env.YUNARI_GITHUB_CLIENT_ID = saved;
+      }
+    });
+  });
+
+  describe("The store session routes", () => {
+    const ORIGIN = "https://store.example";
+    const SESSION_TOKEN = "session-token.value";
+    const EMAIL = "author@example.com";
+
+    let settings: string;
+    let store: ReturnType<typeof createStoreSessionStore>;
+    let hosting: ReturnType<typeof createHostServer>;
+    let calls: { url: string; method: string; authorization: string | null }[];
+    /** What the Worker's one-time-token exchange answers. Replaced per case. */
+    let verify: () => Response;
+
+    function json(body: unknown, headers?: Record<string, string>): Response {
+      return new Response(JSON.stringify(body), {
+        headers: { "content-type": "application/json", ...headers },
+      });
+    }
+
+    function host(options?: {
+      readonly storeOrigin?: string | undefined;
+      readonly storeSession?: boolean;
+    }): ReturnType<typeof createHostServer> {
+      return createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: settings, editor: settings },
+        themeStore: createThemeStore(settings),
+        ...(options?.storeOrigin === undefined
+          ? {}
+          : { storeOrigin: options.storeOrigin }),
+        ...(options?.storeSession === false ? {} : { storeSession: store }),
+        // No network: every Worker call is recorded, so a case can show what
+        // the host sent and what it did not.
+        fetch: async (input, init) => {
+          const url = String(input);
+          const authorization =
+            new Headers(init?.headers).get("authorization") ?? null;
+          calls.push({ url, method: init?.method ?? "GET", authorization });
+          if (url === `${ORIGIN}/api/auth/one-time-token/verify`)
+            return verify();
+          if (url === `${ORIGIN}/api/me`) {
+            return authorization === `Bearer ${SESSION_TOKEN}`
+              ? json({ userId: "user-1", email: EMAIL })
+              : new Response("Unauthorized", { status: 401 });
+          }
+          return new Response("unknown", { status: 404 });
+        },
+      });
+    }
+
+    /** Signs in through the two routes a browser drives, and answers the
+     *  state the start route minted. */
+    async function signIn(): Promise<string> {
+      const res = await request(
+        hosting.server,
+        "POST",
+        "/api/store/auth/start",
+      );
+      const url = new URL((res.json() as { url: string }).url);
+      return url.searchParams.get("state") ?? "";
+    }
+
+    beforeEach(async () => {
+      settings = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-store-ui-"));
+      store = createStoreSessionStore(settings);
+      calls = [];
+      verify = () =>
+        json({}, { "set-auth-token": encodeURIComponent(SESSION_TOKEN) });
+      hosting = host({ storeOrigin: ORIGIN });
+    });
+
+    afterEach(async () => {
+      await hosting.close();
+      await fs.rm(settings, { recursive: true, force: true });
+    });
+
+    it("reports only whether a store session exists, never the token", async () => {
+      const answer = await request(hosting.server, "GET", "/api/store/session");
+
+      expect(answer.json()).toEqual({ signedIn: false });
+      expect(answer.text()).not.toContain("token");
+    });
+
+    it("starts the sign-in at the Worker with this host's loopback origin", async () => {
+      const res = await request(
+        hosting.server,
+        "POST",
+        "/api/store/auth/start",
+      );
+
+      expect(res.status).toBe(200);
+      const url = new URL((res.json() as { url: string }).url);
+      expect(url.origin).toBe(ORIGIN);
+      expect(url.pathname).toBe("/auth/start");
+      expect(url.searchParams.get("provider")).toBe("github");
+      expect(url.searchParams.get("host")).toBe("http://127.0.0.1:5173");
+      expect(url.searchParams.get("state")).not.toBe("");
+    });
+
+    it("normalises an IPv6 loopback host to the address the Worker accepts", async () => {
+      const res = await request(
+        hosting.server,
+        "POST",
+        "/api/store/auth/start",
+        undefined,
+        { headers: { host: "[::1]:5173" } },
+      );
+
+      expect(res.status).toBe(200);
+      const url = new URL((res.json() as { url: string }).url);
+      expect(url.searchParams.get("host")).toBe("http://127.0.0.1:5173");
+    });
+
+    it("exchanges the one-time token for a stored session and closes the page", async () => {
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toContain("text/html");
+      expect(res.text()).toContain("close this window");
+      // The session token and the account are the host's to keep, not the
+      // page's to show.
+      expect(res.text()).not.toContain(SESSION_TOKEN);
+      expect(res.text()).not.toContain(EMAIL);
+
+      expect(await store.read()).toMatchObject({
+        token: SESSION_TOKEN,
+        userId: "user-1",
+        email: EMAIL,
+      });
+      expect(
+        calls.find((call) => call.url === `${ORIGIN}/api/me`)?.authorization,
+      ).toBe(`Bearer ${SESSION_TOKEN}`);
+
+      const after = await request(hosting.server, "GET", "/api/store/session");
+      expect(after.json()).toEqual({ signedIn: true, email: EMAIL });
+    });
+
+    it("reads the session token from the cookie when no header carries it", async () => {
+      verify = () =>
+        new Response("{}", {
+          headers: {
+            "set-cookie": `better-auth.session_token=${encodeURIComponent(
+              SESSION_TOKEN,
+            )}; Path=/; HttpOnly`,
+          },
+        });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(await store.read()).toMatchObject({ token: SESSION_TOKEN });
+    });
+
+    it("refuses a state it has already spent", async () => {
+      const state = await signIn();
+      const first = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+      expect(first.status).toBe(200);
+      await store.clear();
+
+      const second = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(second.status).toBe(400);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("refuses a return the sign-in was not started for", async () => {
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+        undefined,
+        {
+          headers: { host: "localhost:5173", origin: "http://localhost:5173" },
+        },
+      );
+
+      expect(res.status).toBe(400);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("answers 401 and keeps nothing when the Worker refuses the token", async () => {
+      verify = () => new Response("no", { status: 401 });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("answers 401 when the exchange carries no session token", async () => {
+      verify = () => json({});
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("signs out by clearing the stored session", async () => {
+      const state = await signIn();
+      await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+      expect(await store.read()).toBeDefined();
+
+      const res = await request(
+        hosting.server,
+        "POST",
+        "/api/store/auth/sign-out",
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("refuses every store route from another origin", async () => {
+      const routes = [
+        ["GET", "/api/store/session"],
+        ["POST", "/api/store/auth/start"],
+        ["GET", "/api/store/auth/return?token=t&state=s"],
+        ["POST", "/api/store/auth/sign-out"],
+      ] as const;
+
+      for (const [method, urlPath] of routes) {
+        const res = await request(hosting.server, method, urlPath, undefined, {
+          headers: { origin: "https://evil.example", host: "127.0.0.1:5173" },
+        });
+        expect(res.status, `${method} ${urlPath}`).toBe(403);
+      }
+    });
+
+    it("refuses every store route from off loopback", async () => {
+      const routes = [
+        ["GET", "/api/store/session"],
+        ["POST", "/api/store/auth/start"],
+        ["GET", "/api/store/auth/return?token=t&state=s"],
+        ["POST", "/api/store/auth/sign-out"],
+      ] as const;
+
+      for (const [method, urlPath] of routes) {
+        const res = await request(hosting.server, method, urlPath, undefined, {
+          remoteAddress: "10.0.0.2",
+        });
+        expect(res.status, `${method} ${urlPath}`).toBe(403);
+      }
+    });
+
+    it("answers 503 when the host has no store address or session store", async () => {
+      const unconfigured = host({
+        storeOrigin: undefined,
+        storeSession: false,
+      });
+
+      try {
+        expect(
+          (await request(unconfigured.server, "POST", "/api/store/auth/start"))
+            .status,
+        ).toBe(503);
+        expect(
+          (await request(unconfigured.server, "GET", "/api/store/session"))
+            .status,
+        ).toBe(503);
+      } finally {
+        await unconfigured.close();
+      }
+    });
+
+    it("rejects the wrong method on each route", async () => {
+      const routes = [
+        ["GET", "/api/store/auth/start"],
+        ["POST", "/api/store/auth/return?token=t&state=s"],
+        ["GET", "/api/store/auth/sign-out"],
+        ["POST", "/api/store/session"],
+      ] as const;
+
+      for (const [method, urlPath] of routes) {
+        const res = await request(hosting.server, method, urlPath);
+        expect(res.status, `${method} ${urlPath}`).toBe(405);
       }
     });
   });
