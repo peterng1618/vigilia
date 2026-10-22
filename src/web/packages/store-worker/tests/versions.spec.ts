@@ -49,6 +49,19 @@ describe("version requests", () => {
     expect(upload.searchParams.get("X-Amz-Expires")).toBe("900");
     expect(upload.searchParams.get("X-Amz-Signature")).not.toBeNull();
 
+    // Finalize (Task 2.3) reads this row instead of re-validating the upload.
+    const event = await env.DB.prepare(
+      `SELECT item_id, version, envelope_json FROM presign_event
+       WHERE user_id = ? AND item_id = ? ORDER BY id DESC LIMIT 1`,
+    )
+      .bind(USER_ID, ITEM_ID)
+      .first<{ item_id: string; version: string; envelope_json: string }>();
+    expect(event?.item_id).toBe(ITEM_ID);
+    expect(event?.version).toBe("1.0.0");
+    expect(JSON.parse(event?.envelope_json ?? "null")).toMatchObject(
+      candidate(ITEM_ID),
+    );
+
     // Another account's item answers exactly as a missing one.
     await seedItem(FOREIGN_ID, "user-other");
     expect((await createVersion(headers, FOREIGN_ID)).status).toBe(404);
@@ -87,6 +100,33 @@ describe("version requests", () => {
     const response = await createVersion(headers, ITEM_ID);
     expect(response.status).toBe(409);
     expect(await response.text()).toBe("Owner took it down.");
+  });
+
+  it("queues a verified author's resubmission of a rejected item", async () => {
+    const headers = await sessionHeaders();
+    await seedItem(ITEM_ID, USER_ID, {
+      status: "rejected",
+      statusReason: "Not yet.",
+    });
+    await env.DB.prepare(
+      `INSERT INTO author_profile (user_id, verified) VALUES (?, 1)
+       ON CONFLICT(user_id) DO UPDATE SET verified = 1`,
+    )
+      .bind(USER_ID)
+      .run();
+    // The pool keeps D1 rows between tests in a file, and the quota test
+    // fills the trailing hour; this request is about the status, not the cap.
+    await env.DB.prepare("DELETE FROM presign_event WHERE user_id = ?")
+      .bind(USER_ID)
+      .run();
+
+    const response = await createVersion(headers, ITEM_ID);
+    expect(response.status).toBe(200);
+    // The status machine's `rejected -> pending` row outranks the verified
+    // author's general publish rule: the owner re-approves it.
+    expect((await response.json()) as { status: string }).toMatchObject({
+      status: "pending",
+    });
   });
 
   it("refuses an envelope whose id is not the path's and writes nothing", async () => {

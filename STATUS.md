@@ -19,9 +19,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 ## Last completed change
 
 - **Author version requests are presigned, never client-named**: `POST /api/me/items/:id/versions` validates the envelope, requires path id = envelope id, and signs `packages/<id>/<computed version>.zip` for 15 minutes.
-- **Limits precede any row or signature**: `presignAllowed` caps an account at 60 uploads an hour, `authorQuotaExceeded` at 20 items / 1 GiB; a foreign id is 404 and a `removed` item is 409 with its reason.
-- **`presign_event` now carries `item_id`, `version` and `envelope_json`**, so finalize can write the version row from the validated envelope.
-- **`GET /api/me/items/:id/baseline`** answers the latest stored version in any state; the RED run failed all five route cases with the default 404.
+- **Limits precede any row or signature**: `presignAllowed` caps 60 uploads an hour and `authorQuotaExceeded` 20 items / 1 GiB; a foreign id is 404 and a `removed` item is 409 with its reason.
+- **The `presign_event` row is written after signing**, so a failed sign burns no budget; a parallel first submission inserts `OR IGNORE` and re-reads instead of 500ing.
+- **A rejected item's resubmission answers `pending` even for a verified author** (status machine), and `GET /api/me/items/:id/baseline` answers the latest version in any state.
 
 ## Next
 

@@ -134,8 +134,27 @@ async function requestVersion(
   if (!(await presignAllowed(env.DB, session.userId, now)))
     return tooMany("Too many upload requests; try again in an hour.");
 
-  if (newItemName !== undefined)
+  // Signing comes before any write: a signing failure must burn no event row
+  // and leave no item behind.
+  const uploadUrl = await presignPut({
+    accountId: env.R2_ACCOUNT_ID,
+    accessKeyId: env.R2_ACCESS_KEY_ID,
+    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+    bucket: env.R2_BUCKET_NAME,
+    key: packageKey(envelope.id, plan.version),
+    expiresSeconds: UPLOAD_EXPIRY_SECONDS,
+  });
+
+  // A parallel first submission may win the insert; that loser is ignored
+  // rather than failing on the PRIMARY KEY, then reads the row it shares. An
+  // item another account created in the race is not ours to write.
+  let stored = item;
+  if (newItemName !== undefined) {
     await createDraft(env, envelope, session.userId, newItemName, nowIso);
+    stored = await itemById(env.DB, envelope.id);
+    if (stored === undefined || stored.author_user_id !== session.userId)
+      return notFound();
+  }
 
   await env.DB.prepare(
     `INSERT INTO presign_event (user_id, at, item_id, version, envelope_json)
@@ -150,20 +169,17 @@ async function requestVersion(
     )
     .run();
 
-  const uploadUrl = await presignPut({
-    accountId: env.R2_ACCOUNT_ID,
-    accessKeyId: env.R2_ACCESS_KEY_ID,
-    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-    bucket: env.R2_BUCKET_NAME,
-    key: packageKey(envelope.id, plan.version),
-    expiresSeconds: UPLOAD_EXPIRY_SECONDS,
-  });
+  // A rejected item's new version goes back in the owner's queue whatever the
+  // author's state (status machine: `rejected -> pending`); otherwise a
+  // verified author publishes and an unverified one queues.
+  const status =
+    stored?.status === "rejected"
+      ? "pending"
+      : (await isVerified(env.DB, session.userId))
+        ? "published"
+        : "pending";
 
-  return Response.json({
-    version: plan.version,
-    status: (await isVerified(env.DB, session.userId)) ? "published" : "pending",
-    uploadUrl,
-  });
+  return Response.json({ version: plan.version, status, uploadUrl });
 }
 
 /** A foreign item is indistinguishable from a missing one. */
@@ -196,7 +212,12 @@ function parseEnvelope(row: VersionRow): FabricThemeEnvelope {
   return JSON.parse(row.envelope_json) as FabricThemeEnvelope;
 }
 
-/** Draft is invisible to the public routes until a finalize applies a status. */
+/**
+ * Draft is invisible to the public routes until a finalize applies a status.
+ * `OR IGNORE` because two parallel first submissions of one id both reach here;
+ * the caller re-reads the row and checks its owner instead of trusting the
+ * insert.
+ */
 async function createDraft(
   env: Env,
   envelope: FabricThemeEnvelope,
@@ -205,9 +226,9 @@ async function createDraft(
   now: string,
 ): Promise<void> {
   await env.DB.prepare(
-    `INSERT INTO item (id, kind, author_user_id, name, status, status_reason,
-       created_at, updated_at, published_at, unpublished_at, removed_at,
-       downloads, remix_of_id)
+    `INSERT OR IGNORE INTO item (id, kind, author_user_id, name, status,
+       status_reason, created_at, updated_at, published_at, unpublished_at,
+       removed_at, downloads, remix_of_id)
      VALUES (?, ?, ?, ?, 'draft', NULL, ?, ?, NULL, NULL, NULL, 0, ?)`,
   )
     .bind(
