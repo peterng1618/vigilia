@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phases 1–4 and Task 5.1 complete (the import script and its tests); Task 5.2 (owner-run deploy), 5.3 and 5.4 follow.
+- **Subagent-driven execution**: Phases 1–4 and Tasks 5.1–5.2 complete (5.2 is the runbook only); the owner-run deployment is pending. Tasks 5.3–5.4 follow.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,8 +18,8 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **A finalize answer with no `status` is refused** instead of printing `<id> <version> undefined`; the exit-1 spawn asserts the whole `No readable item.json in <source>.` sentence, not just the file name.
-- **19 tests** in `tests/scripts/import-catalogue-item.test.ts`; the focused suite, typecheck and `status:check` are green.
+- **The owner's deployment runbook is written** in `src/web/packages/store-worker/README.md`: bindings reconciled with the code, resource creation, 11 secrets with their source, deploy, migrations, OAuth callbacks, import, CPU and rotation.
+- **`wrangler.toml`'s `database_id` is marked as the owner's paste point**; no id was invented and `CATALOGUE_ORIGIN` is unchanged.
 
 ## Next
 
@@ -29,7 +29,8 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Blockers / unverified
 
+- **The store Worker is not deployed**: no D1, R2 bucket, secret, `database_id`, deploy, `/migrate`, D1 migration or health check has run, and the owner must register both OAuth callbacks.
+- **No live store path has run**: OAuth round trip, live CPU (10 ms Free threshold), live cache behaviour and the Task 5.1 import are unverified; `CATALOGUE_ORIGIN` still points at the placeholder, the catalogue holds only the smoke item and no normalized video has been played in a browser.
 - **The rescoped remainder leaves player and host chrome outside the design language** (decision `0092`); they can drift from the editor's scales, and no instrument reports it.
 - **The auto-merge workflow's unverified-author and ownership arms are reasoned from the YAML**, not exercised: both need a second GitHub account with a fork. PR #9 exercised only the verified-author first-submission arm.
-- **No normalized video has been played back in a browser**, and the catalogue holds only the smoke item.
 - **`server.test.ts` flakes on assignment cases** in about one full run in three, measured pre-existing at `5e5be86f` (`vg-695`).
