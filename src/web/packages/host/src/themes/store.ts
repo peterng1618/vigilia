@@ -9,6 +9,7 @@ import {
   type PerformanceCost,
   performanceCostsOf,
   resolveStyleValue,
+  type ThemeRemix,
   type ValidationIssue,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
@@ -37,6 +38,11 @@ interface ThemeStoreEntry {
    *  A theme that declares none has no key at all, so nothing draws a
    *  separator with nothing after it. */
   readonly version?: string;
+  /** The catalogue item this document was remixed from, when it declares one.
+   *  Read from the same envelope as `author` and `version`, so the library can
+   *  credit the parent without opening the theme; a document that declares no
+   *  credit has no key at all. */
+  readonly remixOf?: ThemeRemix;
   readonly updatedAt: string;
   /** What this theme will cost a display, read from the document this entry
    *  was already built from — the assignment surface says it before the press. */
@@ -661,12 +667,14 @@ async function entryFor(
     const stat = await fs.stat(path.join(library, id));
     const author = envelope.metadata?.author;
     const version = envelope.metadata?.version;
+    const remixOf = envelope.metadata?.remixOf;
     const ground = groundOf(envelope);
     return {
       id,
       name: envelope.metadata?.name ?? id,
       ...(author === undefined ? {} : { author }),
       ...(version === undefined ? {} : { version }),
+      ...(remixOf === undefined ? {} : { remixOf }),
       updatedAt: stat.mtime.toISOString(),
       // From the envelope this entry was already handed, so the listing pays
       // nothing new for it: no asset is opened and no second read is made.

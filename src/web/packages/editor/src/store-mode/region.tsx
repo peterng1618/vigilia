@@ -569,6 +569,14 @@ function StoreRegion(props: {
     openId === undefined
       ? undefined
       : listed?.find((item) => item.id === openId);
+  // The credit's parent is resolved from the same listing the modal was opened
+  // from, and only on the online half: the library is not the catalogue the
+  // credit's id names, so a library item's credit stays text.
+  const remixOf = openItem?.remixOf;
+  const remixParent =
+    tab === "online" && remixOf !== undefined
+      ? listed?.find((item) => item.id === remixOf.catalogueId)
+      : undefined;
   const assignItem =
     assignId === undefined
       ? undefined
@@ -740,6 +748,8 @@ function StoreRegion(props: {
           onAction={onAction}
           install={install.control}
           submit={submit.control}
+          {...(tab === "online" ? { onOpenItem: setOpenId } : {})}
+          {...(remixParent === undefined ? {} : { remixParent })}
         />
       )}
 

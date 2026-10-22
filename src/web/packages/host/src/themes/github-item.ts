@@ -191,6 +191,9 @@ export async function submissionFiles(
   // real history from git, and these fields must be the instants this file
   // claims. Everything a published item owns is carried forward.
   const at = (options?.now?.() ?? new Date()).toISOString();
+  // The credit the document declares is copied, never re-derived: it names the
+  // theme this one was forked from, and a document without one has no key.
+  const remixOf = withVersion.metadata?.remixOf;
   const parsed = parseCatalogueItemFile({
     kind: DASHBOARD_THEME_KIND,
     name: theme.name,
@@ -203,6 +206,7 @@ export async function submissionFiles(
     packageUrl: cataloguePackageUrl(themeId),
     // The picture this submission commits, beside `item.json`.
     thumbnail: `catalogue/${themeId}/${THUMBNAIL_FILE}`,
+    ...(remixOf === undefined ? {} : { remixOf }),
   });
   if (!parsed.ok) return { ok: false, message: parsed.reason };
 

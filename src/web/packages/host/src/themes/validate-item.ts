@@ -4,6 +4,7 @@ import {
   DASHBOARD_THEME_KIND,
   isCatalogueId,
   parseCatalogueItemFile,
+  type ThemeRemix,
 } from "@vigilia/renderer-core";
 import {
   MAX_ARCHIVE_BYTES,
@@ -64,6 +65,12 @@ async function firstRefusal(
   if (parsed.file.kind !== DASHBOARD_THEME_KIND) {
     return `kind "${parsed.file.kind}" is not a kind this build ships.`;
   }
+  // The credit names a catalogue item; a UUID's own item is the one thing it
+  // cannot name, because a theme cannot be descended from itself.
+  const remixOf = parsed.file.remixOf;
+  if (remixOf !== undefined && remixOf.catalogueId === id) {
+    return `remixOf.catalogueId names this item's own id "${id}"; a theme cannot be remixed from itself.`;
+  }
 
   // Option B: the package rides beside the header, and the raw URL is where the
   // host will download it from. The whole URL is required, not a suffix: a URL
@@ -119,6 +126,12 @@ async function firstRefusal(
       `the directory is the item's id, so the package must be "${id}".`
     );
   }
+  // The credit is authored once, on the package; the header copies it so the
+  // index can carry it without downloading. Two documents that disagree make
+  // the storefront credit one parent and install another, so neither wins.
+  if (!sameRemix(parsed.file.remixOf, read.envelope.metadata?.remixOf)) {
+    return "item.json's remixOf and the package's metadata.remixOf must name the same parent and version.";
+  }
   // A video outside the publish envelope is refused here, in the same words the
   // host's own doors use, rather than discovered at play time.
   return themeVideoRefusals(read.envelope, read.assets)[0];
@@ -146,6 +159,20 @@ export async function validateItemCommand(
   }
   console.error(`Refused catalogue/${checked.id}: ${checked.reason}`);
   return 1;
+}
+
+/** Whether two documents name the same parent: absent on both, or the same
+ *  three fields. The shape itself is each parser's, not this comparison's. */
+function sameRemix(
+  one: ThemeRemix | undefined,
+  other: ThemeRemix | undefined,
+): boolean {
+  if (one === undefined || other === undefined) return one === other;
+  return (
+    one.catalogueId === other.catalogueId &&
+    one.name === other.name &&
+    one.version === other.version
+  );
 }
 
 /** A file that is not there, told apart from one that is there and unreadable. */

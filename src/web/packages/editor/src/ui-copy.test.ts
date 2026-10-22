@@ -273,6 +273,17 @@ it("reads the first letter of the first word, not its first character", () => {
 });
 
 /**
+ * A remix's credit is one sentence naming the parent, composed from the name
+ * the document recorded rather than from a live listing: the parent may be
+ * gone, and the word must read the same either way.
+ */
+it("names a remix's parent in one sentence", () => {
+  expect(uiCopy.store.item.remixedFrom("System dashboard")).toBe(
+    "Remixed from System dashboard",
+  );
+});
+
+/**
  * The rows `ShellMenuBar` renders. Read from the menu's own owners rather than
  * from the whole table: the three names are `uiCopy.menus`, the File rows are
  * `uiCopy.file`, the Edit rows are `EDIT_MENU_ROWS` — the const the menu itself

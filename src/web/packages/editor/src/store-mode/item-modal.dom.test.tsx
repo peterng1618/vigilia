@@ -822,6 +822,100 @@ it("draws no catalogue reading for a library item", async () => {
   ).toHaveLength(4);
 });
 
+/** A remix credit: the parent's catalogue id is the UUID a link resolves
+ *  through, and the name is the snapshot the credit prints when it cannot. */
+const REMIX_PARENT_ID = "8f14e45f-ceea-4670-9c1e-0f4b4b9d0a11";
+const REMIX = {
+  catalogueId: REMIX_PARENT_ID,
+  name: "System dashboard",
+  version: "1.2.0",
+} as const;
+
+/** The credit's own node, whichever of the two shapes it is drawn as. */
+function remixCredit(): HTMLElement {
+  return must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-item-remix]"),
+    "remix credit",
+  );
+}
+
+/**
+ * **A remixed item credits its parent, and the credit opens it** when the
+ * listing holds that parent: the name is the document's snapshot and the target
+ * is the resolved `StoreItem`, so no string out of a document reaches a link.
+ */
+it("credits a remix's parent and opens it when the listing holds it", async () => {
+  const opened: string[] = [];
+  await mount(
+    <ItemModal
+      item={{ ...onlineItem(), remixOf: REMIX }}
+      vocabulary={[]}
+      onClose={() => {}}
+      onAction={() => {}}
+      install={NO_INSTALL}
+      submit={NO_SUBMIT}
+      onOpenItem={(id) => opened.push(id)}
+      remixParent={fixtureItem({
+        id: REMIX_PARENT_ID,
+        name: REMIX.name,
+        ground: DARK_GROUND,
+      })}
+    />,
+  );
+
+  const credit = remixCredit();
+  expect(row(credit), "the credit is not the copy table's sentence").toBe(
+    uiCopy.store.item.remixedFrom(REMIX.name),
+  );
+  expect(credit.tagName, "a resolvable parent is not drawn as a control").toBe(
+    "BUTTON",
+  );
+
+  await act(async () => credit.click());
+  expect(opened, "the credit does not open the parent item").toEqual([
+    REMIX_PARENT_ID,
+  ]);
+});
+
+/**
+ * **With no resolved parent the credit is text** — a deleted item, a failed
+ * read, or this PC's own library, which is not the catalogue the id names.
+ * Handing the modal an `onOpenItem` alone must not give it a target: the parent
+ * is the listing's resolved item, never an id the modal invents.
+ */
+it("draws a remix's credit as text when no parent was resolved", async () => {
+  for (const withOpen of [false, true]) {
+    await mount(
+      <ItemModal
+        item={{ ...fixtureItem(LANDSCAPE), remixOf: REMIX }}
+        vocabulary={[]}
+        onClose={() => {}}
+        onAction={() => {}}
+        install={NO_INSTALL}
+        submit={NO_SUBMIT}
+        {...(withOpen ? { onOpenItem: () => undefined } : {})}
+      />,
+    );
+
+    const credit = remixCredit();
+    expect(row(credit), "the credit lost its sentence").toBe(
+      uiCopy.store.item.remixedFrom(REMIX.name),
+    );
+    expect(credit.tagName, "an unresolved parent was drawn as a control").toBe(
+      "SPAN",
+    );
+    expect(
+      credit.querySelector("button, a"),
+      "an unresolved parent drew a control inside the credit",
+    ).toBeNull();
+  }
+});
+
+/** What a node reads as: its text with runs of whitespace collapsed. */
+function row(node: Element): string {
+  return (node.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
 /**
  * **A landed submission tells the author which version it published**, under
  * the pull request link: the level is the host's own answer to what changed, so

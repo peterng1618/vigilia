@@ -105,6 +105,27 @@ function packageBytesFor(id: string): Uint8Array {
   return written.bytes;
 }
 
+/** A package carrying the theme `id` with a remix credit of its own. */
+function packageBytesWithRemix(
+  id: string,
+  remix: {
+    readonly catalogueId: string;
+    readonly name: string;
+    readonly version: string;
+  },
+): Uint8Array {
+  const theme = themeFor(id);
+  const written = writeThemePackage({
+    envelope: {
+      ...theme,
+      metadata: { ...theme.metadata, remixOf: remix },
+    },
+    assets: {},
+  });
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
+}
+
 /** A package declaring one video asset, carrying the over-cap fixture. */
 function packageWithLongVideo(id: string): Uint8Array {
   const written = writeThemePackage({
@@ -266,6 +287,67 @@ describe("validateCatalogueItem", () => {
     expect(checked).toMatchObject({
       ok: false,
       reason: expect.stringContaining('holds theme "elsewhere"'),
+    });
+  });
+
+  it("refuses a remixOf catalogueId that is not a UUID", async () => {
+    // The header's own parser owns the credit's shape, and this is the same
+    // refusal the host's install boundary answers with.
+    const directory = await itemDirectory({
+      id: ID,
+      item: {
+        ...itemFor(ID),
+        remixOf: { catalogueId: "aurora", name: "Aurora", version: "1.0.0" },
+      },
+    });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: false,
+      id: ID,
+      reason:
+        'item.json\'s "remixOf" must be { catalogueId, name, version } with a UUID id and a version.',
+    });
+  });
+
+  it("refuses a remixOf that names the item's own id", async () => {
+    const self = { catalogueId: ID, name: `Theme ${ID}`, version: "1.0.0" };
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), remixOf: self },
+      packageBytes: packageBytesWithRemix(ID, self),
+    });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: false,
+      id: ID,
+      reason: `remixOf.catalogueId names this item's own id "${ID}"; a theme cannot be remixed from itself.`,
+    });
+  });
+
+  it("refuses a remixOf the package's metadata does not carry", async () => {
+    const parent = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
+    const directory = await itemDirectory({
+      id: ID,
+      item: {
+        ...itemFor(ID),
+        remixOf: {
+          catalogueId: parent,
+          name: "System dashboard",
+          version: "1.2.0",
+        },
+      },
+      packageBytes: packageBytesWithRemix(ID, {
+        catalogueId: parent,
+        name: "System dashboard",
+        version: "1.3.0",
+      }),
+    });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: false,
+      id: ID,
+      reason:
+        "item.json's remixOf and the package's metadata.remixOf must name the same parent and version.",
     });
   });
 

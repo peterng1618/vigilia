@@ -750,6 +750,10 @@ export const uiCopy = {
      *  and why `kind` is the seam"). */
     item: {
       close: "Close",
+      /** The credit a remixed item carries. The name is the snapshot the
+       *  document recorded, so the sentence is stable whether or not the parent
+       *  is still in the index. */
+      remixedFrom: (name: string): string => `Remixed from ${name}`,
     },
     /** The modal's pill groups, which are the facet's own content under the name
      *  the drawing gives it: the row names what a filter narrows by (*Sensors*,

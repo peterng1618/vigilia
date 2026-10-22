@@ -1478,12 +1478,13 @@ function catalogueEntry(
     readonly updatedAt?: string;
     readonly downloads?: number;
     readonly favorites?: number;
+    readonly name?: string;
   } = {},
 ): Record<string, unknown> {
   return {
     id,
     kind,
-    name: `Catalogue ${id}`,
+    name: facts.name ?? `Catalogue ${id}`,
     version,
     createdAt: facts.createdAt ?? "2026-10-01T00:00:00.000Z",
     updatedAt: facts.updatedAt ?? "2026-10-14T00:00:00.000Z",
@@ -2893,6 +2894,133 @@ it("states an expired sign-in and lets the author submit again", async () => {
  * **The poll stops with the surface.** A timer scheduled before unmount is
  * cleared rather than firing against a hook that no longer exists.
  */
+/** A remix credit, and the UUIDs a routed index resolves through. */
+const REMIX_PARENT_ID = "8f14e45f-ceea-4670-9c1e-0f4b4b9d0a11";
+const REMIX_ID = "5d41402a-bc4b-4c8a-9d0e-2f1a3b4c5d6e";
+const REMIX = {
+  catalogueId: REMIX_PARENT_ID,
+  name: "System dashboard",
+  version: "1.2.0",
+} as const;
+
+/** The credit's own node, whichever of the two shapes it is drawn as. */
+function remixCredit(): HTMLElement {
+  return must(
+    document.body.querySelector<HTMLElement>("[data-vigilia-store-item-remix]"),
+    "remix credit",
+  );
+}
+
+/**
+ * **A remix's credit is read from the routed index and opens its parent** — the
+ * parent is a `StoreItem` the listing resolved by id, so the press opens that
+ * item's own modal rather than a URL composed from the document's string.
+ */
+it("credits a remix from the routed index and opens the parent item", async () => {
+  vi.stubGlobal(
+    "fetch",
+    catalogueServing([
+      catalogueEntry(REMIX_PARENT_ID, "1.2.0", "dashboard-theme", {
+        name: REMIX.name,
+      }),
+      {
+        ...catalogueEntry(REMIX_ID, "1.0.0", "dashboard-theme", {
+          name: "Bright dashboard",
+        }),
+        remixOf: REMIX,
+      },
+    ]),
+  );
+  await mountStore([]);
+  await showOnline();
+  await pressCellSurface(REMIX_ID);
+
+  const credit = remixCredit();
+  expect(
+    (credit.textContent ?? "").replace(/\s+/g, " ").trim(),
+    "the credit does not name the parent the document recorded",
+  ).toBe(uiCopy.store.item.remixedFrom(REMIX.name));
+  expect(credit.tagName, "a parent in the index is not a control").toBe(
+    "BUTTON",
+  );
+
+  await act(async () => credit.click());
+
+  expect(
+    document.body
+      .querySelector("[data-vigilia-store-item-name]")
+      ?.textContent?.trim(),
+    "pressing the credit did not open the parent item",
+  ).toBe(REMIX.name);
+});
+
+/**
+ * **A credit whose parent is not in the index is text**, and draws no control:
+ * a deleted item, a failed read, or a remix published before its parent must
+ * not leave a dead link or a crash.
+ */
+it("draws a remix's credit as text when the parent is absent from the index", async () => {
+  vi.stubGlobal(
+    "fetch",
+    catalogueServing([
+      {
+        ...catalogueEntry(REMIX_ID, "1.0.0", "dashboard-theme", {
+          name: "Bright dashboard",
+        }),
+        remixOf: REMIX,
+      },
+    ]),
+  );
+  await mountStore([]);
+  await showOnline();
+  await pressCellSurface(REMIX_ID);
+
+  const credit = remixCredit();
+  expect(
+    (credit.textContent ?? "").replace(/\s+/g, " ").trim(),
+    "the credit lost the snapshot it printed",
+  ).toBe(uiCopy.store.item.remixedFrom(REMIX.name));
+  expect(credit.tagName, "an absent parent was drawn as a control").toBe(
+    "SPAN",
+  );
+  expect(
+    credit.querySelector("button, a"),
+    "an absent parent drew a control inside the credit",
+  ).toBeNull();
+});
+
+/**
+ * **The library is not the catalogue**, so a library item's credit is text even
+ * when a local theme happens to hold the parent's id: the parent a link opens
+ * is a catalogue item the listing resolved, and this half read the library.
+ */
+it("draws a library item's credit as text with no control", async () => {
+  await mountStore([
+    {
+      ...fixtureEntry({
+        id: "living-room",
+        name: "Living room",
+        ground: DARK_GROUND,
+      }),
+      remixOf: REMIX,
+    },
+  ]);
+  await pressCellSurface("living-room");
+
+  const credit = remixCredit();
+  expect(
+    (credit.textContent ?? "").replace(/\s+/g, " ").trim(),
+    "the library lost the credit its document declares",
+  ).toBe(uiCopy.store.item.remixedFrom(REMIX.name));
+  expect(credit.tagName, "a library credit was drawn as a control").toBe(
+    "SPAN",
+  );
+  expect(
+    credit.querySelector("button, a"),
+    "a library credit drew a control inside it",
+  ).toBeNull();
+});
+
 it("does not poll after the surface unmounts", async () => {
   vi.useFakeTimers();
   const host = submitHost({

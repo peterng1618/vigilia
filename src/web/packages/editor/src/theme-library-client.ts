@@ -1,6 +1,7 @@
 import type {
   FabricThemeEnvelope,
   FacetRecord,
+  ThemeRemix,
   ValidationIssue,
 } from "@vigilia/renderer-core";
 
@@ -22,6 +23,10 @@ export interface ThemeLibraryEntry {
    *  and absent for the same reason: a theme that declares no version draws no
    *  version and no separator beside it. */
   readonly version?: string;
+  /** The catalogue item this document was remixed from, when it declares one.
+   *  Optional like `author`, and absent for the same reason: a theme that
+   *  declares no credit has no key at all. */
+  readonly remixOf?: ThemeRemix;
   /** Where this copy came from, when the host holds a record of it.
    *  **Optional, and the absence is the truth**: the record is consumer state
    *  the host keeps beside the library, so a theme the author made here has no

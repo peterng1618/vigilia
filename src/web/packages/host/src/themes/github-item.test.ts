@@ -195,6 +195,38 @@ describe("submissionFiles", () => {
     expect(read.thumbnail).toEqual(PNG);
   });
 
+  it("writes the document's remix credit into item.json", async () => {
+    const remix = {
+      catalogueId: MISSING_ID,
+      name: "System dashboard",
+      version: "1.2.0",
+    };
+    const theme = themeOf(THEME_ID, "Aurora", "1.0.0");
+    await store.write(
+      THEME_ID,
+      {
+        envelope: {
+          ...theme.envelope,
+          metadata: { ...theme.envelope.metadata, remixOf: remix },
+        },
+        assets: {},
+      },
+      { expectFree: true },
+    );
+    await thumbnails.write(THEME_ID, PNG);
+
+    const result = await submissionFiles(THEME_ID, store, {
+      thumbnails,
+      now: () => NOW,
+      fetch: noPublishedItem(),
+    });
+    if (!result.ok) throw new Error(result.message);
+
+    const parsed = parseCatalogueItemFile(JSON.parse(result.files.itemJson));
+    if (!parsed.ok) throw new Error(parsed.reason);
+    expect(parsed.file.remixOf).toEqual(remix);
+  });
+
   it("lets a local metadata.version never choose the published version", async () => {
     await store.write(THEME_ID, themeOf(THEME_ID, "Aurora", "0.9.0"), {
       expectFree: true,

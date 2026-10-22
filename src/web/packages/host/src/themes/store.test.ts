@@ -266,6 +266,44 @@ describe("ThemeStore", () => {
     expect(listed.get("bare")).toBeUndefined();
   });
 
+  /**
+   * The credit travels with the entry the store already built, for the same
+   * reason the version does: the library prints it from the listing, and a
+   * document that declares no credit has no key at all rather than one holding
+   * `undefined`.
+   */
+  it("carries a remix credit on the entry, and no key when there is none", async () => {
+    const store = createThemeStore(tmpDir);
+    const remix = {
+      catalogueId: "8f14e45f-ceea-4670-9c1e-0f4b4b9d0a11",
+      name: "System dashboard",
+      version: "1.2.0",
+    };
+    await store.write("remixed", {
+      envelope: {
+        ...envelopeFor("remixed", "Remixed"),
+        metadata: {
+          name: "Remixed",
+          author: "Ada",
+          themeLanguage: "en",
+          remixOf: remix,
+        },
+      },
+      assets: {},
+    });
+    await store.write("plain", {
+      envelope: envelopeFor("plain", "Plain"),
+      assets: {},
+    });
+
+    const byId = new Map(
+      (await store.list()).map((entry) => [entry.id, entry]),
+    );
+
+    expect(byId.get("remixed")?.remixOf).toEqual(remix);
+    expect(Object.hasOwn(byId.get("plain") ?? {}, "remixOf")).toBe(false);
+  });
+
   it("carries each theme's costs on the entry it already built", async () => {
     const store = createThemeStore(tmpDir);
     // A video background, which is the one cost a listing can answer from the

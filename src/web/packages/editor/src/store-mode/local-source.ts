@@ -3,6 +3,7 @@ import {
   DASHBOARD_THEME_KIND,
   type FacetRecord,
   type Orientation,
+  type ThemeRemix,
 } from "@vigilia/renderer-core";
 import type {
   ThemeLibraryClient,
@@ -42,6 +43,10 @@ export interface StoreItem {
    *  caption line prints it beside the date (`1.4.0 · 2026-10-14`), and it
    *  arrives on the listing for the same reason `ground` does: one pass. */
   readonly version: string | undefined;
+  /** The catalogue item this document was remixed from, or `undefined` for a
+   *  document that credits none. Optional like the host's own entry: a theme
+   *  with no credit has no key at all. */
+  readonly remixOf?: ThemeRemix;
   readonly updatedAt: string | undefined;
   readonly thumbnailUrl: string | undefined;
   readonly ground: string | undefined;
@@ -121,6 +126,7 @@ export function localThemeSource(client: ThemeLibraryClient): ItemSource {
         name: entry.name,
         author: entry.author,
         version: entry.version,
+        ...(entry.remixOf === undefined ? {} : { remixOf: entry.remixOf }),
         updatedAt: entry.updatedAt,
         thumbnailUrl: entry.thumbnailUrl,
         ground: entry.ground,

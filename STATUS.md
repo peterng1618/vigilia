@@ -17,10 +17,10 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 4.3 landed**: `CatalogueEntry` and `CatalogueItemFile` carry an optional `remixOf`, so a listing can credit a remixed item's parent.
-- **`parseCatalogueItemFile` validates it through `isThemeRemix`** and refuses a malformed credit with the item.json sentence.
-- **`parseCatalogueIndex` reads it back**, so the storefront credits a parent without downloading a package.
-- **An item without a credit has no `remixOf` key**, and the generated index omits it too.
+- **Task 4.4 landed**: a submission copies `metadata.remixOf` into `item.json`, and `validate-item` refuses a self-referencing or package-mismatched credit.
+- **The host listing carries `remixOf`** on `ThemeStoreEntry`, and the editor's `ThemeLibraryEntry`/`StoreItem` carry it from both sources.
+- **The item modal prints `Remixed from <name>`**: a button that opens the parent when the routed index holds it, text otherwise.
+- **A library item's credit is always text**, and a non-UUID credit is refused by the item parser at the catalogue boundary.
 
 ## Next
 

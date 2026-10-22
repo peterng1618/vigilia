@@ -54,6 +54,7 @@ function itemOf(entry: CatalogueEntry): StoreItem {
     name: entry.name,
     author: entry.facets.author,
     version: entry.version,
+    ...(entry.remixOf === undefined ? {} : { remixOf: entry.remixOf }),
     updatedAt: entry.updatedAt,
     thumbnailUrl: catalogueThumbnailUrl(entry.thumbnail),
     // The index carries no artboard paint, and a catalogue item always has a

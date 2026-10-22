@@ -566,8 +566,17 @@ export function ItemModal(props: {
   /** The library half's submission, owned by the region for the same reason:
    *  the device flow outlives the press that started it. */
   readonly submit: SubmitControl;
+  /** Opens another item's modal — the region's own open state, which is what
+   *  moves the surface from a remix to the parent it credits. */
+  readonly onOpenItem?: (id: string) => void;
+  /** The parent the listing resolved for this item's credit, when it holds
+   *  one. A resolved `StoreItem`, never an id: no string out of a document
+   *  becomes a link target. */
+  readonly remixParent?: StoreItem;
 }): React.JSX.Element {
-  const { item, onClose, onAction, install, submit } = props;
+  const { item, onClose, onAction, install, submit, onOpenItem, remixParent } =
+    props;
+  const remixOf = item.remixOf;
   // The one owner of the decision (`install-state.ts`): this surface draws what
   // it answers and never compares a version itself.
   const installState = installStateOf(item);
@@ -637,6 +646,28 @@ export function ItemModal(props: {
           </span>
 
           <Caption item={item} vocabulary={props.vocabulary} />
+
+          {/* The credit a remixed item carries, under the band: a control only
+              when the listing resolved the parent, and plain text otherwise —
+              an absent parent is provenance, not a dead link. */}
+          {remixOf === undefined ? null : (
+            <span className="block px-[var(--space-24)] pb-[var(--space-16)] text-xs text-faint">
+              {remixParent === undefined || onOpenItem === undefined ? (
+                <span data-vigilia-store-item-remix="">
+                  {uiCopy.store.item.remixedFrom(remixOf.name)}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  data-vigilia-store-item-remix=""
+                  onClick={() => onOpenItem(remixParent.id)}
+                  className="text-xs text-faint underline"
+                >
+                  {uiCopy.store.item.remixedFrom(remixOf.name)}
+                </button>
+              )}
+            </span>
+          )}
 
           <span className="flex items-center gap-[var(--space-8)] border-t border-edge px-[var(--space-24)] py-[var(--space-16)]">
             <span className="flex-1" />
