@@ -65,10 +65,11 @@ Non-obvious failure modes worth checking before repeating expensive investigatio
 
 ## Store sign-in and catalogue
 
-- The Worker's sign-in return accepts only `http://127.0.0.1:<port>` or
-  `http://localhost:<port>`. Open the host at a loopback name, not a LAN
-  address or a custom hostname: the Worker refuses a return host it cannot
-  parse, and the sign-in never comes back.
+- The sign-in returns only to a loopback host on a numeric port. The host
+  refuses anything else first; the Worker then narrows the host it accepts to
+  exactly `127.0.0.1` or `localhost`. Open the host at one of those two — a
+  LAN address or a custom hostname never comes back, and neither does another
+  `127.x` address the host itself would accept.
 - The catalogue origin lives once, in `CATALOGUE_ORIGIN`
   (`renderer-core/src/theme/catalogue-location.ts`); the host's download
   allow-list reads the same constant. Until the Worker is deployed, every

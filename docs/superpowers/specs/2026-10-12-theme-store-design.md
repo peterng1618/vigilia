@@ -903,8 +903,8 @@ Four rules that keep the normalizer honest:
    input before anything is revived — a property check, not a byte derivation.
    These caps are the **store boundary**, not an import-time gate: a locally
    imported or saved theme, and the display publish route, may hold a video the
-   store would refuse. The three store doors (the Worker's submit validation,
-   install, submission) are where it is refused.
+   store would refuse. The two store doors (the Worker's submit validation,
+   install) are where it is refused.
 3. **Idempotent pass-through.** A file already inside the envelope is copied
    byte-for-byte. Otherwise every resubmission degrades the loop.
 4. **The author previews the normalized asset, not the master.** Write it as an
