@@ -17,11 +17,10 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 4.2 landed**: the library chooser offers **Remix** for an installed theme carrying a catalogue origin, disabled for templates and origin-less themes.
-- **A remix mints a fresh UUID and mounts with no base**, so the fork's first save is a first save rather than a gated write against its parent.
-- **The fork credits its parent**: `metadata.remixOf` is the origin's catalogue id, the entry's current name and the origin version; `version`, `createdAt`, `updatedAt` and `author` are deleted.
-- **`ThemeRemix` is exported from `renderer-core`**, so the editor names the shape rather than restating it.
-- **Fix round 1**: the remix control also reads the selected kind (a template and a theme can share an id), and the manager test is formatted for Biome.
+- **Task 4.3 landed**: `CatalogueEntry` and `CatalogueItemFile` carry an optional `remixOf`, so a listing can credit a remixed item's parent.
+- **`parseCatalogueItemFile` validates it through `isThemeRemix`** and refuses a malformed credit with the item.json sentence.
+- **`parseCatalogueIndex` reads it back**, so the storefront credits a parent without downloading a package.
+- **An item without a credit has no `remixOf` key**, and the generated index omits it too.
 
 ## Next
 

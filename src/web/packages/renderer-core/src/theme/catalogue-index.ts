@@ -1,3 +1,4 @@
+import { isThemeRemix, type ThemeRemix } from "./document.js";
 import type { FacetRecord } from "./facet-record.js";
 
 /**
@@ -45,6 +46,9 @@ export interface CatalogueEntry {
   /** Derived by the producer from the envelope. Checked as a record and never
    *  re-derived: deriving it again would be a second owner of one fact. */
   readonly facets: FacetRecord;
+  /** The parent an item credits, when it has one. The key is absent, never
+   *  present-and-undefined, so "no credit" and "credit omitted" are one fact. */
+  readonly remixOf?: ThemeRemix;
 }
 
 export interface CatalogueIndex {
@@ -58,7 +62,8 @@ export interface CatalogueIndex {
  * It has no `author` — that is a facet the producer derives from `theme.json`'s
  * metadata — and no `id`, which is the catalogue directory's name. The generator
  * reads these fields to build an entry, so a misspelt one is a named refusal
- * rather than an item silently dropped from the listing.
+ * rather than an item silently dropped from the listing. `remixOf` is optional;
+ * an item that credits no parent has no such key.
  */
 export type CatalogueItemFile = Omit<CatalogueEntry, "id" | "facets">;
 
@@ -98,6 +103,8 @@ export function parseCatalogueItemFile(
   if (packageUrl === undefined) return refusedText("packageUrl");
   const thumbnail = stringField(value, "thumbnail");
   if (thumbnail === undefined) return refusedText("thumbnail");
+  const remixOf = field(value, "remixOf");
+  if (remixOf !== undefined && !isThemeRemix(remixOf)) return refusedRemix();
 
   return {
     ok: true,
@@ -111,6 +118,7 @@ export function parseCatalogueItemFile(
       favorites,
       packageUrl,
       thumbnail,
+      ...(remixOf === undefined ? {} : { remixOf }),
     },
   };
 }
@@ -119,6 +127,13 @@ function refusedText(field: string): CatalogueItemFileResult {
   return {
     ok: false,
     reason: `item.json's "${field}" must be a non-empty string.`,
+  };
+}
+
+function refusedRemix(): CatalogueItemFileResult {
+  return {
+    ok: false,
+    reason: `item.json's "remixOf" must be { catalogueId, name, version } with a UUID id and a version.`,
   };
 }
 
@@ -228,6 +243,9 @@ function asEntry(value: unknown): CatalogueEntry | undefined {
   const packageUrl = stringField(value, "packageUrl");
   const thumbnail = stringField(value, "thumbnail");
   const facets = facetsOf(value);
+  const remixOf = field(value, "remixOf");
+
+  if (remixOf !== undefined && !isThemeRemix(remixOf)) return undefined;
 
   if (
     id === undefined ||
@@ -257,6 +275,7 @@ function asEntry(value: unknown): CatalogueEntry | undefined {
     packageUrl,
     thumbnail,
     facets,
+    ...(remixOf === undefined ? {} : { remixOf }),
   };
 }
 

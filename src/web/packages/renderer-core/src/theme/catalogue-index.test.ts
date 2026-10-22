@@ -48,6 +48,18 @@ function entry(
   };
 }
 
+/** One well-formed credit; a case states only the part it is about. */
+function remixOf(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    catalogueId: "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f",
+    name: "Aurora",
+    version: "1.2.0",
+    ...overrides,
+  };
+}
+
 /** The entry `entry()` builds with a field actually absent, not present-and-empty. */
 function without(field: string, overrides: Record<string, unknown> = {}) {
   const value = entry(overrides);
@@ -308,6 +320,32 @@ describe("parseCatalogueIndex", () => {
     expect(parsed.entries.map((item) => item.id)).toEqual(["__proto__"]);
   });
 
+  it("carries an entry's remixOf and omits the key when there is none", () => {
+    const credit = remixOf();
+    const parsed = parseCatalogueIndex(
+      document([
+        entry({ id: "remixed", remixOf: credit }),
+        entry({ id: "plain" }),
+      ]),
+      KNOWN,
+    );
+
+    expect(parsed.entries[0]?.remixOf).toStrictEqual(credit);
+    expect(Object.hasOwn(parsed.entries[1] ?? {}, "remixOf")).toBe(false);
+  });
+
+  it("refuses an entry whose remixOf is malformed", () => {
+    const parsed = parseCatalogueIndex(
+      document([entry({ remixOf: remixOf({ catalogueId: "aurora" }) })]),
+      KNOWN,
+    );
+
+    expect(parsed.entries).toStrictEqual([]);
+    expect(parsed.refused).toStrictEqual([
+      { kind: "dashboard-theme", reason: "malformed", count: 1 },
+    ]);
+  });
+
   it("carries the entry's fields through unchanged", () => {
     const derived = facets({ width: 1920 });
     const parsed = parseCatalogueIndex(
@@ -393,5 +431,35 @@ describe("parseCatalogueItemFile", () => {
       ok: false,
       reason: `item.json's "downloads" must be a count of zero or more.`,
     });
+  });
+
+  it("carries the authored remixOf through unchanged", () => {
+    const credit = remixOf();
+    const parsed = parseCatalogueItemFile(entry({ remixOf: credit }));
+
+    expect(parsed.ok && parsed.file.remixOf).toStrictEqual(credit);
+  });
+
+  it("refuses a malformed remixOf with the one sentence", () => {
+    const reason = `item.json's "remixOf" must be { catalogueId, name, version } with a UUID id and a version.`;
+    const malformed = [
+      null,
+      [],
+      "nope",
+      remixOf({ catalogueId: "aurora" }),
+      remixOf({ version: "1.0" }),
+      remixOf({ name: "" }),
+      remixOf({ extra: true }),
+    ];
+
+    for (const bad of malformed) {
+      expect(
+        parseCatalogueItemFile(entry({ remixOf: bad })),
+        String(bad),
+      ).toStrictEqual({
+        ok: false,
+        reason,
+      });
+    }
   });
 });

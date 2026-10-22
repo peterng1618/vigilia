@@ -28,7 +28,7 @@ function themeFor(id: string, name: string): FabricThemeEnvelope {
   };
 }
 
-function itemFor(id: string): unknown {
+function itemFor(id: string, overrides: Record<string, unknown> = {}): unknown {
   return {
     kind: "dashboard-theme",
     name: `Theme ${id}`,
@@ -39,8 +39,15 @@ function itemFor(id: string): unknown {
     favorites: 3,
     packageUrl: `https://github.com/x/y/releases/download/${id}/${id}.zip`,
     thumbnail: `catalogue/${id}/thumbnail.png`,
+    ...overrides,
   };
 }
+
+const REMIX = {
+  catalogueId: "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f",
+  name: "Aurora",
+  version: "1.2.0",
+};
 
 function item(id: string, theme: unknown = themeFor(id, `Theme ${id}`)) {
   return { id, item: itemFor(id), theme };
@@ -110,6 +117,25 @@ describe("catalogueIndexOf", () => {
     expect(index.entries[0]?.facets).toEqual(facetRecordOf(valid));
   });
 
+  it("carries remixOf into the credited entry and no key into the plain one", () => {
+    const index = catalogueIndexOf(
+      [
+        {
+          id: "beta",
+          item: itemFor("beta", { remixOf: REMIX }),
+          theme: themeFor("beta", "Beta"),
+        },
+        item("alpha"),
+      ],
+      GENERATED_AT,
+    );
+
+    const beta = index.entries.find((entry) => entry.id === "beta");
+    const alpha = index.entries.find((entry) => entry.id === "alpha");
+    expect(beta?.remixOf).toStrictEqual(REMIX);
+    expect(Object.hasOwn(alpha ?? {}, "remixOf")).toBe(false);
+  });
+
   it("refuses an item whose header an entry cannot be built from", () => {
     const index = catalogueIndexOf(
       [
@@ -174,6 +200,37 @@ describe("buildCatalogueIndexCommand", () => {
 
     expect(await buildCatalogueIndexCommand(argv)).toBe(0);
     expect(await readFile(out, "utf8")).toBe(bytes);
+  });
+
+  it("writes remixOf only for the item that carries it", async () => {
+    const catalogue = await catalogueOf([
+      {
+        id: "beta",
+        item: itemFor("beta", { remixOf: REMIX }),
+        theme: themeFor("beta", "Beta"),
+      },
+      { id: "alpha" },
+    ]);
+    const out = path.join(catalogue, "index.json");
+
+    expect(
+      await buildCatalogueIndexCommand([
+        "--build-catalogue-index",
+        catalogue,
+        "--out",
+        out,
+        "--generated-at",
+        GENERATED_AT,
+      ]),
+    ).toBe(0);
+
+    const output = JSON.parse(await readFile(out, "utf8")) as {
+      readonly entries: readonly Record<string, unknown>[];
+    };
+    const beta = output.entries.find((entry) => entry["id"] === "beta");
+    const alpha = output.entries.find((entry) => entry["id"] === "alpha");
+    expect(beta?.["remixOf"]).toStrictEqual(REMIX);
+    expect(Object.hasOwn(alpha ?? {}, "remixOf")).toBe(false);
   });
 
   it("fails on a catalogue directory that does not exist", async () => {
