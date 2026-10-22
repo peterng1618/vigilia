@@ -1,4 +1,4 @@
-import { SELF, env } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { expect, it } from "vitest";
 
 it("answers health and reaches the D1 binding", async () => {

@@ -1,5 +1,5 @@
-import { facetRecordOf } from "@yunari/renderer-core";
 import type { FabricThemeEnvelope, FacetRecord } from "@yunari/renderer-core";
+import { facetRecordOf } from "@yunari/renderer-core";
 import {
   classifyThemeChange,
   type VersionLevel,

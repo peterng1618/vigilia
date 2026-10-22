@@ -1,4 +1,4 @@
-import { facetRecordOf, type FabricThemeEnvelope } from "@yunari/renderer-core";
+import { type FabricThemeEnvelope, facetRecordOf } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { planVersion } from "./plan.js";
 

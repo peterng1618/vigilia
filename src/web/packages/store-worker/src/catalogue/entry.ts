@@ -2,8 +2,8 @@ import type {
   CatalogueEntry,
   CatalogueIndex,
   CatalogueItemFile,
-  FacetRecord,
   FabricThemeEnvelope,
+  FacetRecord,
 } from "@yunari/renderer-core";
 import type { ItemRow, VersionRow } from "../db/types.js";
 

@@ -9,6 +9,8 @@ declare global {
 
 const migrations = env.TEST_MIGRATIONS;
 if (!migrations) {
-  throw new Error("TEST_MIGRATIONS binding is not configured by vitest.config.ts");
+  throw new Error(
+    "TEST_MIGRATIONS binding is not configured by vitest.config.ts",
+  );
 }
 await applyD1Migrations(env.DB, migrations);
