@@ -761,6 +761,8 @@ function StoreRegion(props: {
           submit={submit.control}
           {...(tab === "online" ? { onOpenItem: setOpenId } : {})}
           {...(remixParent === undefined ? {} : { remixParent })}
+          onUnpublish={online.onUnpublish}
+          onRepublish={online.onRepublish}
         />
       )}
 
@@ -781,18 +783,16 @@ function StoreRegion(props: {
           is its header (`shows the two halves as a Segmented ...`).
           **The install and the submission share it** rather than each mounting
           their own: two live regions are two announcements, and the modal's
-          outside-hiding spares only `[aria-live]` nodes. An install's sentence
-          wins where both exist, which is the one state the region was already
-          announcing. */}
+          outside-hiding spares only `[aria-live]` nodes. A status change's
+          refusal shares it too. An install's sentence wins where two exist,
+          which is the one state the region was already announcing. */}
       <span
         data-yunari-store-install-announcement=""
         role="status"
         aria-live="polite"
         className="sr-only"
       >
-        {install.announcement === ""
-          ? submit.announcement
-          : install.announcement}
+        {install.announcement || submit.announcement || online.announcement}
       </span>
     </div>
   );

@@ -3055,14 +3055,22 @@ function mineEntry(
 }
 
 /** A host answering the store's session probe and the author's own listing, and
- *  recording every path it was asked for. */
+ *  recording every path it was asked for.
+ *
+ *  `entries` may be a function, because a re-read after a command must answer
+ *  the listing the host would now hold rather than the one it answered first.
+ *  `transitions` is the queue of answers to the author's own commands, and
+ *  `onTransition` is how a case moves that listing on when one is served. */
 function mineHost(options: {
   readonly signedIn?: boolean;
-  readonly entries?: readonly unknown[];
+  readonly entries?: readonly unknown[] | (() => readonly unknown[]);
   readonly sessionStatus?: number;
+  readonly transitions?: readonly Response[];
+  readonly onTransition?: (path: string) => void;
 }): { readonly fetch: typeof fetch; readonly calls: string[] } {
   const calls: string[] = [];
-  const fetchStub = (async (input: RequestInfo | URL) => {
+  const answers = [...(options.transitions ?? [])];
+  const fetchStub = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input);
     calls.push(path);
     if (path === "/api/store/session") {
@@ -3079,9 +3087,15 @@ function mineHost(options: {
       );
     }
     if (path === "/api/store/mine") {
-      return new Response(JSON.stringify({ entries: options.entries ?? [] }), {
-        status: 200,
-      });
+      const entries =
+        typeof options.entries === "function"
+          ? options.entries()
+          : (options.entries ?? []);
+      return new Response(JSON.stringify({ entries }), { status: 200 });
+    }
+    if (path.startsWith("/api/store/items/") && init?.method === "POST") {
+      options.onTransition?.(path);
+      return answers.shift() ?? new Response("", { status: 404 });
     }
     return new Response("Not found", { status: 404 });
   }) as unknown as typeof fetch;
@@ -3267,4 +3281,127 @@ it("says a Mine row was unreadable rather than claiming no submissions", async (
     ).textContent,
     "the unreadable Mine row is not stated",
   ).toBe(uiCopy.store.catalogueRefused("dashboard-theme", 1));
+});
+
+/** The live region every store sentence is spoken through. */
+function announcement(): string {
+  return (
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-yunari-store-install-announcement]",
+      ),
+      "live region",
+    ).textContent ?? ""
+  );
+}
+
+/** One author command inside the open item's modal, or the absence. */
+function statusAction(
+  action: "unpublish" | "republish",
+): HTMLButtonElement | null {
+  return document.body.querySelector<HTMLButtonElement>(
+    `[data-yunari-store-item-status-action="${action}"]`,
+  );
+}
+
+/**
+ * **Withdrawing re-reads the listing, and the listing is the state drawn.** The
+ * host's answer says what it thinks the state is; this surface does not write
+ * it, so the row and the open modal both redraw from the author's own rows and
+ * a host that answered something else cannot leave a stale word on screen.
+ */
+it("withdraws an item, re-reads the listing and draws its new state", async () => {
+  let state = "published";
+  const host = mineHost({
+    entries: () => [mineEntry(state)],
+    transitions: [
+      new Response(JSON.stringify({ ok: true, status: "unpublished" }), {
+        status: 200,
+      }),
+    ],
+    onTransition: () => {
+      state = "unpublished";
+    },
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  expect(
+    document.body.querySelector("[data-yunari-store-status]"),
+    "a published Mine row drew a badge the public listing already gives it",
+  ).toBeNull();
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    host.calls.filter(
+      (path) => path === `/api/store/items/${MINE_ID}/unpublish`,
+    ),
+    "the press did not post the author's own command",
+  ).toHaveLength(1);
+  expect(
+    host.calls.filter((path) => path === "/api/store/mine"),
+    "the successful change did not re-read the author's own rows",
+  ).toHaveLength(2);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-status]"),
+      "status badge",
+    ).textContent,
+    "the re-read state is not what the modal draws",
+  ).toBe(uiCopy.store.status.unpublished);
+  expect(
+    statusAction("republish"),
+    "the redrawn modal does not offer the command its new state allows",
+  ).not.toBeNull();
+  expect(announcement(), "a successful change was announced as a refusal").toBe(
+    "",
+  );
+});
+
+/**
+ * **A refused command changes nothing and is spoken.** The sentence is the
+ * Worker's own — this surface knows which item it pressed for, not why the
+ * store said no — and the row keeps the state the listing gave it.
+ */
+it("announces the store's refusal and leaves the item as it was", async () => {
+  const sentence = "Only the author may withdraw this item.";
+  const host = mineHost({
+    entries: [mineEntry("published")],
+    transitions: [
+      new Response(JSON.stringify({ ok: false, message: sentence }), {
+        status: 403,
+      }),
+    ],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    announcement(),
+    "the store's refusal is not what the live region says",
+  ).toBe(sentence);
+  expect(
+    host.calls.filter((path) => path === "/api/store/mine"),
+    "a refused change re-read the listing it did not alter",
+  ).toHaveLength(1);
+  expect(
+    statusAction("unpublish"),
+    "a refused change moved the item's state",
+  ).not.toBeNull();
 });

@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phases 1–3 and Tasks 4.1–4.2 complete; Task 4.3 is next (status badges and unpublish). Tasks 4.4–4.5 and Phase 5 follow in plan order.
+- **Subagent-driven execution**: Phases 1–3 and Tasks 4.1–4.3 complete; Tasks 4.4–4.5 and Phase 5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,10 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Mine rows join the library's origins**, so a row this PC already installed reads Installed rather than offering Install over the author's local copy.
-- **A row dropped for an unreadable state is refused**, so the surface says it could not read one instead of printing the no-submissions sentence.
-- **The previous listing is cleared synchronously when Mine switches on**, and the toggle chip carries its neighbours' hover and focus treatments.
-- **`isCatalogueStatus` moves the six-state guard into renderer-core**, the session probe is asserted as one request per mount, and the fix is proven by new renderer-core, mine-source and region cases.
+- **A Mine row carries its state as a word** after its name, in the cell and the modal; `published` draws none because the public listing is its badge.
+- **The modal offers the one command a state allows** — Unpublish for `published`, Republish for `unpublished` — and states what a pending row waits for or why a rejected or removed one stopped.
+- **A withdrawal re-reads the author's own rows** rather than writing the answer's status, and a refusal is spoken in the store's one live region.
 
 ## Next
 

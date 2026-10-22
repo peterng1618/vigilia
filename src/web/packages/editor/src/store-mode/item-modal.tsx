@@ -10,6 +10,7 @@ import { CELL_ACTION_REASONS } from "./cell-actions.js";
 import type { InstallControl } from "./install-item.js";
 import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
+import { StoreStatusBadge } from "./status-badge.js";
 import type { SubmitControl } from "./use-submit.js";
 
 /**
@@ -298,6 +299,9 @@ function Caption(props: {
         >
           {item.name}
         </span>
+        {/* The state's word after the name: a Mine row's own fact, absent on
+            the public listing (`status-badge.tsx`). */}
+        <StoreStatusBadge status={item.status} />
         <span
           data-yunari-store-item-author=""
           className="flex-none font-mono text-xs text-muted"
@@ -573,6 +577,11 @@ export function ItemModal(props: {
    *  one. A resolved `StoreItem`, never an id: no string out of a document
    *  becomes a link target. */
   readonly remixParent?: StoreItem;
+  /** The author's own commands on the store row, drawn only for the state that
+   *  allows each (`status-badge.tsx`). The region posts and re-reads the
+   *  author's listing; this surface only reports the press. */
+  readonly onUnpublish?: (id: string) => void;
+  readonly onRepublish?: (id: string) => void;
 }): React.JSX.Element {
   const { item, onClose, onAction, install, submit, onOpenItem, remixParent } =
     props;
@@ -580,6 +589,20 @@ export function ItemModal(props: {
   // The one owner of the decision (`install-state.ts`): this surface draws what
   // it answers and never compares a version itself.
   const installState = installStateOf(item);
+  // The one command a state allows, only where the region wired it. `pending`,
+  // `rejected` and `removed` offer neither: what moves them is the owner.
+  const authorAction =
+    item.status === "published" && props.onUnpublish !== undefined
+      ? ("unpublish" as const)
+      : item.status === "unpublished" && props.onRepublish !== undefined
+        ? ("republish" as const)
+        : undefined;
+  const authorPress =
+    authorAction === "unpublish"
+      ? props.onUnpublish
+      : authorAction === "republish"
+        ? props.onRepublish
+        : undefined;
 
   return (
     <DialogPrimitive.Root
@@ -669,8 +692,46 @@ export function ItemModal(props: {
             </span>
           )}
 
+          {/* **What the state means, where the badge is only a word**: what a
+              pending row waits for, the owner's own reason on a rejected or
+              removed row, and — for a removed one — that it cannot come back.
+              The sentence sits above the footer because it is not a press. */}
+          {item.status === "pending" ? (
+            <span
+              data-yunari-store-item-status-note=""
+              className="block px-[var(--space-24)] pb-[var(--space-16)] text-xs text-muted"
+            >
+              {uiCopy.store.status.pendingReview}
+            </span>
+          ) : null}
+          {(item.status === "rejected" || item.status === "removed") &&
+          item.statusReason !== undefined ? (
+            <span
+              data-yunari-store-item-status-note=""
+              className="block px-[var(--space-24)] pb-[var(--space-16)] text-xs text-warn"
+            >
+              {item.statusReason}
+              {item.status === "removed"
+                ? ` ${uiCopy.store.status.removedPermanent}`
+                : null}
+            </span>
+          ) : null}
+
           <span className="flex items-center gap-[var(--space-8)] border-t border-edge px-[var(--space-24)] py-[var(--space-16)]">
             <span className="flex-1" />
+            {/* The author's own command on the store row: the region posts and
+                re-reads, so this surface reports the press only. */}
+            {authorAction === undefined ? null : (
+              <button
+                type="button"
+                id={`yunari-store-item-${authorAction}`}
+                data-yunari-store-item-status-action={authorAction}
+                onClick={() => authorPress?.(item.id)}
+                className={FOOTER_BUTTON}
+              >
+                {uiCopy.store.actions[authorAction]}
+              </button>
+            )}
             {/* **A library item's four are drawn and the two a build does not
                 run are disabled** (R164), with their reason in the tree beside
                 them: a disabled control is one the pointer cannot ask, so a

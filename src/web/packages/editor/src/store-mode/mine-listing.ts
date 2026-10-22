@@ -1,5 +1,5 @@
 import type { CatalogueRefusal } from "@yunari/renderer-core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uiCopy } from "../ui-copy.js";
 import { withInstalledVersions } from "./install-state.js";
 import type { StoreItem } from "./local-source.js";
@@ -42,6 +42,14 @@ export interface MineListing extends OnlineListingShape {
   readonly setOn: (next: boolean) => void;
   /** The half's empty sentence, which belongs to the source that answered. */
   readonly empty: { readonly lead: string; readonly hint: string | undefined };
+  /** The last author command the store refused, in its own words; empty when
+   *  nothing was refused. The region's one live region speaks it. */
+  readonly announcement: string;
+  /** The author's own commands, drawn by the item's modal for the state that
+   *  allows each. They post the command and re-read the listing rather than
+   *  writing a state here. */
+  readonly onUnpublish: (id: string) => void;
+  readonly onRepublish: (id: string) => void;
 }
 
 /**
@@ -123,10 +131,53 @@ export function useMineListing(
     if (next) onEnabled?.();
   };
 
+  /** One command in flight per id. The state alone cannot refuse a second press
+   *  in the same tick, because it reads the render before the first committed. */
+  const inFlight = useRef<Set<string>>(new Set());
+  const [announcement, setAnnouncement] = useState("");
+
+  /**
+   * **Posts one author command, and lets the listing answer it.** The Worker's
+   * answer names the new state, but this surface keeps no copy of it: the
+   * author's own rows are the source, so a successful change re-reads them and
+   * a re-listing that disagrees wins. A non-2xx is the store's own sentence,
+   * spoken in the region's one live region, and the row is left untouched.
+   */
+  const statusChange = (id: string, action: "unpublish" | "publish"): void => {
+    if (inFlight.current.has(id)) return;
+    inFlight.current.add(id);
+    setAnnouncement("");
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/store/items/${encodeURIComponent(id)}/${action}`,
+          { method: "POST" },
+        );
+        if (!response.ok) {
+          setAnnouncement(await refusalOf(response));
+          return;
+        }
+        const items = await source.list().catch(() => undefined);
+        if (items === undefined) {
+          setAnnouncement(uiCopy.store.status.unrefreshed);
+          return;
+        }
+        setListing({ items, refused: source.refused() });
+      } catch (error) {
+        setAnnouncement(error instanceof Error ? error.message : String(error));
+      } finally {
+        inFlight.current.delete(id);
+      }
+    })();
+  };
+
   return {
     offered,
     on,
     setOn: setOnAndReveal,
+    announcement,
+    onUnpublish: (id: string) => statusChange(id, "unpublish"),
+    onRepublish: (id: string) => statusChange(id, "publish"),
     // Mine rows are joined against the library exactly as the catalogue's are:
     // what this PC installed is the library's fact, and without the join every
     // own row offers Install over the author's local copy.
@@ -138,4 +189,17 @@ export function useMineListing(
     refused: on ? (listing?.refused ?? []) : catalogue.refused,
     empty: on ? EMPTY_MINE : EMPTY_CATALOGUE,
   };
+}
+
+/** The host's own sentence for a refused command, or the composed fallback when
+ *  the answer carries none: the store knows why it said no. */
+async function refusalOf(response: Response): Promise<string> {
+  const body: unknown = await response.json().catch(() => undefined);
+  const message =
+    typeof body === "object" && body !== null
+      ? (body as { readonly message?: unknown }).message
+      : undefined;
+  return typeof message === "string" && message.trim() !== ""
+    ? message
+    : uiCopy.store.status.changeRefused(response.status);
 }

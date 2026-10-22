@@ -585,12 +585,36 @@ export const uiCopy = {
     /** The states a Mine row can carry, as the word beside it. `published` has
      *  no word because the public surface already shows it, and `draft` is not
      *  a state this surface explains yet: a badge word the surface cannot
-     *  account for is worse than none (§9). */
+     *  account for is worse than none (§9).
+     *
+     *  **The two sentences are the modal's, not the cell's**: a badge is a word
+     *  and a reason is a sentence, and the item's own surface is the one that
+     *  says what the state means. `removedPermanent` is stated beside the
+     *  owner's reason because it is the fact a reason alone may not carry. */
     status: {
       pending: "Pending",
       unpublished: "Unpublished",
       rejected: "Rejected",
       removed: "Removed",
+      pendingReview: "Waiting for the owner's review.",
+      removedPermanent:
+        "The owner removed this item; it cannot be republished.",
+      /** The fallback for a non-2xx the host answered with no sentence of its
+       *  own. A refusal is the Worker's words where they exist, so this is
+       *  drawn only where they do not (`mine-listing.ts`). */
+      changeRefused: (status: number): string =>
+        `The store refused the change (${status}).`,
+      /** The store accepted the command but the author's rows could not be read
+       *  back: the change landed, so silence would leave a stale word on screen. */
+      unrefreshed:
+        "The change was saved, but your items could not be refreshed.",
+    },
+    /** The author's own two commands, drawn in the item's modal only: they act
+     *  on the author's store row, where the cell's four actions act on the
+     *  library copy, so they are not `cell.actions` entries. */
+    actions: {
+      unpublish: "Unpublish",
+      republish: "Republish",
     },
     /** The search well's name and the word it shows while empty, as one string:
      *  a placeholder that could disagree with the name would be a second copy of
