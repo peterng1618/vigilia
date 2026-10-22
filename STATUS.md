@@ -9,17 +9,17 @@ Branch: `main`
 
 ## Active work
 
-- **Asset finder, Phase 1**: Task 1 (decision note `0093`) is landing; credentials, registry and grid follow. Ledger: `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
-- **Task 15 builds the Wallpaper Engine credits types here** (user ruling, 2026-10-23); the WE plan drops its Task 8 when it executes.
-- **Task 16 is blocked**: the WE host module does not exist, so the Wallpaper Engine tab waits on that plan.
-- **Queued:** `2026-10-21-wallpaper-engine-import.md`, then the R2 backend [`2026-10-23-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md), whose spec was approved 2026-10-23.
-- **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0), and `ci/catalogue-workflows` is merged.
+- **Asset finder, Phase 1 complete**: credential store, four host routes and the Connections tab are landed (Tasks 1–4). Ledger: `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
+- **Providers, in this order after the registry (Tasks 5–8): Lucide, Lineicons, Font Awesome Free, Unsplash.** Free results only; Flaticon is skipped because its official API exposes no free/premium flag.
+- **Lineicons is a dev-only dependency** (`lineicons@1.3.2`, MIT), read by a generator; no shipped dependency is added.
+- **Task 15 builds the Wallpaper Engine credits types here** (user ruling, 2026-10-23); the WE plan drops its Task 8. Task 16 stays blocked on the WE host module.
+- **Queued:** `2026-10-21-wallpaper-engine-import.md`, then the R2 backend [`2026-10-23-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md).
 
 ## Last completed change
 
-- **Orca is documented as an execution venue**: a worktree runs inside the plan `STATUS.md` names, its `.superpowers/` ledger is local to it, and liveness comes from `orca worktree show` or `terminal wait`.
-- **The register stays `docs/product/backlog.jsonl`**: Orca links issues and PRs to a worktree, it does not own a register, so no row moves into GitHub issues.
-- **Fixed Playwright port ranges are recorded** so two worktrees never run the same project at once, and `docs/product/probes/cdp.mjs` now resolves Playwright from the checkout instead of `D:/git-repos/yunari`.
+- **The Connections tab (Task 4)** lists known credentials, shows `Saved ····<hint>` or `Not set`, and saves/clears/verifies through the host; no value is ever rendered.
+- **Credential rows report `verify`**, so Verify is disabled where the host has no check.
+- **The host answers four credential routes** (Task 3), write-only to the browser, loopback-only, with cookie writes refused naming R10.
 
 ## Next
 

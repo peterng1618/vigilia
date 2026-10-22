@@ -12,7 +12,9 @@
 
 **Decision:** a note under `docs/decisions/`, landed in Task 1 before the first write to `host/src/server.ts` (a watchlisted path). **Take the next free number at landing** — `0089` is already the install plan's, and the queued Wallpaper Engine plan also claims `0089`, so do not pin a number here.
 
-**Status:** **Queued.** The store's phase D (`2026-10-21-theme-store-install.md`) is active and the Wallpaper Engine plan (`2026-10-21-wallpaper-engine-import.md`) is queued ahead of this one: Task 15 extends that plan's `credits.json` member, and Task 16 registers its host module. `STATUS.md` must name this plan as the active one before Task 1 starts.
+**Status:** **Active** (2026-10-23, inline execution in `asset-finder-hub`). The Wallpaper Engine plan (`2026-10-21-wallpaper-engine-import.md`) remains queued: Task 15 absorbs its `credits.json` member, and Task 16 stays blocked until that plan's host module exists.
+
+**Scope change 2026-10-23 (user).** The provider list is Icons: **Lucide, Font Awesome Free, Lineicons**; Images: **Unsplash**. Free results only. **Flaticon is not built**: its official v3 API documents no premium/free flag (the Icon schema has no such field), so a free-only promise cannot be enforced; the user's decision is to leave it out. Lineicons ships as a free MIT npm package with no search API, so its manifest is generated from a **dev-only** dependency. Execution order for the remaining tasks is **5–8, 18 (Lineicons), 13 (Font Awesome), 19 (Unsplash), then 9–12, 14, 15, 17**; 16 waits on the Wallpaper Engine plan.
 
 ## Rulings the spec leaves open
 
@@ -27,7 +29,7 @@ These are decisions the spec does not make; each is settled here so a task does 
 
 ## Global Constraints
 
-- **No new dependency.** No keychain module, no HTTP client, no icon package, no font package.
+- **One dev-only dependency, nothing shipped.** `lineicons@1.3.2` (MIT, 600 free SVGs) is a `devDependency` read only by `scripts/generate-lineicons.mjs`; the host loads generated data, never the package. No keychain module, no HTTP client, no shipped icon package, no font package.
 - **The browser never calls a provider and never holds a key** (R3). Search, bytes and preview URLs are the host's answers.
 - **A key is never returned, logged or echoed.** `GET /api/credentials` answers `set` and a four-character `hint`; an error names the credential, never its value (R6).
 - **Only `bearer` is implemented** (R10). A `cookie` entry is refused at write time with a message naming the ruling.
@@ -246,6 +248,10 @@ export const lucideSource: AssetSource;                     // id "lucide", cate
 - Create: `src/web/packages/host/src/assets/sources.ts`
 - Create: `src/web/packages/host/src/assets/search.ts`
 - Create: `src/web/packages/host/src/assets/search.test.ts`
+- Create: `src/web/packages/theme-package/src/credits.ts` and a barrel export —
+  the Wallpaper Engine plan's Task 8 is not landed, so the credits member this
+  port consumes is defined here (`CREDITS`, `ThemeCreditsEntry`, `ThemeCredits`,
+  `readThemeCredits`). Task 15 adds the writer; the WE plan drops its Task 8.
 
 **Interfaces:**
 
@@ -511,9 +517,112 @@ export async function importFinderResult(input: {
 
 ---
 
+## Phase 7 — Lineicons
+
+### Task 18: Lineicons, from a dev-only package
+
+The free Lineicons set ships as an MIT npm package with no search API, so the
+manifest is generated at build time and the host never imports the package.
+
+**Files:**
+- Modify: `src/web/package.json` (`lineicons@1.3.2` as a `devDependency`; the generator script)
+- Create: `scripts/generate-lineicons.mjs`
+- Create: `src/web/packages/host/src/assets/icons/lineicons.generated.ts` (generated, committed)
+- Create: `src/web/packages/host/src/assets/icons/lineicons.ts`
+- Create: `src/web/packages/host/src/assets/icons/lineicons.test.ts`
+- Modify: `src/web/packages/host/src/assets/sources.ts` (one array entry)
+- Modify: `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md` (MIT, dev-only)
+
+**Interfaces:**
+
+```ts
+export const LINEICONS_VERSION = "1.3.2";
+export const LINEICONS_ICONS: readonly LucideIcon[];   // generated: name + svg
+export function searchLineicons(query: string, cursor: string | undefined): SearchPage;
+export const lineiconsSource: AssetSource;              // id "lineicons", category "icon"
+```
+
+**Constraints:**
+- The package is dev-only: the generated module is pure data, and the host's
+  dependency list does not change.
+- `lineicons@1.3.2` is the free set (600 icons, MIT, no attribution required), so
+  every entry is a free result; there is no premium flag to filter.
+- Search matches the icon name only (the package carries no tags). Spaces and
+  hyphens are one separator, as Lucide's search treats them.
+- The cursor is the Lucide adapter's offset cursor; no second paging scheme.
+
+- [ ] **Step 1: Add the devDependency and the generator.** Walk
+  `node_modules/lineicons/assets/svgs/regular/*.svg`, read each file as text,
+  and write `${name}\t${svg}` entries sorted by name with a header naming
+  `lineicons` 1.3.2 and MIT. Register it beside `icons:generate` in
+  `package.json`.
+- [ ] **Step 2: Write the failing adapter test.** The manifest is non-empty and
+  every `svg` starts with `<svg` and contains no `script`; `searchLineicons("arrow
+  down", undefined)` finds `arrow-down`; an empty query answers the first 40 with
+  a `next` cursor and page two does not repeat page one; `bytesOf` answers
+  `image/svg+xml` and a `.svg` filename; `creditsOf` answers `kind: "icon"`,
+  `licence: "MIT"` and a `sourceUrl` naming lineicons.com.
+- [ ] **Step 3: Implement** the adapter as the Lucide one, and add
+  `lineiconsSource` to `REGISTRY` after `lucideSource`.
+- [ ] **Step 4: Green, `npx tsc --noEmit`, `npx biome check ..`, commit**
+  `feat(host): Lineicons as a free local icon source`.
+
+## Phase 8 — Unsplash
+
+### Task 19: Unsplash, free photos only
+
+**Files:**
+- Create: `src/web/packages/host/src/assets/images/unsplash.ts`
+- Create: `src/web/packages/host/src/assets/images/unsplash.test.ts`
+- Modify: `src/web/packages/host/src/assets/sources.ts` (one array entry)
+- Modify: `src/web/packages/host/src/settings/credentials-registry.ts` (one entry)
+- Modify: `src/web/packages/host/src/settings/credentials-registry.test.ts` (create if absent)
+
+**Interfaces:**
+
+```ts
+export const UNSPLASH_VERSION = "v1";
+export const unsplashSource: AssetSource;   // id "unsplash", category "image",
+                                             // requires "unsplash", body "grid"
+```
+
+`KNOWN_CREDENTIALS` gains `{ id: "unsplash", label: "Unsplash", kind: "bearer",
+verify }`. The key is the app's access key; the source sends it as
+`Authorization: Client-ID <key>`, never to the browser.
+
+**Wire:** `GET https://api.unsplash.com/search/photos?query=<q>&page=<n>&per_page=30`
+with the key header. `bytesOf` calls the photo's `links.download_location` first
+(the API guideline's download trigger), then fetches `urls.full`.
+
+**Free-only rule (spec §3's promise):** drop a photo when `premium === true` or
+`plus === true`, and drop any photo whose `urls.small` or `urls.regular` host is
+`plus.unsplash.com`. Those are the three signs of Unsplash+ content; a result
+that passes all three is under the Unsplash License.
+
+- [ ] **Step 1: Write the failing adapter test** with a stubbed `ctx.fetch`:
+  the search request carries the `Client-ID` header and the query; a
+  `premium: true` and a `plus: true` photo are absent; a photo whose URL host is
+  `plus.unsplash.com` is absent; a free photo maps to `preview: urls.small`,
+  `subtitle` naming the photographer and `licence: "Unsplash License"`; `next`
+  is the next page while `page < total_pages` and `undefined` at the end;
+  `bytesOf` fetches `download_location` before the image and answers its bytes
+  and `image/jpeg`; `creditsOf` carries the photographer, licence and photo
+  page; a 401 is a `failed` page naming the status, and its message never
+  contains the key.
+- [ ] **Step 2: Write the failing registry test.** The table lists `unsplash`
+  with `kind: "bearer"` and a verifier; the verifier answers `ok` for a 200 and
+  a message naming the status for a 401, using an injected fetch.
+- [ ] **Step 3: Implement** the adapter, the registry entry and the verifier
+  (`GET /search/photos?query=test&per_page=1` with the key), then register the
+  source after the icon sources.
+- [ ] **Step 4: Green, `npx tsc --noEmit`, `npx biome check ..`, commit**
+  `feat(host): Unsplash as the first image source, free photos only`.
+
+---
+
 ## Self-Review
 
-- **Spec coverage:** §1→Tasks 10, 14; §2→Tasks 5–7; §3→Tasks 6, 12, 13, 16 (with Ruling 1's departure recorded in Task 1); §4→Tasks 2–4; §5→Tasks 13, 15; §8→Tasks 7, 10, 14; §11's order→phases 1–6; §12→Task 17 plus each task's own tests.
+- **Spec coverage:** §1→Tasks 10, 14; §2→Tasks 5–7; §3→Tasks 6, 12, 13, 16, 18, 19 (with Ruling 1's departure recorded in Task 1, and Flaticon's omission recorded in the scope note); §4→Tasks 2–4; §5→Tasks 13, 15, 19; §8→Tasks 7, 10, 14; §11's order→phases 1–6, with the 2026-10-23 provider reorder in the scope note; §12→Task 17 plus each task's own tests.
 - **Type consistency:** `AssetResult`/`AssetPage`/`AssetSearchRequest` are defined once in `renderer-core` (Task 5) and named identically in Tasks 6–16; `CredentialRow` is defined in `ui-copy`'s task as a client type and in `renderer-core` for the route — Task 5 moves it, and Task 3 imports it there once Task 5 lands. **That direction is wrong for execution order** (Task 3 precedes Task 5): the route therefore declares the row shape locally in Task 3 and switches to the shared type in Task 5, which is a one-line import change permitted by the same task.
 - **Review Focus** is covered as listed above.
 - **Proportion:** 17 tasks over 6 phases; no task carries an implementation body the signature and test already determine.
