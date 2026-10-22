@@ -2,7 +2,16 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CATALOGUE_ID_PATTERN } from "./catalogue-index.js";
-import { BACKGROUND_MEDIA_FITS, MAX_TAGS, TAG_PATTERN } from "./document.js";
+import {
+  BACKGROUND_MEDIA_BOUNDS,
+  BACKGROUND_MEDIA_FITS,
+  MAX_BACKGROUND_OFFSET,
+  MAX_BACKGROUND_SCALE,
+  MAX_TAGS,
+  MIN_BACKGROUND_OFFSET,
+  MIN_BACKGROUND_SCALE,
+  TAG_PATTERN,
+} from "./document.js";
 import { SUPPORTED_SCHEMA_VERSION } from "./fabric-envelope.js";
 import { GLASS_TYPES, MAX_GLASS_BLUR_RADIUS } from "./glass.js";
 import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
@@ -71,7 +80,7 @@ describe("published Fabric theme schema", () => {
     expect(paint["oneOf"]).toHaveLength(2);
   });
 
-  it("publishes only v2 palette/type-preset globals and palette artboard paint", () => {
+  it("publishes only v2 globals and the background layer's own paint", () => {
     const document = schema();
     const globals = document.$defs["globals"]!["properties"] as Record<
       string,
@@ -90,12 +99,18 @@ describe("published Fabric theme schema", () => {
       face: { $ref: "#/$defs/fontFaceReference" },
       trioRole: { enum: ["heading", "body", "mono"] },
     });
-    expect(artboard["background"]).toEqual({
-      $ref: "#/$defs/paletteReference",
-    });
+    expect(artboard["background"]).toBeUndefined();
+    expect(artboard["backgroundMedia"]).toBeUndefined();
     expect(artboard["barColor"]).toBeUndefined();
-    expect(artboard["backgroundMedia"]).toEqual({
-      $ref: "#/$defs/backgroundMedia",
+    expect(document.properties["background"]).toEqual({
+      $ref: "#/$defs/background",
+    });
+    expect(document.$defs["background"]).toMatchObject({
+      additionalProperties: false,
+      properties: {
+        color: { $ref: "#/$defs/paletteReference" },
+        media: { $ref: "#/$defs/backgroundMedia" },
+      },
     });
     expect(document.$defs["metadata"]?.["properties"]).toMatchObject({
       version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
@@ -118,19 +133,40 @@ describe("published Fabric theme schema", () => {
     expect(artboard["fitMode"]).toBeUndefined();
   });
 
-  it("publishes the background media's fit at the set the validator accepts", () => {
-    // The two fits were separated into `contentFit` and this one, and this is
-    // the half a tool outside this repo reads. Compared against the exported
-    // list rather than a copied one, for the reason the glass bound below gives:
-    // the disagreement test compares key *sets* and would not notice the enum
-    // moving on one side, so a theme a tool authors would be refused by the
-    // editor with nothing red.
+  it("publishes the background media's bounds, fit and ranges the validator accepts", () => {
+    // The media's sets and ranges were separated into `bounds` and `fit`, and
+    // this is the half a tool outside this repo reads. Compared against the
+    // exported constants rather than copied literals, for the reason the glass
+    // bound below gives: the disagreement test compares key *sets* and would
+    // not notice a set moving on one side, so a theme a tool authors would be
+    // refused by the editor with nothing red.
     const media = schema().$defs["backgroundMedia"]!["properties"] as Record<
       string,
       Record<string, unknown>
     >;
 
+    expect(media["assetId"]).toEqual({ $ref: "#/$defs/stableId" });
+    expect(media["bounds"]).toEqual({ enum: [...BACKGROUND_MEDIA_BOUNDS] });
     expect(media["fit"]).toEqual({ enum: [...BACKGROUND_MEDIA_FITS] });
+    expect(media["scale"]).toEqual({
+      type: "number",
+      minimum: MIN_BACKGROUND_SCALE,
+      maximum: MAX_BACKGROUND_SCALE,
+    });
+    expect(media["offsetX"]).toEqual({
+      type: "number",
+      minimum: MIN_BACKGROUND_OFFSET,
+      maximum: MAX_BACKGROUND_OFFSET,
+    });
+    expect(media["offsetY"]).toEqual({
+      type: "number",
+      minimum: MIN_BACKGROUND_OFFSET,
+      maximum: MAX_BACKGROUND_OFFSET,
+    });
+    expect(schema().$defs["backgroundMedia"]!["required"]).toEqual([
+      "assetId",
+      "bounds",
+    ]);
   });
 
   it("publishes the glass treatment at the bound the runtime enforces", () => {

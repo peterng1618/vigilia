@@ -86,49 +86,45 @@ describe("artboard", () => {
   });
 });
 
-describe("artboard paint", () => {
+describe("background paint", () => {
   const withPaint = (
-    artboard: Record<string, unknown>,
+    color: Record<string, unknown>,
   ): Record<string, unknown> => ({
     ...baseEnvelope(),
     globals: { palette: { accent: { name: "Accent", value: "#00b8d9" } } },
-    artboard: { width: 10, height: 10, ...artboard },
+    background: { color },
   });
 
   it("accepts a resolvable palette reference", () => {
-    expectValid(withPaint({ background: { ref: "palette.accent" } }));
+    expectValid(withPaint({ ref: "palette.accent" }));
   });
 
   it("rejects a reference and a literal together", () => {
     // Resolving by precedence is how a theme ends up showing a colour nobody
     // can find in the inspector.
-    expect(
-      codes(
-        withPaint({ background: { ref: "palette.accent", value: "#fff" } }),
-      ),
-    ).toEqual(["style-value-ambiguous"]);
-  });
-
-  it("rejects a style value that declares neither", () => {
-    expect(codes(withPaint({ background: {} }))).toEqual([
+    expect(codes(withPaint({ ref: "palette.accent", value: "#fff" }))).toEqual([
       "style-value-ambiguous",
     ]);
   });
 
+  it("rejects a style value that declares neither", () => {
+    expect(codes(withPaint({}))).toEqual(["style-value-ambiguous"]);
+  });
+
   it("rejects a reference to a global that does not exist", () => {
-    expect(
-      codes(withPaint({ background: { ref: "palette.missing" } })),
-    ).toEqual(["unresolved-global-ref"]);
+    expect(codes(withPaint({ ref: "palette.missing" }))).toEqual([
+      "unresolved-global-ref",
+    ]);
   });
 
   it("rejects a reference into an unknown group", () => {
-    expect(codes(withPaint({ background: { ref: "colours.accent" } }))).toEqual(
-      ["unresolved-global-ref"],
-    );
+    expect(codes(withPaint({ ref: "colours.accent" }))).toEqual([
+      "unresolved-global-ref",
+    ]);
   });
 
   it("rejects a reference with no entry id", () => {
-    expect(codes(withPaint({ background: { ref: "palette" } }))).toEqual([
+    expect(codes(withPaint({ ref: "palette" }))).toEqual([
       "unresolved-global-ref",
     ]);
   });
@@ -282,33 +278,75 @@ describe("assets (§141)", () => {
   });
 });
 
-describe("background media", () => {
-  const withMedia = (media: unknown): Record<string, unknown> => ({
+describe("the background layer", () => {
+  const withBackground = (background: unknown): Record<string, unknown> => ({
     ...baseEnvelope(),
-    artboard: { width: 10, height: 10, backgroundMedia: media },
+    globals: {
+      palette: {
+        ink: { name: "Ink", value: { kind: "solid", color: "#101216" } },
+      },
+    },
+    assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
+    background,
   });
 
-  it("refuses a key the media bag does not publish", () => {
+  it("accepts bounds, fit, scale and offsets", () => {
     expect(
-      issuesFor(withMedia({ assetId: "backdrop", fit: "theme", scale: 2 })).map(
-        ({ code, path }) => ({ code, path }),
+      codes(
+        withBackground({
+          color: { ref: "palette.ink" },
+          media: {
+            assetId: "clip",
+            bounds: "display",
+            fit: "contain",
+            scale: 1.4,
+            offsetX: 0.25,
+            offsetY: -0.1,
+          },
+        }),
       ),
-    ).toContainEqual({
-      code: "unknown-field",
-      path: "/artboard/backgroundMedia/scale",
-    });
+    ).toEqual([]);
   });
 
-  it("requires the reference to resolve to a declared image, SVG or video", () => {
+  it("refuses an out-of-range scale and offsets", () => {
+    for (const background of [
+      { media: { assetId: "clip", bounds: "theme", scale: 0 } },
+      { media: { assetId: "clip", bounds: "theme", scale: 11 } },
+      { media: { assetId: "clip", bounds: "theme", offsetX: 2 } },
+    ])
+      expect(codes(withBackground(background))).toContain("out-of-range");
+  });
+
+  it("refuses an unknown key on the background and on its media", () => {
+    expect(codes(withBackground({ rotation: 1 }))).toContain("unknown-field");
+    expect(
+      codes(
+        withBackground({
+          media: { assetId: "clip", bounds: "theme", rotation: 1 },
+        }),
+      ),
+    ).toContain("unknown-field");
+  });
+
+  it("refuses the old artboard keys", () => {
+    expect(
+      codes({
+        ...baseEnvelope(),
+        artboard: {
+          width: 10,
+          height: 10,
+          background: { ref: "palette.ink" },
+        },
+      }),
+    ).toContain("unknown-field");
+  });
+
+  it("requires the media to resolve to an image, SVG or video", () => {
     expect(
       codes({
         ...baseEnvelope(),
         assets: [{ id: "clip", kind: "gif", path: "assets/a.gif" }],
-        artboard: {
-          width: 10,
-          height: 10,
-          backgroundMedia: { assetId: "clip", fit: "display" },
-        },
+        background: { media: { assetId: "clip", bounds: "theme" } },
       }),
     ).toContain("unresolved-asset-ref");
   });
@@ -363,8 +401,8 @@ describe("issue reporting", () => {
     expect(
       issuesFor({
         ...baseEnvelope(),
-        artboard: { width: 10, height: 10, background: { ref: "palette.x" } },
+        background: { color: { ref: "palette.x" } },
       })[0]!.path,
-    ).toBe("/artboard/background/ref");
+    ).toBe("/background/color/ref");
   });
 });

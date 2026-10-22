@@ -1,16 +1,16 @@
 import {
   ASSET_PATH_PATTERN,
+  BACKGROUND_MEDIA_BOUNDS,
   BACKGROUND_MEDIA_FITS,
   GLOBAL_GROUPS,
   MAX_ARTBOARD_DIMENSION,
+  MAX_BACKGROUND_OFFSET,
+  MAX_BACKGROUND_SCALE,
+  MIN_BACKGROUND_OFFSET,
+  MIN_BACKGROUND_SCALE,
   STABLE_ID_PATTERN,
 } from "./document.js";
-import {
-  envelopeKeysFor,
-  type KnownKeyShape,
-  knownKeysFor,
-  nearestKey,
-} from "./envelope-keys.js";
+import { envelopeKeysFor, knownKeysFor, nearestKey } from "./envelope-keys.js";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
 
 /**
@@ -18,8 +18,8 @@ import type { FabricThemeEnvelope } from "./fabric-envelope.js";
  *
  * The v2 envelope's `scene` is opaque Fabric JSON, decided by
  * `fabric-envelope-validate.ts`; everything beside it is Yunari's own data and
- * is decided here — metadata, id, artboard, globals, assets, background media
- * and artboard paint. The keys those checks read are declared in
+ * is decided here — metadata, id, artboard, globals, assets, the background
+ * layer and its media. The keys those checks read are declared in
  * `envelope-keys.ts`, which is the vocabulary the published schema is held to.
  */
 
@@ -61,11 +61,9 @@ class Issues {
   unknownKeys(
     value: Record<string, unknown>,
     path: string,
-    shape: KnownKeyShape,
+    allowed: readonly string[],
     what: string,
   ): void {
-    const allowed = knownKeysFor(shape);
-
     for (const key of Object.keys(value)) {
       if (allowed.includes(key as never)) {
         continue;
@@ -151,18 +149,7 @@ export function validateEnvelopeSemantics(
 
   const globalKeys = validateGlobals(own, input["globals"]);
   validateAssets(own, input["assets"]);
-  validateBackgroundMedia(
-    own,
-    resolveOptional(input["artboard"], "backgroundMedia"),
-    input["assets"],
-  );
-
-  validateStyleValue(
-    own,
-    resolveOptional(input["artboard"], "background"),
-    "/artboard/background",
-    globalKeys,
-  );
+  validateBackground(own, input["background"], input["assets"], globalKeys);
 
   issues.push(...own.list);
 }
@@ -201,7 +188,12 @@ function validateMetadata(issues: Issues, value: unknown): void {
     return;
   }
 
-  issues.unknownKeys(value, "/metadata", "metadata", "Document metadata");
+  issues.unknownKeys(
+    value,
+    "/metadata",
+    knownKeysFor("metadata"),
+    "Document metadata",
+  );
 
   if (
     value["version"] !== undefined &&
@@ -221,7 +213,12 @@ function validateArtboard(issues: Issues, value: unknown): void {
     return;
   }
 
-  issues.unknownKeys(value, "/artboard", "artboard", "The artboard");
+  issues.unknownKeys(
+    value,
+    "/artboard",
+    knownKeysFor("artboard"),
+    "The artboard",
+  );
 
   for (const dimension of ["width", "height"] as const) {
     const path = `/artboard/${dimension}`;
@@ -289,7 +286,12 @@ function validateGlobals(issues: Issues, value: unknown): Set<string> {
         continue;
       }
 
-      issues.unknownKeys(entry, entryPath, "globalEntry", "A global entry");
+      issues.unknownKeys(
+        entry,
+        entryPath,
+        knownKeysFor("globalEntry"),
+        "A global entry",
+      );
 
       if (typeof entry["name"] !== "string" || entry["name"].length === 0) {
         issues.add(
@@ -318,30 +320,70 @@ function validateGlobals(issues: Issues, value: unknown): Set<string> {
   return keys;
 }
 
-function validateBackgroundMedia(
+function validateBackground(
   issues: Issues,
   value: unknown,
   assets: unknown,
+  globalKeys: Set<string>,
 ): void {
   if (value === undefined) return;
-  if (!issues.object(value, "/artboard/backgroundMedia", "backgroundMedia"))
-    return;
-  for (const key of Object.keys(value))
-    if (!envelopeKeysFor("backgroundMedia").includes(key as never))
-      issues.add(
-        "unknown-field",
-        `/artboard/backgroundMedia/${key}`,
-        `backgroundMedia has no "${key}" property.`,
-      );
-  issues.enumValue(
-    value["fit"],
-    BACKGROUND_MEDIA_FITS,
-    "/artboard/backgroundMedia/fit",
-    "fit",
+  if (!issues.object(value, "/background", "background")) return;
+
+  issues.unknownKeys(
+    value,
+    "/background",
+    envelopeKeysFor("background"),
+    "The background",
   );
+  validateStyleValue(issues, value["color"], "/background/color", globalKeys);
+
+  const media = value["media"];
+  if (media === undefined) return;
+  if (!issues.object(media, "/background/media", "The background media"))
+    return;
+
+  issues.unknownKeys(
+    media,
+    "/background/media",
+    envelopeKeysFor("backgroundMedia"),
+    "The background media",
+  );
+  issues.enumValue(
+    media["bounds"],
+    BACKGROUND_MEDIA_BOUNDS,
+    "/background/media/bounds",
+    "bounds",
+  );
+  if (media["fit"] !== undefined) {
+    issues.enumValue(
+      media["fit"],
+      BACKGROUND_MEDIA_FITS,
+      "/background/media/fit",
+      "fit",
+    );
+  }
+
+  for (const [key, minimum, maximum] of [
+    ["scale", MIN_BACKGROUND_SCALE, MAX_BACKGROUND_SCALE],
+    ["offsetX", MIN_BACKGROUND_OFFSET, MAX_BACKGROUND_OFFSET],
+    ["offsetY", MIN_BACKGROUND_OFFSET, MAX_BACKGROUND_OFFSET],
+  ] as const) {
+    const raw = media[key];
+    if (raw === undefined) continue;
+    const path = `/background/media/${key}`;
+    if (!issues.finiteNumber(raw, path, key)) continue;
+    if (raw < minimum || raw > maximum) {
+      issues.add(
+        "out-of-range",
+        path,
+        `${key} must be from ${minimum} to ${maximum}.`,
+      );
+    }
+  }
+
   const asset = Array.isArray(assets)
     ? assets.find(
-        (entry) => isRecord(entry) && entry["id"] === value["assetId"],
+        (entry) => isRecord(entry) && entry["id"] === media["assetId"],
       )
     : undefined;
   if (
@@ -350,8 +392,8 @@ function validateBackgroundMedia(
   ) {
     issues.add(
       "unresolved-asset-ref",
-      "/artboard/backgroundMedia/assetId",
-      "backgroundMedia must reference a declared image, SVG or video asset.",
+      "/background/media/assetId",
+      "The background media must reference a declared image, SVG or video asset.",
     );
   }
 }
@@ -362,7 +404,7 @@ function validateTypePreset(
   path: string,
 ): void {
   if (!issues.object(value, path, "A type preset")) return;
-  issues.unknownKeys(value, path, "typePreset", "A type preset");
+  issues.unknownKeys(value, path, knownKeysFor("typePreset"), "A type preset");
   if (
     typeof value["family"] !== "string" ||
     value["family"].trim().length === 0
@@ -413,7 +455,7 @@ function validateTypePreset(
     issues.unknownKeys(
       face,
       `${path}/face`,
-      "fontFaceReference",
+      knownKeysFor("fontFaceReference"),
       "A font face reference",
     );
     issues.stableId(
@@ -452,7 +494,12 @@ function validateAssets(issues: Issues, value: unknown): Set<string> {
       continue;
     }
 
-    issues.unknownKeys(asset, path, "assetReference", "An asset reference");
+    issues.unknownKeys(
+      asset,
+      path,
+      knownKeysFor("assetReference"),
+      "An asset reference",
+    );
 
     if (issues.stableId(asset["id"], `${path}/id`, "An asset id")) {
       const id = asset["id"] as string;
@@ -672,10 +719,6 @@ function validateStyleValue(
       `Global "${ref}" is not defined in this document.`,
     );
   }
-}
-
-function resolveOptional(container: unknown, key: string): unknown {
-  return isRecord(container) ? container[key] : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

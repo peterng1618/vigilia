@@ -30,7 +30,7 @@ const KNOWN_KEYS = {
     "tags",
     "remixOf",
   ],
-  artboard: ["width", "height", "background", "contentFit", "backgroundMedia"],
+  artboard: ["width", "height", "contentFit"],
   // `format` and `timeZone` are validated below and authored by the editor's
   // runs panel; omitting them here refused the key before that code ran.
   binding: [
@@ -93,6 +93,7 @@ const ENVELOPE_KEYS = {
     "id",
     "metadata",
     "artboard",
+    "background",
     "globals",
     "assets",
     "bindings",
@@ -100,7 +101,8 @@ const ENVELOPE_KEYS = {
     "scene",
   ],
   globals: ["palette", "typePresets"],
-  backgroundMedia: ["assetId", "fit"],
+  background: ["color", "media"],
+  backgroundMedia: ["assetId", "bounds", "fit", "scale", "offsetX", "offsetY"],
 } as const;
 
 export type EnvelopeKeyBag = keyof typeof ENVELOPE_KEYS;
