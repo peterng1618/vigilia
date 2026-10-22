@@ -18,10 +18,10 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **The author's own listing**: `mine-source.ts` reads `GET /api/store/mine`, reuses the public parser and `catalogueItemOf`, and carries `status`/`statusReason` on each `StoreItem`, dropping a state it cannot name.
-- **The Mine toggle**: `mine-listing.ts` probes `/api/store/session` once and owns the toggle and the source choice; signed out draws no control, and turning it on moves the region to the online half.
-- **The public filters still apply** to Mine rows, and the empty sentence is the source's own (`uiCopy.store.mine.empty`).
-- **Proven by** 8 new `mine-source` cases and 3 region DOM cases; `region.tsx` stays at 799 lines and `ui-copy.ts` gains `mine` and `status`.
+- **Mine rows join the library's origins**, so a row this PC already installed reads Installed rather than offering Install over the author's local copy.
+- **A row dropped for an unreadable state is refused**, so the surface says it could not read one instead of printing the no-submissions sentence.
+- **The previous listing is cleared synchronously when Mine switches on**, and the toggle chip carries its neighbours' hover and focus treatments.
+- **`isCatalogueStatus` moves the six-state guard into renderer-core**, the session probe is asserted as one request per mount, and the fix is proven by new renderer-core, mine-source and region cases.
 
 ## Next
 

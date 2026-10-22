@@ -3,6 +3,7 @@ import {
   type CatalogueRefusal,
   type CatalogueStatus,
   DASHBOARD_THEME_KIND,
+  isCatalogueStatus,
   parseCatalogueIndex,
 } from "@yunari/renderer-core";
 import type { ItemSource, StoreItem } from "./local-source.js";
@@ -10,21 +11,6 @@ import { catalogueItemOf } from "./online-source.js";
 
 /** The route the host proxies the author's own rows through. */
 const MINE_PATH = "/api/store/mine";
-
-/** The six states the wire declares. A row naming anything else is not one this
- *  build can read, so it is dropped rather than coerced into a state it never
- *  claimed. */
-const STATUSES: readonly CatalogueStatus[] = [
-  "draft",
-  "pending",
-  "published",
-  "unpublished",
-  "rejected",
-  "removed",
-];
-
-const isStatus = (value: unknown): value is CatalogueStatus =>
-  typeof value === "string" && (STATUSES as readonly string[]).includes(value);
 
 /** One row's state, as the item carries it. */
 interface ItemState {
@@ -67,13 +53,23 @@ export function mineThemeSource(
         { generatedAt: new Date().toISOString(), entries: rows },
         [DASHBOARD_THEME_KIND],
       );
-      refused = parsed.refused;
-
       const states = statesOf(rows);
-      return parsed.entries.flatMap((entry) => {
+
+      // A parsed row with no readable state is still a row the host sent: it is
+      // refused rather than silently dropped, so the surface says it could not
+      // read one instead of claiming the author submitted nothing.
+      const unreadable = new Map<string, number>();
+      const listed: StoreItem[] = [];
+      for (const entry of parsed.entries) {
         const state = states.get(entry.id);
-        return state === undefined ? [] : [itemOf(entry, state)];
-      });
+        if (state === undefined) {
+          unreadable.set(entry.kind, (unreadable.get(entry.kind) ?? 0) + 1);
+          continue;
+        }
+        listed.push(itemOf(entry, state));
+      }
+      refused = refusalsWith(parsed.refused, unreadable);
+      return listed;
     },
     refused(): readonly CatalogueRefusal[] {
       return refused;
@@ -93,6 +89,31 @@ function entriesOf(body: unknown): unknown {
     : undefined;
 }
 
+/** The parser's own key for a refusal row, so two rows about one fact merge. */
+const refusalKey = (row: CatalogueRefusal): string =>
+  JSON.stringify([row.reason, row.kind ?? null]);
+
+/** The parser's rows plus one row per kind whose state could not be read. The
+ *  reason is `malformed`: the state is part of the shape this build reads, and
+ *  the parser's vocabulary has no third word for it. */
+function refusalsWith(
+  base: readonly CatalogueRefusal[],
+  unreadable: ReadonlyMap<string, number>,
+): readonly CatalogueRefusal[] {
+  if (unreadable.size === 0) return base;
+
+  const rows = new Map(base.map((row) => [refusalKey(row), row]));
+  for (const [kind, count] of unreadable) {
+    const row: CatalogueRefusal = { kind, reason: "malformed", count };
+    const seen = rows.get(refusalKey(row));
+    rows.set(
+      refusalKey(row),
+      seen === undefined ? row : { ...seen, count: seen.count + count },
+    );
+  }
+  return [...rows.values()];
+}
+
 /** Every row's state, by the id the entry declares. A row with no readable id
  *  or state contributes none, and the parsed entry it would have described is
  *  dropped: a state this build cannot name is not one it may show. */
@@ -105,7 +126,7 @@ function statesOf(rows: unknown): ReadonlyMap<string, ItemState> {
     const record = row as Record<string, unknown>;
     const id = record.id;
     const status = record.status;
-    if (typeof id !== "string" || !isStatus(status)) continue;
+    if (typeof id !== "string" || !isCatalogueStatus(status)) continue;
 
     const reason = record.statusReason;
     states.set(

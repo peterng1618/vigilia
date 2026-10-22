@@ -1,6 +1,7 @@
 import type { CatalogueRefusal } from "@yunari/renderer-core";
 import { useEffect, useState } from "react";
 import { uiCopy } from "../ui-copy.js";
+import { withInstalledVersions } from "./install-state.js";
 import type { StoreItem } from "./local-source.js";
 import { mineThemeSource } from "./mine-source.js";
 import { useOnlineListing } from "./online-listing.js";
@@ -113,8 +114,11 @@ export function useMineListing(
   }, [on, source]);
 
   /** Turning Mine on moves the region to the half it lists through; turning it
-   *  off leaves the half where the person put it. */
+   *  off leaves the half where the person put it. The previous listing is
+   *  cleared here rather than in the effect, so no frame paints Mine over the
+   *  catalogue's rows the moment it is switched on. */
   const setOnAndReveal = (next: boolean): void => {
+    if (next) setListing(undefined);
     setOn(next);
     if (next) onEnabled?.();
   };
@@ -123,7 +127,14 @@ export function useMineListing(
     offered,
     on,
     setOn: setOnAndReveal,
-    items: on ? listing?.items : catalogue.items,
+    // Mine rows are joined against the library exactly as the catalogue's are:
+    // what this PC installed is the library's fact, and without the join every
+    // own row offers Install over the author's local copy.
+    items: on
+      ? listing === undefined
+        ? undefined
+        : withInstalledVersions(listing.items, local)
+      : catalogue.items,
     refused: on ? (listing?.refused ?? []) : catalogue.refused,
     empty: on ? EMPTY_MINE : EMPTY_CATALOGUE,
   };

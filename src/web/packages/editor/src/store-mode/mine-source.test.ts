@@ -132,6 +132,21 @@ describe("the author's own source", () => {
     expect(items.map((item) => item.id)).toEqual([ITEM_ID]);
   });
 
+  it("counts a row it dropped for an unreadable state as refused", async () => {
+    // A dropped row is still a row the host sent: an empty listing plus no
+    // refusal would draw "you have no submissions yet" over one that exists.
+    const source = mineThemeSource({
+      fetch: mineWith([{ ...ENTRY, status: "shadow-banned" }]),
+    });
+
+    const items = await source.list();
+
+    expect(items).toEqual([]);
+    expect(source.refused()).toEqual([
+      { kind: DASHBOARD_THEME_KIND, reason: "malformed", count: 1 },
+    ]);
+  });
+
   it("rejects when the host answers not-ok", async () => {
     const source = mineThemeSource({ fetch: answering("", 401) });
 

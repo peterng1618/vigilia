@@ -3122,7 +3122,8 @@ it("draws no Mine toggle when the host holds no session", async () => {
  * read by the word beside it, which is the same word the copy owns.
  */
 it("offers a Mine toggle when a session is held", async () => {
-  vi.stubGlobal("fetch", mineHost({}).fetch);
+  const host = mineHost({});
+  vi.stubGlobal("fetch", host.fetch);
   await mountStore([]);
   await settle();
 
@@ -3135,6 +3136,12 @@ it("offers a Mine toggle when a session is held", async () => {
     toggle.getAttribute("aria-pressed"),
     "the Mine toggle does not open unpressed",
   ).toBe("false");
+  // The probe is one read per mount, never a poll: a second request would be a
+  // session watched rather than an answer taken once.
+  expect(
+    host.calls.filter((path) => path === "/api/store/session"),
+    "the region probed the session more than once",
+  ).toHaveLength(1);
 });
 
 /**
@@ -3183,4 +3190,81 @@ it("lists the author's own items when Mine is turned on", async () => {
     ).textContent,
     "a filter that matched no Mine row does not say so",
   ).toContain(uiCopy.store.empty.filter);
+});
+
+/**
+ * **A Mine row the library already holds is joined like a catalogue row.** The
+ * author's own listing is read from the host, but what this PC installed is the
+ * library's fact — without the join every Mine row offers Install, and pressing
+ * it overwrites the author's local copy with no undo.
+ */
+it("joins Mine rows against the library so an installed copy is not offered again", async () => {
+  const host = mineHost({ entries: [mineEntry("published")] });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([
+    fixtureWithOrigin(
+      {
+        id: "mine-copy",
+        name: "Withdrawn theme",
+        version: "1.1.0",
+        ground: DARK_GROUND,
+      },
+      MINE_ID,
+      "1.0.0",
+    ),
+  ]);
+  await settle();
+
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+
+  const slot = must(
+    document.body.querySelector<HTMLElement>(
+      `[data-yunari-store-cell="${MINE_ID}"] [data-yunari-store-cell-install]`,
+    ),
+    `${MINE_ID}'s install slot`,
+  );
+  expect(
+    slot.getAttribute("data-yunari-store-cell-install"),
+    "an installed Mine row still offers Install",
+  ).toBe("installed");
+  expect(
+    slot.tagName,
+    "an installed Mine row draws a pressable control instead of the mark",
+  ).toBe("SPAN");
+  expect(
+    document.body.querySelector(
+      `[data-yunari-store-cell="${MINE_ID}"] button[data-yunari-store-cell-install]`,
+    ),
+    "an installed Mine row still offers the install action",
+  ).toBeNull();
+});
+
+/**
+ * **A row dropped for a state this build cannot read is not an empty listing.**
+ * The host sent the author a row, so the surface says it could not read it
+ * rather than telling them they have submitted nothing.
+ */
+it("says a Mine row was unreadable rather than claiming no submissions", async () => {
+  const host = mineHost({
+    entries: [{ ...mineEntry("published"), status: "shadow-banned" }],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+
+  expect(
+    document.body.querySelector("[data-yunari-store-empty]"),
+    "an unreadable row was drawn as the no-submissions sentence",
+  ).toBeNull();
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-refusal]"),
+      "refusal line",
+    ).textContent,
+    "the unreadable Mine row is not stated",
+  ).toBe(uiCopy.store.catalogueRefused("dashboard-theme", 1));
 });

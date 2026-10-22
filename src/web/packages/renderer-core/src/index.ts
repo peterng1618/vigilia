@@ -245,6 +245,7 @@ export {
   CATALOGUE_ID_PATTERN,
   DASHBOARD_THEME_KIND,
   isCatalogueId,
+  isCatalogueStatus,
   parseCatalogueIndex,
   parseCatalogueItemFile,
 } from "./theme/catalogue-index.js";

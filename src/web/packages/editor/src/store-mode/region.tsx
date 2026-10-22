@@ -666,7 +666,7 @@ function StoreRegion(props: {
             data-yunari-store-mine=""
             pressed={online.on}
             onPressedChange={online.setOn}
-            className="flex-none rounded-md border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-6)] text-xs text-muted data-[pressed]:border-accent data-[pressed]:text-text"
+            className="flex-none rounded-md border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-6)] text-xs text-muted hover:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent data-[pressed]:border-accent data-[pressed]:text-text"
           >
             {uiCopy.store.mine.label}
           </Toggle>

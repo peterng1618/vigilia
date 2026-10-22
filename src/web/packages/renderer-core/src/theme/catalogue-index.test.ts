@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isCatalogueId,
+  isCatalogueStatus,
   parseCatalogueIndex,
   parseCatalogueItemFile,
 } from "./catalogue-index.js";
@@ -460,6 +461,32 @@ describe("parseCatalogueItemFile", () => {
         ok: false,
         reason,
       });
+    }
+  });
+});
+
+describe("isCatalogueStatus", () => {
+  it("accepts the six wire states and refuses anything else", () => {
+    for (const status of [
+      "draft",
+      "pending",
+      "published",
+      "unpublished",
+      "rejected",
+      "removed",
+    ]) {
+      expect(isCatalogueStatus(status), status).toBe(true);
+    }
+
+    for (const other of [
+      "shadow-banned",
+      "Published",
+      "",
+      3,
+      undefined,
+      null,
+    ]) {
+      expect(isCatalogueStatus(other), String(other)).toBe(false);
     }
   });
 });
