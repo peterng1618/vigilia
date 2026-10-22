@@ -1,3 +1,4 @@
+import { lineiconsSource } from "./icons/lineicons.js";
 import { lucideSource } from "./icons/lucide.js";
 import type { AssetSource } from "./source.js";
 
@@ -7,4 +8,7 @@ import type { AssetSource } from "./source.js";
  * A source added here must not require a change under the editor's
  * `asset-finder/` except a category body it declares (spec R2).
  */
-export const ASSET_SOURCES: readonly AssetSource[] = [lucideSource];
+export const ASSET_SOURCES: readonly AssetSource[] = [
+  lucideSource,
+  lineiconsSource,
+];
