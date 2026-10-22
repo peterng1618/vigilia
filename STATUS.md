@@ -17,10 +17,11 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 1.2 landed**: `classifyThemeChange` grades schema, canvas width/height, sensor add/remove and every other classified member, erring up on an unknown top-level member.
-- **The envelope's member set is closed**: `CLASSIFIED_ENVELOPE_KEYS` + `IGNORED_ENVELOPE_KEYS` must equal `envelopeKeysFor("envelope")`, so a new schema member cannot arrive unclassified.
-- **Reasons dedupe in enum order and levels collect by max**; `metadata.version`/`createdAt`/`updatedAt` and `scene.version` are ignored, so an editor upgrade or save is `none`.
-- **Content-member readers stay queued for Task 1.3**; `globals`, `assets` and non-canvas `artboard` fields currently err to `patch`/`content`.
+- **Task 1.3 landed**: the classifier reads every content member — scene objects matched by `id` at any depth (index when a node has none), assets by `id`, and palette tokens/type presets by map key.
+- **Objects, assets, tokens and presets err to minor/structure when added or removed**; a kept node's paint, text, geometry or position change is patch/content, as is a z-order reorder.
+- **`artboard.backgroundMedia` is minor/backdrop**; `artboard.background` and `metadata.name`/`author`/`description`/`themeLanguage`/`remixOf` are patch, tag membership is minor/metadata and tag reordering is `none`.
+- **Mirrored levels fold by max**: a document differing in a major and a minor member is `major` with both reasons in enum order.
+- **Unknown keys inside a known member are patch**; only an unknown top-level member stays `major`.
 
 ## Next
 

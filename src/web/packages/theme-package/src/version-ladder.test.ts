@@ -156,6 +156,265 @@ describe("classifyThemeChange", () => {
   });
 });
 
+/** A Fabric scene carrying the given top-level objects. */
+function scene(objects: readonly unknown[]) {
+  return { version: "7.4.0", objects };
+}
+
+function withMetadata(metadata: Record<string, unknown>): FabricThemeEnvelope {
+  return base({
+    metadata: metadata as NonNullable<FabricThemeEnvelope["metadata"]>,
+  });
+}
+
+describe("classifyThemeChange — scene objects", () => {
+  it("is minor when an object is added at depth", () => {
+    const before = base({ scene: scene([{ id: "group", objects: [] }]) });
+    const after = base({
+      scene: scene([{ id: "group", objects: [{ id: "panel" }] }]),
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is minor when an object at depth is removed", () => {
+    const before = base({
+      scene: scene([{ id: "group", objects: [{ id: "panel" }] }]),
+    });
+    const after = base({ scene: scene([{ id: "group", objects: [] }]) });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is patch when a kept object's geometry changes", () => {
+    const before = base({ scene: scene([{ id: "chart", left: 10 }]) });
+    const after = base({ scene: scene([{ id: "chart", left: 20 }]) });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
+  it("is patch when the objects array is reordered", () => {
+    const before = base({ scene: scene([{ id: "a" }, { id: "b" }]) });
+    const after = base({ scene: scene([{ id: "b" }, { id: "a" }]) });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
+});
+
+describe("classifyThemeChange — assets", () => {
+  const hero = { id: "hero", kind: "image", path: "assets/hero.png" } as const;
+  it("is minor when an asset id is added", () => {
+    expect(classifyThemeChange(base(), base({ assets: [hero] }))).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is minor when an asset id is removed", () => {
+    expect(classifyThemeChange(base({ assets: [hero] }), base())).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is patch when a kept asset's reference fields change", () => {
+    const next = base({ assets: [{ ...hero, path: "assets/other.png" }] });
+    expect(classifyThemeChange(base({ assets: [hero] }), next)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
+});
+
+describe("classifyThemeChange — globals", () => {
+  const accent = {
+    name: "Accent",
+    value: { kind: "solid", color: "#fff" },
+  } as const;
+  const heading = { name: "Heading", value: { family: "Inter", size: 32 } };
+  it("is minor when a palette token is added or removed", () => {
+    const empty = base({ globals: { typePresets: {}, palette: {} } });
+    const withToken = base({
+      globals: { typePresets: {}, palette: { accent } },
+    });
+    expect(classifyThemeChange(empty, withToken)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+    expect(classifyThemeChange(withToken, empty)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is minor when a type preset is added or removed", () => {
+    const empty = base({ globals: { typePresets: {} } });
+    const withPreset = base({ globals: { typePresets: { heading } } });
+    expect(classifyThemeChange(empty, withPreset)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+    expect(classifyThemeChange(withPreset, empty)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is patch when a kept palette token's value changes", () => {
+    const before = base({ globals: { typePresets: {}, palette: { accent } } });
+    const after = base({
+      globals: {
+        typePresets: {},
+        palette: {
+          accent: { ...accent, value: { kind: "solid", color: "#000" } },
+        },
+      },
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
+});
+
+describe("classifyThemeChange — metadata tags", () => {
+  it("is minor when tag membership changes", () => {
+    const before = withMetadata({ themeLanguage: "en", tags: ["dark"] });
+    const after = withMetadata({
+      themeLanguage: "en",
+      tags: ["dark", "minimal"],
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "minor",
+      reasons: ["metadata"],
+    });
+  });
+  it("is none when the tags are only reordered", () => {
+    const before = withMetadata({
+      themeLanguage: "en",
+      tags: ["dark", "minimal"],
+    });
+    const after = withMetadata({
+      themeLanguage: "en",
+      tags: ["minimal", "dark"],
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "none",
+      reasons: [],
+    });
+  });
+});
+
+describe("classifyThemeChange — artboard background media", () => {
+  const artboard = (backgroundMedia?: unknown) =>
+    ({
+      width: 1280,
+      height: 720,
+      contentFit: "contain",
+      ...(backgroundMedia === undefined ? {} : { backgroundMedia }),
+    }) as FabricThemeEnvelope["artboard"];
+  it("is minor when background media is added", () => {
+    const next = base({
+      artboard: artboard({ assetId: "hero", fit: "theme" }),
+    });
+    expect(classifyThemeChange(base(), next)).toEqual({
+      level: "minor",
+      reasons: ["backdrop"],
+    });
+  });
+  it("is minor when background media is removed", () => {
+    const before = base({
+      artboard: artboard({ assetId: "hero", fit: "theme" }),
+    });
+    expect(classifyThemeChange(before, base())).toEqual({
+      level: "minor",
+      reasons: ["backdrop"],
+    });
+  });
+  it("is minor when background media changes", () => {
+    const before = base({
+      artboard: artboard({ assetId: "hero", fit: "theme" }),
+    });
+    const after = base({
+      artboard: artboard({ assetId: "hero", fit: "display" }),
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "minor",
+      reasons: ["backdrop"],
+    });
+  });
+});
+
+describe("classifyThemeChange — metadata fields", () => {
+  it.each([
+    ["name", "Before", "After"],
+    ["author", "Before", "After"],
+    ["description", "Before", "After"],
+    ["themeLanguage", "en", "fr"],
+  ])("is patch when metadata.%s changes", (key, before, after) => {
+    const first = withMetadata({ themeLanguage: "en", [key]: before });
+    const second = withMetadata({ themeLanguage: "en", [key]: after });
+    expect(classifyThemeChange(first, second)).toEqual({
+      level: "patch",
+      reasons: ["metadata"],
+    });
+  });
+  it("is patch when metadata.remixOf changes", () => {
+    const remix = (version: string) => ({
+      catalogueId: "5f0c4f30-0f8c-4e4f-9c1f-1f0f0f0f0f0f",
+      name: "Parent",
+      version,
+    });
+    const first = withMetadata({
+      themeLanguage: "en",
+      remixOf: remix("1.0.0"),
+    });
+    const second = withMetadata({
+      themeLanguage: "en",
+      remixOf: remix("1.1.0"),
+    });
+    expect(classifyThemeChange(first, second)).toEqual({
+      level: "patch",
+      reasons: ["metadata"],
+    });
+  });
+  it("is patch when artboard.background changes", () => {
+    const before = base({
+      artboard: {
+        width: 1280,
+        height: 720,
+        background: { value: "#fff" },
+      },
+    });
+    const after = base({
+      artboard: {
+        width: 1280,
+        height: 720,
+        background: { value: "#000" },
+      },
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
+});
+
+describe("classifyThemeChange — mixed levels", () => {
+  it("is major with both reasons in enum order when major and minor members move", () => {
+    const before = base();
+    const after = base({
+      artboard: { ...base().artboard, width: 1920 },
+      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "major",
+      reasons: ["canvas", "structure"],
+    });
+  });
+});
+
 it("classifies every envelope member the schema can carry", () => {
   const known = new Set([
     ...CLASSIFIED_ENVELOPE_KEYS,

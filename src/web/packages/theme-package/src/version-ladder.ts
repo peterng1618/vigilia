@@ -130,6 +130,132 @@ function sensors(bindings: unknown): ReadonlySet<string> {
   return found;
 }
 
+function merged(
+  changes: readonly (ThemeChange | undefined)[],
+): ThemeChange | undefined {
+  const fired = new Set<ChangeReason>();
+  let level: ChangeLevel = "none";
+  for (const result of changes) {
+    if (result === undefined) continue;
+    if (
+      result.level !== "initial" &&
+      LEVEL_ORDER[result.level] > LEVEL_ORDER[level]
+    )
+      level = result.level;
+    for (const reason of result.reasons) fired.add(reason);
+  }
+  if (level === "none") return undefined;
+  return { level, reasons: REASON_ORDER.filter((reason) => fired.has(reason)) };
+}
+
+/** A scene node is identifiable when it carries `id`; a collection of them is
+ *  matched by that id rather than by position, at any depth. */
+function hasId(value: unknown): value is Readonly<Record<string, unknown>> & {
+  readonly id: string;
+} {
+  return isRecord(value) && typeof value["id"] === "string";
+}
+
+function compareValues(
+  before: unknown,
+  after: unknown,
+): ThemeChange | undefined {
+  if (stable(before) === stable(after)) return undefined;
+  if (Array.isArray(before) && Array.isArray(after))
+    return compareArrays(before, after);
+  if (isRecord(before) && isRecord(after)) return compareRecords(before, after);
+  return change("patch", "content");
+}
+
+function addedOrRemoved(present: unknown): ThemeChange {
+  if (hasId(present)) return change("minor", "structure");
+  if (Array.isArray(present) && present.some(hasId))
+    return change("minor", "structure");
+  return change("patch", "content");
+}
+
+function compareRecords(
+  before: Readonly<Record<string, unknown>>,
+  after: Readonly<Record<string, unknown>>,
+): ThemeChange | undefined {
+  const changes: (ThemeChange | undefined)[] = [];
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    const inBefore = Object.hasOwn(before, key);
+    const inAfter = Object.hasOwn(after, key);
+    if (!inBefore || !inAfter) {
+      changes.push(addedOrRemoved(inBefore ? before[key] : after[key]));
+      continue;
+    }
+    changes.push(compareValues(before[key], after[key]));
+  }
+  return merged(changes);
+}
+
+function compareArrays(before: readonly unknown[], after: readonly unknown[]) {
+  const identifiable =
+    (before.length === 0 || before.every(hasId)) &&
+    (after.length === 0 || after.every(hasId));
+  if (identifiable && (before.length > 0 || after.length > 0))
+    return compareById(before, after, true);
+  return compareByIndex(before, after);
+}
+
+/** `orderMatters` is z-order for a scene object list; an asset collection has
+ *  no order, so moving one around is no change at all. */
+function compareById(
+  before: readonly unknown[],
+  after: readonly unknown[],
+  orderMatters: boolean,
+): ThemeChange | undefined {
+  const beforeById = new Map(
+    before.map((node) => [(node as { id: string }).id, node]),
+  );
+  const afterById = new Map(
+    after.map((node) => [(node as { id: string }).id, node]),
+  );
+  const changes: (ThemeChange | undefined)[] = [];
+  for (const [id, node] of beforeById) {
+    const next = afterById.get(id);
+    if (next === undefined) changes.push(change("minor", "structure"));
+    else changes.push(compareValues(node, next));
+  }
+  for (const id of afterById.keys()) {
+    if (!beforeById.has(id)) changes.push(change("minor", "structure"));
+  }
+  if (orderMatters) {
+    const beforeOrder = before
+      .map((node) => (node as { id: string }).id)
+      .filter((id) => afterById.has(id));
+    const afterOrder = after
+      .map((node) => (node as { id: string }).id)
+      .filter((id) => beforeById.has(id));
+    if (
+      beforeOrder.length === afterOrder.length &&
+      beforeOrder.some((id, index) => id !== afterOrder[index])
+    )
+      changes.push(change("patch", "content"));
+  }
+  return merged(changes);
+}
+
+function compareByIndex(
+  before: readonly unknown[],
+  after: readonly unknown[],
+): ThemeChange | undefined {
+  const changes: (ThemeChange | undefined)[] = [];
+  const common = Math.min(before.length, after.length);
+  for (let index = 0; index < common; index += 1)
+    changes.push(compareValues(before[index], after[index]));
+  if (before.length !== after.length) {
+    const extra =
+      before.length > after.length ? before.slice(common) : after.slice(common);
+    changes.push(addedOrRemoved(extra.find(hasId) ?? extra[0]));
+  }
+  return merged(changes);
+}
+
+const ARTBOARD_VOLATILE_KEYS = ["width", "height", "backgroundMedia"] as const;
+
 function artboardChange(
   before: unknown,
   after: unknown,
@@ -137,15 +263,18 @@ function artboardChange(
   const a = isRecord(before) ? before : {};
   const b = isRecord(after) ? after : {};
   const canvas = a["width"] !== b["width"] || a["height"] !== b["height"];
+  const backdrop =
+    stable(a["backgroundMedia"]) !== stable(b["backgroundMedia"]);
   const content =
-    stable(withoutKeys(a, ["width", "height"])) !==
-    stable(withoutKeys(b, ["width", "height"]));
+    stable(withoutKeys(a, ARTBOARD_VOLATILE_KEYS)) !==
+    stable(withoutKeys(b, ARTBOARD_VOLATILE_KEYS));
   const reasons: ChangeReason[] = [];
   if (canvas) reasons.push("canvas");
+  if (backdrop) reasons.push("backdrop");
   if (content) reasons.push("content");
   return reasons.length === 0
     ? undefined
-    : change(canvas ? "major" : "patch", ...reasons);
+    : change(canvas ? "major" : backdrop ? "minor" : "patch", ...reasons);
 }
 
 function bindingsChange(
@@ -167,39 +296,101 @@ function bindingsChange(
     : change("patch", "content");
 }
 
+function tagSet(value: unknown): ReadonlySet<string> {
+  if (!Array.isArray(value)) return new Set();
+  return new Set(value.filter((tag): tag is string => typeof tag === "string"));
+}
+
 function metadataChange(
   before: unknown,
   after: unknown,
 ): ThemeChange | undefined {
-  return stable(withoutKeys(before, IGNORED_METADATA_KEYS)) ===
-    stable(withoutKeys(after, IGNORED_METADATA_KEYS))
-    ? undefined
-    : change("patch", "metadata");
+  const a = withoutKeys(before, IGNORED_METADATA_KEYS);
+  const b = withoutKeys(after, IGNORED_METADATA_KEYS);
+  const tags = tagSet(a["tags"]);
+  const nextTags = tagSet(b["tags"]);
+  // Tags are a set: reordering them is no change, joining or leaving is minor.
+  const membershipMoved =
+    tags.size !== nextTags.size || [...tags].some((tag) => !nextTags.has(tag));
+  const rest =
+    stable(withoutKeys(a, ["tags"])) !== stable(withoutKeys(b, ["tags"]));
+  const reasons: ChangeReason[] = [];
+  if (membershipMoved) reasons.push("metadata");
+  if (rest) reasons.push("metadata");
+  if (reasons.length === 0) return undefined;
+  return change(membershipMoved ? "minor" : "patch", ...reasons);
 }
 
 /** `scene.version` moves when the editor upgrades, not when the theme does. */
 function sceneChange(before: unknown, after: unknown): ThemeChange | undefined {
-  return stable(withoutKeys(before, ["version"])) ===
-    stable(withoutKeys(after, ["version"]))
-    ? undefined
-    : change("patch", "content");
+  return compareRecords(
+    withoutKeys(before, ["version"]),
+    withoutKeys(after, ["version"]),
+  );
 }
 
-function contentChange(
+function assetsChange(
   before: unknown,
   after: unknown,
 ): ThemeChange | undefined {
-  return stable(before) === stable(after)
-    ? undefined
-    : change("patch", "content");
+  const a = Array.isArray(before) ? before : [];
+  const b = Array.isArray(after) ? after : [];
+  // Assets are referenced by id and have no order of their own.
+  return a.every(hasId) && b.every(hasId)
+    ? compareById(a, b, false)
+    : compareByIndex(a, b);
+}
+
+/** A palette token or type preset is named by its map key, so one leaving or
+ *  joining the map is structural while a kept one's value is content. */
+function tokenGroupChange(
+  before: unknown,
+  after: unknown,
+): ThemeChange | undefined {
+  const a = isRecord(before) ? before : {};
+  const b = isRecord(after) ? after : {};
+  const changes: (ThemeChange | undefined)[] = [];
+  for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const inBefore = Object.hasOwn(a, key);
+    const inAfter = Object.hasOwn(b, key);
+    if (!inBefore || !inAfter) changes.push(change("minor", "structure"));
+    else changes.push(compareValues(a[key], b[key]));
+  }
+  return merged(changes);
+}
+
+const TOKEN_GROUPS = new Set(["palette", "typePresets"]);
+
+function globalsChange(
+  before: unknown,
+  after: unknown,
+): ThemeChange | undefined {
+  const a = isRecord(before) ? before : {};
+  const b = isRecord(after) ? after : {};
+  const changes: (ThemeChange | undefined)[] = [];
+  for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const inBefore = Object.hasOwn(a, key);
+    const inAfter = Object.hasOwn(b, key);
+    if (inBefore && inAfter && TOKEN_GROUPS.has(key)) {
+      changes.push(tokenGroupChange(a[key], b[key]));
+    } else if (!inBefore || !inAfter) {
+      // Only tokens and presets are interface; another group joining the
+      // member is a change inside a known member, so it errs no higher than
+      // content.
+      changes.push(change("patch", "content"));
+    } else {
+      changes.push(compareValues(a[key], b[key]));
+    }
+  }
+  return merged(changes);
 }
 
 const RULES: Readonly<Record<string, Rule>> = {
   schemaVersion: (before, after) =>
     before === after ? undefined : change("major", "schema"),
   artboard: artboardChange,
-  globals: contentChange,
-  assets: contentChange,
+  globals: globalsChange,
+  assets: assetsChange,
   bindings: bindingsChange,
   metadata: metadataChange,
   scene: sceneChange,
