@@ -17,10 +17,9 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 2.1 landed**: `createNewFabricTheme()` and `createBlankFabricTheme()` mint `crypto.randomUUID()` document ids; `STARTER_ENVELOPE_ID` no longer names a document.
-- **Two identity tests added**: each id matches the lowercase-UUID shape, and every call gets a fresh one.
-- **E2E specs discover the saved id** from the save request's PUT URL instead of a fixed literal; the author-journey seed folder is spec-owned.
-- **Editor unit suite green**: 161 files, 2171 tests.
+- **Task 2.2 landed**: `isCatalogueId` and `CATALOGUE_ID_PATTERN` own the catalogue's lowercase-UUID rule in `renderer-core`.
+- **Predicate tests only**: the brief's accept/refuse cases; `submissionFiles` keeps `isValidThemeId` as its only id gate.
+- **No legacy refusal or migration**: the app is unreleased, so no refusal copy, test or starter data move was added.
 
 ## Next
 

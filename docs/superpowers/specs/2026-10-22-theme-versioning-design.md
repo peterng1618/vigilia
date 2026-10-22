@@ -242,7 +242,7 @@ document arriving from outside rather than a document changing identity.
 A catalogue id must be a lowercase UUID
 (`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`). One
 constant, `isCatalogueId`, owned in `renderer-core` beside the catalogue
-contract, is used by `submissionFiles` and `validate-item`; `auto-merge.yml`'s
+contract, is used by `validate-item`; `auto-merge.yml`'s
 path regex is tightened to the same shape, with a comment saying it is a copy
 because the workflow cannot import it.
 
@@ -252,17 +252,6 @@ because the workflow cannot import it.
 older ids, so tightening it would silently hide a developer's existing themes
 from the listing. The library is per-machine and private; the catalogue is
 where an id has to be globally unique, and that is where the rule binds.
-
-### Legacy ids
-
-A local theme created before this change keeps its id, opens, saves and lists
-as before, and is **refused at submit**:
-
-> This theme's id was made before ids were UUIDs, so it cannot be published.
-> Start a new theme from the starter and copy the artboard across.
-
-Pre-release, the library on any machine is a developer's own work and the
-catalogue is empty, so there is no published item to strand.
 
 ## Attribution
 
@@ -364,7 +353,6 @@ Each is one host sentence, shown verbatim by the store surface:
 | A published item exists and its package is unreadable | `The store's copy of this theme cannot be opened, so its version cannot be computed.` |
 | The published item's version is not a version | `The store's copy of this theme records version "v1", which cannot be bumped.` |
 | A save moved the theme during the submit | the store's own conflict message |
-| The theme's id is not a UUID | the legacy-id sentence above |
 
 ## Testing
 

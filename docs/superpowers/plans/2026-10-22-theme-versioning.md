@@ -389,19 +389,15 @@ git add src/web/packages/editor/src/new-fabric-theme.ts \
 git commit -m "feat(editor): a new document's id is a UUID, not a shared literal"
 ```
 
-### Task 2.2: The catalogue id rule, and the refusal for a legacy id
+### Task 2.2: The catalogue id rule
 
 **Files:**
 - Modify: `src/web/packages/renderer-core/src/theme/catalogue-index.ts`
 - Modify: `src/web/packages/renderer-core/src/theme/catalogue-index.test.ts`
-- Modify: `src/web/packages/host/src/themes/github-item.ts`
-- Modify: `src/web/packages/host/src/themes/github-item.test.ts`
 
 **Interfaces:**
 - Produces: `export function isCatalogueId(text: string): boolean` and
   `export const CATALOGUE_ID_PATTERN: RegExp` in `catalogue-index.ts`.
-- Produces: `submissionFiles` refuses a theme id that is not a catalogue id with
-  the spec's sentence.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -414,40 +410,25 @@ it.each(["aurora", "3F2A1C9E-8B7D-4C6A-9E0F-1A2B3C4D5E6F", "3f2a1c9e-8b7d-4c6a-9
 );
 ```
 
-and in `github-item.test.ts`, a stored theme under `aurora`:
-
-```ts
-expect(await submissionFiles("aurora", store)).toEqual({
-  ok: false,
-  message:
-    "This theme's id was made before ids were UUIDs, so it cannot be published. Start a new theme from the starter and copy the artboard across.",
-});
-```
-
 - [ ] **Step 2: Run and watch them fail**
 
-Run: `npx vitest run packages/renderer-core/src/theme/catalogue-index.test.ts packages/host/src/themes/github-item.test.ts`
+Run: `npx vitest run packages/renderer-core/src/theme/catalogue-index.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement**
 
-Add the pattern and predicate to `catalogue-index.ts`. In `submissionFiles`, the
-first check after the library-shape check is `isCatalogueId(themeId)`; its
-refusal is the sentence above. Existing `github-item` fixtures move to UUID
-theme ids.
+Add the pattern and predicate to `catalogue-index.ts`.
 
 - [ ] **Step 4: Run green**
 
-Run: `npx vitest run packages/renderer-core/src/theme packages/host/src/themes/github-item.test.ts`
+Run: `npx vitest run packages/renderer-core/src/theme`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/web/packages/renderer-core/src/theme/catalogue-index.ts \
-  src/web/packages/renderer-core/src/theme/catalogue-index.test.ts \
-  src/web/packages/host/src/themes/github-item.ts \
-  src/web/packages/host/src/themes/github-item.test.ts STATUS.md
+  src/web/packages/renderer-core/src/theme/catalogue-index.test.ts STATUS.md
 git commit -m "feat(store): a catalogue id is a lowercase UUID"
 ```
 

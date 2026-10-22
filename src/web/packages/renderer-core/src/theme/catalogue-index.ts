@@ -13,6 +13,19 @@ import type { FacetRecord } from "./facet-record.js";
  *  (spec, "The three kinds"). What it is *called* is `uiCopy.store.cell.kinds`. */
 export const DASHBOARD_THEME_KIND = "dashboard-theme";
 
+/**
+ * The catalogue's id shape: a lowercase UUID.
+ *
+ * A library id may be any slug and may predate UUIDs; a catalogue id is a
+ * directory name an item is fetched by, so only a UUID is accepted there.
+ */
+export const CATALOGUE_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export function isCatalogueId(text: string): boolean {
+  return CATALOGUE_ID_PATTERN.test(text);
+}
+
 export interface CatalogueEntry {
   /** The catalogue's own id for the item, not a library id. */
   readonly id: string;

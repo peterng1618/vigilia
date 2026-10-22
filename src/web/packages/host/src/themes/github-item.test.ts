@@ -20,6 +20,10 @@ import { createThumbnailStore, type ThumbnailStore } from "./thumbnails.js";
 
 const NOW = new Date("2026-10-22T09:30:00.000Z");
 
+/** Fixed UUID theme ids, the shape every new document gets. */
+const THEME_ID = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
+const MISSING_ID = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
+
 /** PNG magic plus a little payload: enough for the thumbnail store's check. */
 const PNG = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4,
@@ -63,19 +67,19 @@ describe("submissionFiles", () => {
   });
 
   it("builds the item, the package and the path from one library theme", async () => {
-    await store.write("aurora", themeOf("aurora", "Aurora", "1.2.0"), {
+    await store.write(THEME_ID, themeOf(THEME_ID, "Aurora", "1.2.0"), {
       expectFree: true,
     });
-    await thumbnails.write("aurora", PNG);
+    await thumbnails.write(THEME_ID, PNG);
 
-    const result = await submissionFiles("aurora", store, {
+    const result = await submissionFiles(THEME_ID, store, {
       thumbnails,
       now: () => NOW,
     });
     if (!result.ok) throw new Error(result.message);
 
     const { files } = result;
-    expect(files.path).toBe("catalogue/aurora");
+    expect(files.path).toBe(`catalogue/${THEME_ID}`);
 
     const parsed = parseCatalogueItemFile(JSON.parse(files.itemJson));
     if (!parsed.ok) throw new Error(parsed.reason);
@@ -88,32 +92,31 @@ describe("submissionFiles", () => {
       // Option B: a repository file has no download counter and no reactions.
       downloads: 0,
       favorites: 0,
-      packageUrl:
-        "https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip",
-      thumbnail: "catalogue/aurora/thumbnail.png",
+      packageUrl: `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${THEME_ID}/${THEME_ID}.zip`,
+      thumbnail: `catalogue/${THEME_ID}/thumbnail.png`,
     });
 
     const read = readThemePackage(files.packageBytes);
     if (!read.ok) throw new Error(read.message);
-    expect(read.envelope.id).toBe("aurora");
+    expect(read.envelope.id).toBe(THEME_ID);
     expect(read.envelope.metadata?.name).toBe("Aurora");
     expect(files.thumbnailBytes).toEqual(PNG);
     expect(read.thumbnail).toEqual(PNG);
   });
 
   it("publishes a theme that declares no version as its first release", async () => {
-    await store.write("quiet", themeOf("quiet", "Quiet", undefined), {
+    await store.write(THEME_ID, themeOf(THEME_ID, "Quiet", undefined), {
       expectFree: true,
     });
-    await thumbnails.write("quiet", PNG);
+    await thumbnails.write(THEME_ID, PNG);
 
-    const result = await submissionFiles("quiet", store, { thumbnails });
+    const result = await submissionFiles(THEME_ID, store, { thumbnails });
     if (!result.ok) throw new Error(result.message);
 
     const parsed = parseCatalogueItemFile(JSON.parse(result.files.itemJson));
     if (!parsed.ok) throw new Error(parsed.reason);
     expect(parsed.file.version).toBe("1.0.0");
-    expect(parsed.file.thumbnail).toBe("catalogue/quiet/thumbnail.png");
+    expect(parsed.file.thumbnail).toBe(`catalogue/${THEME_ID}/thumbnail.png`);
   });
 
   it("refuses a video past the duration cap before a submission is built", async () => {
@@ -126,9 +129,9 @@ describe("submissionFiles", () => {
         ),
       ),
     );
-    const content = themeOf("aurora", "Aurora", "1.2.0");
+    const content = themeOf(THEME_ID, "Aurora", "1.2.0");
     await store.write(
-      "aurora",
+      THEME_ID,
       {
         envelope: {
           ...content.envelope,
@@ -138,9 +141,9 @@ describe("submissionFiles", () => {
       },
       { expectFree: true },
     );
-    await thumbnails.write("aurora", PNG);
+    await thumbnails.write(THEME_ID, PNG);
 
-    const result = await submissionFiles("aurora", store, { thumbnails });
+    const result = await submissionFiles(THEME_ID, store, { thumbnails });
 
     expect(result).toEqual({
       ok: false,
@@ -150,11 +153,11 @@ describe("submissionFiles", () => {
   });
 
   it("refuses a theme with no picture, naming what to do", async () => {
-    await store.write("quiet", themeOf("quiet", "Quiet", "1.0.0"), {
+    await store.write(THEME_ID, themeOf(THEME_ID, "Quiet", "1.0.0"), {
       expectFree: true,
     });
 
-    const result = await submissionFiles("quiet", store, { thumbnails });
+    const result = await submissionFiles(THEME_ID, store, { thumbnails });
 
     expect(result.ok).toBe(false);
     expect(result.ok ? "" : result.message).toBe(
@@ -176,7 +179,7 @@ describe("submissionFiles", () => {
     const big = new Uint8Array(MAX_ARCHIVE_BYTES + 1024);
     randomFillSync(big);
     const envelope: FabricThemeEnvelope = {
-      ...themeOf("big", "Big", "1.0.0").envelope,
+      ...themeOf(THEME_ID, "Big", "1.0.0").envelope,
       assets: [{ id: "big", kind: "image", path: "assets/big.bin" }],
     };
     const oversized = {
@@ -184,7 +187,7 @@ describe("submissionFiles", () => {
     } as unknown as ThemeStore;
     const picture = { read: async () => PNG } as unknown as ThumbnailStore;
 
-    const result = await submissionFiles("big", oversized, {
+    const result = await submissionFiles(THEME_ID, oversized, {
       thumbnails: picture,
       now: () => NOW,
     });
@@ -201,22 +204,22 @@ describe("submissionFiles", () => {
   it("does not put a store failure's path in the refusal", async () => {
     const failing = {
       read: async () => {
-        throw new Error("EPERM: D:\\Users\\peter\\library\\aurora.json");
+        throw new Error(`EPERM: D:\\Users\\peter\\library\\${THEME_ID}.json`);
       },
     } as unknown as ThemeStore;
 
-    const result = await submissionFiles("aurora", failing, { thumbnails });
+    const result = await submissionFiles(THEME_ID, failing, { thumbnails });
 
     expect(result.ok ? "" : result.message).toBe(
-      'This PC\'s library could not read theme "aurora".',
+      `This PC's library could not read theme "${THEME_ID}".`,
     );
   });
 
   it("refuses an id the library does not hold", async () => {
-    const result = await submissionFiles("missing", store, { thumbnails });
+    const result = await submissionFiles(MISSING_ID, store, { thumbnails });
 
     expect(result.ok).toBe(false);
-    expect(result.ok ? "" : result.message).toContain("missing");
+    expect(result.ok ? "" : result.message).toContain(MISSING_ID);
     expect(result.ok ? "" : result.message).toContain("holds no theme");
   });
 });

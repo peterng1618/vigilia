@@ -240,7 +240,9 @@ export type {
   CatalogueRefusal,
 } from "./theme/catalogue-index.js";
 export {
+  CATALOGUE_ID_PATTERN,
   DASHBOARD_THEME_KIND,
+  isCatalogueId,
   parseCatalogueIndex,
   parseCatalogueItemFile,
 } from "./theme/catalogue-index.js";

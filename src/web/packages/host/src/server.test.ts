@@ -1796,6 +1796,9 @@ describe("Host theme routes", () => {
     const CLIENT_ID = "client-from-the-registry";
     const PR_URL = "https://github.com/peterng1618/vigilia-store/pull/7";
     const SECRET = "ghs_the-access-token";
+    // The catalogue refuses a library slug id, so these fixtures are UUIDs.
+    const THEME_ID = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
+    const BARE_ID = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
     const FORK_PATH =
       "https://api.github.com/repos/aurora-author/vigilia-store";
     // The store's own check: a picture is any file that starts with a PNG's
@@ -1826,10 +1829,10 @@ describe("Host theme routes", () => {
       calls = [];
 
       const store = createThemeStore(library);
-      await store.write("aurora", createValidPackage("aurora", "Aurora"));
-      await createThumbnailStore(library).write("aurora", PNG);
+      await store.write(THEME_ID, createValidPackage(THEME_ID, "Aurora"));
+      await createThumbnailStore(library).write(THEME_ID, PNG);
       // A theme the library holds with no picture: the package step refuses it.
-      await store.write("bare", createValidPackage("bare", "Bare"));
+      await store.write(BARE_ID, createValidPackage(BARE_ID, "Bare"));
 
       submitting = createHostServer({
         registry: new ProviderRegistry([]),
@@ -1871,7 +1874,7 @@ describe("Host theme routes", () => {
       await fs.rm(settings, { recursive: true, force: true });
     });
 
-    function submitBody(id = "aurora"): string {
+    function submitBody(id = THEME_ID): string {
       return JSON.stringify({ id });
     }
 
@@ -1980,7 +1983,7 @@ describe("Host theme routes", () => {
         submitting.server,
         "POST",
         "/api/themes/submit",
-        submitBody("bare"),
+        submitBody(BARE_ID),
       );
 
       expect(res.status).toBe(422);
