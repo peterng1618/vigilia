@@ -1,11 +1,11 @@
 import type { CredentialRow } from "@yunari/renderer-core";
+import { verifyUnsplash } from "../assets/images/unsplash.js";
 
 /**
  * The credentials this host knows how to store.
  *
  * A key for an id this table does not name is refused, so a request cannot
- * fill `credentials.json` with arbitrary entries. Empty in v1: no source needs
- * a key yet, and the first keyed source adds its entry here.
+ * fill `credentials.json` with arbitrary entries.
  */
 export type CredentialKind = "bearer" | "cookie";
 
@@ -25,4 +25,11 @@ export interface KnownCredential {
 /** What `GET /api/credentials` answers. Never carries the value. */
 export type { CredentialRow };
 
-export const KNOWN_CREDENTIALS: readonly KnownCredential[] = [];
+export const KNOWN_CREDENTIALS: readonly KnownCredential[] = [
+  {
+    id: "unsplash",
+    label: "Unsplash",
+    kind: "bearer",
+    verify: verifyUnsplash,
+  },
+];

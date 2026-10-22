@@ -1,6 +1,7 @@
 import { fontAwesomeSource } from "./icons/fontawesome.js";
 import { lineiconsSource } from "./icons/lineicons.js";
 import { lucideSource } from "./icons/lucide.js";
+import { unsplashSource } from "./images/unsplash.js";
 import type { AssetSource } from "./source.js";
 
 /**
@@ -13,4 +14,5 @@ export const ASSET_SOURCES: readonly AssetSource[] = [
   lucideSource,
   lineiconsSource,
   fontAwesomeSource,
+  unsplashSource,
 ];
