@@ -282,6 +282,7 @@ export {
   STABLE_ID_PATTERN,
   TAG_PATTERN,
 } from "./theme/document.js";
+export { envelopeKeysFor } from "./theme/envelope-keys.js";
 export type {
   IssueCode,
   ValidationIssue,

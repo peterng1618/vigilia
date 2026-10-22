@@ -17,9 +17,10 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 1.1 landed**: `theme-package/src/version-ladder.ts` holds the document's own version shape — `isSemanticVersion`, `bumpVersion`, `versionFor` — re-exported from the package barrel.
-- **Arithmetic is narrow on purpose**: three integers only, so a semver prefix, prerelease or build is refused rather than half-parsed.
-- **20 cases green** in `version-ladder.test.ts`; the classifier and the ladder itself stay queued for Tasks 1.2/1.3.
+- **Task 1.2 landed**: `classifyThemeChange` grades schema, canvas width/height, sensor add/remove and every other classified member, erring up on an unknown top-level member.
+- **The envelope's member set is closed**: `CLASSIFIED_ENVELOPE_KEYS` + `IGNORED_ENVELOPE_KEYS` must equal `envelopeKeysFor("envelope")`, so a new schema member cannot arrive unclassified.
+- **Reasons dedupe in enum order and levels collect by max**; `metadata.version`/`createdAt`/`updatedAt` and `scene.version` are ignored, so an editor upgrade or save is `none`.
+- **Content-member readers stay queued for Task 1.3**; `globals`, `assets` and non-canvas `artboard` fields currently err to `patch`/`content`.
 
 ## Next
 
