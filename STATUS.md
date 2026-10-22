@@ -17,21 +17,19 @@ The theme store spec (phases A–G) and the theme-versioning spec are **landed**
 
 ## Last completed change
 
-- **The token ratchet's remainder is scoped to reachable surfaces** (user ruling, `vg-626`): `scripts/design-tokens.mjs` counts only the editor's DOM files, and every run reports how many literal-holding files sit outside reach.
-- **Excluded by rule, with reasons**: host/player (no editor stylesheet), renderer-core/scene-fabric (Fabric/canvas), editor Fabric/canvas painters, starter-theme paint and the QR's fixed ink; an unknown package still counts.
-- **Verification**: `node scripts/design-tokens.mjs --self-test` exit 0 (both directions plus a new unknown package), live run remainder 3 against the lowered ceiling 3, 17 outside reach; decision `0092` and `0040` amended.
+- **The eleven stale registered captures were re-shot** (`vg-402`'s act, not its mechanism): built bundles, `VIGILIA_CAPTURE=1 --workers=1`, and the drawings-adjacent pairs copied and verified byte-identical.
+- **Six palette-family frames moved with one action**, five of them unregistered twins of the graphite row; all committed with the eleven.
+- **Registry and verification**: each row's recorded sha bumped to `ec44f99b`; `node scripts/capture-freshness.mjs` exit 0 (11 registered, 0 stale); shell, settings-editorial and controls-editorial images inspected.
 
 ## Next
 
 1. **Merge `ci/catalogue-workflows` into the store's `main`** (external action, user-approved only as a future step): the pin and UUID regex are not live until it lands.
 2. Weigh `vg-620` (a client disconnecting mid-stream kills the host) before the next plan opens.
 3. The user picks the next queued plan; the next register pass starts from `vg-691`…`vg-697`.
-4. Fix `capture-freshness`'s 11 stale registered captures (`vg-402`).
-5. A packaged release owes the GPL source offer for `ffmpeg-static`.
+4. A packaged release owes the GPL source offer for `ffmpeg-static`.
 
 ## Blockers / unverified
 
-- **`capture-freshness` is RED separately, not hidden behind the gate**: 11 registered captures predate the chrome changes (`vg-402`); the gate never reaches it, so this is its own red.
 - **The rescoped remainder leaves player and host chrome outside the design language** (decision `0092`); they can drift from the editor's scales, and no instrument reports it.
 - **The auto-merge workflow's unverified-author and ownership arms are reasoned from the YAML**, not exercised: both need a second GitHub account with a fork.
 - **The catalogue is empty**, so no store claim has run against real items, and no normalized video has been played back in a browser.
