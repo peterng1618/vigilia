@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-23
 - **Status:** accepted
-- **Paths:** `src/web/packages/renderer-core/src/theme/`, `src/web/packages/renderer-core/src/theme/document.ts`, `src/web/packages/renderer-core/src/theme/envelope-keys.ts`, `src/web/packages/renderer-core/src/theme/envelope-semantics.ts`, `src/web/packages/renderer-core/src/theme/fabric-envelope-validate.ts`, `src/web/packages/scene-fabric/src/background-media.ts`, `src/web/packages/scene-fabric/src/scene.ts`, `src/web/packages/editor/src/editor-shell/bridge.ts`, `src/web/packages/editor/src/editor-shell/layer-tree.ts`, `src/web/packages/editor/src/selection-inspector/view.ts`
+- **Paths:** `src/web/packages/renderer-core/src/theme/`, `src/web/packages/renderer-core/src/theme/document.ts`, `src/web/packages/renderer-core/src/theme/envelope-keys.ts`, `src/web/packages/renderer-core/src/theme/envelope-semantics.ts`, `src/web/packages/renderer-core/src/theme/fabric-envelope-validate.ts`, `src/web/packages/scene-fabric/src/background-media.ts`, `src/web/packages/scene-fabric/src/scene.ts`, `src/web/packages/editor/src/editor-shell/bridge.ts`, `src/web/packages/editor/src/editor-shell/layer-tree.ts`, `src/web/packages/editor/src/selection-inspector/view.ts`, `src/web/packages/editor/src/editor-session.ts`
 
 ## The problem
 

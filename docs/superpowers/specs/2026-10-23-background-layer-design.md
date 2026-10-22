@@ -28,8 +28,10 @@ media's geometry, and a canvas drag must never select the background.
   `{ assetId, fit: "theme" | "display" }`.
 - `scene-fabric/src/background-media.ts` mounts the media as a DOM `<div>` below
   the caller's canvas, with `object-fit: cover`, centred. It reports
-  `BackdropMedia` so a glass panel can sample it. Video cannot be a Fabric
-  object, which is why the layer is DOM in the first place.
+  `BackdropMedia` so a glass panel can sample it. Fabric can hold a video
+  element through `FabricImage`, but it never repaints it per frame; the DOM
+  layer already owns that frame pump, and the layer is also the surface glass
+  samples. That is why it stays a DOM sibling.
 - `scene-fabric/src/scene.ts` (`SceneArtboard`, `mountFabricScene`,
   `updateArtboard`) and `editor-shell.ts` (`mountMedia`, `placeMedia`,
   `applyArtboardPaint`) mount that layer from artboard state and re-place it

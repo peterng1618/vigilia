@@ -67,9 +67,9 @@ Use `docs/decisions/README.md`'s template. The `Paths:` bullet must name every w
 
 Run from the repository root:
 
-`node scripts/reuse-gate.mjs src/web/packages/scene-fabric/src/background-media.ts`
+`echo '{"tool_input":{"file_path":"src/web/packages/scene-fabric/src/background-media.ts"}}' | node scripts/reuse-gate.mjs`
 
-Expected: exit 0 with a message that the path is claimed.
+Expected: exit 0 with no refusal. The gate is a hook and reads the path from stdin JSON, not argv.
 
 - [ ] **Step 4: Commit**
 
