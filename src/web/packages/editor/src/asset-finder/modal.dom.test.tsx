@@ -220,6 +220,18 @@ describe("AssetFinder tabs", () => {
     expect(tab("local").textContent).toContain(uiCopy.assets.category.local);
   });
 
+  it("opens on the category a caller asked for", async () => {
+    // The font field's button opens the finder on Fonts, so the modal honours
+    // `initialCategory` over the listing's own first entry.
+    await render([lucide, curatedFonts], { initialCategory: "font" });
+    await settle();
+
+    expect(tab("font").getAttribute("aria-selected")).toBe("true");
+    expect(
+      document.querySelector('[data-yunari-asset-body="font-picker"]'),
+    ).not.toBeNull();
+  });
+
   it("renders a body-only category's body and no chips", async () => {
     await render([curatedFonts]);
     await settle();

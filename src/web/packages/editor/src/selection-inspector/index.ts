@@ -156,6 +156,9 @@ interface SelectionInspectorOptions {
    * answer rather than a failure.
    */
   readonly favoritesClient?: FavoritesClient;
+  /** Opens the finder on Fonts, where the catalogue now lives. Absent in a
+   *  panel built without the shell's finder. */
+  readonly onOpenFontPicker?: () => void;
 }
 
 /** The geometry keys the funnel writes directly; every other id is a shape's
@@ -788,6 +791,7 @@ export function createSelectionInspector(
       chartEdits(),
       cropEdits,
       fontEdits,
+      options.onOpenFontPicker,
     );
   };
 

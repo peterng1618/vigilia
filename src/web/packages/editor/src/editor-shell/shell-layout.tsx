@@ -1,5 +1,6 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
+import type { ListingCategory } from "@yunari/renderer-core";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
@@ -187,8 +188,9 @@ export interface ShellLayout {
    *  sees React, so `editor-main` routes the gesture here. */
   showShortcuts(): void;
   /** Opens the asset finder. The chord and the menu row reach the same store
-   *  the modal is bound to. */
-  showFinder(): void;
+   *  the modal is bound to; a caller may name the category it opens on, which
+   *  is how the font field arrives at Fonts. */
+  showFinder(category?: ListingCategory): void;
   /** Opens the publish surface — the act the header's own control performs on a
    *  press. The session's `publish.surface` chord routes through here rather
    *  than through a second publish path, and it moves no host state: the switch
@@ -319,7 +321,8 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       tokenCount,
     } = useSelection(store);
     const sheetOpen = useSheet(sheet);
-    const finderOpen = useFinder(finder);
+    const finderState = useFinder(finder);
+    const finderOpen = finderState.open;
     /** Re-frame on the panel toggle, once the viewport has the new width.
      *
      * A resize does not need this any more: the viewport derives whether the
@@ -599,7 +602,13 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             <AssetFinder
               open={finderOpen}
               onOpenChange={(next) => finder.set(next)}
-              bodies={{ "font-picker": null, "wallpaper-engine": null }}
+              bodies={{
+                "font-picker": store.bridge?.session.fontPickerBody?.() ?? null,
+                "wallpaper-engine": null,
+              }}
+              {...(finderState.category === undefined
+                ? {}
+                : { initialCategory: finderState.category })}
               onAction={async () => ({
                 ok: false,
                 message: uiCopy.assets.actionUnavailable,
@@ -805,8 +814,8 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       // subscription re-renders; `flushSync` settles it before this returns.
       flushSync(() => sheet.set(true));
     },
-    showFinder() {
-      flushSync(() => finder.set(true));
+    showFinder(category) {
+      flushSync(() => finder.set(true, category));
     },
     showPublishing() {
       // The gesture arrives from outside React and lands on the popover's own

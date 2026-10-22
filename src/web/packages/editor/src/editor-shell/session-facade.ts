@@ -2,6 +2,7 @@ import type {
   ChartFamily,
   FabricThemeEnvelopeInput,
 } from "@yunari/renderer-core";
+import type * as React from "react";
 import type { ArrangeAction } from "../arrange.js";
 import type { ShapeKind } from "../new-object-defaults.js";
 import type { RunDisplayMode } from "../run-placeholder.js";
@@ -18,6 +19,9 @@ export interface EditorActionFacade {
   savePackage(): Promise<void>;
   releasePackage(): Promise<void>;
   openLibrary(): Promise<void>;
+  /** The finder's Fonts body. The catalogue's data, the favourites and both
+   *  writes are the session's; the shell only has somewhere to put it. */
+  fontPickerBody?(): React.ReactNode;
   /** One theme the library already holds, by id: the store's own route, which
    *  has read the theme's name off the listing it drew. `onAccepted` runs once
    *  the replacement question is answered and before the theme is read, so a

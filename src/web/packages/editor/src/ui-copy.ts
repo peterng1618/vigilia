@@ -959,6 +959,7 @@ export const uiCopy = {
     needsCredential: (label: string): string =>
       `${label} needs a key this host does not have.`,
     connectionsAction: "Open Connections",
+    openFontPicker: "Browse the font catalogue",
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */

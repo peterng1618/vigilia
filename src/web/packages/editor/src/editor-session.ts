@@ -5,8 +5,10 @@ import {
 } from "@yunari/renderer-core";
 import { sceneBoxesOf } from "@yunari/scene-fabric";
 import { ActiveSelection, type FabricObject } from "fabric/es";
+import { createElement } from "react";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
+import { FontsBodyHost } from "./asset-finder/fonts-body.js";
 import { AssetManager } from "./asset-manager/index.js";
 import {
   type CanvasNudge,
@@ -40,10 +42,12 @@ import {
 } from "./palette-manager/index.js";
 import type { PresetSelection } from "./panes/tokens/preset-list.js";
 import type { RunDisplayMode } from "./run-placeholder.js";
+import { typePresetOf } from "./selection-inspector/appearance.js";
 import {
   createSelectionInspector,
   type SelectionInspector,
 } from "./selection-inspector/index.js";
+import { isTextObject } from "./selection-inspector/view.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import type { ThemeLibraryClient } from "./theme-library-client.js";
@@ -113,6 +117,9 @@ interface EditorSessionOptions {
    *  dispatcher, so the gesture leaves through the shell's own door. Optional,
    *  like the two below, so a session built without chrome has no finder row. */
   readonly onFindAssets?: () => void;
+  /** Opens the finder already on Fonts, which is where the catalogue browsed
+   *  from the selection inspector's face field now lives. */
+  readonly onFindFontPicker?: () => void;
   /** §7.1's `⌘⇧P`. The chord opens the publish surface and moves nothing: the
    *  host's switch is inside that surface, and reaching it is the author's
    *  second, deliberate press. Optional, like the one above, so a session built
@@ -356,6 +363,9 @@ export class EditorSession {
       ...(options.favoritesClient === undefined
         ? {}
         : { favoritesClient: options.favoritesClient }),
+      ...(options.onFindFontPicker === undefined
+        ? {}
+        : { onOpenFontPicker: options.onFindFontPicker }),
     });
     this.#selection.setLocale(this.#document.envelope.metadata?.themeLanguage);
     // Entering inline editing asks the runtime for the authoring view: the
@@ -555,6 +565,29 @@ export class EditorSession {
       savePackage: () => this.#document.save(),
       releasePackage: () => this.#document.release(),
       openLibrary: () => this.#document.openLibrary(),
+      // The finder's Fonts body. The catalogue's data and the two writes are
+      // the session's already; the shell only has somewhere to put the body.
+      // A face applies to the preset the selected text is set in — the same
+      // reading the inspector's own field performed before the picker moved.
+      fontPickerBody: () =>
+        createElement(FontsBodyHost, {
+          ...(options.favoritesClient === undefined
+            ? {}
+            : { favoritesClient: options.favoritesClient }),
+          onApplyFace: (face) => {
+            const active = editor.canvas.getActiveObject();
+            const ref =
+              active !== undefined && isTextObject(active)
+                ? typePresetOf(active)
+                : undefined;
+            if (ref !== undefined) {
+              void this.applyPresetFace(ref.slice("typePresets.".length), face);
+            }
+          },
+          onApplyTrio: (trioId) => {
+            void this.applyFontTrio(trioId);
+          },
+        }),
       openLibraryTheme: (id, onAccepted) =>
         this.#document.openLibraryTheme(id, onAccepted),
       saveLibrary: () => this.#document.saveLibrary(),

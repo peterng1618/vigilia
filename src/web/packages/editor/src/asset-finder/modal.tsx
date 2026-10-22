@@ -35,6 +35,9 @@ export interface FinderProps {
   ) => Promise<ActionOutcome>;
   /** Opens Settings on Connections; absent until the shell wires it. */
   readonly onOpenConnections?: () => void;
+  /** The category to select once the listing arrives, when the caller asked
+   *  for one (the font field opens on Fonts). */
+  readonly initialCategory?: ListingCategory;
   readonly client?: ClientOptions;
 }
 
@@ -76,6 +79,7 @@ export function AssetFinder({
   bodies,
   onAction,
   onOpenConnections,
+  initialCategory,
   client,
 }: FinderProps): React.JSX.Element {
   const [sources, setSources] = useState<readonly AssetSourceListing[]>([]);
@@ -92,6 +96,19 @@ export function AssetFinder({
   const [busy, setBusy] = useState(false);
   const ticket = useRef(0);
 
+  /** A category a body owns: no listing names it, and no source is searched. */
+  const bodyKinds: Partial<Record<ListingCategory, React.ReactNode>> = {
+    font: bodies["font-picker"],
+    local: bodies["wallpaper-engine"],
+  };
+
+  const present = (
+    category: ListingCategory,
+    listing: readonly AssetSourceListing[],
+  ): boolean =>
+    listing.some((source) => source.category === category) ||
+    bodyKinds[category] != null;
+
   useEffect(() => {
     if (!open) return;
 
@@ -99,17 +116,20 @@ export function AssetFinder({
     void listSources(client).then((next) => {
       if (!live) return;
       setSources(next);
-      setActive((current) =>
-        current !== undefined &&
-        next.some((entry) => entry.category === current)
-          ? current
-          : next[0]?.category,
-      );
+      setActive((current) => {
+        if (current !== undefined && present(current, next)) return current;
+        if (initialCategory !== undefined && present(initialCategory, next)) {
+          return initialCategory;
+        }
+        return next[0]?.category ?? (bodyKinds.font != null ? "font" : "local");
+      });
     });
     return () => {
       live = false;
     };
-  }, [open, client]);
+    // `bodyKinds` is read for presence only; its nodes are React state the
+    // effect must not restart on.
+  }, [open, client, initialCategory]);
 
   useEffect(() => {
     localStorage.setItem(DISABLED_KEY, JSON.stringify([...disabled]));
@@ -118,6 +138,11 @@ export function AssetFinder({
   const categories: ListingCategory[] = [];
   for (const source of sources) {
     if (!categories.includes(source.category)) categories.push(source.category);
+  }
+  for (const category of ["font", "local"] as const) {
+    if (bodyKinds[category] != null && !categories.includes(category)) {
+      categories.push(category);
+    }
   }
 
   const gridSources =
@@ -169,7 +194,12 @@ export function AssetFinder({
   const bodyOf = (
     category: ListingCategory,
   ): AssetSourceListing["body"] | undefined =>
-    sources.find((source) => source.category === category)?.body;
+    sources.find((source) => source.category === category)?.body ??
+    (bodyKinds[category] == null
+      ? undefined
+      : category === "font"
+        ? "font-picker"
+        : "wallpaper-engine");
 
   const runAction = async (): Promise<void> => {
     if (selected === undefined) return;
