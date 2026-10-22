@@ -133,7 +133,7 @@ export function createGithubTokenStore(directory: string): GithubTokenStore {
         const valid = asIdentity(identity);
         if (valid === undefined) {
           throw new Error(
-            "Invalid GitHub identity: accessToken, scope and login must be non-empty, and obtainedAt an instant.",
+            "Invalid GitHub identity: accessToken and scope must be non-empty, login must be 1-39 letters, digits or hyphens, and obtainedAt an instant.",
           );
         }
 

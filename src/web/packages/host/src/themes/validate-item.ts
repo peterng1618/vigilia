@@ -73,7 +73,9 @@ async function firstRefusal(
     await stat(path.join(directory, "thumbnail.png"));
   } catch (error) {
     if (isMissing(error)) return "thumbnail.png is missing.";
-    return `thumbnail.png cannot be read: ${messageOf(error)}`;
+    // The error's text can carry the absolute fixture path, and the sentence
+    // says all a submitter can act on.
+    return "thumbnail.png cannot be read.";
   }
 
   const packageFile = path.join(directory, `${id}.zip`);

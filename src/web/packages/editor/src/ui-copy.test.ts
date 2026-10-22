@@ -190,6 +190,12 @@ it("pins the submission's sentences as literals", () => {
   );
   expect(uiCopy.store.submit.open).toBe("Open github.com to approve");
   expect(uiCopy.store.submit.submitted).toBe("Pull request opened.");
+  expect(
+    uiCopy.store.submit.announcement(
+      "Living room",
+      uiCopy.store.submit.submitted,
+    ),
+  ).toBe("Living room: Pull request opened.");
   expect(uiCopy.store.submit.expired).toBe(
     "The GitHub sign-in expired. Submit again.",
   );

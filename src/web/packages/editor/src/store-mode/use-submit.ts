@@ -25,6 +25,10 @@ export interface SubmitControl {
    *  not this one's answer. */
   readonly itemId: string | undefined;
   readonly state: SubmitState;
+  /** Whether any submission is in flight, whichever item it belongs to. A
+   *  control for another item is drawn busy and disabled, because its press
+   *  would meet the one-flow guard and do nothing. */
+  readonly inFlight: boolean;
   readonly userCode: string | undefined;
   readonly verificationUri: string | undefined;
   readonly url: string | undefined;
@@ -96,6 +100,9 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
   readonly announcement: string;
 } {
   const [itemId, setItemId] = useState<string | undefined>(undefined);
+  /** The item's own name, kept beside its id so the live region can name the
+   *  item an answer belongs to. */
+  const [itemLabel, setItemLabel] = useState<string | undefined>(undefined);
   const [state, setState] = useState<SubmitState>("idle");
   const [userCode, setUserCode] = useState<string | undefined>(undefined);
   const [verificationUri, setVerificationUri] = useState<string | undefined>(
@@ -272,6 +279,7 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
     clearTimer();
     // The whole outcome belongs to this item from the press onward.
     setItemId(item.id);
+    setItemLabel(item.name === "" ? item.id : item.name);
     setState("submitting");
     setRefusal(undefined);
     setUrl(undefined);
@@ -288,17 +296,28 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
         : state === "submitted"
           ? uiCopy.store.submit.submitted
           : "";
+  const inFlight = state === "submitting" || state === "authorising";
 
   return {
     control: {
       onSubmit,
       itemId,
       state,
+      inFlight,
       userCode,
       verificationUri,
       url,
       refusal,
     },
-    announcement,
+    // **The item is named in the live region**, because the region outlives
+    // the modal: an answer belonging to A must not be attributed to the item B
+    // whose surface happens to be open when it arrives.
+    announcement:
+      announcement === ""
+        ? ""
+        : uiCopy.store.submit.announcement(
+            itemLabel ?? itemId ?? "",
+            announcement,
+          ),
   };
 }

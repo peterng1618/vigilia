@@ -470,7 +470,11 @@ function SubmitFooter(props: {
   const verificationUri = mine ? submit.verificationUri : undefined;
   const url = mine ? submit.url : undefined;
   const refusal = mine ? submit.refusal : undefined;
-  const busy = state === "submitting" || state === "authorising";
+  // **A flow on another item disables this one too.** The region holds one
+  // flow at a time, and a press here would meet that guard and do nothing; the
+  // control says so rather than looking pressable.
+  const busy =
+    submit.inFlight || state === "submitting" || state === "authorising";
   const submitted = state === "submitted";
   return (
     <Fragment>

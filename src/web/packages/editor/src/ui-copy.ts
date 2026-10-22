@@ -725,6 +725,10 @@ export const uiCopy = {
        *  this is the control that takes the author there. */
       open: "Open github.com to approve",
       submitted: "Pull request opened.",
+      /** Names the item an answer belongs to. The live region outlives the
+       *  modal, so an answer for one item can arrive while another is open. */
+      announcement: (name: string, sentence: string): string =>
+        `${name}: ${sentence}`,
       expired: "The GitHub sign-in expired. Submit again.",
       denied: "The GitHub sign-in was denied. Submit again.",
     },

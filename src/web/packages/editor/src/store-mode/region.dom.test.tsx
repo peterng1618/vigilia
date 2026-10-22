@@ -2565,7 +2565,10 @@ it("shows the code and the verification link when the host asks for a sign-in", 
     "noreferrer",
   );
   expect(liveRegion(), "the authorising state reached no live region").toBe(
-    uiCopy.store.submit.authorising("ABCD-1234"),
+    uiCopy.store.submit.announcement(
+      "Living room",
+      uiCopy.store.submit.authorising("ABCD-1234"),
+    ),
   );
 });
 
@@ -2621,7 +2624,10 @@ it("retries the submission once the poll answers ok and shows the pull request",
     "the control is still pressable after the pull request was opened",
   ).toBe(true);
   expect(liveRegion(), "the submitted state reached no live region").toBe(
-    uiCopy.store.submit.submitted,
+    uiCopy.store.submit.announcement(
+      "Living room",
+      uiCopy.store.submit.submitted,
+    ),
   );
 });
 
@@ -2659,7 +2665,7 @@ it("states the host's refusal beside the control and re-enables it", async () =>
   expect(
     liveRegion(),
     "the refusal did not outrank the state it interrupted",
-  ).toBe(refusal);
+  ).toBe(uiCopy.store.submit.announcement("Living room", refusal));
 });
 
 /**
@@ -2720,6 +2726,73 @@ it("keeps one theme's submission answer off another theme's surface", async () =
       "the refused theme's own sentence",
     ).textContent,
   ).toBe(refusal);
+});
+
+/**
+ * **Another theme's Submit is drawn busy while one submission is in flight.**
+ * The region holds one flow at a time, so a press on B while A authorises would
+ * meet the guard and do nothing. The control says that instead of looking
+ * pressable: disabled, `aria-busy`, and the busy sentence — over the whole
+ * authorisation window, not only after A's flow has ended.
+ */
+it("draws another theme's Submit busy while a submission is in flight", async () => {
+  const host = submitHost({
+    submit: [
+      new Response("Sign in to GitHub before submitting a theme.", {
+        status: 401,
+      }),
+    ],
+    // Long enough that A is still authorising when B is opened.
+    device: deviceAnswer(900),
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+    fixtureEntry({
+      id: "office-wall",
+      name: "Office wall",
+      ground: DARK_GROUND,
+    }),
+  ]);
+
+  await pressCellSurface("living-room");
+  await pressSubmit();
+  await settle();
+  expect(
+    document.body.querySelector("[data-vigilia-store-item-submit-code]"),
+    "A did not reach the authorising window the case is about",
+  ).not.toBeNull();
+
+  await closeItem();
+  await pressCellSurface("office-wall");
+
+  const control = submitControl();
+  expect(
+    control.disabled,
+    "B's Submit is pressable while A's submission is in flight",
+  ).toBe(true);
+  expect(
+    control.getAttribute("aria-busy"),
+    "B's Submit is not drawn busy while A's submission is in flight",
+  ).toBe("true");
+  expect(
+    control.textContent?.trim(),
+    "B's Submit does not state the busy sentence",
+  ).toBe(uiCopy.store.submit.busy);
+
+  const submits = (): number =>
+    host.calls.filter((call) => call === "/api/themes/submit").length;
+  const before = submits();
+  await act(async () => control.click());
+  await settle();
+  expect(
+    submits(),
+    "a press on B sent a submission while A's flow still held the guard",
+  ).toBe(before);
 });
 
 /**

@@ -173,6 +173,7 @@ const NO_SUBMIT: SubmitControl = {
   onSubmit: () => undefined,
   itemId: undefined,
   state: "idle",
+  inFlight: false,
   userCode: undefined,
   verificationUri: undefined,
   url: undefined,
