@@ -11,13 +11,13 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 - **Active plan:** `2026-10-22-theme-versioning.md`, executing subagent-driven through Phase 1 (Tasks 1.1–1.3), then Phases 2–5.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; the user picks when one starts.
-- **The catalogue repo `peterng1618/vigilia-store` is live** and empty; `validate` pins the app at `0a417ff`, and a merge regenerates the listing.
+- **The catalogue repo `peterng1618/vigilia-store` is live** and empty; `main`'s `validate` still pins `0a417ff`, and a catalogue merge regenerates the listing.
 - **Decisions `0088`–`0091`** carry the store's measured choices: raw-path index, host-side download, a hand-rolled GitHub client, and a bundled GPL `ffmpeg-static`.
 - **Capture `editor-video-normalize`** is the newest registered action; the install and submission captures sit beside it.
 
 ## Last completed change
 
-- **Task 5.2 workflow branch `ci/catalogue-workflows` (`701c7b6`)**: `validate` pins `682379fc` and passes the base commit's item and package as `--previous-item`/`--previous-package` when the directory already exists there; auto-merge's path check takes the UUID shape of `isCatalogueId`.
+- **Task 5.2 branch `ci/catalogue-workflows` (`9e9ca44`)**: `validate` pins `682379fc`, passes the base commit's item and package when present, and guards a base that lacks the package; auto-merge's path check takes the UUID shape of `isCatalogueId`.
 - **Proof PR #7 green** on `validate`: a first submission at `1.0.0` is accepted.
 - **Proof PR #8 refused** by `validate`: `a first submission must be version 1.0.0, not "1.4.0".`
 - **Both proof PRs carried the workflow branch**, so `auto-merge` refused their mixed paths and neither merged.
@@ -26,7 +26,7 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 ## Next
 
 1. Continue the active versioning plan task by task through its ledger.
-2. The plan's Task 5.2 pushes to the catalogue repo and opens two proof PRs — external actions, confirmed at the time.
+2. **Merge `ci/catalogue-workflows` into the store's `main`** (external action, user-approved only as a future step): the new pin and UUID regex are not live until it lands.
 3. Weigh `vg-620` (a client disconnecting mid-stream kills the host) and `vg-626` (the red `design:check`) before the next plan opens.
 4. The next register pass starts from `vg-691`…`vg-697`.
 5. A packaged release owes the GPL source offer for `ffmpeg-static`.
