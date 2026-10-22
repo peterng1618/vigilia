@@ -205,6 +205,9 @@ it("pins the submission's sentences as literals", () => {
   expect(uiCopy.store.submit.blocked).toBe(
     "This browser blocked the sign-in window.",
   );
+  expect(uiCopy.store.submit.unexpectedState("draft")).toBe(
+    "The store answered an unexpected state (draft); try submitting again.",
+  );
   // **The version sentence is the same ladder the host computed**: the arrows
   // and the level word are what the author reads, and a first release names no
   // `from` because there is none to name.

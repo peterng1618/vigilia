@@ -2557,8 +2557,8 @@ it("opens the host's sign-in window and waits for the session", async () => {
   );
   expect(
     submitControl().textContent?.trim(),
-    "the control does not state the busy sentence while the window is open",
-  ).toBe(uiCopy.store.submit.busy);
+    "the control does not state the author's part while the window is open",
+  ).toBe(uiCopy.store.submit.authorising);
 });
 
 /**

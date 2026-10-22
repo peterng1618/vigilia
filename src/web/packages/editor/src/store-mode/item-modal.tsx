@@ -490,7 +490,11 @@ function SubmitFooter(props: {
         onClick={() => submit.onSubmit(item)}
         className={FOOTER_BUTTON}
       >
-        {busy ? uiCopy.store.submit.busy : uiCopy.store.submit.label}
+        {state === "authorising"
+          ? uiCopy.store.submit.authorising
+          : busy
+            ? uiCopy.store.submit.busy
+            : uiCopy.store.submit.label}
       </button>
       {submitted && status !== undefined ? (
         <span className="flex max-w-[40ch] flex-col gap-[var(--space-4)] text-xs text-muted">

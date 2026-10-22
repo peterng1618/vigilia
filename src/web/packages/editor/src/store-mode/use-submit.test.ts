@@ -238,6 +238,32 @@ it("states the host's refusal for an unexpected answer", async () => {
   );
 });
 
+/**
+ * **A 2xx this surface cannot draw is named, not dumped.** A state outside the
+ * two a footer shows leaves the author with a sentence about the store, never
+ * the answer's JSON.
+ */
+it("names an unexpected status instead of drawing the answer's body", async () => {
+  const fetch = sequenceFetch([
+    json({
+      ok: true,
+      status: "draft",
+      version: { from: null, to: "1.0.0", level: "initial" },
+    }),
+  ]);
+  const submit = mount({ fetch, openWindow: () => popup() as never });
+
+  await act(async () => submit().control.onSubmit(ITEM));
+  await flush();
+
+  expect(submit().control.state, "the odd answer was not refused").toBe(
+    "refused",
+  );
+  expect(submit().control.refusal, "the odd answer's body was drawn").toBe(
+    uiCopy.store.submit.unexpectedState("draft"),
+  );
+});
+
 /** **A thrown transport is a refusal with its message**, not a stuck control. */
 it("refuses with a thrown transport's message", async () => {
   const failingFetch = (async () => {
@@ -282,8 +308,10 @@ it("ignores a second press while a flow is live", async () => {
   ).toHaveLength(1);
 });
 
-/** **A blocked window is named**, and the control becomes pressable again. */
+/** **A blocked window is named**, the control becomes pressable again, and no
+ *  poll is scheduled for a window that was never made. */
 it("refuses when the browser blocks the sign-in window", async () => {
+  vi.useFakeTimers();
   const fetch = sequenceFetch([
     json({ ok: false, message: "Sign in." }, 401),
     json({ url: SIGN_IN_URL }),
@@ -292,9 +320,14 @@ it("refuses when the browser blocks the sign-in window", async () => {
 
   await act(async () => submit().control.onSubmit(ITEM));
   await flush();
+  await advance(2_000);
 
   expect(submit().control.state).toBe("refused");
   expect(submit().control.refusal).toBe(uiCopy.store.submit.blocked);
+  expect(
+    fetch.calls.filter((call) => call === "/api/store/session"),
+    "a poll ran for a window that never opened",
+  ).toHaveLength(0);
 });
 
 /** **An address this surface may not open is not one it claims**, so a `http`

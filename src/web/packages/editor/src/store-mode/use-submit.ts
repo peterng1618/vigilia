@@ -182,6 +182,8 @@ export function useSubmit(options: {
       alive.current = false;
       if (timer.current !== undefined) clearTimeout(timer.current);
       timer.current = undefined;
+      // An editor torn down mid-sign-in must not orphan the store's window.
+      closeWindow();
     };
   }, []);
 
@@ -336,9 +338,16 @@ export function useSubmit(options: {
     // A landed submission names the state and the version it published; an
     // answer without those facts is not one this surface can report.
     const published = versionOf(answer?.["version"]);
-    const word = statusOf(answer?.["status"]);
-    if (published === undefined || word === undefined) {
+    if (published === undefined) {
       refuse(refusalOf(text));
+      return;
+    }
+    const rawStatus = answer?.["status"];
+    const word = statusOf(rawStatus);
+    if (word === undefined) {
+      // A state no footer draws is named rather than leaving the answer's JSON
+      // on screen.
+      refuse(uiCopy.store.submit.unexpectedState(String(rawStatus)));
       return;
     }
     clearTimer();

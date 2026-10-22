@@ -503,8 +503,8 @@ function StoreRegion(props: {
    *  its last refusal announces (`use-install.ts`). */
   const install = useInstall({ source, onListed: setItems });
   /** The library half's submission press and its longer flow (`use-submit.ts`):
-   *  the device sign-in outlives the modal that started it, so its state lives
-   *  beside the region rather than in the surface that pressed. */
+   *  the sign-in outlives the modal that started it, so its state lives beside
+   *  the region rather than in the surface that pressed. */
   const submit = useSubmit({
     // **A landed submission re-reads the library** so the caption line shows
     // the version the host just wrote. A failed re-list changes nothing: the

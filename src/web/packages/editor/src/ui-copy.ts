@@ -794,6 +794,10 @@ export const uiCopy = {
       /** A browser that blocks the popup left the flow with no window to finish
        *  it in, so the author is told to act on the blocker. */
       blocked: "This browser blocked the sign-in window.",
+      /** A landed answer whose state no footer draws: the state is named, so a
+       *  host and client that disagree cannot put JSON on screen. */
+      unexpectedState: (status: string): string =>
+        `The store answered an unexpected state (${status}); try submitting again.`,
     },
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */
