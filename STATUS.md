@@ -17,9 +17,11 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 5.1 landed**: `validate-item` re-derives a submission's version from the base commit's `item.json` and package through the host's ladder.
-- **`--previous-item` / `--previous-package`** feed that base; either alone, an unknown argument or a missing value prints usage and exits 1.
-- **Refusals pin the ruling**: a first submission must be `1.0.0`, and the package's `metadata.version`, the change level and `remixOf` must agree with the base.
+- **Task 5.2 workflow branch `ci/catalogue-workflows` (`701c7b6`)**: `validate` pins `682379fc` and passes the base commit's item and package as `--previous-item`/`--previous-package` when the directory already exists there; auto-merge's path check takes the UUID shape of `isCatalogueId`.
+- **Proof PR #7 green** on `validate`: a first submission at `1.0.0` is accepted.
+- **Proof PR #8 refused** by `validate`: `a first submission must be version 1.0.0, not "1.4.0".`
+- **Both proof PRs carried the workflow branch**, so `auto-merge` refused their mixed paths and neither merged.
+- **Unverified**: the tightened auto-merge regex has not run on CI, because `pull_request_target` executes `main`'s workflow and the branch is unmerged.
 
 ## Next
 
