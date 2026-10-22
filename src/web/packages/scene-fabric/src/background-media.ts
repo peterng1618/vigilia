@@ -5,7 +5,7 @@ import {
   type BackgroundMedia,
   type BackgroundMediaFit,
 } from "@yunari/renderer-core";
-import type { BackdropMedia, DeviceRect } from "./glass.js";
+import type { BackdropMedia } from "./glass.js";
 
 export interface BackgroundMediaSource {
   readonly url: string;
@@ -276,24 +276,28 @@ export function mountBackgroundMedia(
         paint(ctx, region, device) {
           const source = intrinsic(mounted);
           if (source === undefined) return false;
-          // A source with no intrinsic size — an SVG authored without width or
-          // height — has no ratio to preserve, which is what the element does
-          // too; the box stands in for the source so nothing is cropped.
-          const [width, height] =
-            source.width > 0 && source.height > 0
-              ? [source.width, source.height]
-              : [device.width, device.height];
+          const media = background?.media;
+          // The child is placed inside this rect, the layer's box in artboard
+          // units; the glass maps that box onto the device rect it samples, so
+          // the sampler and the element cannot show different crops.
+          const placed = placement({
+            box: { width: rect.width, height: rect.height },
+            source,
+            fit: media?.fit ?? BACKGROUND_MEDIA_DEFAULTS.fit,
+            scale: media?.scale ?? BACKGROUND_MEDIA_DEFAULTS.scale,
+            offsetX: media?.offsetX ?? BACKGROUND_MEDIA_DEFAULTS.offsetX,
+            offsetY: media?.offsetY ?? BACKGROUND_MEDIA_DEFAULTS.offsetY,
+          });
+          const scaleX = rect.width > 0 ? device.width / rect.width : 0;
+          const scaleY = rect.height > 0 ? device.height / rect.height : 0;
+          // Five arguments: the whole source, placed. A source window is the
+          // defect 0012 cropped the file with.
           ctx.drawImage(
             mounted,
-            ...mediaDrawArgs({
-              sourceWidth: width,
-              sourceHeight: height,
-              deviceLeft: device.left,
-              deviceTop: device.top,
-              deviceWidth: device.width,
-              deviceHeight: device.height,
-              region,
-            }),
+            device.left - region.left + placed.left * scaleX,
+            device.top - region.top + placed.top * scaleY,
+            placed.width * scaleX,
+            placed.height * scaleY,
           );
           return true;
         },
@@ -306,53 +310,6 @@ export function mountBackgroundMedia(
       layer.remove();
     },
   };
-}
-
-/**
- * The nine `drawImage` arguments that reproduce the element's `object-fit: cover`
- * over a device-space region, offset by where the media layer actually sits.
- * `object-fit` is a CSS layout decision that `drawImage` does not apply, and
- * `object-position` is never authored, so the crop stays centred.
- *
- * The crop belongs on the **source** and the scale on the **destination**:
- * `cover` takes the source rect whose aspect matches the device rect and lets
- * `drawImage` scale it into the whole of it. Taking a source window sized by
- * the *device* rect and drawing it 1:1 instead would show a pixel-for-pixel crop
- * of the middle of the file — a different picture from the element's at every
- * scale but the one where the artboard's device rect is the file's own size
- * (0012).
- */
-export function mediaDrawArgs(input: {
-  readonly sourceWidth: number;
-  readonly sourceHeight: number;
-  readonly deviceLeft: number;
-  readonly deviceTop: number;
-  readonly deviceWidth: number;
-  readonly deviceHeight: number;
-  readonly region: DeviceRect;
-}): readonly [number, number, number, number, number, number, number, number] {
-  const { sourceWidth, sourceHeight, deviceWidth, deviceHeight } = input;
-  const left = input.deviceLeft - input.region.left;
-  const top = input.deviceTop - input.region.top;
-  // Cover: the largest source rect of the device rect's aspect, centred.
-  const cropWidth = Math.min(
-    sourceWidth,
-    (sourceHeight * deviceWidth) / deviceHeight,
-  );
-  const cropHeight = Math.min(
-    sourceHeight,
-    (sourceWidth * deviceHeight) / deviceWidth,
-  );
-  return [
-    (sourceWidth - cropWidth) / 2,
-    (sourceHeight - cropHeight) / 2,
-    cropWidth,
-    cropHeight,
-    left,
-    top,
-    deviceWidth,
-    deviceHeight,
-  ];
 }
 
 /**

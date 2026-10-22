@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { mediaDrawArgs, mountBackgroundMedia } from "./background-media.js";
+import { mountBackgroundMedia } from "./background-media.js";
 
 const ARTBOARD = { width: 400, height: 200 } as const;
 const HERO = { id: "hero", kind: "image", path: "assets/hero.png" } as const;
@@ -318,97 +318,135 @@ describe("background media as a glass backdrop", () => {
     handle.destroy();
   });
 
-  it("crops to object-fit: cover at the media layer's own offset", () => {
-    // 200x100 source cover-cropped into a 400x400 device box placed at (60, 20).
-    const covered = mediaDrawArgs({
-      sourceWidth: 200,
-      sourceHeight: 100,
-      deviceLeft: 60,
-      deviceTop: 20,
-      deviceWidth: 400,
-      deviceHeight: 400,
-      region: { left: 0, top: 0, width: 800, height: 800 },
+  /** A fake 2D context that records the media's `drawImage` calls. */
+  const recordingContext = () => {
+    const calls: unknown[][] = [];
+    return {
+      calls,
+      ctx: {
+        drawImage: (...args: unknown[]) => calls.push(args),
+      } as unknown as CanvasRenderingContext2D,
+    };
+  };
+
+  /** jsdom decodes nothing, so the intrinsic size paint fits against is stated. */
+  const withIntrinsic = (
+    host: HTMLElement,
+    width: number,
+    height: number,
+  ): HTMLImageElement => {
+    const image = host.querySelector<HTMLImageElement>(
+      "[data-yunari-background-media] img",
+    );
+    if (image === null) throw new Error("the layer mounted no image");
+    Object.defineProperty(image, "complete", { value: true });
+    Object.defineProperty(image, "naturalWidth", { value: width });
+    Object.defineProperty(image, "naturalHeight", { value: height });
+    return image;
+  };
+
+  it("draws the placed rect, not a cover crop, when the media is contained", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: {
+        media: {
+          assetId: "hero",
+          bounds: "theme",
+          fit: "contain",
+          offsetX: 0.25,
+          offsetY: 0.25,
+        },
+      },
+      artboard: { width: 200, height: 100 },
+      assets: [HERO],
+      resolveAsset: () => ({ url: "blob:hero" }),
     });
-    // Cover crops the source to the device box's aspect — the middle 100x100 of
-    // a 200x100 file — and `drawImage` scales that into the whole box:
-    // [sx, sy, sw, sh, dx, dy, dw, dh].
-    expect(covered).toEqual([50, 0, 100, 100, 60, 20, 400, 400]);
+    withIntrinsic(host, 100, 100);
+
+    const { calls, ctx } = recordingContext();
+    // 200×100 box, 100×100 source, contain, scale 1, both offsets a quarter box.
+    const painted = handle
+      .backdrop()
+      ?.paint(
+        ctx,
+        { left: 0, top: 0, width: 200, height: 100 },
+        { left: 0, top: 0, width: 200, height: 100 },
+      );
+    expect(painted).toBe(true);
+    // The whole source into the placed 100×100 rect: centred, then shifted.
+    expect(calls[0]?.slice(-4)).toEqual([100, 25, 100, 100]);
+    handle.destroy();
   });
 
-  it("shows the whole source at every device scale, not a window of it", () => {
-    // The defect (0012): a source window sized by the *device* rect and drawn
-    // 1:1 is a pixel-for-pixel crop of the middle of the file, so a panel blurs
-    // a different photograph from the element at every scale but one. The
-    // property that distinguishes it is how much of the file the source rect
-    // covers, and that must not depend on the device rect.
-    const argsAt = (deviceWidth: number, deviceHeight: number) =>
-      mediaDrawArgs({
-        sourceWidth: 2330,
-        sourceHeight: 1311,
-        deviceLeft: 0,
-        deviceTop: 0,
-        deviceWidth,
-        deviceHeight,
-        region: { left: 0, top: 0, width: deviceWidth, height: deviceHeight },
-      });
-    // The player's reference viewport, and the editor's own 0.3744 camera over
-    // the same artboard.
-    const atSize = argsAt(1672, 941);
-    const zoomedOut = argsAt(626, 352);
+  it("draws the whole source at every device scale, not a window of it", () => {
+    // The defect (0012): a source window sized by the *device* rect is a
+    // pixel-for-pixel crop of the middle of the file. Drawing without a source
+    // rect makes the whole file the only thing `drawImage` can show.
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background,
+      artboard: { width: 400, height: 200 },
+      assets: [HERO],
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+    withIntrinsic(host, 400, 200);
 
-    // 2330x1311 is wider than the artboard's 1.7768 by 0.02 %, so the cover
-    // crop is a half-pixel off each side and vertical: both mounts take
-    // essentially the whole file, and the destination is the whole device rect.
-    // The only thing that differs between them is how much `drawImage` has to
-    // scale, which is the point.
-    for (const [args, deviceWidth, deviceHeight] of [
-      [atSize, 1672, 941],
-      [zoomedOut, 626, 352],
-    ] as const) {
-      expect(args[2], "the crop keeps the file's whole width").toBeGreaterThan(
-        2329,
-      );
-      expect(args[6]).toBe(deviceWidth);
-      expect(args[7]).toBe(deviceHeight);
-      expect(args[0], "a sliver of width is cropped symmetrically").toBeCloseTo(
-        (2330 - (args[2] ?? 0)) / 2,
-        6,
-      );
-    }
-    // The pre-fix value, named so a regression says what it replaced: a
-    // 626-px source window — 26.9 % of the file — drawn 1:1 into 626 device px.
-    expect(zoomedOut[2]).not.toBeCloseTo(626, 0);
+    const drawnAt = (width: number, height: number) => {
+      const { calls, ctx } = recordingContext();
+      const device = { left: 0, top: 0, width, height };
+      handle.backdrop()?.paint(ctx, device, device);
+      return calls[0] ?? [];
+    };
+
+    // The player's reference viewport, and the editor's own zoomed-out camera.
+    const atSize = drawnAt(400, 200);
+    const zoomedOut = drawnAt(200, 100);
+
+    // Five arguments: the whole image, no source window, and a destination that
+    // is the placed rect at whatever scale the device rect was mapped at.
+    expect(atSize).toHaveLength(5);
+    expect(atSize.slice(-4)).toEqual([0, 0, 400, 200]);
+    expect(zoomedOut.slice(-4)).toEqual([0, 0, 200, 100]);
+    handle.destroy();
   });
 
   it("keeps a source feature at the same place in the region it is sampled for", () => {
-    // The open question: a panel away from the media's origin must show the
-    // part of the background actually behind it, not the part at the origin.
-    // Sampling into a region that starts at x=200 must shift the media by the
-    // same amount, or the wallpaper slides under the panel.
-    const atOrigin = mediaDrawArgs({
-      sourceWidth: 200,
-      sourceHeight: 100,
-      deviceLeft: 0,
-      deviceTop: 0,
-      deviceWidth: 400,
-      deviceHeight: 200,
-      region: { left: 0, top: 0, width: 600, height: 400 },
+    // A panel away from the media's origin must show the part of the background
+    // actually behind it: sampling a region that starts at x=200 shifts the
+    // media by the same amount, or the wallpaper slides under the panel.
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background,
+      artboard: { width: 200, height: 100 },
+      assets: [HERO],
+      resolveAsset: () => ({ url: "blob:hero" }),
     });
-    const shifted = mediaDrawArgs({
-      sourceWidth: 200,
-      sourceHeight: 100,
-      deviceLeft: 0,
-      deviceTop: 0,
-      deviceWidth: 400,
-      deviceHeight: 200,
-      region: { left: 200, top: 0, width: 600, height: 400 },
-    });
-    // Same crop, moved left by exactly the region's own left offset.
-    expect(shifted.slice(0, 4)).toEqual(atOrigin.slice(0, 4));
-    expect((shifted[4] ?? 0) - (atOrigin[4] ?? 0)).toBe(-200);
-    // A stripe at the source's horizontal centre lands at the box's centre in
-    // both, which is what makes a located feature testable at all.
-    expect((atOrigin[4] ?? 0) + (atOrigin[6] ?? 0) / 2).toBe(200);
+    withIntrinsic(host, 200, 100);
+
+    const drawnIn = (regionLeft: number) => {
+      const { calls, ctx } = recordingContext();
+      handle
+        .backdrop()
+        ?.paint(
+          ctx,
+          { left: regionLeft, top: 0, width: 600, height: 400 },
+          { left: 0, top: 0, width: 400, height: 200 },
+        );
+      return (calls[0] ?? []).slice(-4) as number[];
+    };
+
+    const atOrigin = drawnIn(0);
+    const shifted = drawnIn(200);
+
+    // Same placement, moved left by exactly the region's own left offset.
+    expect(atOrigin).toEqual([0, 0, 400, 200]);
+    expect(shifted).toEqual([-200, 0, 400, 200]);
+    // A stripe at the box's horizontal centre stays there, which is what makes
+    // a located feature testable at all.
+    expect((atOrigin[0] ?? 0) + (atOrigin[2] ?? 0) / 2).toBe(200);
   });
 
   it("follows video frames and starts no loop without a video", () => {
