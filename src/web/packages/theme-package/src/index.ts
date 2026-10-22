@@ -4,6 +4,7 @@ import {
 } from "@yunari/renderer-core";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
+export * from "./credits";
 export * from "./version-ladder";
 export * from "./video-envelope";
 

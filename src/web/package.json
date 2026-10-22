@@ -28,6 +28,7 @@
     "test:rebuild": "playwright test --config playwright.rebuild.config.ts --workers=1",
     "test:display": "playwright test --config playwright.display.config.ts --workers=1",
     "fonts:generate": "node scripts/generate-font-trios.mjs",
+    "icons:generate": "node ../../scripts/generate-lucide-icons.mjs",
     "size": "npm run size -w @yunari/player",
     "status:check": "node ../../scripts/check-status.mjs",
     "docs:check": "node ../../scripts/check-doc-references.mjs",
