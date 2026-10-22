@@ -63,6 +63,19 @@ Non-obvious failure modes worth checking before repeating expensive investigatio
 - Video does not belong inside the Fabric scene when it forces full-scene frame
   repaint; keep it on a separate aligned background layer.
 
+## Store submission (GitHub OAuth)
+
+- Signing in uses GitHub's **device flow**, which needs a registered OAuth App
+  with **Device Flow enabled** — an account-holder action, not an agent's.
+- The app's client id is read from `VIGILIA_GITHUB_CLIENT_ID`. With it unset,
+  `POST /api/github/device` answers `503` naming registration rather than
+  failing obscurely; nothing else in the store is affected.
+- Requested scope is `public_repo` only: the flow forks a public repo and opens
+  a pull request on it.
+- The token is stored at `github-token.json` in the settings directory, mode
+  `0600` (POSIX). It never reaches the browser; `DELETE /api/github/token`
+  clears it.
+
 ## Toolchain
 
 - Bare gitignore rules match at any depth.
