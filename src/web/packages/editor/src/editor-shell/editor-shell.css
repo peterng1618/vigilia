@@ -2339,7 +2339,7 @@ body,
   display: inline-flex;
   justify-content: center;
 }
-/* The kind, drawn as one glyph. One slot for all five arms, so every row's
+/* The kind, drawn as one glyph. One slot for all six arms, so every row's
    name starts on the same left edge — which is what makes a column of them
    scannable at all.
 

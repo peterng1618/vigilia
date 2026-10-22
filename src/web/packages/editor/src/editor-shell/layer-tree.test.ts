@@ -1007,7 +1007,9 @@ describe("the row's role, in the document's own terms", () => {
       resolve(dirname(fileURLToPath(import.meta.url)), "layer-tree.ts"),
       "utf8",
     );
-    expect(source).not.toMatch(/["'](Text|Shape|Chart|Group|Image)["']/);
+    expect(source).not.toMatch(
+      /["'](Text|Shape|Chart|Group|Image|Background)["']/,
+    );
     expect(uiCopy.panels.layerKinds).toEqual({
       text: "Text",
       shape: "Shape",

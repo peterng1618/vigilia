@@ -453,7 +453,8 @@ test.describe("the per-kind inspector column", () => {
       .evaluateAll((nodes) =>
         nodes.map((node) => node.getAttribute("data-yunari-layer")),
       );
-    expect(rows).toHaveLength(10);
+    // The starter's ten top-level objects, plus the background's own row.
+    expect(rows).toHaveLength(11);
 
     await page.locator('[data-yunari-layer="group-cpu-card"]').click();
     // **Three, not four: the card is a Group, and a Group has no render boundary

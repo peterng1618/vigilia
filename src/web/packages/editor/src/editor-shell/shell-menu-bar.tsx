@@ -152,6 +152,9 @@ export function ShellMenuBar({
   // leaving a mark that runs a different action.
   useSyncExternalStore(subscribeShortcuts, activeShortcuts, activeShortcuts);
   const kind = selection.activeKind;
+  // A background selection is a layer, not an object: the Edit commands would
+  // reach managers with nothing of the kind to act on and silently no-op.
+  const noObject = kind === "none" || kind === "background";
   const session = store.bridge?.session;
   const [source, setSource] = useState<"preview" | "live">("preview");
   const [rate, setRate] = useState<1 | 30>(30);
@@ -226,12 +229,7 @@ export function ShellMenuBar({
             row calls through the session — `edit.undo` and its row both end at
             `historyManager.undo()`, and so on for the six. */}
         {EDIT_MENU_ROWS.map((row) =>
-          item(
-            row.label,
-            () => row.run(session),
-            kind === "none",
-            row.shortcut,
-          ),
+          item(row.label, () => row.run(session), noObject, row.shortcut),
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.view}>

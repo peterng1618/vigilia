@@ -1191,7 +1191,7 @@ export const uiCopy = {
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
   panels: {
     layers: "Layers",
-    /** The generic word for each kind of layer, the one owner of the five kind
+    /** The generic word for each kind of layer, the one owner of the six kind
      *  words — `layer-tree.ts` reads these where it once held a private table. */
     layerKinds: layerKindLabels,
     /** A row's role, in words. One function per arm of `LayerRole`. */
