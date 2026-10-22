@@ -4678,16 +4678,50 @@ describe("Credential routes", () => {
 
     expect(res.status).toBe(200);
     expect(res.json()).toEqual([
-      { id: "demo", label: "Demo source", set: false, hint: "", verify: false },
+      {
+        id: "demo",
+        label: "Demo source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
       {
         id: "session",
         label: "Session source",
         set: false,
         hint: "",
         verify: false,
+        helpText: null,
+        helpUrl: null,
       },
     ]);
     expect(res.text()).not.toMatch(/"value"/);
+  });
+
+  it("carries the guide a credential names, and nulls when it names none", async () => {
+    hosted = start([
+      {
+        ...bearer,
+        help: {
+          text: "Create an app and copy its access key.",
+          url: "https://example.test/keys",
+        },
+      },
+      cookie,
+    ]);
+
+    const [guided, plain] = (await rows()) as unknown as {
+      helpText: string | null;
+      helpUrl: string | null;
+    }[];
+
+    expect(guided).toMatchObject({
+      helpText: "Create an app and copy its access key.",
+      helpUrl: "https://example.test/keys",
+    });
+    expect(plain).toMatchObject({ helpText: null, helpUrl: null });
   });
 
   it("stores a value and answers only its four-character hint", async () => {
@@ -4709,6 +4743,8 @@ describe("Credential routes", () => {
         set: true,
         hint: "9f2c",
         verify: false,
+        helpText: null,
+        helpUrl: null,
       },
       {
         id: "session",
@@ -4716,6 +4752,8 @@ describe("Credential routes", () => {
         set: false,
         hint: "",
         verify: false,
+        helpText: null,
+        helpUrl: null,
       },
     ]);
     // The whole point of the route: the value it stored never comes back.
@@ -4739,13 +4777,23 @@ describe("Credential routes", () => {
 
     expect(cleared.status).toBe(200);
     expect(await rows()).toEqual([
-      { id: "demo", label: "Demo source", set: false, hint: "", verify: false },
+      {
+        id: "demo",
+        label: "Demo source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
       {
         id: "session",
         label: "Session source",
         set: false,
         hint: "",
         verify: false,
+        helpText: null,
+        helpUrl: null,
       },
     ]);
   });
@@ -4845,13 +4893,23 @@ describe("Credential routes", () => {
     ).toBe(403);
     // Refused, not stored.
     expect(await rows()).toEqual([
-      { id: "demo", label: "Demo source", set: false, hint: "", verify: false },
+      {
+        id: "demo",
+        label: "Demo source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
       {
         id: "session",
         label: "Session source",
         set: false,
         hint: "",
         verify: false,
+        helpText: null,
+        helpUrl: null,
       },
     ]);
   });

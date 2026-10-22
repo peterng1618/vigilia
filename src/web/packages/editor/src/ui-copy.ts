@@ -150,6 +150,7 @@ export const uiCopy = {
     connectionsSave: "Save",
     connectionsClear: "Clear",
     connectionsVerify: "Verify",
+    connectionsWhereToGetKey: "Where to get a key",
     connectionsFooter:
       "Keys are stored in a local settings file and sent only to the source that owns them.",
     /** §7's About tab: what the editor is, and the facts this build can read.

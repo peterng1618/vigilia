@@ -13,6 +13,11 @@ describe("KNOWN_CREDENTIALS", () => {
     expect(typeof unsplash?.verify).toBe("function");
   });
 
+  it("names where a person creates the key", () => {
+    expect(unsplash?.help?.url).toBe("https://unsplash.com/oauth/applications");
+    expect(unsplash?.help?.text).not.toBe("");
+  });
+
   it("checks the key against the search endpoint and says ok on 200", async () => {
     const calls: { url: string; init: RequestInit | undefined }[] = [];
     const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {

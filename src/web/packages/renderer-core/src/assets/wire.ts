@@ -59,6 +59,10 @@ export interface CredentialRow {
   readonly hint: string;
   /** Whether this host has a check to run, which is what enables Verify. */
   readonly verify: boolean;
+  /** One sentence naming where the key comes from, or null when there is none. */
+  readonly helpText: string | null;
+  /** Where a person creates the key, or null when there is none. */
+  readonly helpUrl: string | null;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

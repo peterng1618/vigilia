@@ -310,7 +310,14 @@ function credentialRow(id: string): HTMLElement {
 
 const rowOf = (
   overrides: Partial<CredentialRow> & Pick<CredentialRow, "id" | "label">,
-): CredentialRow => ({ set: false, hint: "", verify: false, ...overrides });
+): CredentialRow => ({
+  set: false,
+  hint: "",
+  verify: false,
+  helpText: null,
+  helpUrl: null,
+  ...overrides,
+});
 
 /** A controlled input's value, set the way a keystroke sets it: React reads
  *  the native setter's result rather than the property's old value. */
@@ -693,6 +700,35 @@ describe("Connections", () => {
       );
     expect(verify("no-check")?.disabled).toBe(true);
     expect(verify("has-check")?.disabled).toBe(false);
+  });
+
+  it("points a row at where its key is created, and adds nothing for a row without help", async () => {
+    credentials.listCredentials.mockResolvedValue([
+      rowOf({
+        id: "keyed",
+        label: "Keyed source",
+        helpText: "Create an app and copy its access key.",
+        helpUrl: "https://example.test/keys",
+      }),
+      rowOf({ id: "plain", label: "Plain source" }),
+    ]);
+    const host = mount();
+    await press(gear(host));
+    await openConnections();
+
+    const help = credentialRow("keyed").querySelector<HTMLElement>(
+      '[data-yunari-credential-help="keyed"]',
+    );
+    expect(help?.textContent).toContain("Create an app");
+    expect(
+      credentialRow("keyed").querySelector<HTMLAnchorElement>("a")?.href,
+    ).toBe("https://example.test/keys");
+    expect(
+      credentialRow("keyed").querySelector<HTMLAnchorElement>("a")?.textContent,
+    ).toBe(uiCopy.settings.connectionsWhereToGetKey);
+    expect(
+      credentialRow("plain").querySelector("[data-yunari-credential-help]"),
+    ).toBeNull();
   });
 
   it("saves once and refreshes the row from the host", async () => {

@@ -20,6 +20,8 @@ export interface KnownCredential {
   ) => Promise<
     { readonly ok: true } | { readonly ok: false; readonly message: string }
   >;
+  /** How a person gets a key: one sentence, and the page that issues one. */
+  readonly help?: { readonly text: string; readonly url: string };
 }
 
 /** What `GET /api/credentials` answers. Never carries the value. */
@@ -31,5 +33,9 @@ export const KNOWN_CREDENTIALS: readonly KnownCredential[] = [
     label: "Unsplash",
     kind: "bearer",
     verify: verifyUnsplash,
+    help: {
+      text: "Create an app on your Unsplash developer page and copy its access key.",
+      url: "https://unsplash.com/oauth/applications",
+    },
   },
 ];

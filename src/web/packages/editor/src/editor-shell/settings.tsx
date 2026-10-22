@@ -389,6 +389,22 @@ function ConnectionsTab(): React.JSX.Element {
                 {uiCopy.settings.connectionsVerify}
               </button>
             </div>
+            {row.helpText === null || row.helpUrl === null ? null : (
+              <p
+                className="text-sm text-muted"
+                data-yunari-credential-help={row.id}
+              >
+                {row.helpText}{" "}
+                <a
+                  href={row.helpUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {uiCopy.settings.connectionsWhereToGetKey}
+                </a>
+              </p>
+            )}
             {messages[row.id] === undefined ? null : (
               <p className="text-sm">{messages[row.id]}</p>
             )}
