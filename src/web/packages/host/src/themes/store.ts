@@ -647,12 +647,12 @@ async function readEnvelope(
  * for that document.
  */
 function groundOf(envelope: FabricThemeEnvelope): string | undefined {
-  if (envelope.artboard.backgroundMedia !== undefined) return undefined;
+  if (envelope.background?.media !== undefined) return undefined;
   return cssArtboardPaint(
     resolveStyleValue(
-      envelope.artboard.background,
+      envelope.background?.color,
       envelope.globals ?? {},
-      "artboard",
+      "background",
       [],
     ),
   );

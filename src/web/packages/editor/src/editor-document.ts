@@ -345,15 +345,14 @@ export class EditorDocument {
   /**
    * The envelope-side asset references, which no Fabric object carries.
    *
-   * The artboard's background media is a DOM sibling of the canvas, and a type
+   * The background layer's media is a DOM sibling of the canvas, and a type
    * preset's face is a reference in `globals` — neither is an object, so the
    * canvas walk the asset panel does cannot see either. A font whose bytes went
    * away under a live preset would leave a theme that validates and renders
    * nothing.
    */
   holdsAsset(assetId: string): boolean {
-    if (this.#envelope.artboard.backgroundMedia?.assetId === assetId)
-      return true;
+    if (this.#envelope.background?.media?.assetId === assetId) return true;
     const presets = this.#envelope.globals?.typePresets as
       | TypePresets
       | undefined;
@@ -494,22 +493,23 @@ export class EditorDocument {
 
   deletePalette(id: string, replacement: string): void {
     if (id === "none" || id === replacement) return;
-    const { from, to, artboard, palette } = reassignPaletteToken(
+    const { from, to, background, palette } = reassignPaletteToken(
       this.#shell.editor.canvas,
-      this.#envelope.artboard,
+      this.#envelope.background,
       this.#envelope.globals?.palette ?? {},
       id,
       replacement,
     );
     this.#consumers.charts().reassignPaletteReferences(from, to);
+    // The artboard did not change, so nothing writes it: the colour the token
+    // painted now lives in the background layer, and Task 6 adds the shell
+    // setter that repaints it.
     this.#writeEnvelope({
       ...this.#envelope,
-      artboard,
+      ...(background === undefined ? {} : { background }),
       globals: { ...this.#envelope.globals, palette },
     });
-    this.#shell.setArtboard(artboard);
     this.#globalsChanged();
-    this.#consumers.artboard().render(artboard);
     this.#consumers.palette().render(palette);
   }
 
