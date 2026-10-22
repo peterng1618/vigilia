@@ -130,6 +130,20 @@ describe("validateCatalogueItem", () => {
     });
   });
 
+  it("refuses a non-UUID name before reading anything", async () => {
+    // The directory does not exist: without the id gate the refusal would be
+    // the missing `item.json`, so this pins the gate above every read.
+    const root = await mkdtemp(path.join(os.tmpdir(), "vigilia-catalogue-"));
+    temporary.push(root);
+
+    expect(await validateCatalogueItem(path.join(root, "aurora"))).toEqual({
+      ok: false,
+      id: "aurora",
+      reason:
+        'the directory name "aurora" is not a catalogue id; a catalogue id is a lowercase UUID.',
+    });
+  });
+
   it("accepts a directory whose header, path and package agree", async () => {
     const directory = await itemDirectory({ id: ID });
 
