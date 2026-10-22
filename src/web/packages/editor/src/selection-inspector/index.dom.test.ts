@@ -1525,9 +1525,13 @@ describe("the column a kind gets", () => {
    * One live example per kind, in the brief's own terms: a `Wedge`, a text box,
    * a chart, an image, a group, and a selection spanning two kinds. The list is
    * the driver — a kind added to `SELECTION_KINDS` arrives here without an
-   * example and fails to compile, rather than passing unnoticed.
+   * example and fails to compile, rather than passing unnoticed. The background
+   * is not one of these: it is no Fabric object, and `background-column.test.ts`
+   * describes it.
    */
-  const EXAMPLE: Readonly<Record<SelectionKind, () => FabricObject>> = {
+  const EXAMPLE: Readonly<
+    Record<Exclude<SelectionKind, "background">, () => FabricObject>
+  > = {
     shape: () =>
       new Wedge({
         left: 0,
@@ -1607,7 +1611,9 @@ describe("the column a kind gets", () => {
     "[data-yunari-opacity]",
   ];
 
-  const PRE_PLAN: Readonly<Record<SelectionKind, readonly string[]>> = {
+  const PRE_PLAN: Readonly<
+    Record<Exclude<SelectionKind, "background">, readonly string[]>
+  > = {
     shape: [
       ...EVERY_OBJECT,
       // This kind's row alone: a `Wedge` is a region, so the treatment reaches

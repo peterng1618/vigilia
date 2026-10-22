@@ -1379,6 +1379,13 @@ export const uiCopy = {
     widthMark: "W",
     heightMark: "H",
     background: "Background color",
+    /** The background column's own rows: the box its media fills, the scale it
+        is multiplied by, and the one pair that moves both axes. */
+    backgroundBounds: "Bounds",
+    backgroundScale: "Scale",
+    backgroundOffset: "Offset",
+    /** The three fits, keyed by what the model stores. */
+    backgroundFits: { cover: "Cover", contain: "Contain", fill: "Fill" },
     /** A paint's own colour, as against the token it is chosen from. */
     colour: "Colour",
     /** Shown when the browser cannot paint what was typed. Named by the value

@@ -102,14 +102,12 @@ export function rendersExtra(extra: ExtraView): boolean {
  * its own here, and folding it into `group` would make the column describe a
  * multi-selection as though the author had selected a single thing.
  *
- * **Total by construction**, and two owners hold that up rather than this
- * docblock: `view.ts`'s `KIND_WORD` is a record over this union, so a kind added
- * here fails to compile until it is given a word, and `index.dom.test.ts`'s
- * `EXAMPLE` record — also over the union — drives "answers a %s with a column
- * rather than an empty one", which asks every kind for a column and fails one
- * that yields an empty section. The per-kind question record that used to gate
- * this here went with the read-only section, whose "is this appearance its
- * children's" was its only question.
+ * **`background` is the union's one member absent from this list.** It is a
+ * selected subject and `KIND_WORD` is a record over the union, so it cannot go
+ * unworded — but it is no Fabric object: `selectionKindOf` never answers for it
+ * and `backgroundColumn` describes it, so no per-kind example can be built for
+ * it. `KIND_WORD`'s totality is the compile-time half; the per-kind suites
+ * enumerate this list, which is the runnable half.
  */
 export const SELECTION_KINDS = [
   "shape",
@@ -120,7 +118,7 @@ export const SELECTION_KINDS = [
   "activeSelection",
 ] as const;
 
-export type SelectionKind = (typeof SELECTION_KINDS)[number];
+export type SelectionKind = (typeof SELECTION_KINDS)[number] | "background";
 
 /** Fabric lowercases `type` on the instance, so these are its own spellings. */
 function isTextKind(object: FabricObject): boolean {
@@ -231,6 +229,24 @@ function sectionOrder(id: ColumnSectionId): number {
 function titleOf(id: ColumnSectionId): string {
   if (id === "advanced") return uiCopy.inspectorFields.advanced;
   return SETTINGS_SECTIONS.find((entry) => entry.id === id)?.label ?? id;
+}
+
+/** One section as the column renders it. Exported because `backgroundColumn`
+ *  answers the same two questions for a subject that is no Fabric object, and a
+ *  second copy of the title, the order and the count would be a second owner. */
+export function sectionView(
+  id: ColumnSectionId,
+  fields: readonly FieldView[] = [],
+  extras: readonly ExtraView[] = [],
+): ColumnSectionView {
+  return {
+    id,
+    title: titleOf(id),
+    defaultOpen: defaultOpenOf(id),
+    count: fields.length + extras.filter(rendersExtra).length,
+    fields,
+    extras,
+  };
 }
 
 /** The appearance context the field builders take. */
@@ -498,12 +514,7 @@ export function perKindColumn(
   return bodies
     .filter(([, parts]) => sizeOf(parts) > 0)
     .sort(([left], [right]) => sectionOrder(left) - sectionOrder(right))
-    .map(([id, parts]) => ({
-      id,
-      title: titleOf(id),
-      defaultOpen: defaultOpenOf(id),
-      count: sizeOf(parts),
-      fields: parts.fields ?? [],
-      extras: parts.extras ?? [],
-    }));
+    .map(([id, parts]) =>
+      sectionView(id, parts.fields ?? [], parts.extras ?? []),
+    );
 }

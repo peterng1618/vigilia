@@ -111,6 +111,9 @@ export interface PairHalfView {
   readonly value: number;
   readonly data: FieldHooks;
   readonly integer?: boolean;
+  /** The stored value is a fraction the field shows as a percentage; the commit
+      converts back, so the write boundary still receives the fraction. */
+  readonly percent?: boolean;
 }
 
 export type FieldView =
@@ -135,6 +138,12 @@ export type FieldView =
        * that converts its own geometry fields.
        */
       readonly integer?: boolean;
+      /**
+       * The stored value is a fraction the field shows as a percentage — the
+       * background's scale and offsets. The control multiplies on the way in and
+       * divides on the way out, so the write boundary still receives a fraction.
+       */
+      readonly percent?: boolean;
     })
   | (FieldBase & {
       readonly control: "pair";
@@ -569,6 +578,9 @@ const KIND_WORD: Readonly<Record<SelectionKind, string>> = {
   group: uiCopy.panels.layerKinds.group,
   image: uiCopy.panels.layerKinds.image,
   activeSelection: uiCopy.inspectorFields.selection,
+  // `selectionKindOf` never answers "background" — it is no Fabric object — but
+  // the union carries it so the subject can name one.
+  background: uiCopy.panels.layerKinds.background,
 };
 
 /**

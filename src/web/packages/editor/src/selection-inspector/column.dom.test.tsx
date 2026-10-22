@@ -5,6 +5,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
+import { backgroundColumn } from "./background-column.js";
 import { SelectionColumn } from "./column.js";
 import { idleCrop, idleCropEdits } from "./idle-crop.test-stage.js";
 import { type ColumnContext, perKindColumn } from "./per-kind-column.js";
@@ -160,6 +161,26 @@ const headerOf = (id: string): HTMLButtonElement =>
 const isOpen = (id: string): boolean =>
   headerOf(id).getAttribute("aria-expanded") === "true";
 
+/** A real edit, as React sees one: the prototype setter, because React's own
+ *  tracker would suppress a plain assignment, and the blur is the commit. */
+async function typeInto(input: HTMLInputElement, value: string): Promise<void> {
+  await act(async () => {
+    input.focus();
+    const setter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(input) as HTMLInputElement,
+      "value",
+    )?.set;
+    if (setter === undefined) input.value = value;
+    else setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    // `focusout` is the event React's `onBlur` is delegated from; the host is
+    // detached here, so `blur()` would have nothing to move focus from.
+    input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  });
+}
+
 describe("SelectionColumn", () => {
   it("renders the questions in the order SETTINGS_SECTIONS decides", () => {
     const ids = renderedSections(
@@ -310,6 +331,54 @@ describe("SelectionColumn", () => {
     });
     expect(cancelPreview).toHaveBeenCalledTimes(1);
     expect(cancelPreview).toHaveBeenCalledWith(1, "opacity", 50);
+  });
+
+  /**
+   * The background's percent fields: a fraction is stored, a percentage is
+   * shown, and the number the write boundary receives is the fraction again.
+   */
+  it("renders a stored fraction as a percentage and commits the fraction", async () => {
+    const commit = vi.fn(() => false);
+    const port: SelectionEdits = {
+      commit,
+      preview: () => false,
+      cancelPreview: () => {},
+    };
+    const view: SelectionView = {
+      targetRevision: 1,
+      subject: { name: "Background", kind: "background", key: undefined },
+      locked: false,
+      sections: backgroundColumn({
+        background: {
+          media: { assetId: "a", bounds: "theme", scale: 1.4, offsetX: 0 },
+        },
+        assets: [],
+        globals: undefined,
+      }),
+    };
+    act(() => {
+      root.render(
+        <SelectionColumn
+          view={view}
+          edits={port}
+          runs={runs}
+          chart={chart}
+          crop={crop}
+          font={font}
+        />,
+      );
+    });
+
+    const scale = host.querySelector<HTMLInputElement>(
+      "[data-yunari-background-scale]",
+    );
+    expect(scale?.value).toBe("140");
+
+    const offsetX = host.querySelector<HTMLInputElement>(
+      "[data-yunari-background-offset-x]",
+    )!;
+    await typeInto(offsetX, "25");
+    expect(commit).toHaveBeenCalledWith(1, "background.offsetX", 0.25);
   });
 
   /**
