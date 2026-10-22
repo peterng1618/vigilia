@@ -138,12 +138,16 @@ export function classifyThemeChange(
 export function bumpVersion(
   previous: string,
   level: "patch" | "minor" | "major",
-): string;
+): string | undefined;
 export function versionFor(
   previous: string | undefined,
   change: ThemeChange,
-): string;
+): string | undefined;
 export function isSemanticVersion(text: string): boolean;
+```
+
+Both arithmetic functions answer `undefined` rather than guessing when the
+previous text is not a version, so every caller has one refusal to write.
 ```
 
 It lives in `theme-package` because the catalogue's CI already depends on that

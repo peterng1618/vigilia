@@ -5,11 +5,11 @@ Branch: `develop`
 
 ## Current objective
 
-The theme store spec is **fully landed** (phases A–G). The next objective is **automatic semver versioning and UUID theme ids**; its [spec](docs/superpowers/specs/2026-10-22-theme-versioning-design.md) is written and awaiting review. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md).
+The theme store spec is **fully landed** (phases A–G). The next objective is **automatic semver versioning and UUID theme ids**: the [spec](docs/superpowers/specs/2026-10-22-theme-versioning-design.md) is approved and its [plan](docs/superpowers/plans/2026-10-22-theme-versioning.md) is written, awaiting review. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
-- **No plan is active.** The versioning spec is written; no implementation plan exists until it is approved.
+- **No plan is running.** The versioning plan is written; on approval it becomes the one this session executes, and every queued plan waits.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; the user picks when one starts.
 - **The catalogue repo `peterng1618/vigilia-store` is live** and empty; `validate` pins the app at `0a417ff`, and a merge regenerates the listing.
 - **Decisions `0088`–`0091`** carry the store's measured choices: raw-path index, host-side download, a hand-rolled GitHub client, and a bundled GPL `ffmpeg-static`.
@@ -17,16 +17,15 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Theme versioning spec written** (`2026-10-22-theme-versioning-design.md`, spec only — no code changed): a machine-checkable ladder where the interface is the bound sensor set and the canvas, everything else is content.
-- **Theme ids become UUIDs** minted at document creation; the catalogue accepts only UUID ids, and the library keeps its old shape so no local theme disappears.
-- **Submit computes and writes the version**: the host diffs the published package, bumps by the ladder, stores `metadata.version`, and refuses an unchanged re-publish naming the published version.
-- **Catalogue CI enforces the same ruling** through `validate-item --previous-item/--previous-package`, so a hand-made PR that under-claims its diff is refused.
-- **Remixes credit their parent**: a modified installed theme opens as a copy under a fresh UUID carrying `remixOf`, and the storefront links to the parent's item by id.
+- **Theme versioning plan written** (`2026-10-22-theme-versioning.md`): 15 tasks in five phases — the ladder, identity, publishing, attribution, CI — each with its tests and exact interfaces.
+- **Phase 1 is pure**: the classifier plus a coverage test that fails when a schema member arrives unclassified, and errs upward for an unknown one.
+- **Phase 3 writes with the store's base**, so a save landing mid-submit refuses instead of half-applying a version.
+- **Phase 5 re-derives the version in the catalogue's CI** from the base commit and proves it with two pull requests; no code changed in this commit.
 
 ## Next
 
-1. User reviews the versioning spec, then `writing-plans` produces its implementation plan.
-2. Decide which queued plan opens after this one: `wallpaper-engine-import` or `asset-finder`.
+1. User reviews the versioning plan, then chooses subagent-driven or native execution.
+2. The plan's Task 5.2 pushes to the catalogue repo and opens two proof PRs — external actions, confirmed at the time.
 3. Weigh `vg-620` (a client disconnecting mid-stream kills the host) and `vg-626` (the red `design:check`) before the next plan opens.
 4. The next register pass starts from `vg-691`…`vg-697`.
 5. A packaged release owes the GPL source offer for `ffmpeg-static`.
