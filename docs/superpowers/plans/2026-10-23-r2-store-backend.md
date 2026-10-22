@@ -186,7 +186,12 @@ git commit -m "feat(store-worker): project catalogue entries and plan versions"
 it("serves the index, then 404s every unpublished read", async () => {
   await seedPublished({ versions: ["1.0.0", "1.0.1"] });
   const index = await SELF.fetch("https://store.test/index.json");
+  expect(index.headers.get("cache-control")).toContain("max-age=60");
   expect(await index.json()).toMatchObject({ entries: [{ id: ITEM_ID }] });
+  const item = await (await SELF.fetch(`https://store.test/catalogue/${ITEM_ID}/item.json`)).json();
+  expect(item).toMatchObject({ id: ITEM_ID, downloads: 0, favorites: 0 });
+  expect((await SELF.fetch(`https://store.test/catalogue/${ITEM_ID}/thumbnail.png`)).headers.get("cache-control"))
+    .toContain("max-age=300");
   const first = await SELF.fetch(`https://store.test/catalogue/${ITEM_ID}/1.0.0.zip`);
   expect(first.headers.get("cache-control")).toBe("no-store");
   expect((await first.arrayBuffer()).byteLength).toBe(PACKAGE_BYTES.byteLength);
@@ -348,7 +353,7 @@ Expected: FAIL — the route is missing.
 
 `presignPut` builds `https://<accountId>.r2.cloudflarestorage.com/<bucket>/<key>?X-Amz-Expires=<seconds>` and signs it with `AwsClient({ service: "s3", region: "auto", ... }).sign(url, { method: "PUT", aws: { signQuery: true } })`. It refuses an empty key or a key containing `..`.
 
-The route resolves the session, refuses an item id owned by another user, loads the baseline, parses `envelope` as unknown with `validateFabricThemeEnvelope`, calls `planVersion`, enforces the quota and the hourly presign limit, creates the `item` row as `draft` when absent, writes a `presign_event` row, and returns the presigned URL. `status` is `"published"` when `author_profile.verified = 1`, otherwise `"pending"`.
+The route resolves the session, refuses an item id owned by another user, loads the baseline, parses `envelope` as unknown with `validateFabricThemeEnvelope`, calls `planVersion`, enforces the quota and the hourly presign limit, creates the `item` row as `draft` when absent, writes a `presign_event` row, and returns the presigned URL. The quota check passes `MAX_ARCHIVE_BYTES` as `extraBytes`, because the object's real size is not known until finalize; the check is therefore conservative. `status` is `"published"` when `author_profile.verified = 1`, otherwise `"pending"`.
 
 - [ ] **Step 4: Run the tests and commit**
 
@@ -393,6 +398,14 @@ it("refuses an object past MAX_ARCHIVE_BYTES without storing a version", async (
   expect((await finalize(headers, ITEM_ID, "1.0.0", THUMBNAIL_PNG)).status).toBe(422);
   expect(await versionsOf(ITEM_ID)).toEqual([]);
 });
+
+it("returns a rejected item to the queue on a new version", async () => {
+  const headers = await sessionHeaders();
+  await env.DB.prepare("UPDATE item SET status = 'rejected' WHERE id = ?").bind(ITEM_ID).run();
+  await putPackage(`packages/${ITEM_ID}/1.0.1.zip`, PACKAGE_BYTES);
+  expect((await finalize(headers, ITEM_ID, "1.0.1", THUMBNAIL_PNG)).status).toBe(200);
+  expect(await statusOf(ITEM_ID)).toBe("pending");
+});
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -420,6 +433,7 @@ git commit -m "feat(store-worker): finalize uploads and apply the review gate"
 - Create: `src/web/packages/host/src/settings/store-session.ts`
 - Create: `src/web/packages/host/src/settings/store-session.test.ts`
 - Modify: `src/web/packages/host/src/server.ts`
+- Modify: `src/web/packages/host/src/server.test.ts`
 - Modify: `src/web/packages/host/src/index.ts`
 
 **Interfaces:**
@@ -438,6 +452,16 @@ it("round-trips a session and clears both the file and its temporary sibling", a
   expect((await stat(path.join(dir, "store-session.json"))).mode & 0o777).toBe(0o600);
   await store.clear();
   expect(await store.read()).toBeUndefined();
+});
+```
+
+Add to `server.test.ts`:
+
+```ts
+it("reports only whether a store session exists, never the token", async () => {
+  const answer = await request("/api/store/session");
+  expect(await answer.json()).toEqual({ signedIn: false });
+  expect(JSON.stringify(await answer.clone().json())).not.toContain("token");
 });
 ```
 
@@ -535,6 +559,15 @@ it("lets only an owner approve a pending item", async () => {
   expect((await SELF.fetch(`https://store.test/api/admin/items/${ITEM_ID}/approve`, {
     method: "POST", headers: owner,
   })).status).toBe(200);
+  expect(await statusOf(ITEM_ID)).toBe("published");
+});
+
+it("removes with a reason and only the owner can restore", async () => {
+  const author = await loginAs("author@example.com");
+  const owner = await loginAs("owner@example.com");
+  expect((await admin(owner, "remove", ITEM_ID, { reason: "Broken preview" })).status).toBe(200);
+  expect((await republish(author, ITEM_ID)).status).toBe(403);
+  expect((await admin(owner, "restore", ITEM_ID, {})).status).toBe(200);
   expect(await statusOf(ITEM_ID)).toBe("published");
 });
 ```
@@ -947,7 +980,7 @@ Expected: FAIL — the module does not exist.
 
 - [ ] **Step 3: Implement the reader and the CLI**
 
-The script takes `--source <catalogue item dir>` and `--origin <worker origin>`, reads `settings/store-session.json` from the host settings directory (or a `--token` file), then drives the normal author flow as the owner: version request, presigned PUT, finalize. The Worker computes facets and the version; the script never writes D1 or R2 directly. It refuses when the package envelope's id differs from `item.json`'s id. It never prints the token.
+The script takes `--source <catalogue item dir>` and `--origin <worker origin>`, reads `settings/store-session.json` from the host settings directory (or a `--token` file), then drives the normal author flow as the owner: version request, presigned PUT, finalize, then `POST /api/admin/items/:id/approve` if the owner account is not marked verified. The Worker computes facets and the version; the script never writes D1 or R2 directly. It refuses when the package envelope's id differs from `item.json`'s id, and when the old item's version is not `1.0.0` (a first submission computes `1.0.0`, so any other old version would be a silent rewrite). It never prints the token.
 
 - [ ] **Step 4: Run the test and commit**
 
