@@ -960,6 +960,9 @@ export const uiCopy = {
       `${label} needs a key this host does not have.`,
     connectionsAction: "Open Connections",
     openFontPicker: "Browse the font catalogue",
+    remoteHostNotice: (hosts: string): string =>
+      `Search terms go to ${hosts}. Nothing else leaves this computer.`,
+    loadMore: "Load more",
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */

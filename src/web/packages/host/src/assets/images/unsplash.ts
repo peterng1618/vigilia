@@ -111,6 +111,8 @@ export const unsplashSource: AssetSource = {
   body: "grid",
   requires: "unsplash",
   configurable: true,
+  // The one host that receives the term (spec §5).
+  host: "api.unsplash.com",
 
   async search(query, cursor, ctx): Promise<SearchPage> {
     const key = keyOf(ctx);
@@ -175,7 +177,9 @@ export const unsplashSource: AssetSource = {
 
   creditsOf(result) {
     const author =
-      result.subtitle === undefined ? {} : { author: { name: result.subtitle } };
+      result.subtitle === undefined
+        ? {}
+        : { author: { name: result.subtitle } };
 
     return {
       kind: "image",

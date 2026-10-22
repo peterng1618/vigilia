@@ -34,6 +34,8 @@ export interface AssetSource {
   readonly body: "grid" | "font-picker" | "wallpaper-engine";
   readonly requires: string | undefined;
   readonly configurable: boolean;
+  /** The host a search term reaches, or absent when it stays on this PC. */
+  readonly host?: string;
   search(
     query: string,
     cursor: string | undefined,

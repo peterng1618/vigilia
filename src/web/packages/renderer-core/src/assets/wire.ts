@@ -27,6 +27,9 @@ export interface AssetSourceListing {
   /** `null` on the wire when the source needs no credential. */
   readonly requires: string | null;
   readonly configurable: boolean;
+  /** The host a search term is sent to, named by the first-search notice (§5).
+   *  `null` when the term never leaves this computer. */
+  readonly host: string | null;
 }
 
 export interface AssetSearchRequest {

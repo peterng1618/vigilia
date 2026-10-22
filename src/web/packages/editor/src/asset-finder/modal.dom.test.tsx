@@ -33,6 +33,7 @@ const lucide: AssetSourceListing = {
   body: "grid",
   requires: null,
   configurable: true,
+  host: null,
 };
 
 const fontAwesome: AssetSourceListing = {
@@ -42,6 +43,7 @@ const fontAwesome: AssetSourceListing = {
   body: "grid",
   requires: null,
   configurable: true,
+  host: null,
 };
 
 const unsplash: AssetSourceListing = {
@@ -51,6 +53,7 @@ const unsplash: AssetSourceListing = {
   body: "grid",
   requires: "unsplash",
   configurable: true,
+  host: "api.unsplash.com",
 };
 
 const curatedFonts: AssetSourceListing = {
@@ -60,6 +63,7 @@ const curatedFonts: AssetSourceListing = {
   body: "font-picker",
   requires: null,
   configurable: true,
+  host: null,
 };
 
 const wallpaperEngine: AssetSourceListing = {
@@ -69,6 +73,7 @@ const wallpaperEngine: AssetSourceListing = {
   body: "wallpaper-engine",
   requires: null,
   configurable: false,
+  host: null,
 };
 
 const result = (id: string): AssetResult => ({
@@ -187,6 +192,14 @@ function footerAction(): HTMLButtonElement {
     "[data-yunari-asset-action]",
   );
   if (found === null) throw new Error("no footer action.");
+  return found;
+}
+
+function moreButton(): HTMLButtonElement {
+  const found = document.querySelector<HTMLButtonElement>(
+    "[data-yunari-asset-more]",
+  );
+  if (found === null) throw new Error("no Load more.");
   return found;
 }
 
@@ -375,6 +388,147 @@ describe("AssetFinder search", () => {
     expect(input().value).toBe("");
     await settle();
     expect(searchAssets.mock.calls.at(-1)?.[0]?.query).toBe("");
+  });
+});
+
+describe("AssetFinder's mixed grid", () => {
+  it("alternates two sources' first pages, each row naming its source", async () => {
+    searchAssets.mockResolvedValue({
+      pages: [
+        page("lucide", [result("lucide:a"), result("lucide:c")]),
+        page("fontawesome-free", [result("fontawesome-free:b")]),
+      ],
+    });
+
+    await render([lucide, fontAwesome]);
+    await settle();
+
+    expect(rowIds()).toEqual(["lucide:a", "fontawesome-free:b", "lucide:c"]);
+    const rows = [...document.querySelectorAll("[data-yunari-asset-row]")];
+    expect(rows[1]?.textContent).toContain("Font Awesome Free");
+  });
+
+  it("keeps two sources' identical ids apart", async () => {
+    searchAssets.mockResolvedValue({
+      pages: [
+        page("lucide", [result("lucide:x")]),
+        page("fontawesome-free", [result("fontawesome-free:x")]),
+      ],
+    });
+
+    await render([lucide, fontAwesome]);
+    await settle();
+
+    expect(rowIds()).toEqual(["lucide:x", "fontawesome-free:x"]);
+  });
+
+  it("appends a later page after the rows already shown", async () => {
+    searchAssets
+      .mockResolvedValueOnce({
+        pages: [
+          page("lucide", [result("lucide:a")], { next: "L1" }),
+          page("fontawesome-free", [result("fontawesome-free:b")], {
+            next: "F1",
+          }),
+        ],
+      })
+      .mockResolvedValueOnce({
+        pages: [
+          page("lucide", [result("lucide:c")]),
+          page("fontawesome-free", [result("fontawesome-free:d")]),
+        ],
+      });
+
+    await render([lucide, fontAwesome]);
+    await settle();
+    await act(async () => moreButton().click());
+    await settle();
+
+    expect(rowIds()).toEqual([
+      "lucide:a",
+      "fontawesome-free:b",
+      "lucide:c",
+      "fontawesome-free:d",
+    ]);
+    // Each source's cursor is its own: the second request carries both.
+    expect(searchAssets.mock.calls[1]?.[0]?.cursors).toEqual({
+      lucide: "L1",
+      "fontawesome-free": "F1",
+    });
+    expect(document.querySelector("[data-yunari-asset-more]")).toBeNull();
+  });
+
+  it("stops asking a source that answered no cursor", async () => {
+    searchAssets
+      .mockResolvedValueOnce({
+        pages: [
+          page("lucide", [result("lucide:a")], { next: "L1" }),
+          page("fontawesome-free", [result("fontawesome-free:b")]),
+        ],
+      })
+      .mockResolvedValueOnce({
+        pages: [page("lucide", [result("lucide:c")])],
+      });
+
+    await render([lucide, fontAwesome]);
+    await settle();
+    await act(async () => moreButton().click());
+    await settle();
+
+    expect(searchAssets.mock.calls[1]?.[0]).toMatchObject({
+      enabled: ["lucide"],
+      cursors: { lucide: "L1" },
+    });
+    expect(rowIds()).toEqual(["lucide:a", "fontawesome-free:b", "lucide:c"]);
+  });
+
+  it("names the host once, on the first search only", async () => {
+    searchAssets.mockResolvedValue({
+      pages: [page("unsplash", [result("unsplash:one")])],
+    });
+
+    await render([unsplash]);
+    await settle();
+
+    expect(
+      document.querySelector("[data-yunari-asset-host-notice]")?.textContent,
+    ).toContain("api.unsplash.com");
+
+    await type("x");
+    await settle();
+
+    expect(
+      document.querySelector("[data-yunari-asset-host-notice]"),
+    ).toBeNull();
+  });
+
+  it("discards a source disabled mid-flight", async () => {
+    const late = deferred<AssetSearchAnswer>();
+
+    await render([lucide, fontAwesome]);
+    await settle();
+
+    searchAssets.mockReturnValueOnce(late.promise);
+    await type("a");
+    await settle();
+
+    const chip = document.querySelector<HTMLButtonElement>(
+      '[data-yunari-asset-chip="fontawesome-free"]',
+    );
+    if (chip === null) throw new Error("no chip.");
+    await act(async () => chip.click());
+
+    await act(async () => {
+      void late.resolve({
+        pages: [
+          page("lucide", [result("lucide:a")]),
+          page("fontawesome-free", [result("fontawesome-free:x")]),
+        ],
+      });
+      await Promise.resolve();
+    });
+
+    expect(rowIds()).not.toContain("fontawesome-free:x");
   });
 });
 

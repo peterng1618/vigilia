@@ -9,7 +9,7 @@ Branch: `main`
 
 ## Active work
 
-- **Asset finder, Tasks 1–13, 18 and 19 complete**: the wire contract, `AssetSource` port, credential store and routes, Connections tab, all four providers, the client, the modal, its three entry points and the font picker's move are landed; the mixed grid and import (Tasks 14–17) are next. Ledger: `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
+- **Asset finder, Tasks 1–14, 18 and 19 complete**: the wire contract, `AssetSource` port, credential store and routes, Connections tab, all four providers, the client, the modal, its three entry points, the font picker's move and the mixed grid are landed; import and the browser boundary (Tasks 15 and 17) are next. Ledger: `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
 - **Providers, in this order: Lucide, Lineicons, Font Awesome Free, Unsplash.** Free results only; Flaticon is skipped because its official API exposes no free/premium flag.
 - **Lineicons is a dev-only dependency** (`lineicons@1.3.2`, MIT), read by a generator; no shipped dependency is added.
 - **Task 15 builds the Wallpaper Engine credits types here** (user ruling, 2026-10-23); the WE plan drops its Task 8. Task 16 stays blocked on the WE host module.
@@ -17,11 +17,11 @@ Branch: `main`
 
 ## Last completed change
 
+- **One mixed grid** (Task 14): two sources' pages alternate row by row, Load more appends each page's new rows after the ones shown and asks only sources that still hold a cursor, and the first answer names the host the term reaches, once.
 - **The font picker lives in the finder** (Task 12): the inspector's face field is a button that opens Fonts, the Fonts body is the catalogue's own `FontPicker` in a `FontsBodyHost` that owns the specimen cache and favourites, and the session's façade builds that body and applies a picked face to the selected text's preset.
 - **The finder opens three ways** (Task 11): the Add pane's own control, a File row above *Import package*, and Ctrl+Shift+A, which defers to a focused text field and reaches the shell's modal through the session's dispatcher.
 - **The finder's modal** (Task 10): tabs derived from the registry's categories, per-source chips, a debounced search that discards a stale answer, failure/needs-key/empty states, and a footer action named by the category.
 - **The finder's client and window** (Task 9): three fetch-only calls answer an empty listing or failed pages instead of throwing, and `Dialog` takes an optional popup class the finder sizes to the viewport.
-- **Unsplash is the first image source** (Task 19): the key stays on the host, every Unsplash+ sign is dropped, `links.download_location` fires before bytes, and Verify spends one real search.
 
 ## Next
 

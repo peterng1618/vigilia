@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog } from "../components/ui/dialog.js";
 import { uiCopy } from "../ui-copy.js";
 import { type ClientOptions, listSources, searchAssets } from "./client.js";
+import { interleave } from "./interleave.js";
 import { AssetRow } from "./row.js";
 
 /** How long a keystroke settles before it is the query. */
@@ -65,6 +66,48 @@ function gridSourcesOf(
   );
 }
 
+/** The source a result id names: the host prefixes ids `<source>:<entry>`. */
+function sourceIdOf(result: AssetResult): string {
+  const at = result.id.indexOf(":");
+  return at === -1 ? result.id : result.id.slice(0, at);
+}
+
+type Row = { readonly page: AssetPage; readonly result: AssetResult };
+
+/** The interleaved rows, each still paired with the page it answered on, so a
+ *  row's action and its source label need no second lookup. */
+function rowsAfter(
+  pages: readonly AssetPage[],
+  previous: readonly Row[],
+): readonly Row[] {
+  const pagesOf = new Map<AssetResult, AssetPage>();
+  for (const row of previous) pagesOf.set(row.result, row.page);
+  for (const page of pages) {
+    for (const result of page.results) pagesOf.set(result, page);
+  }
+
+  return interleave(
+    pages,
+    previous.map((row) => row.result),
+  ).flatMap((result) => {
+    const page = pagesOf.get(result);
+    return page === undefined ? [] : [{ page, result }];
+  });
+}
+
+/** Each answered page moves its own cursor, and clears it when it has none. */
+function cursorsAfter(
+  current: Readonly<Record<string, string>>,
+  pages: readonly AssetPage[],
+): Readonly<Record<string, string>> {
+  const next = { ...current };
+  for (const page of pages) {
+    if (page.next === undefined) delete next[page.source];
+    else next[page.source] = page.next;
+  }
+  return next;
+}
+
 /**
  * The finder: one modal, tabs derived from the registry's categories, one
  * mixed grid per grid category and a body per category that owns a component.
@@ -92,6 +135,12 @@ export function AssetFinder({
   const [selected, setSelected] = useState<
     { readonly page: AssetPage; readonly result: AssetResult } | undefined
   >(undefined);
+  const [shown, setShown] = useState<readonly Row[]>([]);
+  const [cursors, setCursors] = useState<Readonly<Record<string, string>>>({});
+  /** How many answers this session has drawn. The host notice is the first
+   *  search's, once (spec §5), and the second search removes it. */
+  const [answerCount, setAnswerCount] = useState(0);
+  const [moreBusy, setMoreBusy] = useState(false);
   const [message, setMessage] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const ticket = useRef(0);
@@ -153,20 +202,39 @@ export function AssetFinder({
   const enabledKey = enabledSources.map((source) => source.id).join("|");
 
   useEffect(() => {
+    // Any change of question discards an answer already in flight, before the
+    // debounce would: a source disabled mid-flight must not land its late page.
+    ticket.current += 1;
+
     // Body categories draw a component, not a search.
     if (!open || active === undefined || gridSources.length === 0) {
-      ticket.current += 1;
       setAnswer(undefined);
+      setShown([]);
+      setCursors({});
       return;
     }
 
     const enabled = enabledSources.map((source) => source.id);
+    // A chip switched off drops that source's rows and cursor at once, rather
+    // than leaving them until the next answer.
+    setShown((current) =>
+      current.filter((row) => enabled.includes(sourceIdOf(row.result))),
+    );
+    setCursors((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([id]) => enabled.includes(id)),
+      ),
+    );
+
+    const issued = ticket.current;
     const timer = setTimeout(() => {
-      const issued = ++ticket.current;
       void searchAssets({ query, enabled, cursors: {} }, client).then(
         (next) => {
           if (issued !== ticket.current) return;
           setAnswer(next);
+          setShown(rowsAfter(next.pages, []));
+          setCursors(cursorsAfter({}, next.pages));
+          setAnswerCount((count) => count + 1);
           setSelected(undefined);
         },
       );
@@ -177,16 +245,44 @@ export function AssetFinder({
     // every render and would restart the timer on unrelated state.
   }, [open, active, query, enabledKey, sources.length, client]);
 
-  const rows =
-    answer?.pages.flatMap((page) =>
-      page.results.map((result) => ({ page, result })),
-    ) ?? [];
+  const rows = shown;
   const failures =
     answer?.pages.filter((page) => page.failure !== undefined) ?? [];
   const empty =
-    answer !== undefined &&
-    failures.length === 0 &&
-    answer.pages.every((page) => page.results.length === 0);
+    answer !== undefined && failures.length === 0 && rows.length === 0;
+
+  /** The hosts an enabled search term reaches, once, on the first answer. */
+  const hosts = [
+    ...new Set(
+      enabledSources
+        .map((source) => source.host)
+        .filter((host): host is string => host !== null),
+    ),
+  ];
+  const showNotice = answerCount === 1 && hosts.length > 0;
+  const more = enabledSources.some(
+    (source) => cursors[source.id] !== undefined,
+  );
+
+  /** The next page of every source that still has a cursor: a source that
+   *  answered none is asked nothing, so its first page cannot come twice. */
+  const loadMore = async (): Promise<void> => {
+    const enabled = enabledSources
+      .filter((source) => cursors[source.id] !== undefined)
+      .map((source) => source.id);
+    if (enabled.length === 0) return;
+
+    setMoreBusy(true);
+    const issued = ++ticket.current;
+    const next = await searchAssets({ query, enabled, cursors }, client);
+    setMoreBusy(false);
+    if (issued !== ticket.current) return;
+
+    setAnswer(next);
+    setShown((current) => rowsAfter(next.pages, current));
+    setCursors((current) => cursorsAfter(current, next.pages));
+    setAnswerCount((count) => count + 1);
+  };
 
   const sourceOf = (id: string): AssetSourceListing | undefined =>
     sources.find((source) => source.id === id);
@@ -303,6 +399,15 @@ export function AssetFinder({
                     </div>
                   ) : null}
 
+                  {showNotice ? (
+                    <p
+                      className="text-xs text-muted"
+                      data-yunari-asset-host-notice=""
+                    >
+                      {uiCopy.assets.remoteHostNotice(hosts.join(", "))}
+                    </p>
+                  ) : null}
+
                   {failures.map((page) => {
                     const source = sourceOf(page.source);
                     const label = source?.label ?? page.source;
@@ -379,22 +484,35 @@ export function AssetFinder({
                         ? ""
                         : uiCopy.assets.results(
                             rows.length,
-                            new Set(answer.pages.map((page) => page.source))
+                            new Set(rows.map((row) => sourceIdOf(row.result)))
                               .size,
                           )}
                       {message === undefined ? null : (
                         <span className="ml-[var(--space-8)]">{message}</span>
                       )}
                     </span>
-                    <button
-                      type="button"
-                      disabled={selected === undefined || busy}
-                      onClick={() => void runAction()}
-                      data-yunari-asset-action=""
-                      className="rounded-[var(--radius-sm)] border border-edge px-[var(--space-12)] py-[var(--space-6)] disabled:text-faint"
-                    >
-                      {uiCopy.assets.action[active]}
-                    </button>
+                    <div className="flex items-center gap-[var(--space-8)]">
+                      {more ? (
+                        <button
+                          type="button"
+                          disabled={moreBusy}
+                          onClick={() => void loadMore()}
+                          data-yunari-asset-more=""
+                          className="rounded-[var(--radius-sm)] border border-edge px-[var(--space-12)] py-[var(--space-6)] disabled:text-faint"
+                        >
+                          {uiCopy.assets.loadMore}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={selected === undefined || busy}
+                        onClick={() => void runAction()}
+                        data-yunari-asset-action=""
+                        className="rounded-[var(--radius-sm)] border border-edge px-[var(--space-12)] py-[var(--space-6)] disabled:text-faint"
+                      >
+                        {uiCopy.assets.action[active]}
+                      </button>
+                    </div>
                   </footer>
                 </>
               )}
