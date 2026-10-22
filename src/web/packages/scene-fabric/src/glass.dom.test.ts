@@ -377,11 +377,8 @@ describe("glass composition", () => {
     const host = document.createElement("div");
     const media = mountBackgroundMedia({
       host,
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "hero", fit: "display" },
-      },
+      artboard: { width: 400, height: 200 },
+      background: { media: { assetId: "hero", bounds: "display" } },
       assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
       resolveAsset: () => ({ url: "blob:hero" }),
     });

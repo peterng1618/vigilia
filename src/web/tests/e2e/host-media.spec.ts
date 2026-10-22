@@ -867,10 +867,11 @@ test.describe("changing media on the real player", () => {
     // The video is running and the badge is not on screen.
     expect(await compositedInk(page, BADGE_INK)).toBeLessThan(200);
 
-    // **The replacement.** `updateArtboard` is the scene handle's own entry for
-    // a document-level artboard change — `ScenePlan` cannot carry one. This is
-    // the editor's replacement path reached on the player's mount, so the
-    // player's resolver builds the *new* asset's URL and the host serves it.
+    // **The replacement.** Two entries now, because the background is its own
+    // state: `updateArtboard` takes the document's geometry (its media is no
+    // longer an artboard field), and `updateBackground` takes the authored bag.
+    // This is the editor's replacement path reached on the player's mount, so
+    // the player's resolver builds the *new* asset's URL and the host serves it.
     const swapped = await page.evaluate(
       async ([panelId, left, top, width, height]) => {
         const handle = (
@@ -878,22 +879,22 @@ test.describe("changing media on the real player", () => {
             yunari?: {
               handle: {
                 updateArtboard(artboard: unknown): void;
+                updateBackground(background: unknown): void;
                 canvas: { getObjects(): Array<{ get(n: string): unknown }> };
               };
             };
           }
         ).yunari?.handle;
         if (handle === undefined) throw new Error("the player has not mounted");
-        const artboard = {
+        handle.updateArtboard({
           width: 640,
           height: 360,
           contentFit: "cover",
-          background: {
-            color: { ref: "palette.none" },
-            media: { assetId: "badge", bounds: "display" },
-          },
-        };
-        handle.updateArtboard(artboard);
+        });
+        handle.updateBackground({
+          color: { ref: "palette.none" },
+          media: { assetId: "badge", bounds: "display" },
+        });
         const layer = document.querySelector("[data-yunari-background-media]");
         const image = layer?.querySelector("img");
         for (let attempt = 0; attempt < 100; attempt += 1) {

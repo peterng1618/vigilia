@@ -502,14 +502,17 @@ export class EditorDocument {
     );
     this.#consumers.charts().reassignPaletteReferences(from, to);
     // The artboard did not change, so nothing writes it: the colour the token
-    // painted now lives in the background layer, and Task 6 adds the shell
-    // setter that repaints it.
+    // painted now lives in the background layer, so the shell is told the new
+    // bag directly or the stage keeps painting the deleted token.
     this.#writeEnvelope({
       ...this.#envelope,
       ...(background === undefined ? {} : { background }),
       globals: { ...this.#envelope.globals, palette },
     });
+    // After the globals fan-out: the new bag still names the token the palette
+    // no longer has, so it has to be repainted against the palette it now names.
     this.#globalsChanged();
+    this.#shell.setBackground(background);
     this.#consumers.palette().render(palette);
   }
 
