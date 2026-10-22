@@ -105,15 +105,33 @@ export async function normalizeVideo(
         ok: false,
         message: `That video could not be re-encoded; ffmpeg exited with code ${outcome.code}.`,
       };
+    // The encoder's flags are a promise, not proof: re-probe what it wrote so a
+    // build that ignores `-r`, `-an` or `+faststart` cannot hand the author
+    // non-conforming bytes marked as success.
+    const encoded = new Uint8Array(await readFile(output));
+    const encodedFacts = readVideoFacts(encoded);
+    if (
+      encodedFacts === undefined ||
+      videoRefusals("normalized", encodedFacts).length > 0
+    )
+      return {
+        ok: false,
+        message:
+          "That video could not be re-encoded into the publish envelope; " +
+          "the encoder's output does not conform.",
+      };
     return {
       ok: true,
-      bytes: new Uint8Array(await readFile(output)),
+      bytes: encoded,
       reencoded: true,
     };
   } catch {
     return { ok: false, message: "That video could not be re-encoded." };
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    // A cleanup failure (AV/EBUSY on Windows) must not discard the answer.
+    await rm(directory, { recursive: true, force: true }).catch(
+      () => undefined,
+    );
   }
 }
 
@@ -155,10 +173,11 @@ export function ffmpegArgs(
  * The capped, even box a re-encode lands in.
  *
  * `contain` derives the box from the source, so the whole frame survives and
- * only the long edge is capped. `cover` derives it from the requested aspect,
- * fills it and crops the centre: the one mode that changes framing. Both stay
- * off the live artboard, because a bake to today's shape is wrong after the
- * next artboard edit (spec, "four rules").
+ * only the long edge is capped. `cover` is the author's explicit "fill the
+ * artboard" press, so it derives the box from the theme's declared artboard
+ * aspect and crops the centre: an explicit request is the one crop that is not
+ * a silent bake, and the author can re-normalize after an artboard edit
+ * (spec rule 1 rules out the implicit version of this).
  */
 function scaleFilter(
   facts: VideoFacts,

@@ -1543,6 +1543,40 @@ describe("Host theme routes", () => {
 
       expect(res.status).toBe(413);
     });
+
+    it("answers with the same bytes for a video that already conforms", async () => {
+      // The real route, the real parser, and a committed fixture: no encoder
+      // is spawned for a conforming file, so this also pins `fit`/`aspect`
+      // parsing and the `bytesBase64` answer shape.
+      const bytes = await fs.readFile(
+        fileURLToPath(
+          new URL(
+            "../../theme-package/test-fixtures/conforming.mp4",
+            import.meta.url,
+          ),
+        ),
+      );
+      const res = await request(
+        normalizing.server,
+        "POST",
+        "/api/themes/normalize-video",
+        JSON.stringify({
+          bytesBase64: bytes.toString("base64"),
+          fit: "cover",
+          aspect: { width: 16, height: 9 },
+        }),
+      );
+
+      expect(res.status).toBe(200);
+      const answer = JSON.parse(res.text()) as {
+        ok: boolean;
+        reencoded: boolean;
+        bytesBase64: string;
+      };
+      expect(answer.ok).toBe(true);
+      expect(answer.reencoded).toBe(false);
+      expect(Buffer.from(answer.bytesBase64, "base64")).toEqual(bytes);
+    });
   });
 
   describe("The GitHub identity routes", () => {

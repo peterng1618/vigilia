@@ -51,8 +51,8 @@ describe("normalizeVideo", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it("re-encodes an out-of-envelope input once and returns what the encoder wrote", async () => {
-    const encoded = new Uint8Array([1, 2, 3, 4]);
+  it("re-encodes an out-of-envelope input once and returns the re-probed result", async () => {
+    const encoded = fixture("conforming.mp4");
     const run = runWriting(encoded);
 
     const result = await normalizeVideo(fixture("wide.mp4"), {
@@ -70,6 +70,22 @@ describe("normalizeVideo", () => {
     const args = run.mock.calls[0]?.[0] ?? [];
     expect(args).toContain("-vf");
     expect(args[args.indexOf("-vf") + 1]).toMatch(/^scale=1920:168:.*,pad=/);
+  });
+
+  it("refuses encoder output that does not conform to the envelope", async () => {
+    // A build that ignored `-r`/`-an`/`+faststart` would return bytes like this:
+    // trusted, they would replace the master with a non-conforming video.
+    const run = runWriting(new Uint8Array([1, 2, 3, 4]));
+
+    const result = await normalizeVideo(fixture("wide.mp4"), {
+      ffmpegPath: "ffmpeg-stub",
+      run,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("publish envelope");
+    expect(result.message).not.toContain("avc1");
   });
 
   it("covers the requested aspect, and the output conforms to it", async () => {

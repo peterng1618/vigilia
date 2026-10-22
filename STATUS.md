@@ -17,10 +17,10 @@ Give every display client its own theme, then let a person browse, install and s
 
 ## Last completed change
 
-- **Phase F task 5**: the Add pane offers `Normalize video` and `Fill the artboard` for a declared video only; `cover` carries the artboard's own aspect.
-- **The master is never replaced silently**: the host's copy is held, a refusal shows the host's sentence and writes nothing, and `Use the normalized copy` swaps the bytes in place with one history entry.
-- **`AssetManager.replaceBytes`** swaps bytes the manager did not read from a file, keeping the declaration's id, path and metadata; the pane posts and reads the host route itself.
-- **Evidence**: 22 pane DOM tests, 75 affected editor tests, `typecheck`, `biome check`, `build` and the desktop Playwright claim all exit 0; the new `editor-video-normalize` capture is registered and shows the refusal beside both controls.
+- **Review fix round**: a zero `mdhd` timescale is unreadable, cadence and length come from `stts` (a doubled `mdhd` cannot hide 60 fps or 31.5 s), and an exhausted box walk is unreadable rather than "no audio".
+- **Normalizer**: the encoder's output is re-probed before `ok`, and a temp-dir cleanup failure can no longer discard a successful answer.
+- **Add pane**: a second normalize press clears the held copy, the held copy has a `<video>` preview before the adopt press, a failed write names itself, and Remove shares the one-submission guard.
+- **Proof**: F1/F2 red-proved (guard reverted, test failed, restored and `cmp`-verified); 75 focused, 54 door and 3 route tests plus `typecheck`, `biome check`, `build` and the desktop Playwright run exit 0.
 
 ## Next
 

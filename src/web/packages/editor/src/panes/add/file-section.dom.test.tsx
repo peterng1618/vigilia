@@ -32,6 +32,7 @@ import {
 import {
   ASSET_FILE_EXTENSIONS,
   AssetManager,
+  type LocalAssetReference,
 } from "../../asset-manager/index.js";
 import type { EditorInteraction } from "../../editor-interaction.js";
 import { uiCopy } from "../../ui-copy.js";
@@ -766,6 +767,124 @@ describe("the Add pane's file section", () => {
     expect(hydrate).toHaveBeenCalledTimes(1);
     expect(saveState.mock.calls.length - afterImport).toBe(1);
     expect(useControl(host)).toBeNull();
+  });
+
+  it("previews the held copy before the press that writes it", async () => {
+    const normalized = new TextEncoder().encode("mp4-normalized");
+    stubNormalize(() => normalizeAnswer({ ok: true, bytes: normalized }));
+    const { host, manager } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    await press(host, "[data-vigilia-asset-normalize]");
+
+    // Spec rule 4: the author inspects the normalized asset, not the master.
+    const preview = host.querySelector<HTMLVideoElement>(
+      "[data-vigilia-asset-normalized-preview]",
+    );
+    expect(preview).not.toBeNull();
+    expect(preview?.getAttribute("src")).toMatch(/^blob:/);
+    expect(preview?.controls).toBe(true);
+    // Previewing wrote nothing.
+    expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
+      bytesOf(new TextEncoder().encode("mp4")),
+    );
+  });
+
+  /** A held copy belongs to the press that produced it: a refused second press
+   *  must not leave the previous mode's result armed for the write. */
+  it("clears a held copy when a later normalize press is refused", async () => {
+    const sentence = "That video is not an H.264 MP4.";
+    const fetchStub = vi.fn<typeof fetch>();
+    fetchStub.mockResolvedValueOnce(
+      normalizeAnswer({
+        ok: true,
+        bytes: new TextEncoder().encode("mp4-normalized"),
+      }),
+    );
+    fetchStub.mockResolvedValueOnce(
+      normalizeAnswer({ ok: false, message: sentence }),
+    );
+    vi.stubGlobal("fetch", fetchStub);
+    const { host, manager, saveState } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    await press(host, "[data-vigilia-asset-normalize]");
+    expect(useControl(host)).not.toBeNull();
+    const afterImport = saveState.mock.calls.length;
+
+    await press(host, "[data-vigilia-asset-fill]");
+
+    expect(alert(host).textContent).toBe(sentence);
+    expect(useControl(host)).toBeNull();
+    expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
+      bytesOf(new TextEncoder().encode("mp4")),
+    );
+    expect(saveState.mock.calls.length).toBe(afterImport);
+  });
+
+  it("drops a removal while the held copy is being written", async () => {
+    stubNormalize(() =>
+      normalizeAnswer({
+        ok: true,
+        bytes: new TextEncoder().encode("mp4-normalized"),
+      }),
+    );
+    const { host, manager, remove } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    await press(host, "[data-vigilia-asset-normalize]");
+
+    // The write is held open, which is the window a removal would splice a
+    // stale index through (`replaceBytes` splices after an await).
+    const declared = manager.declarations[0];
+    if (declared === undefined) throw new Error("no declaration");
+    let finish: () => void = () => {};
+    const write = new Promise<LocalAssetReference>((resolve) => {
+      finish = () => resolve(declared);
+    });
+    vi.spyOn(manager, "replaceBytes").mockReturnValue(write);
+    await act(async () => {
+      useControl(host)!.click();
+      await flush();
+    });
+
+    await act(async () => removeControl(host).click());
+    expect(remove).not.toHaveBeenCalled();
+
+    await act(async () => {
+      finish();
+      await flush();
+    });
+    expect(manager.declarations.map((asset) => asset.id)).toEqual(["clip"]);
+  });
+
+  it("names a failed write of the held copy apart from an import failure", async () => {
+    stubNormalize(() =>
+      normalizeAnswer({
+        ok: true,
+        bytes: new TextEncoder().encode("mp4-normalized"),
+      }),
+    );
+    const { host, manager, saveState, error } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    await press(host, "[data-vigilia-asset-normalize]");
+    const afterImport = saveState.mock.calls.length;
+    vi.spyOn(manager, "replaceBytes").mockRejectedValue(new Error("disk full"));
+
+    await press(host, "[data-vigilia-asset-use-normalized]");
+
+    expect(alert(host).textContent).toBe(uiCopy.panels.useNormalizedFailed);
+    expect(error).toHaveBeenCalledWith(
+      "image",
+      uiCopy.panels.useNormalizedFailed,
+      expect.any(Error),
+    );
+    expect(saveState.mock.calls.length).toBe(afterImport);
   });
 
   /** `cover` is only meaningful against a frame, so the artboard's own aspect is

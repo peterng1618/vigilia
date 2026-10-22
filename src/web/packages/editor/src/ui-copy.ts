@@ -1254,6 +1254,9 @@ export const uiCopy = {
     normalizingVideo: "Normalizing…",
     fillArtboard: "Fill the artboard",
     useNormalizedVideo: "Use the normalized copy",
+    /** Shown when writing the held normalized copy over the master failed. A
+        byte swap is not an import, so it names its own failure (N6). */
+    useNormalizedFailed: "That video could not be updated.",
     /** Shown when a normalize press produced no answer the pane can read — a
         host refusal arrives in its own words and is never replaced by this. */
     videoNormalizeFailed: "That video could not be normalized.",

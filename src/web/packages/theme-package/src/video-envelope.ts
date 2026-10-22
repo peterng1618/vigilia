@@ -60,13 +60,18 @@ interface BoxSpan {
 
 interface Budget {
   left: number;
+  /** A walk stopped before its declared end, so nothing it returned is complete. */
+  truncated: boolean;
 }
 
 interface Track {
   handler: string | undefined;
   timescale: number | undefined;
+  /** The `mdhd` duration in `timescale` ticks. */
   duration: number | undefined;
   samples: number;
+  /** `stts`'s total media time in `timescale` ticks: what the player actually decodes. */
+  sampleTicks: number;
   deltas: Set<number>;
   codec: string | undefined;
   width: number;
@@ -78,8 +83,11 @@ interface Track {
 /** `undefined` means the bytes are not an MP4 this parser can read. */
 export function readVideoFacts(bytes: Uint8Array): VideoFacts | undefined {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const budget: Budget = { left: MAX_BOXES };
+  const budget: Budget = { left: MAX_BOXES, truncated: false };
   const top = boxes(view, 0, view.byteLength, budget, 0);
+  // A walk that stopped early has not seen the whole file, so its silence about
+  // a track means nothing; only a completed walk can answer "no audio".
+  if (budget.truncated) return undefined;
   const moov = top.find((box) => box.type === "moov");
   if (moov === undefined) return undefined;
   const mdat = top.find((box) => box.type === "mdat");
@@ -89,22 +97,44 @@ export function readVideoFacts(bytes: Uint8Array): VideoFacts | undefined {
   for (const box of boxes(view, moov.start, moov.end, budget, 1)) {
     if (box.type === "trak") tracks.push(readTrak(view, box, budget));
   }
+  if (budget.truncated) return undefined;
   const video = tracks.find((track) => track.handler === "vide");
   if (video === undefined) return undefined;
 
-  const timescale = video.timescale ?? 0;
-  const duration = video.duration ?? 0;
-  const seconds = timescale > 0 ? duration / timescale : 0;
-  const frameRate =
-    seconds > 0 && video.samples > 0
-      ? Math.round((video.samples / seconds) * 1000) / 1000
-      : 0;
+  // Timing the parser cannot read is unreadable, not a zero-duration video: a
+  // cap must never be satisfied by an absent measurement.
+  const timescale = video.timescale;
+  if (timescale === undefined || timescale <= 0) return undefined;
+
+  const mdhdMs =
+    video.duration === undefined
+      ? undefined
+      : (video.duration / timescale) * 1000;
+  const sampleMs =
+    video.sampleTicks > 0 ? (video.sampleTicks / timescale) * 1000 : undefined;
+  // The two fields can lie about each other. For a cap the larger wins: a
+  // duration under-reported by either one must not shorten the file.
+  const durationMsRaw = Math.max(mdhdMs ?? 0, sampleMs ?? 0);
+
+  const uniformDelta =
+    video.deltas.size === 1 ? [...video.deltas][0] : undefined;
+  const sampleSeconds = sampleMs === undefined ? undefined : sampleMs / 1000;
+  const frameRateRaw =
+    video.samples <= 0
+      ? 0
+      : uniformDelta !== undefined && uniformDelta > 0
+        ? // A uniform table's cadence is exact, where samples/seconds merely
+          // averages and can under-report a rounded `mdhd` duration (F2).
+          timescale / uniformDelta
+        : sampleSeconds !== undefined && sampleSeconds > 0
+          ? video.samples / sampleSeconds
+          : 0;
 
   return {
     width: video.width,
     height: video.height,
-    durationMs: Math.round(seconds * 1000),
-    frameRate,
+    durationMs: capCeil(durationMsRaw),
+    frameRate: capCeil(frameRateRaw * 1000) / 1000,
     constantFrameRate: video.samples > 0 && video.deltas.size === 1,
     codec: video.codec,
     profile: video.profile,
@@ -114,6 +144,13 @@ export function readVideoFacts(bytes: Uint8Array): VideoFacts | undefined {
   };
 }
 
+/** Rounds a bound up, tolerating only floating-point noise. A rounded display
+ *  value must not let 30.0004 s or fps pass a 30 cap. */
+function capCeil(value: number): number {
+  const nearest = Math.round(value);
+  return Math.abs(value - nearest) < 1e-6 ? nearest : Math.ceil(value);
+}
+
 /** Every way `facts` breaks the envelope, in a fixed order. Empty means conforming. */
 export function videoRefusals(path: string, facts: VideoFacts): string[] {
   const refusals: string[] = [];
@@ -121,7 +158,7 @@ export function videoRefusals(path: string, facts: VideoFacts): string[] {
     refusals.push(`${path}: moov comes after mdat; +faststart is required`);
   if (facts.codec !== "avc1")
     refusals.push(
-      `${path}: video codec ${facts.codec ?? "none"}; H.264 (avc1) is required`,
+      `${path}: video codec ${printable(facts.codec ?? "none")}; H.264 (avc1) is required`,
     );
   if (facts.profile !== 100)
     refusals.push(
@@ -186,29 +223,55 @@ function boxes(
   depth: number,
 ): BoxSpan[] {
   const spans: BoxSpan[] = [];
-  if (depth > MAX_DEPTH) return spans;
+  if (depth > MAX_DEPTH) {
+    budget.truncated = true;
+    return spans;
+  }
   let offset = start;
   while (offset + 8 <= end) {
-    if (budget.left <= 0) return spans;
+    if (budget.left <= 0) {
+      budget.truncated = true;
+      return spans;
+    }
     budget.left -= 1;
     let size = view.getUint32(offset);
     const type = fourcc(view, offset + 4);
     let header = 8;
     if (size === 1) {
-      if (offset + 16 > end) return spans;
+      if (offset + 16 > end) {
+        budget.truncated = true;
+        return spans;
+      }
       // A payload past 4 GiB cannot fit in a Uint8Array, so a non-zero high
       // word is malformed for our purposes.
-      if (view.getUint32(offset + 8) !== 0) return spans;
+      if (view.getUint32(offset + 8) !== 0) {
+        budget.truncated = true;
+        return spans;
+      }
       size = view.getUint32(offset + 12);
       header = 16;
     } else if (size === 0) {
       size = end - offset;
     }
-    if (size < header || size > end - offset) return spans;
+    if (size < header || size > end - offset) {
+      budget.truncated = true;
+      return spans;
+    }
     spans.push({ type, start: offset + header, end: offset + size });
     offset += size;
   }
   return spans;
+}
+
+/** A fourcc from untrusted bytes, made safe to print in a refusal sentence. */
+function printable(value: string): string {
+  return [...value]
+    .map((character) =>
+      character.charCodeAt(0) >= 0x20 && character.charCodeAt(0) <= 0x7e
+        ? character
+        : "?",
+    )
+    .join("");
 }
 
 function fourcc(view: DataView, offset: number): string {
@@ -227,6 +290,7 @@ function readTrak(view: DataView, trak: BoxSpan, budget: Budget): Track {
     timescale: undefined,
     duration: undefined,
     samples: 0,
+    sampleTicks: 0,
     deltas: new Set(),
     codec: undefined,
     width: 0,
@@ -251,7 +315,8 @@ function readTrak(view: DataView, trak: BoxSpan, budget: Budget): Track {
           if (stbl.type !== "stbl") continue;
           for (const entry of boxes(view, stbl.start, stbl.end, budget, 4)) {
             if (entry.type === "stsd") readStsd(view, entry, budget, track);
-            else if (entry.type === "stts") readStts(view, entry, track);
+            else if (entry.type === "stts")
+              readStts(view, entry, budget, track);
           }
         }
       }
@@ -288,13 +353,22 @@ function readStsd(
   budget: Budget,
   track: Track,
 ): void {
-  if (box.start + 8 > box.end) return;
+  if (box.start + 8 > box.end) {
+    budget.truncated = true;
+    return;
+  }
   const count = Math.min(view.getUint32(box.start + 4), MAX_STSD_ENTRIES);
   let offset = box.start + 8;
   for (let i = 0; i < count; i++) {
-    if (offset + 8 > box.end) return;
+    if (offset + 8 > box.end) {
+      budget.truncated = true;
+      return;
+    }
     const size = view.getUint32(offset);
-    if (size < 8 || size > box.end - offset) return;
+    if (size < 8 || size > box.end - offset) {
+      budget.truncated = true;
+      return;
+    }
     const codec = fourcc(view, offset + 4);
     const payload = offset + 8;
     const payloadEnd = offset + size;
@@ -374,17 +448,32 @@ function readSpsChroma(
   return chroma !== undefined && chroma <= 3 ? chroma : undefined;
 }
 
-function readStts(view: DataView, box: BoxSpan, track: Track): void {
-  if (box.start + 8 > box.end) return;
+function readStts(
+  view: DataView,
+  box: BoxSpan,
+  budget: Budget,
+  track: Track,
+): void {
+  if (box.start + 8 > box.end) {
+    budget.truncated = true;
+    return;
+  }
+  const declared = view.getUint32(box.start + 4);
   const count = Math.min(
-    view.getUint32(box.start + 4),
+    declared,
     Math.floor((box.end - box.start - 8) / 8),
     MAX_STTS_ENTRIES,
   );
+  // Entries the budget dropped would under-report the media length, so the
+  // untidy table is unreadable rather than short.
+  if (count < declared) budget.truncated = true;
   let offset = box.start + 8;
   for (let i = 0; i < count; i++) {
-    track.samples += view.getUint32(offset);
-    track.deltas.add(view.getUint32(offset + 4));
+    const samples = view.getUint32(offset);
+    const delta = view.getUint32(offset + 4);
+    track.samples += samples;
+    track.sampleTicks += samples * delta;
+    track.deltas.add(delta);
     offset += 8;
   }
 }

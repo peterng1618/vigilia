@@ -1,4 +1,4 @@
-import { useReducer, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import {
   ASSET_FILE_EXTENSIONS,
   type AssetManager,
@@ -160,7 +160,7 @@ export function FileSection({
     changed();
   };
 
-  const removeChosen = (): void => {
+  const removeChosen = async (): Promise<void> => {
     const id = chosen?.id;
     if (id === undefined) return;
     if (
@@ -194,6 +194,10 @@ export function FileSection({
       refuse(new Error(`Missing declared asset bytes for ${asset.id}.`));
       return;
     }
+    // A held copy belongs to the press that produced it: a second press, even
+    // one the host refuses, must never leave the previous mode's result armed.
+    setHeld(undefined);
+    setMessage("");
     setNormalizing(true);
     try {
       const outcome = await requestNormalizedVideo(
@@ -222,7 +226,14 @@ export function FileSection({
       // artboard's background media included.
       await manager.hydrate(editor.canvas);
     } catch (error) {
-      refuse(error);
+      // Writing the held copy is a byte swap, not an import; the import
+      // sentence would name the wrong failure (N6).
+      setMessage(uiCopy.panels.useNormalizedFailed);
+      editor.errorManager.error(
+        "image",
+        uiCopy.panels.useNormalizedFailed,
+        error,
+      );
       return;
     }
     setHeld(undefined);
@@ -234,6 +245,7 @@ export function FileSection({
 
   const video = chosen?.kind === "video" ? chosen : undefined;
   const pending = held?.assetId === video?.id ? held : undefined;
+  const pendingPreviewUrl = useHeldVideoUrl(pending?.bytes);
 
   return (
     <section>
@@ -287,7 +299,7 @@ export function FileSection({
         <button
           type="button"
           data-vigilia-asset-remove=""
-          onClick={removeChosen}
+          onClick={() => void submit(removeChosen)}
         >
           {uiCopy.panels.removeAsset}
         </button>
@@ -315,6 +327,16 @@ export function FileSection({
             >
               {uiCopy.panels.fillArtboard}
             </button>
+            {pending !== undefined && pendingPreviewUrl !== undefined && (
+              // Spec rule 4: the author previews the normalized asset, not the
+              // master, before the press that writes it.
+              <video
+                className="vigilia-asset-preview"
+                data-vigilia-asset-normalized-preview=""
+                controls
+                src={pendingPreviewUrl}
+              />
+            )}
             {pending !== undefined && (
               <button
                 type="button"
@@ -354,6 +376,24 @@ export function FileSection({
       />
     </section>
   );
+}
+
+/** A blob URL for the held copy, so it can be previewed before it is written.
+ *  Revoked when the copy changes or the section unmounts. */
+function useHeldVideoUrl(bytes: Uint8Array | undefined): string | undefined {
+  const [url, setUrl] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (bytes === undefined) {
+      setUrl(undefined);
+      return;
+    }
+    const next = URL.createObjectURL(
+      new Blob([bytes as unknown as BlobPart], { type: "video/mp4" }),
+    );
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [bytes]);
+  return url;
 }
 
 /**
