@@ -1148,3 +1148,19 @@ describe("the blank Fabric document", () => {
     expect(track, "a gauge's track is not its data").not.toBe(progress);
   });
 });
+
+describe("document identity", () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  it("mints a fresh id for every new document", () => {
+    const first = createNewFabricTheme();
+    const second = createNewFabricTheme();
+    expect(first.id).toMatch(UUID);
+    expect(second.id).toMatch(UUID);
+    expect(first.id).not.toBe(second.id);
+  });
+  it("mints a fresh id for a blank document too", () => {
+    expect(createBlankFabricTheme({ width: 800, height: 480 }).id).toMatch(
+      UUID,
+    );
+  });
+});

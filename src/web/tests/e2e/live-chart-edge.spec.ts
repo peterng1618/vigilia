@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, type Request, test } from "@playwright/test";
 import { HOST_PORT } from "./host-theme.js";
 
 /**
@@ -39,7 +39,9 @@ import { HOST_PORT } from "./host-theme.js";
  */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
-const STARTER_THEME_ID = "vigilia-demo-dashboard";
+/** The theme id a save's PUT URL names, which is the document's own id. */
+const themeIdOfSave = (request: Request): string =>
+  decodeURIComponent(new URL(request.url()).pathname.split("/").at(-1) ?? "");
 /** The reference composition's performance chart: three live series, axes on. */
 const CHART_NODE_ID = "trends-chart";
 /** Long enough for the 61 s window to fill, so the LEFT edge is observable. */
@@ -65,7 +67,7 @@ test.skip(
  * helper is local, and exporting it would put this spec's needs into a file
  * every other display spec reads.
  */
-async function saveStarterThroughTheHost(page: Page): Promise<void> {
+async function saveStarterThroughTheHost(page: Page): Promise<string> {
   await page.goto(`${HOST}/editor/`);
   await expect(
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
@@ -75,11 +77,17 @@ async function saveStarterThroughTheHost(page: Page): Promise<void> {
   await expect(page.locator("#status")).toContainText(
     "New theme from the starter",
   );
+  const saved = page.waitForRequest(
+    (request) =>
+      request.method() === "PUT" &&
+      /^\/api\/themes\/[^/]+$/.test(new URL(request.url()).pathname),
+  );
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "Save to library" }).click();
   await expect(page.locator("#status")).toContainText("Saved to library", {
     timeout: 20_000,
   });
+  return themeIdOfSave(await saved);
 }
 
 test.describe("the live line chart's edge", () => {
@@ -206,8 +214,8 @@ test.describe("the live line chart's edge", () => {
       window.requestAnimationFrame(tick);
     });
 
-    await saveStarterThroughTheHost(page);
-    await page.goto(`${HOST}/?theme=${STARTER_THEME_ID}&data=live`);
+    const themeId = await saveStarterThroughTheHost(page);
+    await page.goto(`${HOST}/?theme=${themeId}&data=live`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
     await expect
       .poll(

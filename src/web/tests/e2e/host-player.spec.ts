@@ -9,6 +9,7 @@ import {
   type APIRequestContext,
   expect,
   type Page,
+  type Request,
   test,
 } from "@playwright/test";
 import { SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
@@ -44,8 +45,13 @@ import { isDesktopSurface } from "./surface.js";
  * end. `vite preview` cannot cover any of it. */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
-/** The starter envelope's own id, which is what the host library calls it. */
-const STARTER_THEME_ID = "vigilia-demo-dashboard";
+/** The id the most recent save in this page wrote, discovered from the save's
+    own PUT URL — a new document now mints a UUID, so there is no fixed id. */
+const savedStarterIds = new WeakMap<Page, string>();
+
+/** The theme id a save's PUT URL names, which is the document's own id. */
+const themeIdOfSave = (request: Request): string =>
+  decodeURIComponent(new URL(request.url()).pathname.split("/").at(-1) ?? "");
 
 /**
  * Save the starter through the host's own library route, as an author would.
@@ -54,16 +60,16 @@ const STARTER_THEME_ID = "vigilia-demo-dashboard";
  * the author's most recent save when the URL names no theme — which, against the
  * host project's shared `--app-dir`, is whichever *fixture* ran last, not the
  * starter. The save that followed therefore wrote somebody else's document, and
- * the display then asked the host for `vigilia-demo-dashboard`, which no run had
+ * the display then asked the host for the reference theme, which no run had
  * ever put there. Measured: booting the seeded store opened `bar-0…bar-4` (a
- * fixture), and after `Save to library` the library still had no
- * `vigilia-demo-dashboard`.
+ * fixture), and after `Save to library` the library still had no reference
+ * theme.
  *
- * Naming the document is the point, so it is asserted rather than assumed: the
- * ids below are the reference composition's own, and a save that stored anything
- * else has not saved the starter.
+ * The id is read off the save request rather than assumed: the document mints
+ * its own UUID at creation, so a spec that asked for a fixed name would ask for
+ * a theme no save ever wrote.
  */
-async function saveStarterThroughTheHost(page: Page): Promise<void> {
+async function saveStarterThroughTheHost(page: Page): Promise<string> {
   await page.goto(`${HOST}/editor/`);
   await expect(
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
@@ -73,11 +79,19 @@ async function saveStarterThroughTheHost(page: Page): Promise<void> {
   await expect(page.locator("#status")).toContainText(
     "New theme from the starter",
   );
+  const saved = page.waitForRequest(
+    (request) =>
+      request.method() === "PUT" &&
+      /^\/api\/themes\/[^/]+$/.test(new URL(request.url()).pathname),
+  );
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "Save to library" }).click();
   await expect(page.locator("#status")).toContainText("Saved to library", {
     timeout: 20_000,
   });
+  const id = themeIdOfSave(await saved);
+  savedStarterIds.set(page, id);
+  return id;
 }
 
 /**
@@ -88,12 +102,13 @@ async function saveStarterThroughTheHost(page: Page): Promise<void> {
  * The host project's `--app-dir` is a directory, not a fixture, so on a machine
  * that had not run these specs before each of them asked the host for a theme it
  * did not have — a symptom that names the artboard and never mentions the
- * missing document. Saving it here is idempotent, so a spec that already did is
- * unaffected.
+ * missing document. A spec that already saved reuses that save's id.
  */
-async function openStarterDisplay(page: Page, query = ""): Promise<void> {
-  await saveStarterThroughTheHost(page);
-  await page.goto(`${HOST}/?theme=${STARTER_THEME_ID}${query}`);
+async function openStarterDisplay(page: Page, query = ""): Promise<string> {
+  const id =
+    savedStarterIds.get(page) ?? (await saveStarterThroughTheHost(page));
+  await page.goto(`${HOST}/?theme=${id}${query}`);
+  return id;
 }
 
 /** The saved document on the display, with at least one live batch arrived. */
@@ -1290,17 +1305,23 @@ test.describe("a display fed by the real host", () => {
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
+    const saved = page.waitForRequest(
+      (request) =>
+        request.method() === "PUT" &&
+        /^\/api\/themes\/[^/]+$/.test(new URL(request.url()).pathname),
+    );
     await page.getByRole("button", { name: "File", exact: true }).click();
     await page.getByRole("menuitem", { name: "Save to library" }).click();
     await expect(page.locator("#status")).toContainText("Saved to library", {
       timeout: 20_000,
     });
+    const themeId = themeIdOfSave(await saved);
 
     // **The picture came back through the host's own route**, which is the only
     // place the capture path is exercised end to end: `vite preview` has no
     // thumbnail store.
     const response = await request.get(
-      `${HOST}/api/themes/${STARTER_THEME_ID}/thumbnail`,
+      `${HOST}/api/themes/${themeId}/thumbnail`,
     );
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toBe("image/png");
@@ -1459,7 +1480,7 @@ test.describe("a display fed by the real host", () => {
     // 4.46 at its own 0.37 camera scale). 1672x941 is where the starter is
     // designed to be read, and where the registered capture is taken.
     await page.setViewportSize({ width: 1672, height: 941 });
-    await openStarterDisplay(page);
+    const themeId = await openStarterDisplay(page);
     await page.waitForSelector('canvas[data-vigilia="artboard"]');
     await page.waitForFunction(
       () => {
@@ -1486,7 +1507,7 @@ test.describe("a display fed by the real host", () => {
           ?.getAttribute("src") ?? "",
     );
     expect(delivered).toBe(
-      `/api/themes/${STARTER_THEME_ID}/assets/starter-backdrop.jpg`,
+      `/api/themes/${themeId}/assets/starter-backdrop.jpg`,
     );
 
     // The card's own contents are hidden while the band is read: `cpu-card` has

@@ -17,11 +17,10 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 1.3 landed**: the classifier reads every content member — scene objects matched by `id` at any depth (index when a node has none), assets by `id`, and palette tokens/type presets by map key.
-- **Objects, assets, tokens and presets err to minor/structure when added or removed**; a kept node's paint, text, geometry or position change is patch/content, as is a z-order reorder.
-- **`artboard.backgroundMedia` is minor/backdrop**; `artboard.background` and `metadata.name`/`author`/`description`/`themeLanguage`/`remixOf` are patch, tag membership is minor/metadata and tag reordering is `none`.
-- **Mirrored levels fold by max**: a document differing in a major and a minor member is `major` with both reasons in enum order.
-- **Unknown keys inside a known member are patch**; only an unknown top-level member stays `major`.
+- **Task 2.1 landed**: `createNewFabricTheme()` and `createBlankFabricTheme()` mint `crypto.randomUUID()` document ids; `STARTER_ENVELOPE_ID` no longer names a document.
+- **Two identity tests added**: each id matches the lowercase-UUID shape, and every call gets a fresh one.
+- **E2E specs discover the saved id** from the save request's PUT URL instead of a fixed literal; the author-journey seed folder is spec-owned.
+- **Editor unit suite green**: 161 files, 2171 tests.
 
 ## Next
 

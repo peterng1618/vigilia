@@ -32,9 +32,9 @@ export const STARTER_TEMPLATE = {
   name: "Starter — System dashboard",
 } as const;
 
-/** The starter envelope's own id, which is the host library's name for the
-    reference theme and is referenced by the e2e suite and the host fixtures. */
-const STARTER_ENVELOPE_ID = "vigilia-demo-dashboard";
+/** The id the reference theme was saved under while documents carried shared
+    literals. Documents now mint their own; this records the retired name. */
+export const STARTER_ENVELOPE_ID = "vigilia-demo-dashboard";
 
 /**
  * The reference composition, kept whole so it can be reached as what it now is
@@ -45,7 +45,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
   return {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
-    id: STARTER_ENVELOPE_ID,
+    id: crypto.randomUUID(),
     metadata: {
       name: "System dashboard",
       author: "Vigilia",
@@ -265,9 +265,9 @@ export function createBlankFabricTheme(
 
   return {
     ...starter,
-    // The starter's id names the starter; a blank theme that kept it would
-    // overwrite the reference in the library the first time it was saved.
-    id: "vigilia-new-theme",
+    // A blank theme is its own document, not the starter it was built from:
+    // keeping that id would overwrite the reference the first time this saved.
+    id: crypto.randomUUID(),
     metadata: {
       name: "New theme",
       author: "Vigilia",

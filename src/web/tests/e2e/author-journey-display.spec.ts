@@ -58,8 +58,9 @@ const APP_DIR = path.join(here, "..", "..", ".e2e-display-app");
 const THEMES_DIR = path.join(APP_DIR, "themes");
 /** Where the exported package is kept, so the import below can reopen it. */
 const EXPORTED = path.join(APP_DIR, "exported.vigilia-theme");
-/** The blank theme's own id (`new-fabric-theme.ts`), which is what the host keys. */
-const THEME_ID = "vigilia-new-theme";
+/** The folder this spec seeds the exported document under. The document mints
+    its own UUID, so the library folder name is the spec's choice, not the id. */
+const THEME_ID = "e2e-author-journey";
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
 
 /**
