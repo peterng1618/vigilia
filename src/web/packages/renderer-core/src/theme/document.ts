@@ -2,6 +2,7 @@ import type { BarSettings } from "../charts/bar.js";
 import type { LineSettings } from "../charts/line.js";
 import type { PieSettings } from "../charts/pie.js";
 import type { GaugeSettings } from "../types.js";
+import { isCatalogueId } from "./catalogue-index.js";
 
 /** The theme's authored vocabulary: artboard, globals, bindings, text runs and assets. */
 
@@ -44,6 +45,43 @@ export function bumpSemanticVersion(
   if (level === "major") return `${major + 1}.0.0`;
   if (level === "minor") return `${major}.${minor + 1}.0`;
   return `${major}.${minor}.${patch + 1}`;
+}
+
+/**
+ * The catalogue item a document was remixed from — the immediate parent only.
+ *
+ * `catalogueId` is what a link resolves through; `name` and `version` are the
+ * snapshot printed when the parent is no longer in the index. Provenance, not
+ * a live reference: the parent's existence is never checked here.
+ */
+export interface ThemeRemix {
+  readonly catalogueId: string;
+  readonly name: string;
+  readonly version: string;
+}
+
+/** The published remix shape, and the whole of what the format enforces. */
+export function isThemeRemix(value: unknown): value is ThemeRemix {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return false;
+  const record = value as Record<string, unknown>;
+  if (
+    Object.keys(record).some(
+      (key) => key !== "catalogueId" && key !== "name" && key !== "version",
+    )
+  )
+    return false;
+  const catalogueId = record["catalogueId"];
+  const name = record["name"];
+  const version = record["version"];
+  return (
+    typeof catalogueId === "string" &&
+    isCatalogueId(catalogueId) &&
+    typeof name === "string" &&
+    name.length > 0 &&
+    typeof version === "string" &&
+    isSemanticVersion(version)
+  );
 }
 
 export const GLOBAL_GROUPS = [
@@ -271,4 +309,6 @@ export interface ThemeMetadata {
    * duplicates are the facet's to collapse. See docs/decisions/0087.
    */
   readonly tags?: readonly string[];
+  /** The catalogue item this theme was remixed from, if any. */
+  readonly remixOf?: ThemeRemix;
 }

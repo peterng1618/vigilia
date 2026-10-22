@@ -4,9 +4,11 @@ import {
 } from "../charts/settings-fields.js";
 import { isTimeZoneName } from "../scene/datetime/instant.js";
 import { isLocaleName } from "../scene/datetime/names.js";
+import { isCatalogueId } from "./catalogue-index.js";
 import {
   CHART_FAMILIES,
   type ChartFamily,
+  isSemanticVersion,
   MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
@@ -99,6 +101,7 @@ export function validateFabricThemeEnvelope(
   validateEnvelopeSemantics(input, issues);
   themeLanguage(input["metadata"], issues);
   styleTags(input["metadata"], issues);
+  remixOf(input["metadata"], issues);
   v2Globals(input["globals"], issues);
   artboardPaintReferences(input["artboard"], input["globals"], issues);
   paletteNone(input["globals"], issues);
@@ -212,6 +215,89 @@ function styleTags(metadata: unknown, issues: ValidationIssue[]): void {
       ),
     );
   }
+}
+
+/**
+ * The catalogue item a theme was remixed from: provenance for the credit line,
+ * never a live link. The parent's existence is deliberately unchecked — a remix
+ * may be published before its parent — so only the shape is decided here, one
+ * issue per malformed member.
+ */
+function remixOf(metadata: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(metadata)) return;
+  const value = metadata["remixOf"];
+  if (value === undefined) return;
+
+  if (!isRecord(value)) {
+    issues.push(
+      issue("wrong-type", "/metadata/remixOf", "remixOf must be an object."),
+    );
+    return;
+  }
+
+  for (const key of Object.keys(value))
+    if (key !== "catalogueId" && key !== "name" && key !== "version")
+      issues.push(
+        issue(
+          "unknown-field",
+          `/metadata/remixOf/${key}`,
+          `A remix credit has no "${key}" property.`,
+        ),
+      );
+
+  const catalogueId = value["catalogueId"];
+  if (catalogueId === undefined)
+    issues.push(
+      issue(
+        "missing-field",
+        "/metadata/remixOf/catalogueId",
+        "A remix credit needs the parent's catalogue id.",
+      ),
+    );
+  else if (typeof catalogueId !== "string" || !isCatalogueId(catalogueId))
+    issues.push(
+      issue(
+        "invalid-id",
+        "/metadata/remixOf/catalogueId",
+        `A remix credit's catalogueId must be a lowercase UUID; got ${JSON.stringify(catalogueId)}.`,
+      ),
+    );
+
+  const name = value["name"];
+  if (name === undefined)
+    issues.push(
+      issue(
+        "missing-field",
+        "/metadata/remixOf/name",
+        "A remix credit needs the parent's name.",
+      ),
+    );
+  else if (typeof name !== "string" || name.length === 0)
+    issues.push(
+      issue(
+        "wrong-type",
+        "/metadata/remixOf/name",
+        "A remix credit's name must be a non-empty string.",
+      ),
+    );
+
+  const version = value["version"];
+  if (version === undefined)
+    issues.push(
+      issue(
+        "missing-field",
+        "/metadata/remixOf/version",
+        "A remix credit needs the version it was remixed from.",
+      ),
+    );
+  else if (typeof version !== "string" || !isSemanticVersion(version))
+    issues.push(
+      issue(
+        "wrong-type",
+        "/metadata/remixOf/version",
+        "A remix credit's version must be semantic major.minor.patch.",
+      ),
+    );
 }
 
 function fontPresetFaces(

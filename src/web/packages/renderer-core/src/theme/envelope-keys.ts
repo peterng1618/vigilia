@@ -28,6 +28,7 @@ const KNOWN_KEYS = {
     // The key only. A tag's *value* has no enum anywhere, deliberately: the
     // vocabulary is the catalogue's and has to be able to grow (docs/decisions/0087).
     "tags",
+    "remixOf",
   ],
   artboard: ["width", "height", "background", "contentFit", "backgroundMedia"],
   // `format` and `timeZone` are validated below and authored by the editor's

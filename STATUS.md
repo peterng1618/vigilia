@@ -17,11 +17,10 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 3.3 landed**: the submit route answers the version a submission published — `from` (`null` on a first release), `to` and the ladder's `level`.
-- **The editor names that version under the pull request link**: `1.4.0 → 1.5.0 · minor`, or `1.0.0 · first release` when there is no `from`.
-- **A landed submission re-reads the library**, so the caption line carries the version the host just wrote.
-- **`uiCopy.store.submit.version` owns the sentence**, pinned for `initial`, `minor`, `major` and `none`.
-- **A `200` without the three version facts is refused**, not drawn as a submitted state.
+- **Task 4.1 landed**: `ThemeMetadata.remixOf` names the immediate parent (`catalogueId`, `name`, `version`).
+- **Type, runtime validator and published schema land together**, because `metadata` closes itself on both sides.
+- **`isThemeRemix` reuses the catalogue's UUID pattern**, and the schema repeats it under `$defs.remix`.
+- **Each malformed member is refused at its own path** under `/metadata/remixOf`.
 
 ## Next
 

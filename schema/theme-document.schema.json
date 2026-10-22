@@ -34,7 +34,17 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "themeLanguage": { "type": "string", "maxLength": 64 },
-        "tags": { "type": "array", "maxItems": 5, "items": { "type": "string", "pattern": "^[a-z0-9-]{1,24}$" } }
+        "tags": { "type": "array", "maxItems": 5, "items": { "type": "string", "pattern": "^[a-z0-9-]{1,24}$" } },
+        "remixOf": { "$ref": "#/$defs/remix" }
+      }
+    },
+    "remix": {
+      "description": "The catalogue item this theme was remixed from — the immediate parent only, recorded as provenance for the credit line. The parent's existence is not checked.",
+      "type": "object", "additionalProperties": false, "required": ["catalogueId", "name", "version"],
+      "properties": {
+        "catalogueId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
       }
     },
     "paletteReference": {

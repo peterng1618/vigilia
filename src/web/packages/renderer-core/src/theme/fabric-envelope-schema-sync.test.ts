@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CATALOGUE_ID_PATTERN } from "./catalogue-index.js";
 import { BACKGROUND_MEDIA_FITS, MAX_TAGS, TAG_PATTERN } from "./document.js";
 import { SUPPORTED_SCHEMA_VERSION } from "./fabric-envelope.js";
 import { GLASS_TYPES, MAX_GLASS_BLUR_RADIUS } from "./glass.js";
@@ -241,6 +242,34 @@ describe("published Fabric theme schema", () => {
     // catalogue does not yet have wait for a schema release.
     expect(tags["enum"]).toBeUndefined();
     expect(items["enum"]).toBeUndefined();
+  });
+
+  it("publishes the remix credit the validator refuses, with the same id shape", () => {
+    // `metadata` is closed on both sides, so a credit the editor writes must be
+    // a member the published schema declares — and its patterns are stated
+    // twice, so they are compared against the constants rather than copies.
+    const document = schema();
+    const metadata = document.$defs["metadata"]!;
+    const remix = document.$defs["remix"]!;
+    const properties = remix["properties"] as Record<
+      string,
+      Record<string, unknown>
+    >;
+
+    expect(metadata["properties"]).toMatchObject({
+      remixOf: { $ref: "#/$defs/remix" },
+    });
+    expect(remix["additionalProperties"]).toBe(false);
+    expect(remix["required"]).toEqual(["catalogueId", "name", "version"]);
+    expect(properties["catalogueId"]).toEqual({
+      type: "string",
+      pattern: CATALOGUE_ID_PATTERN.source,
+    });
+    expect(properties["name"]).toEqual({ type: "string", minLength: 1 });
+    expect(properties["version"]).toEqual({
+      type: "string",
+      pattern: "^\\d+\\.\\d+\\.\\d+$",
+    });
   });
 
   it("discriminates fully declared WOFF2 font assets from other assets", () => {

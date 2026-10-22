@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isThemeRemix } from "./document.js";
 import type { ValidationIssue } from "./envelope-semantics.js";
 import {
   type FabricEnvelopeValidationResult,
@@ -1410,5 +1411,107 @@ describe("a theme's style tags", () => {
     ).toContainEqual(
       expect.objectContaining({ code: "wrong-type", path: "/metadata/tags" }),
     );
+  });
+});
+
+describe("a theme's remix provenance", () => {
+  const catalogueId = "5f0c4f30-0f8c-4e4f-9c1f-1f0f0f0f0f0f";
+  const withRemix = (remixOf: unknown): Record<string, unknown> =>
+    withMetadata(envelope(), { themeLanguage: "en", remixOf });
+
+  it("accepts the parent it was remixed from", () => {
+    expect(
+      validateFabricThemeEnvelope(
+        withRemix({ catalogueId, name: "Parent", version: "1.2.0" }),
+      ),
+    ).toMatchObject({ ok: true });
+    // Provenance is optional: a theme authored from scratch carries none.
+    expect(validateFabricThemeEnvelope(envelope()).ok).toBe(true);
+  });
+
+  it("refuses a parent id that is not a catalogue UUID", () => {
+    const result = validateFabricThemeEnvelope(
+      withRemix({
+        catalogueId: "parent-slug",
+        name: "Parent",
+        version: "1.2.0",
+      }),
+    );
+
+    expect(issuesOf(result)).toEqual([
+      expect.objectContaining({
+        code: "invalid-id",
+        path: "/metadata/remixOf/catalogueId",
+      }),
+    ]);
+  });
+
+  it("refuses credit with no name to print", () => {
+    const result = validateFabricThemeEnvelope(
+      withRemix({ catalogueId, version: "1.2.0" }),
+    );
+
+    expect(issuesOf(result)).toEqual([
+      expect.objectContaining({
+        code: "missing-field",
+        path: "/metadata/remixOf/name",
+      }),
+    ]);
+  });
+
+  it("refuses a version that is not semantic major.minor.patch", () => {
+    const result = validateFabricThemeEnvelope(
+      withRemix({ catalogueId, name: "Parent", version: "v1.2" }),
+    );
+
+    expect(issuesOf(result)).toEqual([
+      expect.objectContaining({
+        code: "wrong-type",
+        path: "/metadata/remixOf/version",
+      }),
+    ]);
+  });
+
+  it("refuses a member the published shape does not declare", () => {
+    const result = validateFabricThemeEnvelope(
+      withRemix({
+        catalogueId,
+        name: "Parent",
+        version: "1.2.0",
+        author: "Someone",
+      }),
+    );
+
+    expect(issuesOf(result)).toEqual([
+      expect.objectContaining({
+        code: "unknown-field",
+        path: "/metadata/remixOf/author",
+      }),
+    ]);
+  });
+});
+
+describe("isThemeRemix", () => {
+  const wellFormed = {
+    catalogueId: "5f0c4f30-0f8c-4e4f-9c1f-1f0f0f0f0f0f",
+    name: "Parent",
+    version: "1.2.0",
+  };
+
+  it("accepts exactly the published three-member shape", () => {
+    expect(isThemeRemix(wellFormed)).toBe(true);
+  });
+
+  it("refuses a non-object, a missing member and an undeclared one", () => {
+    for (const value of [
+      null,
+      "remix",
+      [],
+      { ...wellFormed, name: undefined },
+      { ...wellFormed, version: "1.2" },
+      { ...wellFormed, author: "Someone" },
+    ]) {
+      expect(isThemeRemix(value), JSON.stringify(value)).toBe(false);
+    }
   });
 });
