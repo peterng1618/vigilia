@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { VIGILIA_GLASS_PROPERTY } from "./glass.js";
+import { YUNARI_GLASS_PROPERTY } from "./glass.js";
 import { performanceCostsOf } from "./performance-cost.js";
 
 /** Envelopes built inline: no renderer, no DOM, and nothing revived. The
@@ -8,7 +8,7 @@ import { performanceCostsOf } from "./performance-cost.js";
 const GLASS_PANEL = {
   type: "Rect",
   id: "panel",
-  [VIGILIA_GLASS_PROPERTY]: { blurRadius: 16 },
+  [YUNARI_GLASS_PROPERTY]: { blurRadius: 16 },
 };
 
 const VIDEO_ASSET = { id: "loop", kind: "video", path: "assets/loop.webm" };

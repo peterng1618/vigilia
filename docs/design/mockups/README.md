@@ -121,7 +121,7 @@ Silence is not a pass. A gate that produces no comparison has not run — the
 failure this exists to prevent is exactly the one that produced the previous
 pass's "the redesign is done" against an editor that looked unchanged.
 
-The capture itself uses the existing mechanism and its rules — `VIGILIA_CAPTURE=1`,
+The capture itself uses the existing mechanism and its rules — `YUNARI_CAPTURE=1`,
 one worker, previewing built bundles, capturing only actions registered in
 [`../../evidence/screenshots/README.md`](../../evidence/screenshots/README.md).
 

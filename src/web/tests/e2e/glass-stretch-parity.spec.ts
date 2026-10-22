@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { assertBlur, readGlass } from "./glass-probe.js";
 import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
@@ -83,8 +83,8 @@ function panelOf(placement: Placement): Record<string, unknown> {
     id: placement.id,
     selectable: false,
     evented: false,
-    vigiliaPaint: { fill: "palette.panel" },
-    vigiliaGlass: { blurRadius: RADIUS },
+    yunariPaint: { fill: "palette.panel" },
+    yunariGlass: { blurRadius: RADIUS },
   };
 }
 

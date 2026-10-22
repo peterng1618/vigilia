@@ -1,4 +1,4 @@
-import type { Binding } from "@vigilia/renderer-core";
+import type { Binding } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { boundSemanticKeys } from "./bound-keys.js";
 

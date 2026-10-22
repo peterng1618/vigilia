@@ -1,4 +1,4 @@
-import type { PlanBox, PlanNode } from "@vigilia/renderer-core";
+import type { PlanBox, PlanNode } from "@yunari/renderer-core";
 
 /**
  * The single top-left → centre conversion. Plan boxes are parent-local and

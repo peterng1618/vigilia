@@ -1,4 +1,4 @@
-import type { ValidationIssue } from "@vigilia/renderer-core";
+import type { ValidationIssue } from "@yunari/renderer-core";
 import {
   type ThemeLibraryClient,
   type ThemeLibraryContent,
@@ -30,7 +30,7 @@ import {
  * starter` are what a blank document means, and they stay where they were.
  *
  * **The store this assumes is single-author, and that is what makes the
- * fallback safe.** `~/.vigilia/themes/` under `os.homedir()` (`cli/args.ts`),
+ * fallback safe.** `~/.yunari/themes/` under `os.homedir()` (`cli/args.ts`),
  * with the host on loopback and no account, session or per-author scope
  * anywhere in it. So "the most recent save" is the person at the keyboard, not
  * a colleague's — which is why resuming is right here and would be wrong on a

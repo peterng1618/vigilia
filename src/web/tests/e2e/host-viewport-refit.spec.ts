@@ -57,14 +57,14 @@ import {
  * **Opt-in, because it is a measurement and not a check.** It costs about two
  * minutes, it asserts nothing about the defect it reads, and nothing in the
  * repository consumes what it writes — so a regression would leave it green. It
- * is collected only when `VIGILIA_VIEWPORT_PROBE` is set, and it writes its
+ * is collected only when `YUNARI_VIEWPORT_PROBE` is set, and it writes its
  * readings to
- * `<os temp>/vigilia-viewport-refit/<VIGILIA_PROBE_TAG>-<project>-<recording>.json`
+ * `<os temp>/yunari-viewport-refit/<YUNARI_PROBE_TAG>-<project>-<recording>.json`
  * — `reading-…` when the tag is unset, and the absolute path is named in the
  * run's own output. One run:
  *
  * ```
- * VIGILIA_VIEWPORT_PROBE=1 VIGILIA_PROBE_TAG=my-run npx playwright test \
+ * YUNARI_VIEWPORT_PROBE=1 YUNARI_PROBE_TAG=my-run npx playwright test \
  *   --project=desktop-chromium --workers=1 tests/e2e/host-viewport-refit.spec.ts
  * ```
  *
@@ -120,9 +120,9 @@ import {
  * pre-removal run on the same probe had **two** values of each over the same
  * window — portrait `tr.oy` 289.3125 → 312.3125 with every object's `sy` moving
  * 23 px (394.46875 → 371.46875), landscape painted 361 → 390 with scale and ox
- * both changing — and its first mount frame carried a `vigilia-crop` strip of
+ * both changing — and its first mount frame carried a `yunari-crop` strip of
  * height 45.59375 taking that room. Across the whole new run no frame carries a
- * `vigilia-crop` strip at all, where both old runs carried one in 3249 frames.
+ * `yunari-crop` strip at all, where both old runs carried one in 3249 frames.
  * The transport notice is still there in the new run (h=28.796875 at the first
  * mount frame) and moves nothing, which is the control that a notice taking no
  * room is what the reading is about rather than a quiet display.
@@ -136,14 +136,14 @@ const HOST = `http://127.0.0.1:${HOST_PORT}`;
 function outFile(recording: string, project: string): string {
   return path.join(
     tmpdir(),
-    "vigilia-viewport-refit",
-    `${process.env["VIGILIA_PROBE_TAG"] ?? "reading"}-${project}-${recording}.json`,
+    "yunari-viewport-refit",
+    `${process.env["YUNARI_PROBE_TAG"] ?? "reading"}-${project}-${recording}.json`,
   );
 }
 
 test.skip(
-  process.env["VIGILIA_VIEWPORT_PROBE"] === undefined,
-  "a measurement, not a check: set VIGILIA_VIEWPORT_PROBE to collect it",
+  process.env["YUNARI_VIEWPORT_PROBE"] === undefined,
+  "a measurement, not a check: set YUNARI_VIEWPORT_PROBE to collect it",
 );
 
 /**
@@ -228,11 +228,11 @@ async function installReader(
       baselineCentroids: [] as (number | null)[],
       pixelSamples: 0,
     };
-    Reflect.set(window, "__vigiliaRefit", state);
-    Reflect.set(window, "__vigiliaRefitMark", (label: string) => {
+    Reflect.set(window, "__yunariRefit", state);
+    Reflect.set(window, "__yunariRefitMark", (label: string) => {
       state.marks.push({ label, at: performance.now() });
     });
-    Reflect.set(window, "__vigiliaRefitCapture", () => {
+    Reflect.set(window, "__yunariRefitCapture", () => {
       state.baseline = slices();
       state.baselineCentroids = state.baseline.map((one) => one.centroid);
     });
@@ -247,9 +247,9 @@ async function installReader(
     function transform(): Point | null {
       const handle = (
         window as unknown as {
-          vigilia?: { handle?: { transform(): Point } };
+          yunari?: { handle?: { transform(): Point } };
         }
-      ).vigilia?.handle;
+      ).yunari?.handle;
       if (handle === undefined) return null;
       try {
         return handle.transform();
@@ -379,7 +379,7 @@ async function installReader(
     function objects(point: Point | null, hostBox: Box | null): unknown[] {
       const canvas = (
         window as unknown as {
-          vigilia?: {
+          yunari?: {
             handle?: {
               canvas?: {
                 getObjects(): readonly {
@@ -396,7 +396,7 @@ async function installReader(
             };
           };
         }
-      ).vigilia?.handle?.canvas;
+      ).yunari?.handle?.canvas;
       if (canvas === undefined) return [];
 
       const seen: unknown[] = [];
@@ -486,7 +486,7 @@ async function installReader(
           painted: point === null ? null : painted(point),
           objects: objects(point, hostBox),
           strips: [
-            ...document.querySelectorAll<HTMLElement>('[id^="vigilia-"]'),
+            ...document.querySelectorAll<HTMLElement>('[id^="yunari-"]'),
           ].map((strip) => ({ id: strip.id, ...rect(strip) })),
           shifts,
           centroids,
@@ -522,9 +522,9 @@ for (const recording of RECORDINGS) {
         (value) =>
           (
             window as unknown as {
-              __vigiliaRefitMark?: (label: string) => void;
+              __yunariRefitMark?: (label: string) => void;
             }
-          ).__vigiliaRefitMark?.(value),
+          ).__yunariRefitMark?.(value),
         label,
       );
 
@@ -539,9 +539,9 @@ for (const recording of RECORDINGS) {
             () =>
               (
                 window as unknown as {
-                  vigilia?: { live?: { batchCount?: number } };
+                  yunari?: { live?: { batchCount?: number } };
                 }
-              ).vigilia?.live?.batchCount ?? 0,
+              ).yunari?.live?.batchCount ?? 0,
           ),
         { timeout: 30_000 },
       )
@@ -552,8 +552,8 @@ for (const recording of RECORDINGS) {
     await page.waitForTimeout(6_000);
     await page.evaluate(() =>
       (
-        window as unknown as { __vigiliaRefitCapture?: () => void }
-      ).__vigiliaRefitCapture?.(),
+        window as unknown as { __yunariRefitCapture?: () => void }
+      ).__yunariRefitCapture?.(),
     );
     await mark("baseline");
     await page.waitForTimeout(8_000);
@@ -603,14 +603,14 @@ for (const recording of RECORDINGS) {
     const reading = await page.evaluate(() => {
       const state = (
         window as unknown as {
-          __vigiliaRefit?: {
+          __yunariRefit?: {
             frames: unknown[];
             marks: { label: string; at: number }[];
             baselineCentroids: (number | null)[];
             pixelSamples: number;
           };
         }
-      ).__vigiliaRefit;
+      ).__yunariRefit;
       return {
         frames: state?.frames ?? [],
         marks: state?.marks ?? [],

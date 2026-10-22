@@ -127,7 +127,7 @@ export function AssignDisplay(props: {
       {answered === undefined ? null : (
         <ControlSelect
           label={uiCopy.store.assign.display}
-          data={{ "data-vigilia-store-assign-display": "" }}
+          data={{ "data-yunari-store-assign-display": "" }}
           value={heldBy}
           options={options}
           onChange={choose}
@@ -139,7 +139,7 @@ export function AssignDisplay(props: {
       <p
         className="editor-shell-dialog-status"
         role="status"
-        data-vigilia-store-assign-status=""
+        data-yunari-store-assign-status=""
         hidden={refusal === undefined}
       >
         {refusal}

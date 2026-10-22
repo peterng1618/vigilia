@@ -7,7 +7,7 @@ import { type TrashRoute, trashPlan } from "./trash.js";
  * no native binary; these are the claims that note makes, as assertions.
  */
 describe("trashPlan", () => {
-  const folder = "/home/ada/.vigilia/themes/living-room";
+  const folder = "/home/ada/.yunari/themes/living-room";
   const routesOf = (
     platform: NodeJS.Platform,
     at = folder,

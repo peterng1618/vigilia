@@ -6,8 +6,8 @@ import {
   type Globals,
   MAX_ARTBOARD_DIMENSION,
   paletteTokenOptions,
-} from "@vigilia/renderer-core";
-import { outsideCount, type SceneBox } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { outsideCount, type SceneBox } from "@yunari/scene-fabric";
 import { useId } from "react";
 import {
   ARTBOARD_ORIENTATIONS,
@@ -53,7 +53,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
   const { artboard, globals, assets, boxes, onCommit } = props;
   // The size note's id, minted here because this component renders the note and
   // hands the id to the controls it describes.
-  const noteId = `vigilia-artboard-note-${useId().replace(/[^\w-]/g, "")}`;
+  const noteId = `yunari-artboard-note-${useId().replace(/[^\w-]/g, "")}`;
   const matching = artboardPresetFor(artboard);
   const commit = (patch: Partial<Artboard>): void =>
     onCommit({ ...artboard, ...patch });
@@ -137,7 +137,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
     <div className="flex flex-col gap-[var(--space-8)]">
       <ControlSelect
         label={uiCopy.panels.ratio}
-        data={{ "data-vigilia-artboard-ratio": "" }}
+        data={{ "data-yunari-artboard-ratio": "" }}
         describedById={noteId}
         value={matching?.ratio ?? ""}
         options={ratioOptions()}
@@ -145,7 +145,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
       />
       <ControlSelect
         label={uiCopy.panels.orientation}
-        data={{ "data-vigilia-artboard-orientation": "" }}
+        data={{ "data-yunari-artboard-orientation": "" }}
         describedById={noteId}
         value={matching?.orientation ?? ""}
         options={orientationOptions()}
@@ -153,7 +153,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
       />
       <ControlSelect
         label={uiCopy.panels.resolution}
-        data={{ "data-vigilia-artboard-resolution": "" }}
+        data={{ "data-yunari-artboard-resolution": "" }}
         describedById={noteId}
         value={matching?.resolution ?? ""}
         options={resolutionOptions()}
@@ -169,7 +169,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
           {
             label: uiCopy.panels.widthMark,
             value: artboard.width,
-            data: { "data-vigilia-artboard-width": "" },
+            data: { "data-yunari-artboard-width": "" },
             integer: true,
             min: 1,
             max: MAX_ARTBOARD_DIMENSION,
@@ -178,7 +178,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
           {
             label: uiCopy.panels.heightMark,
             value: artboard.height,
-            data: { "data-vigilia-artboard-height": "" },
+            data: { "data-yunari-artboard-height": "" },
             integer: true,
             min: 1,
             max: MAX_ARTBOARD_DIMENSION,
@@ -188,7 +188,7 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
       />
       <p
         id={noteId}
-        data-vigilia-artboard-note=""
+        data-yunari-artboard-note=""
         role="note"
         className="w-full text-xs text-muted"
       >
@@ -196,21 +196,21 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
       </p>
       <ControlSelect
         label={uiCopy.panels.background}
-        data={{ "data-vigilia-artboard-background": "" }}
+        data={{ "data-yunari-artboard-background": "" }}
         value={paletteReference(artboard.background)}
         options={paletteOptions(globals)}
         onChange={commitPalette}
       />
       <ControlSelect
         label={uiCopy.panels.backgroundMedia}
-        data={{ "data-vigilia-background-asset": "" }}
+        data={{ "data-yunari-background-asset": "" }}
         value={artboard.backgroundMedia?.assetId ?? ""}
         options={mediaOptions(assets)}
         onChange={commitMedia}
       />
       <ControlSelect
         label={uiCopy.panels.mediaFit}
-        data={{ "data-vigilia-background-media-fit": "" }}
+        data={{ "data-yunari-background-media-fit": "" }}
         value={artboard.backgroundMedia?.fit ?? "theme"}
         options={fitOptions()}
         onChange={commitFit}

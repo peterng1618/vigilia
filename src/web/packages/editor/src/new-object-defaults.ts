@@ -7,15 +7,15 @@ import {
   defaultPieSettings,
   type FabricGlobals,
   type TypePreset,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   Arc,
   type FabricPaintRefs,
   fabricArtboardPaint,
-  VIGILIA_PAINT_PROPERTY,
-  VIGILIA_TEXT_PROPERTY,
   Wedge,
-} from "@vigilia/scene-fabric";
+  YUNARI_PAINT_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
+} from "@yunari/scene-fabric";
 import {
   Ellipse,
   type FabricObject,
@@ -31,7 +31,7 @@ import { uiCopy } from "./ui-copy.js";
 /** Semantic defaults for a new object; generic construction remains editor-owned. */
 interface NewPaintDefaults {
   readonly fill: unknown;
-  readonly [VIGILIA_PAINT_PROPERTY]: FabricPaintRefs;
+  readonly [YUNARI_PAINT_PROPERTY]: FabricPaintRefs;
 }
 
 interface NewTextDefaults extends NewPaintDefaults {
@@ -48,7 +48,7 @@ interface NewTextDefaults extends NewPaintDefaults {
   readonly fontSize: number;
   readonly fontWeight?: string | number;
   readonly lineHeight?: number;
-  readonly [VIGILIA_TEXT_PROPERTY]: {
+  readonly [YUNARI_TEXT_PROPERTY]: {
     readonly runs: readonly [
       {
         readonly kind: "literal";
@@ -241,7 +241,7 @@ function newShapeSurface(
   return {
     ...placed(placement),
     fill,
-    [VIGILIA_PAINT_PROPERTY]: { fill: `palette.${id}` },
+    [YUNARI_PAINT_PROPERTY]: { fill: `palette.${id}` },
   };
 }
 
@@ -326,7 +326,7 @@ function newShapeStroke(
   readonly strokeWidth: number;
   readonly strokeLineCap: "round";
   readonly strokeLineJoin: "round";
-  readonly [VIGILIA_PAINT_PROPERTY]: { readonly stroke: `palette.${string}` };
+  readonly [YUNARI_PAINT_PROPERTY]: { readonly stroke: `palette.${string}` };
 } & ReturnType<typeof placed> {
   const [id, entry] = firstPalette(globals);
   const stroke = fabricArtboardPaint(entry.value, 1, 1);
@@ -341,7 +341,7 @@ function newShapeStroke(
     strokeWidth: NEW_SHAPE_STROKE_WIDTH,
     strokeLineCap: "round",
     strokeLineJoin: "round",
-    [VIGILIA_PAINT_PROPERTY]: { stroke: `palette.${id}` },
+    [YUNARI_PAINT_PROPERTY]: { stroke: `palette.${id}` },
   };
 }
 
@@ -508,7 +508,7 @@ export function createNewPaintDefaults(
   if (fill === undefined)
     throw new Error(`Palette token "${ref}" cannot paint a new object.`);
 
-  return { fill, [VIGILIA_PAINT_PROPERTY]: { fill: ref } };
+  return { fill, [YUNARI_PAINT_PROPERTY]: { fill: ref } };
 }
 
 /** Supplies the paint and per-run typography required by a new text object. */
@@ -520,7 +520,7 @@ export function createNewTextDefaults(
   const paint = createNewPaintDefaults(globals);
   const [id, preset] = firstTypePreset(globals);
   const typePreset = `typePresets.${id}` as const;
-  const color = paint[VIGILIA_PAINT_PROPERTY].fill;
+  const color = paint[YUNARI_PAINT_PROPERTY].fill;
 
   if (color === undefined)
     throw new Error("New text requires a palette reference.");
@@ -538,7 +538,7 @@ export function createNewTextDefaults(
     ...(preset.lineHeight === undefined
       ? {}
       : { lineHeight: preset.lineHeight }),
-    [VIGILIA_TEXT_PROPERTY]: {
+    [YUNARI_TEXT_PROPERTY]: {
       runs: [
         { kind: "literal", text, typePreset, style: { color: { ref: color } } },
       ],
@@ -571,7 +571,7 @@ export function createNewChartDefaults(
   globals: FabricGlobals | undefined,
   family: ChartFamily,
 ): ChartContent["settings"] {
-  const paint = createNewPaintDefaults(globals)[VIGILIA_PAINT_PROPERTY].fill;
+  const paint = createNewPaintDefaults(globals)[YUNARI_PAINT_PROPERTY].fill;
   const surface = surfacePalette(globals, SURFACE_TOKENS);
 
   if (paint === undefined || surface === undefined) {

@@ -41,7 +41,7 @@ function envelope(): Record<string, unknown> {
       version: "7.4.0",
       objects: [
         {
-          type: "VigiliaChart",
+          type: "YunariChart",
           id: "chart",
           objects: [{ type: "Rect", id: "child" }],
         },
@@ -58,7 +58,7 @@ function chartEnvelope(
     ...envelope(),
     scene: {
       version: "7.4.0",
-      objects: [{ type: "VigiliaChart", id: "chart", family, settings }],
+      objects: [{ type: "YunariChart", id: "chart", family, settings }],
     },
   };
 }
@@ -472,7 +472,7 @@ describe("Fabric theme envelope validation", () => {
             type: "Rect",
             id: "panel",
             shadow: { color: "#0a0f16", blur: 18 },
-            vigiliaPaint: { shadowColor: "palette.edge" },
+            yunariPaint: { shadowColor: "palette.edge" },
           },
         ],
       },
@@ -491,7 +491,7 @@ describe("Fabric theme envelope validation", () => {
 
   it("requires a palette reference for a persisted shadow colour", () => {
     // Shadow is a native Fabric property, so its colour is resolved state
-    // exactly like fill and stroke: it needs an owner in `vigiliaPaint`.
+    // exactly like fill and stroke: it needs an owner in `yunariPaint`.
     const withPalette = {
       ...withoutKey(
         {
@@ -523,7 +523,7 @@ describe("Fabric theme envelope validation", () => {
               type: "Rect",
               id: "panel",
               shadow: { color: "#0a0f16", blur: 18 },
-              vigiliaPaint: { shadowColor: "palette.edge" },
+              yunariPaint: { shadowColor: "palette.edge" },
             },
           ],
         },
@@ -564,7 +564,7 @@ describe("Fabric theme envelope validation", () => {
               type: "Rect",
               id: "panel",
               shadow: { color: "#0a0f16", blur: 18 },
-              vigiliaPaint: { shadowColor: "palette.gone" },
+              yunariPaint: { shadowColor: "palette.gone" },
             },
           ],
         },
@@ -594,7 +594,7 @@ describe("Fabric theme envelope validation", () => {
         version: "7.4.0",
         objects: [
           {
-            type: "VigiliaChart",
+            type: "YunariChart",
             id: "chart",
             family: "gauge",
             settings: {
@@ -611,7 +611,7 @@ describe("Fabric theme envelope validation", () => {
         version: "7.4.0",
         objects: [
           {
-            type: "VigiliaChart",
+            type: "YunariChart",
             id: "chart",
             family: "gauge",
             settings: {
@@ -775,7 +775,7 @@ describe("Fabric theme envelope validation", () => {
       issues: expect.arrayContaining([
         expect.objectContaining({
           code: "unresolved-global-ref",
-          path: "/scene/objects/0/vigiliaText",
+          path: "/scene/objects/0/yunariText",
         }),
       ]),
     });
@@ -891,8 +891,8 @@ describe("Fabric theme envelope validation", () => {
             type: "Textbox",
             id: "label",
             fill: "#fff",
-            vigiliaPaint: { fill: "palette.text" },
-            vigiliaText: {
+            yunariPaint: { fill: "palette.text" },
+            yunariText: {
               runs: [
                 {
                   kind: "literal",
@@ -912,11 +912,11 @@ describe("Fabric theme envelope validation", () => {
       issues: expect.arrayContaining([
         expect.objectContaining({
           code: "unknown-field",
-          path: "/scene/objects/0/vigiliaText/runs/0/style/fontSize",
+          path: "/scene/objects/0/yunariText/runs/0/style/fontSize",
         }),
         expect.objectContaining({
           code: "unresolved-global-ref",
-          path: "/scene/objects/0/vigiliaText/runs/0/style/color",
+          path: "/scene/objects/0/yunariText/runs/0/style/color",
         }),
       ]),
     });
@@ -929,7 +929,7 @@ describe("Fabric theme envelope validation", () => {
     // validator handles them separately.
     const withoutLocale = withMetadata(envelope(), {
       name: "Fixture",
-      author: "Vigilia",
+      author: "Yunari",
     });
 
     const missing = validateFabricThemeEnvelope(withoutLocale);
@@ -1012,8 +1012,8 @@ describe("authored glass treatment", () => {
     expect(
       validateFabricThemeEnvelope(
         withObjects([
-          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 0 } },
-          { type: "Rect", id: "soft", vigiliaGlass: { blurRadius: 48 } },
+          { type: "Rect", id: "panel", yunariGlass: { blurRadius: 0 } },
+          { type: "Rect", id: "soft", yunariGlass: { blurRadius: 48 } },
         ]),
       ).ok,
     ).toBe(true);
@@ -1030,7 +1030,7 @@ describe("authored glass treatment", () => {
     ]) {
       const result = validateFabricThemeEnvelope(
         withObjects([
-          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius } },
+          { type: "Rect", id: "panel", yunariGlass: { blurRadius } },
         ]),
       );
       expect(result, `blurRadius ${String(blurRadius)}`).toMatchObject({
@@ -1038,7 +1038,7 @@ describe("authored glass treatment", () => {
         issues: expect.arrayContaining([
           expect.objectContaining({
             code: "invalid-fabric-scene",
-            path: "/scene/objects/0/vigiliaGlass",
+            path: "/scene/objects/0/yunariGlass",
           }),
         ]),
       });
@@ -1046,7 +1046,7 @@ describe("authored glass treatment", () => {
   });
 
   it("refuses a treatment that is not an object, or carries extra authored state", () => {
-    for (const vigiliaGlass of [
+    for (const yunariGlass of [
       12,
       "glass",
       {},
@@ -1058,9 +1058,9 @@ describe("authored glass treatment", () => {
     ]) {
       expect(
         validateFabricThemeEnvelope(
-          withObjects([{ type: "Rect", id: "panel", vigiliaGlass }]),
+          withObjects([{ type: "Rect", id: "panel", yunariGlass }]),
         ),
-        JSON.stringify(vigiliaGlass),
+        JSON.stringify(yunariGlass),
       ).toMatchObject({ ok: false });
     }
   });
@@ -1068,7 +1068,7 @@ describe("authored glass treatment", () => {
   it("refuses glass on an object kind with no sampleable clipped area", () => {
     const result = validateFabricThemeEnvelope(
       withObjects([
-        { type: "Textbox", id: "label", vigiliaGlass: { blurRadius: 12 } },
+        { type: "Textbox", id: "label", yunariGlass: { blurRadius: 12 } },
       ]),
     );
 
@@ -1077,7 +1077,7 @@ describe("authored glass treatment", () => {
       issues: expect.arrayContaining([
         expect.objectContaining({
           code: "invalid-enum",
-          path: "/scene/objects/0/vigiliaGlass",
+          path: "/scene/objects/0/yunariGlass",
         }),
       ]),
     });
@@ -1090,9 +1090,7 @@ describe("authored glass treatment", () => {
     for (const type of ["Rect", "Circle", "Ellipse", "Triangle", "Polygon"]) {
       expect(
         validateFabricThemeEnvelope(
-          withObjects([
-            { type, id: "panel", vigiliaGlass: { blurRadius: 24 } },
-          ]),
+          withObjects([{ type, id: "panel", yunariGlass: { blurRadius: 24 } }]),
         ),
         type,
       ).toMatchObject({ ok: true });
@@ -1108,7 +1106,7 @@ describe("authored glass treatment", () => {
       expect(
         validateFabricThemeEnvelope(
           withObjects([
-            { type, id: "sketch", vigiliaGlass: { blurRadius: 24 } },
+            { type, id: "sketch", yunariGlass: { blurRadius: 24 } },
           ]),
         ),
         type,
@@ -1117,7 +1115,7 @@ describe("authored glass treatment", () => {
         issues: expect.arrayContaining([
           expect.objectContaining({
             code: "invalid-enum",
-            path: "/scene/objects/0/vigiliaGlass",
+            path: "/scene/objects/0/yunariGlass",
           }),
         ]),
       });
@@ -1131,7 +1129,7 @@ describe("authored glass treatment", () => {
     expect(
       validateFabricThemeEnvelope(
         withObjects([
-          { type: "Circle", id: "orb", vigiliaGlass: { blurRadius: 999 } },
+          { type: "Circle", id: "orb", yunariGlass: { blurRadius: 999 } },
         ]),
       ),
     ).toMatchObject({
@@ -1139,7 +1137,7 @@ describe("authored glass treatment", () => {
       issues: expect.arrayContaining([
         expect.objectContaining({
           code: "invalid-fabric-scene",
-          path: "/scene/objects/0/vigiliaGlass",
+          path: "/scene/objects/0/yunariGlass",
         }),
       ]),
     });
@@ -1155,8 +1153,8 @@ describe("authored glass treatment", () => {
           type: "Group",
           id: "card",
           objects: [
-            { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 12 } },
-            { type: "Rect", id: "inner", vigiliaGlass: { blurRadius: 999 } },
+            { type: "Rect", id: "panel", yunariGlass: { blurRadius: 12 } },
+            { type: "Rect", id: "inner", yunariGlass: { blurRadius: 999 } },
           ],
         },
       ]),
@@ -1167,7 +1165,7 @@ describe("authored glass treatment", () => {
       issues: expect.arrayContaining([
         expect.objectContaining({
           code: "invalid-fabric-scene",
-          path: "/scene/objects/0/objects/1/vigiliaGlass",
+          path: "/scene/objects/0/objects/1/yunariGlass",
         }),
       ]),
     });
@@ -1255,14 +1253,14 @@ describe("an object's authored display name", () => {
 
 describe("a theme saved before a key was retired", () => {
   it("still loads when it carries a key the schema no longer publishes", () => {
-    // The persisted-key decision (`docs/decisions/0069`): `vigiliaBleeds` left
+    // The persisted-key decision (`docs/decisions/0069`): `yunariBleeds` left
     // the published schema, and the object's `additionalProperties: jsonValue`
     // is what keeps a document that still carries it loadable. The scene walk
     // refuses an unknown *value*, never an unknown key, so retiring a key is a
     // schema deletion rather than a migration — and the failure this guards is
     // data loss, which is not the same decision as deleting a dead branch.
     const objects = [
-      { type: "Rect", id: "panel", vigiliaBleeds: true },
+      { type: "Rect", id: "panel", yunariBleeds: true },
       { type: "Rect", id: "plain" },
     ];
 
@@ -1289,7 +1287,7 @@ describe("a text object's fixed box", () => {
             type: "Textbox",
             id: "label",
             fill: "#fff",
-            vigiliaText: {
+            yunariText: {
               box,
               runs: [{ kind: "literal", text: "CPU" }],
             },
@@ -1302,7 +1300,7 @@ describe("a text object's fixed box", () => {
   /** Whether anything complained about the box, whatever else it did. */
   const boxIssues = (box: unknown): readonly ValidationIssue[] =>
     issuesOf(validateFabricThemeEnvelope(withBox(box))).filter(
-      (issue) => issue.path === "/scene/objects/0/vigiliaText/box",
+      (issue) => issue.path === "/scene/objects/0/yunariText/box",
     );
 
   it("accepts the two dimensions an author wrote", () => {

@@ -207,17 +207,14 @@ describe("the stored pairing", () => {
 
     // A record from another build, or half a write: not a pairing, and never a
     // throw at boot.
-    storage.setItem("vigilia.display.pairing", "{not json");
+    storage.setItem("yunari.display.pairing", "{not json");
     expect(readStoredPairing(storage)).toBeUndefined();
-    storage.setItem(
-      "vigilia.display.pairing",
-      JSON.stringify({ hostId: "h1" }),
-    );
+    storage.setItem("yunari.display.pairing", JSON.stringify({ hostId: "h1" }));
     expect(readStoredPairing(storage)).toBeUndefined();
     // And a record with every field but no identity: nothing answers a blank
     // `hostId`, so it is not a pairing and must not read as one (R72).
     storage.setItem(
-      "vigilia.display.pairing",
+      "yunari.display.pairing",
       JSON.stringify({ ...pairing, hostId: "" }),
     );
     expect(readStoredPairing(storage)).toBeUndefined();

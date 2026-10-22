@@ -93,11 +93,11 @@ const BLEED_LEVEL = 0.85;
 export async function waitForMedia(page: Page): Promise<void> {
   await page.waitForFunction(
     () => {
-      const mounted = (window as unknown as { vigilia?: unknown }).vigilia;
-      const bridge = (window as unknown as { vigiliaEditorBridge?: unknown })
-        .vigiliaEditorBridge;
+      const mounted = (window as unknown as { yunari?: unknown }).yunari;
+      const bridge = (window as unknown as { yunariEditorBridge?: unknown })
+        .yunariEditorBridge;
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return (
         (mounted !== undefined || bridge !== undefined) &&
@@ -115,11 +115,11 @@ export async function waitForMedia(page: Page): Promise<void> {
   // `evaluate` below is a synchronous render rather than a wait.
   await page.evaluate(() => {
     const scope = window as unknown as {
-      vigilia?: { handle: { canvas: FabricCanvas } };
-      vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } };
+      yunari?: { handle: { canvas: FabricCanvas } };
+      yunariEditorBridge?: { editor: { canvas: FabricCanvas } };
     };
     const canvas =
-      scope.vigilia?.handle.canvas ?? scope.vigiliaEditorBridge?.editor.canvas;
+      scope.yunari?.handle.canvas ?? scope.yunariEditorBridge?.editor.canvas;
     canvas?.renderAll();
   });
 }
@@ -148,12 +148,11 @@ export async function readGlass(
         panelId,
       } = input;
       const scope = window as unknown as {
-        vigilia?: { handle: { canvas: FabricCanvas } };
-        vigiliaEditorBridge?: { editor: { canvas: FabricCanvas } };
+        yunari?: { handle: { canvas: FabricCanvas } };
+        yunariEditorBridge?: { editor: { canvas: FabricCanvas } };
       };
       const canvas =
-        scope.vigilia?.handle.canvas ??
-        scope.vigiliaEditorBridge?.editor.canvas;
+        scope.yunari?.handle.canvas ?? scope.yunariEditorBridge?.editor.canvas;
       if (canvas === undefined) throw new Error("no Fabric canvas is mounted");
 
       const element = canvas.lowerCanvasEl ?? canvas.getElement();
@@ -169,10 +168,10 @@ export async function readGlass(
       };
 
       const layer = document.querySelector<HTMLElement>(
-        "[data-vigilia-background-media]",
+        "[data-yunari-background-media]",
       );
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       if (layer === null || image === null)
         throw new Error("no background media layer");

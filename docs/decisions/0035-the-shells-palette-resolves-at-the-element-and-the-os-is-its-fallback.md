@@ -28,7 +28,7 @@ Measured against the source on 2026-10-07, the scales are already in `@theme sta
 `tests/e2e/shell-appearance.spec.ts`). What does not exist is any appearance **source of truth**:
 `readShellPalette` answers a palette or the default, and nothing in the repo reads
 `prefers-color-scheme` (`grep -rn "prefers-color-scheme\|matchMedia" src/web` returns the host's
-own `vigilia-page.css`, the player's reduced-motion read, and nothing in the editor).
+own `yunari-page.css`, the player's reduced-motion read, and nothing in the editor).
 
 The non-obvious part is not "add a media query". It is **where the shell's colours are allowed to
 resolve**, because the spec's `@theme inline` instruction is the difference between a palette that
@@ -43,13 +43,13 @@ motivated it: an ember chip under graphite painted graphite's dark glass behind 
 resolves the shell's tokens at `:root` rather than at the element breaks the chip again — and it
 breaks it only for the five non-editorial palettes, which is invisible in review.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `docs/architecture/ownership.md` for the shell-palette, shell-chrome and theming owners;
 `palette.ts` and `palette.test.ts` in full; `editor-shell.css`'s token blocks, `@theme static`
 block, glass rules and the swatch selector; `editor-shell.tokens.test.ts` in full;
 `tests/e2e/shell-appearance.spec.ts` in full; the pre-paint block in `packages/editor/index.html`;
-`palette-menu.tsx`; `shell-layout.tsx`'s `createShellLayout`; every `--shell-*` and `--vigilia-*`
+`palette-menu.tsx`; `shell-layout.tsx`'s `createShellLayout`; every `--shell-*` and `--yunari-*`
 declaration and reference; `prefers-color-scheme`, `matchMedia`, `color-scheme` across `src/web`;
 and `docs/product/backlog.jsonl` for `vg-120`.
 
@@ -64,7 +64,7 @@ Found:
   text and control surface. `vg-120` was filed for it and withdrawn on the controller's
   reconsideration.
 - **Nothing in the editor consumes a Tailwind colour utility.** Every shell colour is read as
-  `var(--shell-*)` or `var(--vigilia-*)` from plain CSS rules. So no utility today proves or
+  `var(--shell-*)` or `var(--yunari-*)` from plain CSS rules. So no utility today proves or
   disproves where a palette token resolves — the acceptance item is the only thing that would.
 - **Three writers already apply the palette, and a fourth is what OS appearance adds.**
   `index.html:13-24` paints a pre-shell frame from two literals; `createShellLayout`
@@ -182,7 +182,7 @@ Three reasons, and the first is the one that decided it:
 
 Four citations above name `tests/e2e/shell-appearance.spec.ts`, which **no longer exists**: Task 15.4
 (`81426c44`) split its 1044 lines into `shell-palette-tokens.spec.ts` (502 — how each palette's
-`--vigilia-*` tokens resolve and reach the surfaces that consume them) and
+`--yunari-*` tokens resolve and reach the surfaces that consume them) and
 `shell-palette-appearance.spec.ts` (440 — what the chrome looks like under a palette, and which palette
 wins on boot, outlasts the OS and is captured), over `shell-palette-readers.ts`.
 

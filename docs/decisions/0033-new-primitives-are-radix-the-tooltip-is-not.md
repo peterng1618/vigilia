@@ -29,7 +29,7 @@ Three answers were on the table:
 **A is chosen, with one correction to the premise.** §7 is said to need *two* primitives.
 It needs **one**: the tooltip is not missing, it is ours.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `docs/architecture/ownership.md` for the primitive, tooltip, dialog, menu and
 shortcut owners; every `@base-ui` / `@radix-ui` import; `showModal`, `<dialog`,
@@ -50,9 +50,9 @@ Found — and this is the finding the rest of the note turns on:
   inspector builds elements with `document.createElement` and never sees React, so a React
   primitive cannot be the shared mechanism.
 - **The editor's dialog idiom already exists, hand-rolled on the platform, three times.**
-  `document.createElement("dialog")` + `showModal()`, class `vigilia-dialog`, in
+  `document.createElement("dialog")` + `showModal()`, class `yunari-dialog`, in
   `new-document-chooser.ts` (`chooseArtboardSize`), `persistence-manager/index.ts`, and
-  `theme-library-dialog.ts`. `.vigilia-dialog` and its `::backdrop` are styled at
+  `theme-library-dialog.ts`. `.yunari-dialog` and its `::backdrop` are styled at
   `editor-shell/editor-shell.css:761-788`.
 - **Nothing displays a shortcut anywhere.** No `<kbd>` element exists in the repo.
   `PRODUCT_SHORTCUTS` (`shortcut-manager/index.ts:31-65`) is **module-private** and is a

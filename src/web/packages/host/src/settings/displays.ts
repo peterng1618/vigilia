@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ChartRefreshRate } from "@vigilia/scene-fabric";
+import type { ChartRefreshRate } from "@yunari/scene-fabric";
 import { DEVICE_ID_PATTERN } from "./devices.js";
 
 /**

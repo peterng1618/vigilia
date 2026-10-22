@@ -22,14 +22,14 @@
 - **Every step that reads "`npm run gate`, then commit" also runs `npm run typecheck`, and a close names both commands with their exit codes.** `gate` is `biome check .. && gates:self-test && design:check && test`, and `test` is `vitest run`, which transpiles without checking types — so **`gate` exits 0 over source the repo's own compiler rejects** (`vg-455`, filed 2026-10-14, carried by no phase). Measured 2026-10-15 against `src/web/package.json`, not inferred from the name. The consequence is not hypothetical: this plan already carries two phases (`5`, `6`) whose close read green while the repo's gate was red, and a type error is the same shape of miss. When `vg-455` lands and `gate` gains the step, this bullet goes.
 - W1 owns the fixed preview ports **4173/4174**. One suite at a time; a second concurrent suite produces *false* results, not slow ones. `--workers=1` throughout.
 - Browser tests preview **built** bundles: rebuild affected bundles after every source change and after reverting a deliberate break.
-- Screenshots need `VIGILIA_CAPTURE=1` and `--workers=1`; they are evidence, not golden files. Only captures registered in `docs/evidence/screenshots/README.md`.
+- Screenshots need `YUNARI_CAPTURE=1` and `--workers=1`; they are evidence, not golden files. Only captures registered in `docs/evidence/screenshots/README.md`.
 - `STATUS.md` is **replaced**, not appended: ≤6/5/5/5 bullets across active work, last completed change, next and blockers, one item per line, never wrapped. `npm run status:check` from `src/web/`.
 - Conventional Commit titles. Stage explicit paths — never `git add -A`, never `git commit -a`. No licence headers in source. 500 lines is a signal and 800 a stop for normal source files.
 - The bug rule (`AGENTS.md`): file an issue when the cause is not established, more than one owner could fix it, the fix needs a design decision, it spans subsystems, it blocks the active plan, or it would need a spec; fix on the fly only when the cause is named `file:line`, the fix sits inside one owner, the behaviour is already specified and a regression test is obvious. Filing rides the commit being written, as a `Discovered, not fixed:` trailer.
 - `§N` markers are stable and never renumbered; `design:md --cite` fails on a citation naming a number with no marker.
 - A verdict this pass reached on live source is not re-opened. Where a row's prose contradicts the source, the source wins (§10 step 5).
 - **The spec's own id lists are the authority**, not the older reproduction plan's (§2.2): its lists covered 216 rows and two of those are no longer open. This plan's row lists come from §3, §4 and §5. If a list and the register disagree, re-derive membership the way §2 did — sort the open ids and cut — and say so, rather than trusting either document's prose.
-- Scratch files live outside the tree (a sibling temp directory, e.g. `%TEMP%\vigilia-drain\`), never in `D:\git-repos\vigilia`.
+- Scratch files live outside the tree (a sibling temp directory, e.g. `%TEMP%\yunari-drain\`), never in `D:\git-repos\yunari`.
 
 ## Review Focus
 
@@ -150,7 +150,7 @@ Each correction attaches to **the task whose row list names the corrected row**,
 By line, byte-level, never through a parse. The scratch helper (Task 0.1) does exactly this and nothing else:
 
 ```js
-// %TEMP%/vigilia-drain/move-row.mjs — scratch, never committed, never imported by the repo
+// %TEMP%/yunari-drain/move-row.mjs — scratch, never committed, never imported by the repo
 import { readFileSync, writeFileSync } from "node:fs";
 const LIVE = "docs/product/backlog.jsonl";
 const ARCHIVE = "docs/product/backlog-archive.jsonl";
@@ -211,13 +211,13 @@ A `withdrawn` row takes the same path with no `check` and no `artefacts`. `JSON.
 ### Task 0.1: The close mechanics, proved once against one row
 
 **Files:**
-- Create: `%TEMP%/vigilia-drain/move-row.mjs` (scratch, outside the repo)
+- Create: `%TEMP%/yunari-drain/move-row.mjs` (scratch, outside the repo)
 - Modify: `docs/product/backlog.jsonl`, `docs/product/backlog-archive.jsonl`
 - Read: `scripts/backlog-check.mjs`
 
 **Interfaces:**
 - Consumes: `check(items) -> string[]` and `parse(text) -> {items, problems}` from `scripts/backlog-check.mjs`
-- Produces: `node %TEMP%/vigilia-drain/move-row.mjs <id> <state> <checkText> [<sha>...]` — moves exactly one row, starts no build, and **writes nothing when it cannot do it exactly**
+- Produces: `node %TEMP%/yunari-drain/move-row.mjs <id> <state> <checkText> [<sha>...]` — moves exactly one row, starts no build, and **writes nothing when it cannot do it exactly**
 
 - [ ] **Step 1: Write the helper from the corrected §5 snippet above.** It takes the id, the closing state, the check text and the shas **as a list**; it slices the live file by byte offsets, rewrites that one line and appends it to the archive. It throws, having written nothing, on: a live line whose state is not `open`; a `withdrawn` row given a check or a sha; a `verified` row given no sha; and either file without a trailing newline.
 - [ ] **Step 2: Dry-run it against `vg-087`** — the first row of §3, whose check passes as printed. Do not commit; the point is the mechanics. Then run each of the four refusals against a scratch copy and confirm the two files are byte-identical afterwards.
@@ -415,7 +415,7 @@ Rows: D9 — `vg-109`, `vg-155`, `vg-159`, `vg-167`, `vg-168`, `vg-182`, `vg-185
 
 **Owners:** the suites under `src/web/tests/e2e/`, `src/web/playwright.config.ts` (ports 4173/4174), `tests/e2e/mockup-values.test.ts` (vitest).
 
-**Constraints:** one suite at a time; `--workers=1`; rebuild before each preview; captures need `VIGILIA_CAPTURE=1`. **Nothing else in the drain builds or drives Playwright during this phase.** **A row closes `verified` only on evidence that could have failed**: a new case needs its red proof (revert the defect's line, watch it fail, revert, `cmp`), and where a case is amended, its re-pointed locator or gesture is demonstrated to fail when the behaviour it addresses is disabled. A green run whose assertions are `toBeGreaterThan`/`not.toBe`, or whose two sides move together, settles nothing — `vg-233`'s first pass closed on exactly that and the review caught it.
+**Constraints:** one suite at a time; `--workers=1`; rebuild before each preview; captures need `YUNARI_CAPTURE=1`. **Nothing else in the drain builds or drives Playwright during this phase.** **A row closes `verified` only on evidence that could have failed**: a new case needs its red proof (revert the defect's line, watch it fail, revert, `cmp`), and where a case is amended, its re-pointed locator or gesture is demonstrated to fail when the behaviour it addresses is disabled. A green run whose assertions are `toBeGreaterThan`/`not.toBe`, or whose two sides move together, settles nothing — `vg-233`'s first pass closed on exactly that and the review caught it.
 
 **Acceptance:** every one of the 38 rows has a verdict recorded in its own line, and no run reported a result twice from the same build (each suite read from its own JSON report, per the memory that a rewritten stdout is not evidence).
 
@@ -536,7 +536,7 @@ Rows: `vg-285`, `vg-296`, `vg-313`, `vg-314`, `vg-325`, `vg-326` — the five of
 | `reference-theme.spec.ts` | `vg-281` |
 | `inspector-sections.spec.ts` | `vg-376` |
 
-**Four of the 23 have no spec in their triage cell at all**, and the tables say why, so what to run is the cell's own venue rather than a path that does not exist: `vg-156` (no spec covers the path — drive the Add pane's file section with several JPEGs on the editor preview), `vg-266` (`document.querySelectorAll('.vigilia-field select')` against the built preview), `vg-311` (the bundle half already reproduces; the browser half reads computed `backdropFilter` on the preview), `vg-316` (the `--muted`-on-`--panel2` reading on the preview, plus a `PARITY` row). `vg-325` and `vg-341` are the other two the cells leave open, and they are Tasks 2.3's and 2.5's.
+**Four of the 23 have no spec in their triage cell at all**, and the tables say why, so what to run is the cell's own venue rather than a path that does not exist: `vg-156` (no spec covers the path — drive the Add pane's file section with several JPEGs on the editor preview), `vg-266` (`document.querySelectorAll('.yunari-field select')` against the built preview), `vg-311` (the bundle half already reproduces; the browser half reads computed `backdropFilter` on the preview), `vg-316` (the `--muted`-on-`--panel2` reading on the preview, plus a `PARITY` row). `vg-325` and `vg-341` are the other two the cells leave open, and they are Tasks 2.3's and 2.5's.
 
 - [ ] **Step 1: Take each row's spec, `--grep` and build command from its own triage cell** — the table above is the grouping, the cell is the command.
 - [ ] **Step 2: Run each group's rows one at a time**, `--workers=1`, after `npm run build`.
@@ -550,7 +550,7 @@ Rows: `vg-285`, `vg-296`, `vg-313`, `vg-314`, `vg-325`, `vg-326` — the five of
 - Modify: `docs/evidence/screenshots/README.md` if a capture's registered action changes
 
 **Interfaces:**
-- Consumes: `VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1` after `npm run build` and `npm run build:fixture -w @vigilia/editor`
+- Consumes: `YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1` after `npm run build` and `npm run build:fixture -w @yunari/editor`
 - Produces: `vg-341`'s captures, and eight readings handed to a Phase 1 follow-up session
 
 - [ ] **Step 1: Grep `vg-213`, `vg-262`, `vg-372`, `vg-355` and `vg-379`'s lines for the marker format** — D1 decides whether the fixture's eight literal strings are in scope at all, and no ruling means no row filed here. Then re-check §9's exemption against what is deployed: `build:fixture` writes `control-fixture.html` into the same `packages/editor/dist` the host serves, so the fixture's eight literal strings are reachable on any host that ran it. If D1's ruling widened the copy rule, this is the moment to file the one row §9 names.
@@ -955,7 +955,7 @@ Rows: `vg-175`, `vg-177`, `vg-181`, `vg-215`, `vg-216`, `vg-251`, `vg-273`, `vg-
 
 [Annotated 2026-10-13 at the phase close: **the phase's evidence, named as commands with their exit codes rather than as the claim that "gates run".** From `src/web/` at `3a368c6a`: `npm run build` exit 0; **`npm run gate` exit 0** (`biome check ..` + `gates:self-test` + `vitest run`: 254 files, 3353 tests, 95.77 s); **`npm run test:e2e` exit 1** — 273 passed, 18 failed, 214 skipped, 0 flaky (533 s). The browser pass is named separately because **`gate` does not run it**: `gate`'s `test` is `vitest run`, so every browser case this phase produced, including the three-surface destructive-paint case that carries `vg-226`, lives behind `test:e2e` alone.
 
-**The 18 were triaged by comparison rather than by diagnosis, and the comparison is the record.** Re-run alone and serial at the same commit, **13 of the 18 passed** — the load the config itself names ("oversubscription is what turned the long `clock.runFor` waits into 30 s timeouts under load"), not a defect. The remaining 5 were then run against this phase's base `614265de` with the wave's 18 production files reverted and HEAD's tests left in place: **2 are this phase's** — `editor-rail.spec.ts:372`, whose selected-slot accent bar the §5-rule-6 resting `border: 1px solid transparent` moved 1px off the rail's inner edge (the test's own reconstruction then counted that border twice; both are fixed here), and `glass-lifecycle.spec.ts:25`, whose `> 10` repaint floor `97264e6c` deleted and which is filed as `vg-431` because repairing the instrument is a measurement decision rather than a patch — and **3 are pre-existing**, failing identically at base: `design-language.spec.ts:437`, whose fixture page is not a vite input and so is absent from every built `dist/`, and the two phone-`chromium` `editor-display.spec.ts` cases. **Corrected 2026-10-13: that is two, not three.** `design-language.spec.ts:437` fails whenever the run's build did not include `build:fixture`, and the case is not pre-existing, not a product defect and not a design-language violation: at `aa16a2c5`, with `npm run build` then `npm run build:fixture -w @vigilia/editor`, the same case **passes** in a whole-suite run (desktop-chromium, 15.4 s) — measured, and `packages/editor/dist` holds `control-fixture.html` after the second build and not after the first. Failing "identically at base" was the recipe's absence in both runs rather than a property of the code, so the misclassification is filed as `vg-438`; the two phone cases stand as the only pre-existing failures (`vg-258`).
+**The 18 were triaged by comparison rather than by diagnosis, and the comparison is the record.** Re-run alone and serial at the same commit, **13 of the 18 passed** — the load the config itself names ("oversubscription is what turned the long `clock.runFor` waits into 30 s timeouts under load"), not a defect. The remaining 5 were then run against this phase's base `614265de` with the wave's 18 production files reverted and HEAD's tests left in place: **2 are this phase's** — `editor-rail.spec.ts:372`, whose selected-slot accent bar the §5-rule-6 resting `border: 1px solid transparent` moved 1px off the rail's inner edge (the test's own reconstruction then counted that border twice; both are fixed here), and `glass-lifecycle.spec.ts:25`, whose `> 10` repaint floor `97264e6c` deleted and which is filed as `vg-431` because repairing the instrument is a measurement decision rather than a patch — and **3 are pre-existing**, failing identically at base: `design-language.spec.ts:437`, whose fixture page is not a vite input and so is absent from every built `dist/`, and the two phone-`chromium` `editor-display.spec.ts` cases. **Corrected 2026-10-13: that is two, not three.** `design-language.spec.ts:437` fails whenever the run's build did not include `build:fixture`, and the case is not pre-existing, not a product defect and not a design-language violation: at `aa16a2c5`, with `npm run build` then `npm run build:fixture -w @yunari/editor`, the same case **passes** in a whole-suite run (desktop-chromium, 15.4 s) — measured, and `packages/editor/dist` holds `control-fixture.html` after the second build and not after the first. Failing "identically at base" was the recipe's absence in both runs rather than a property of the code, so the misclassification is filed as `vg-438`; the two phone cases stand as the only pre-existing failures (`vg-258`).
 
 **Row accounting: 17 of 21, not 19 of 19.** The denominator the header states was never the phase's; the four that stay open — `vg-133`, `vg-154`, `vg-308` and `vg-331` — each carry their reason on their own line rather than as an omission here.]
 
@@ -1322,7 +1322,7 @@ closes together rather than one waiting on the other.
       draw a second. The same task adds the kind's glyph before the name (`inspector.tsx:71-77`),
       reading the per-kind map at `icons.ts:174-180` rather than a second table.
 - [ ] **Step 3: Consume the scrollbar tokens.** `editor-shell.css:115-117` declares
-      `--vigilia-scrollbar-thumb`, `-thumb-hover` and `-track` and nothing reads them; the panel and
+      `--yunari-scrollbar-thumb`, `-thumb-hover` and `-track` and nothing reads them; the panel and
       inspector scrollers (`:1115-1118`) take `scrollbar-width`/`scrollbar-color` and the
       `::-webkit-scrollbar` family from those three values. **No new paint value is introduced.**
 - [ ] **Step 4: Red-proof each half** — restore the shell's outline rule and the boundary reads
@@ -1556,7 +1556,7 @@ vocabulary rather than from a case.
 - [ ] **Step 1: Item 1's case, which does not exist.** A grep over the whole e2e suite for
       `scrollbarColor`, `scrollbar-color` and `scrollbarWidth` returns **nothing**, so `vg-458` has no
       browser assertion at all and cannot carry a `check` that runs. `shell-appearance.spec.ts:141`
-      already enumerates the shell's surfaces against the `--vigilia-*` tokens that paint them — that
+      already enumerates the shell's surfaces against the `--yunari-*` tokens that paint them — that
       case's own subject — so the pair is asserted there rather than in a new file. **Assert the
       computed values on both scrollers, not the declaration**: the point of the row is that the tokens
       were declared and consumed by nothing, so a case that reads the stylesheet text would have passed
@@ -1731,14 +1731,14 @@ following the old form would have opened a file that is not there.
 - [ ] **Step 2: Remove the Spends section (item 17, first owner)** — `per-kind-column.ts`'s
       `spendsBody`, its `["spends", …]` entry in the section list, and the `readOnly: id === "spends"`
       flag beside it. It is section-list entries, so its removal is contained; the section is the one
-      `[data-vigilia-section="spends"]` names.
+      `[data-yunari-section="spends"]` names.
 - [ ] **Step 3: Remove the This document section (item 17, second owner)** — the document-references
       sub-panel: `ui-copy.ts`'s `documentStyle` label ("This document"), `panes/document/references.tsx`,
       and `editor-session.ts`'s `this.#documentReferences = createDocumentReferencesPanel(`. **This is a
       sub-panel rather than an entry**, and its removal reaches Playwright. **Find those cases by
       grepping the specs for the panel's own selector rather than from a line number** — the three this
       step carried did not resolve, and the Spends case sits in `editor.spec.ts` beside its
-      `[data-vigilia-section="spends"]` locator. Cases that exist only to drive a panel that no longer
+      `[data-yunari-section="spends"]` locator. Cases that exist only to drive a panel that no longer
       renders are removed with it, and each one's removal is named.
 - [ ] **Step 4: Rendered evidence** on a rebuilt bundle: the inspector opens with Position expanded
       and shows neither read-only section, on the selections that used to carry them.
@@ -2105,7 +2105,7 @@ browser suite for Tasks 16.1, 16.3 and 16.5 on a rebuilt bundle.
 measured counts.** The `Files:` line above named `shell-appearance.spec.ts`, which **Task 15.4 split at
 `81426c44`** into `shell-palette-tokens.spec.ts` and `shell-palette-appearance.spec.ts` — the case lives
 in the first. **`vg-479` took the row's second option, derived rather than six new per-palette values**:
-`--vigilia-scrollbar-thumb` is `color-mix(in srgb, var(--shell-text) 24%, transparent)`, so one
+`--yunari-scrollbar-thumb` is `color-mix(in srgb, var(--shell-text) 24%, transparent)`, so one
 declaration follows every palette and adds no literal. **`vg-480` names the two portalled classes in a
 scrollbar-only rule** while the layout half keeps its two selectors, because the shared `overflow: auto`
 would turn the popup's own `overflow-y: auto` into horizontal scrolling — and the class it names is
@@ -2116,10 +2116,10 @@ the whole paint so deletion moves no pixel, and the pseudo-element read is not t
 describes. **The measurement that makes the deletion right** is that either standard property being
 non-`auto` disables the family, so the 10px width, the radius and the hover colour were declarations no
 browser this repo runs would read — and the stylesheet's own comment claimed the reverse, which is
-corrected in the same commit. `--vigilia-scrollbar-thumb-hover` went with them: `scrollbar-color` states
+corrected in the same commit. `--yunari-scrollbar-thumb-hover` went with them: `scrollbar-color` states
 a thumb and a track, so a hover colour is what the pair cannot express.
 
-- [ ] **Step 1: `vg-479` — the three `--vigilia-scrollbar-*` tokens are declared once on `:root` as literals** (`#c9c2b1`, its hover, `transparent`), and no palette block declares them, so a dark OS resolves the light thumb. Move them into the palette set.
+- [ ] **Step 1: `vg-479` — the three `--yunari-scrollbar-*` tokens are declared once on `:root` as literals** (`#c9c2b1`, its hover, `transparent`), and no palette block declares them, so a dark OS resolves the light thumb. Move them into the palette set.
 - [ ] **Step 2: `vg-480` — the two portalled scrollers keep the platform scrollbar.** `.editor-shell-menu-popup` and `.editor-shell-dialog` both set `overflow-y: auto` and neither class is in the scrollbar rule, which names only `.editor-shell-panel` and `.editor-shell-inspector`.
 - [ ] **Step 3: `vg-491` — the four `::-webkit-scrollbar*` rules are read by nothing.** The browser case reads the standard `scrollbarWidth`/`scrollbarColor` pair, so deleting the pseudo-element family leaves it green. Give them a case or delete them, and say which.
 - [ ] **Step 4: Rebuild, run the appearance suite, and close the three.**
@@ -2664,7 +2664,7 @@ literal, never against the indirection the ruling asked for. **Step 2 is red-pro
 with the fix disabled) and keeps the copy walk's skip rule untouched, which was the row's condition.
 **Step 3's close condition was verified in Chromium** — `editor.spec.ts:981`'s palette case, rebuilt
 bundle, 1 passed exit 0 — because jsdom cannot see the platform bubble the row is about; the spec's
-locator moved off the deleted `data-vigilia-palette-error` onto the `aria-invalid` + described-by pair,
+locator moved off the deleted `data-yunari-palette-error` onto the `aria-invalid` + described-by pair,
 which is the honest replacement: the old assertion was that a sibling existed, the new one is that the
 field is described. **One defect this landing made visible is filed rather than fixed** — `vg-545`: the
 reason is sticky when the author edits back to the value already held, because `ControlText` declines to
@@ -2742,12 +2742,12 @@ shortcut list and Firefox's `browser-sets.inc` and the date, which is what the r
 - Produces: `vg-223`, `vg-279` closed
 
 - [ ] **Step 1: `vg-223` — the chip loses its unsaved-changes marker and keeps the coloured indicator dot.** The marker was the fixed part that overflowed once the name truncated, and the dirty state is already carried by the status bar; the chip loses the text rather than dropping, shortening, wrapping or accepting a clip. Neither `vg-219` nor `vg-230` is absorbed.
-- [ ] **Step 2: `vg-279` — the workspace manifest's `version` is the product's version, and both readers take it from there.** **Corrected 2026-10-16, before the task ran: the manifest has no product version to own.** Every manifest in the workspace reads `0.0.0` — `src/web/package.json` and all seven packages — there is no root manifest, and the only real version string in the tree is the host's hardcoded `const VERSION = "0.1.0"` at `packages/host/src/main.ts:34`. So the product version had to be *chosen* before it could be given an owner; the task took the incumbent `0.1.0` into `src/web/package.json`, which invents no number. The host reads `src/web/package.json` at run time; the editor bundle takes it through Vite's `define` at build time. Two things the fix must not do: `SUPPORTED_SCHEMA_VERSION` stays a separate fact and the About tab keeps labelling it as what it is, and the open document's release version is never presented as Vigilia's own.
+- [ ] **Step 2: `vg-279` — the workspace manifest's `version` is the product's version, and both readers take it from there.** **Corrected 2026-10-16, before the task ran: the manifest has no product version to own.** Every manifest in the workspace reads `0.0.0` — `src/web/package.json` and all seven packages — there is no root manifest, and the only real version string in the tree is the host's hardcoded `const VERSION = "0.1.0"` at `packages/host/src/main.ts:34`. So the product version had to be *chosen* before it could be given an owner; the task took the incumbent `0.1.0` into `src/web/package.json`, which invents no number. The host reads `src/web/package.json` at run time; the editor bundle takes it through Vite's `define` at build time. Two things the fix must not do: `SUPPORTED_SCHEMA_VERSION` stays a separate fact and the About tab keeps labelling it as what it is, and the open document's release version is never presented as Yunari's own.
 - [ ] **Step 3: Close the two.**
 
 **Annotated 2026-10-16, at the task's close: both rows are `verified` at `5da31012`, and both red proofs
 were re-run by the controller.** Restoring the chip's marker reads 1 failed / 2 passed exit 1; cutting the
-`define` reads 5 failed / 13 passed exit 1 with `ReferenceError: __VIGILIA_VERSION__ is not defined`; each
+`define` reads 5 failed / 13 passed exit 1 with `ReferenceError: __YUNARI_VERSION__ is not defined`; each
 restored byte-identically with `cmp`, green at 21 passed exit 0. **Step 1's premise moved rather than held**:
 the clip does not reproduce at 640x360 any more — the layout has moved about 10px and the marker fits with
 5.8px to spare — and it reproduces one step narrower, at 560x360, where the marker painted 65px past the
@@ -2879,7 +2879,7 @@ model for a 379-row list — a spec, not a task. **The Acceptance's own `vg-211`
 wrong**: it says "four locators" and the measured set at close is 12 shape call sites through `insert` and
 `addButton` across `author-journey-rebuild.spec.ts`, `inspector-sections.spec.ts`, `rebuild-composition.ts`
 and `rebuild-driver.ts`, plus three in-file sites in `editor.spec.ts`; the clause's **substance holds** —
-every shape reach is scoped to `data-vigilia-add-group="shape"`, and the pane-wide form survives only for
+every shape reach is scoped to `data-yunari-add-group="shape"`, and the pane-wide form survives only for
 the Text row and the chart families, which Task 19.4's trailer records as the same hazard left standing.
 **Two stale claims the close corrected rather than inherited.** The phase's `Owners:` line names
 `layer-tree.ts`, and **no Phase 19 commit touched it** (`git log 591e2954..HEAD -- layer-tree.ts` is
@@ -3017,19 +3017,19 @@ locators" is a count and not a measurement, and the measured set is larger.** Me
 `Arc`/`Wedge`, plus **five the controller's brief did not list** (`host-player.spec.ts:491`,
 `inspector-sections.spec.ts:1183`, `reference-theme.spec.ts:425`, `:541`, `:700`) — and **12 shape call sites
 of the shared helper**. All ten moved to the hook and **no assertion changed anywhere**. **The hook is
-`data-vigilia-add-group="<kind>"` on each labelled group's `fieldset` (`add-pane.tsx:72`), and its owner is
+`data-yunari-add-group="<kind>"` on each labelled group's `fieldset` (`add-pane.tsx:72`), and its owner is
 `InsertGroup.kind` (`new-object-panel.ts:99`)** — the merge already compared the heading, and since the
 heading is copy the merge now compares `kind` (`new-object-panel.ts:144-155`) with `groupOf` returning the
 heading alone. The pane's own alternative (reading `group.objects[0].kind`) was refused: it infers the group's
 identity from a member under a homogeneity invariant stated only in a comment. **Step 2's constraint held** —
 the asset host's labels are untouched. **No CSS was owed and that is confirmed rather than assumed**: no rule
-mentions the new attribute, and every rule on `data-vigilia-panel` is `="layers"` (`editor-shell.css:2054`,
+mentions the new attribute, and every rule on `data-yunari-panel` is `="layers"` (`editor-shell.css:2054`,
 `:2100`, `:2107`, `:2113`). **The row's own pointers are all stale (read 2026-10-09)**: `rebuild-driver.ts:139`
 is `:150-153` and uses `getByRole`, not `hasText /^label$/`, `editor.spec.ts:31/789/838` have moved, and
 **`asset-manager/panel.ts:30-35` no longer exists** — the host is `panes/add/file-section.tsx:208`, `:215`,
 `:222`. **Red-proved and re-run by the controller**: `editor.spec.ts:1350` reads **1 passed exit 0**; deleting
 the hook reads **1 failed exit 1** at `expected 8, received 0` for
-`locator('[data-vigilia-add-group="shape"]').getByRole('button')` — the hook's own absence rather than a
+`locator('[data-yunari-add-group="shape"]').getByRole('button')` — the hook's own absence rather than a
 missing draw; restored byte-identically with `cmp`, rebuilt and re-run, **1 passed exit 0**. **The row's
 hazard is closed for shapes and left standing for everything else**, which the row says rather than implying a
 whole fix: the chart-family `insert(page, chart.family)` (`rebuild-driver.ts:462`), the Text row, the
@@ -3078,13 +3078,13 @@ declined to make and both are annotated in place below; Tasks 20.1–20.4 are th
 2026-10-16: Tasks 20.1, 20.2 and 20.3 landed as `b9566db1`, `ed4d6ee8` and `0c1f559e`, closing `vg-261`,
 `vg-201` and `vg-312`. All three red proofs were re-run by the controller rather than taken from the seat's
 report — except 20.1's, which could not be run because **the deletion it makes has no guard**; that is
-`vg-553`, homed on Task 20.7. Task 20.2's ruling turned out to have an inert half: `--vigilia-accent` does
+`vg-553`, homed on Task 20.7. Task 20.2's ruling turned out to have an inert half: `--yunari-accent` does
 alias `--shell-warm`, but no rule reads it, so *"let the canvas accent move with it"* moves nothing — that
 is `vg-552`, also Task 20.7.]** **[Closed in part further 2026-10-16: Task 20.4 landed as `5ea10439`, closing `vg-301` on its
 chord half and `vg-202` with no edit owed — the `5px 8px` wells the ruling wanted corrected exist only in
 the two frozen originals. The segmented control's half of `vg-301` did not reproduce, so it is split out as
 `vg-554` and homed on a new **Task 20.8**.]** **[Task 20.7 closed the same day at `7874e879` and `150ad617`,
-retiring all ten unread `--vigilia-*` declarations and adding the first assertion in the token test that
+retiring all ten unread `--yunari-*` declarations and adding the first assertion in the token test that
 fails on an ADDITION rather than a removal. Its measurement corrected `vg-201`'s ruling: the canvas accent
 is the theme document's `palette.accent`, so no CSS custom property can move it, and that clause is
 unreachable rather than merely inert.]** **[Task 20.8 closed 2026-10-17 at `e4785eaa`, redrawing the
@@ -3127,7 +3127,7 @@ asserted one**; each drawing correction names the file and the element it touche
 `npm run design:check` both exit 0 with their codes named.
 
 **Failure modes:** deepening `--shell-warm` in one palette and not the other two; breaking the
-`--vigilia-accent` alias instead of moving the value it aliases; correcting a drawing to a value nobody
+`--yunari-accent` alias instead of moving the value it aliases; correcting a drawing to a value nobody
 ruled.
 
 **Verify:** `npm run gate` (exit code read from `$?`); `npm run design:check`; the parity captures for the
@@ -3187,13 +3187,13 @@ vocabulary. Filed as **`vg-553`** and homed on Task 20.7 below.
 ### Task 20.2: `--shell-warm` is readable in every palette
 
 **Files:**
-- Modify: `editor-shell.css` (ember, moss and plum); `design-language.spec.ts` (`PINNED_FLOOR`); the `--vigilia-accent` alias
+- Modify: `editor-shell.css` (ember, moss and plum); `design-language.spec.ts` (`PINNED_FLOOR`); the `--yunari-accent` alias
 
 **Interfaces:**
 - Produces: `vg-201` closed
 
 - [ ] **Step 1: Deepen `--shell-warm` to at least 4.5:1** against each palette's own `--shell-surface` and against the glass overlay.
-- [ ] **Step 2: `--vigilia-accent` aliases `--shell-warm` on the canvas side**, so the readable value moves the canvas accent rather than the alias being broken.
+- [ ] **Step 2: `--yunari-accent` aliases `--shell-warm` on the canvas side**, so the readable value moves the canvas accent rather than the alias being broken.
 - [ ] **Step 3: Delete `PINNED_FLOOR.invalid`'s three values and replace them with the 4.5:1 minimum**, and close it with the measured ratios named for all three palettes and the overlay.
 
 **Annotated 2026-10-16 before dispatch: this task's `Files:` line names a file that does not exist.**
@@ -3203,7 +3203,7 @@ vocabulary. Filed as **`vg-553`** and homed on Task 20.7 below.
 values are right and only the path is stale. **Measured at `58be6688`**, the six palettes' own pair:
 editorial `:206` `#fffdf7`/`#8a5a2b`; graphite `:278` `#12161c`/`#f3aa64`; ember `:327` `#f7e2d2`/`#ff7e6e`;
 moss `:360` `#e4efd9`/`#e8c56a`; plum `:390` `#ece3f7`/`#ffb2a1`; light `:420` `#eff9f2bf`/`#8a5a2b`.
-`--vigilia-accent: var(--shell-warm)` is **already the alias**, declared once at `:114`, so the ruling's
+`--yunari-accent: var(--shell-warm)` is **already the alias**, declared once at `:114`, so the ruling's
 "let the canvas accent move with it" is met by keeping it rather than by adding one; and `--warn:
 var(--shell-warm)` appears in every palette block, so those inherit the fix. The seat measures all six
 palettes rather than assuming only the three the row names move.
@@ -3214,9 +3214,9 @@ passed, exit 0. **The controller ran the red proof itself**, green → cut → r
 green: with ember's `--shell-warm` back at the pastel `#ff7e6e`, `design-language-contrast.spec.ts` fails
 `ember: invalid is 1.98:1, below 4.5:1 — rgb(255, 126, 110) on rgb(247,226,210)` (1 failed, 7 passed, exit
 1), and the restored tree re-runs 8 passed exit 0. **Step 2's clause is inert and is recorded as such rather
-than closed as met**: `--vigilia-accent: var(--shell-warm)` is declared (`:115`), but the token is read by
+than closed as met**: `--yunari-accent: var(--shell-warm)` is declared (`:115`), but the token is read by
 no rule, so deepening `--shell-warm` moves no canvas accent at all. That is **`vg-552`**, filed from this
-task's trailer, expanded by the controller to **ten** unread `--vigilia-*` tokens rather than the two the
+task's trailer, expanded by the controller to **ten** unread `--yunari-*` tokens rather than the two the
 seat named, and homed on Task 20.7.
 
 ### Task 20.3: The token that lies goes
@@ -3352,7 +3352,7 @@ while `--shell-display` applies one to chrome headings at three sites, so the CS
 normative table does not list. **`vg-354` stays `open` and the re-decision is recorded on it**; Task 20.6 is
 not dispatched until it is answered.
 
-### Task 20.7: The shell's `--vigilia-*` vocabulary is read or retired
+### Task 20.7: The shell's `--yunari-*` vocabulary is read or retired
 
 **Added 2026-10-16 mid-phase**, homing `vg-552`, which the seat doing Task 20.2 filed as a
 `Discovered, not fixed:` trailer naming two tokens and which the controller expanded by measurement to
@@ -3370,23 +3370,23 @@ red proof could not be run at all.
 - Produces: `vg-552` and `vg-553` closed
 
 - [ ] **Step 1: Re-run the measurement; the negative is searched, not assumed.** Per token by name,
-      `grep -rn "var(--vigilia-<t>)" src/web --include=*.ts --include=*.tsx --include=*.css` with `dist/`
+      `grep -rn "var(--yunari-<t>)" src/web --include=*.ts --include=*.tsx --include=*.css` with `dist/`
       and `node_modules/` excluded: `canvas-bg` 1, `control-bg` 5, `subdued` 1, `scrollbar-thumb` 3,
       `scrollbar-track` 3 — and **zero** for `text`, `panel-bg`, `panel-border`, `control-border`,
       `input-bg`, `muted`, `selection-bg`, `accent`, `accent-dim` and `guide`. The four things that make the
       negative hold are part of the measurement rather than a footnote: the block is on a plain `:root` and
       **not** inside `@theme`, so Tailwind generates no utility from these names; there is no `setProperty`
-      for a theme token anywhere in `src/web`; no template constructs a `--vigilia-…` name; and a sweep for
-      `vigilia-` not preceded by `--` returns only DOM element ids.
+      for a theme token anywhere in `src/web`; no template constructs a `--yunari-…` name; and a sweep for
+      `yunari-` not preceded by `--` returns only DOM element ids.
 - [ ] **Step 2: Decide per token, with evidence, and do not accept a comment as the reason.** The block's own
-      comment at `:91-99` describes live jobs for tokens nothing reads — `--vigilia-input-bg` is "a text
-      field's own white", `--vigilia-accent` is "the control layer's highlight". Each of the ten is either
+      comment at `:91-99` describes live jobs for tokens nothing reads — `--yunari-input-bg` is "a text
+      field's own white", `--yunari-accent` is "the control layer's highlight". Each of the ten is either
       retired the way `--shell-flat` was, or wired to the surface its comment names. **A token kept because a
       comment describes it is not a decision**; the reason has to be a rule that reads it or a surface that
       will.
 - [ ] **Step 3: Land the disposition and close `vg-552` naming the count before and after and the same
       measurement command.** Note that `vg-201`'s ruling's *"let the canvas accent move with it"* is inert
-      while `--vigilia-accent` has no reader, so whichever way this lands, that half of the ruling is
+      while `--yunari-accent` has no reader, so whichever way this lands, that half of the ruling is
       discharged or corrected in the same commit.
 - [ ] **Step 4: `vg-553` — the vocabulary's absences get a guard, and its granularity is the decision.**
       Today the surviving guard is one-directional: `shell-palette-tokens.spec.ts`'s `themeToken()` throws on
@@ -3401,16 +3401,16 @@ red proof could not be run at all.
 
 **CLOSED at `7874e879` (`vg-552`) and `150ad617` (`vg-553`). All ten tokens are retired and none is wired**,
 because the seat checked each named surface against the product and **none exists**: the five plain aliases
-duplicate `--shell-*` roles every surface already reads directly; `--vigilia-input-bg`'s "text field's own
+duplicate `--shell-*` roles every surface already reads directly; `--yunari-input-bg`'s "text field's own
 white" has no white surface, the field being `bg-transparent` inside `ControlWell`, which is `bg-panel-2`
-inside `border-edge`; `--vigilia-selection-bg` has no reader because the selected layer row paints
-`color-mix(in srgb, var(--shell-text) 14%, transparent)`; and `--vigilia-guide` has no reader because guides
+inside `border-edge`; `--yunari-selection-bg` has no reader because the selected layer row paints
+`color-mix(in srgb, var(--shell-text) 14%, transparent)`; and `--yunari-guide` has no reader because guides
 are Fabric's `GUIDE_COLOR`. **The footprint was one declaration each**, unlike `vg-312`'s eight — every one
 declared once in the `:root` block, no test mention, no mockup mention — plus two prose sites corrected in
 the same commit.
 
 **`vg-201`'s ruling's second clause is UNREACHABLE THROUGH THIS MECHANISM, and that is a stronger finding
-than the row's "inert".** The alias `--vigilia-accent: var(--shell-warm)` was real and read by nothing, but
+than the row's "inert".** The alias `--yunari-accent: var(--shell-warm)` was real and read by nothing, but
 the reason no wiring could fix it is structural: the canvas is Fabric-painted from the theme document, whose
 accent is **`palette.accent`** — a persisted theme value read by `renderer-core` (`scene/plan.ts`,
 `charts/chart-paint.ts`) and not by any stylesheet. **No CSS custom property can move the canvas accent,
@@ -3421,7 +3421,7 @@ has ruled on it. Recorded as a dated note on `vg-201`'s archived row.
 
 **The guard is a per-retirement list, and the controller re-ran its red proof on one name per retirement
 commit** rather than trusting the seat's sweep of thirteen: `--shadow-raised` (20.1), `--shell-flat` (20.3)
-and `--vigilia-accent` (20.7) each read **exit 1** with the case's own message, baseline is **14/14 exit 0**,
+and `--yunari-accent` (20.7) each read **exit 1** with the case's own message, baseline is **14/14 exit 0**,
 and every restore is `cmp`-identical. **An exhaustive assertion over `@theme static` was refused with a
 reason**: that block also carries the type scale and the `--color-*` aliases, so a closed set over it would
 redden on every legitimate addition. `RETIRED_TOKENS` is the vocabulary this phase closed, and a name joins
@@ -3866,7 +3866,7 @@ scripts/capture-freshness.mjs` exits **1** with **11 registered captures, 11 sta
 is moved by `editor-shell.css` (17 commits since the recorded sha, newest `7874e879` — Task 20.7's token
 retirement) and by `editor-shell/` and `components/ui/`, so **Phase 20's own token and elevation work is
 the cause**. The eleven are left alone: re-shooting is the action owner's job and needs built bundles, one
-worker and `VIGILIA_CAPTURE=1`, and this task is not a re-shoot.
+worker and `YUNARI_CAPTURE=1`, and this task is not a re-shoot.
 
 **The self-test is chained into `gates:self-test`** (`src/web/package.json:40`) rather than left as a
 script nobody runs. The live run is a **command rather than a gate step**, because gating on it would hold
@@ -3923,7 +3923,7 @@ there is one executable copy; `--self-test` (7 cases) is chained into `gates:sel
 is a **command** because it exits 1 at HEAD.
 
 **This row's own measurement was wrong and the seat measured it rather than inheriting it.** The row says
-`vigilia-field-hint` *"occurs exactly ONCE in the entire checkout"* — true of the **string**, not of the
+`yunari-field-hint` *"occurs exactly ONCE in the entire checkout"* — true of the **string**, not of the
 **direction**. The reverse reading reports **eleven** classes; the other ten had never been counted. All
 eleven are real DOM writes, none is defined in either stylesheet, and none is a visible defect at HEAD:
 four are unstyled hooks a test queries, two are painted inline, one is hidden by inline `cssText`, and
@@ -3937,7 +3937,7 @@ page writing `class="hint"` is the product applying it — which removes the `.h
 unapplied: the same five `data-*` attributes as before, and 0 of 97 classes**.
 
 **The narrowing is a judgement and is recorded as one.** 331 classes are written by production source and
-234 are undefined, so the reading is narrowed to the stylesheets' own namespaces (`editor-`, `vigilia-`,
+234 are undefined, so the reading is narrowed to the stylesheets' own namespaces (`editor-`, `yunari-`,
 `theme-`): **11 named, 223 counted**. The prior art (`cssguard`, `gulp-check-unused-css`, `blok`) all needs
 a hand-kept list, and a report with 234 findings is one nobody reads. `data-*` deliberately keeps the
 spelling reading, because the ruling names classes and `dataset`'s camelCase form has no single write
@@ -4404,9 +4404,9 @@ this phase because it is a **test driver**, and the phase's own subject is the p
 **Interfaces:**
 - Produces: `vg-537` closed
 
-- [x] **Step 1: The code and its comment disagree, and the comment is the wrong one.** `insert` takes `button.last()` when a label matches twice, while the comment above says *"'Line' is a shape and a chart, and the legend above each is what tells them apart"*. **Taking the last match is an ordering assumption, not the legend** — a caller asking for the shape's Line silently gets the chart family's, and the helper's own poll is satisfied either way because the scene grew by one. **Done, and the seat read the pane first**: `insertGroups()` emits groups by `kind`, `AddPane` renders each as a `<fieldset data-vigilia-add-group={kind}>` with a legend, and the order is Cards, Text, Shapes, Charts — which is exactly why `.last()` returned the chart. Text is the exception, drawn in no fieldset because its `groupOf` returns `undefined`.
-- [x] **Step 2: Address the tile by its legend or its group**, so the family is named rather than inferred — or take the family as a parameter and make the ambiguous call a type error. **`.first()` is not the fix**: it has the same defect mirrored. **Done, by the parameter route**: `insert(page, label, group: AddGroup)` and `addButton` now require the group, so `tsconfig.e2e.json` — wired into `typecheck`, which `gate` runs — enforces it rather than merely intending it. The legend is copy (`uiCopy.panels.*`) and `data-vigilia-add-group` is the stable hook, so the group is the thing that can be named.
-- [x] **Step 3: Read the Add pane's structure rather than reordering its tiles**, and prove the driver red by asking for the shape's Line and asserting the inserted object's kind. **Done, and the red proof fails on the kind rather than a count** — which is the whole point, since a count is what the defect satisfied either way: with the addressing reverted the case reports `Expected: ["line","vigiliachart"]` against `Received: ["vigiliachart","vigiliachart"]`, on the Fabric type tag, while the driver's own scene-grew-by-one poll passed. The fix also caught a **live instance**: `addChart` was inserting through the ambiguous path, and `inspector-sections.spec.ts`'s Line-endpoint case had been hand-rolling the click to work around it. Every call site was found tree-wide — `tests/e2e/` sits outside every package, so a `packages/`-scoped search would have missed them.
+- [x] **Step 1: The code and its comment disagree, and the comment is the wrong one.** `insert` takes `button.last()` when a label matches twice, while the comment above says *"'Line' is a shape and a chart, and the legend above each is what tells them apart"*. **Taking the last match is an ordering assumption, not the legend** — a caller asking for the shape's Line silently gets the chart family's, and the helper's own poll is satisfied either way because the scene grew by one. **Done, and the seat read the pane first**: `insertGroups()` emits groups by `kind`, `AddPane` renders each as a `<fieldset data-yunari-add-group={kind}>` with a legend, and the order is Cards, Text, Shapes, Charts — which is exactly why `.last()` returned the chart. Text is the exception, drawn in no fieldset because its `groupOf` returns `undefined`.
+- [x] **Step 2: Address the tile by its legend or its group**, so the family is named rather than inferred — or take the family as a parameter and make the ambiguous call a type error. **`.first()` is not the fix**: it has the same defect mirrored. **Done, by the parameter route**: `insert(page, label, group: AddGroup)` and `addButton` now require the group, so `tsconfig.e2e.json` — wired into `typecheck`, which `gate` runs — enforces it rather than merely intending it. The legend is copy (`uiCopy.panels.*`) and `data-yunari-add-group` is the stable hook, so the group is the thing that can be named.
+- [x] **Step 3: Read the Add pane's structure rather than reordering its tiles**, and prove the driver red by asking for the shape's Line and asserting the inserted object's kind. **Done, and the red proof fails on the kind rather than a count** — which is the whole point, since a count is what the defect satisfied either way: with the addressing reverted the case reports `Expected: ["line","yunarichart"]` against `Received: ["yunarichart","yunarichart"]`, on the Fabric type tag, while the driver's own scene-grew-by-one poll passed. The fix also caught a **live instance**: `addChart` was inserting through the ambiguous path, and `inspector-sections.spec.ts`'s Line-endpoint case had been hand-rolling the click to work around it. Every call site was found tree-wide — `tests/e2e/` sits outside every package, so a `packages/`-scoped search would have missed them.
 - [x] **Step 4: Close it.** **Done, with the one gap the review found written down rather than left in a report**: the `"text"` scope is the whole pane, because text is the one object drawn in no fieldset, so a card ever labelled `Text` would give the lookup two matches — and it would fail **loudly**, as a Playwright strict-mode violation, rather than as the silent wrong insert this row was about. The note names the mechanism, the failure and what holds it today (`uiCopy.cardLibrary` carries no `Text`). `AddGroup` is a documented hand-copy of `InsertableObject["kind"]`, which the review confirmed is the right trade: the editor exports only its barrel, a deep import is `TS2307`, and the relative path breaks the e2e program on `lucide-react`'s `.mjs` icons. `vg-537` is verified.
 
 ### Task 22.9: The copy walk probes the functions it cannot enumerate, and mounts four surfaces it does not read
@@ -4430,7 +4430,7 @@ the corrected one: `ui-copy-panels.test.ts` needed no change, and `ui-copy.ts` a
 **Interfaces:**
 - Produces: `vg-417` and `vg-418` closed
 
-- [x] **Step 1: `vg-417` — the probe, not the module.** `copy()` calls each exported copy function with generic arguments to enumerate the strings a surface could print, and a function whose result depends on a key cannot be enumerated that way: `glassRefusals` and `chartFamilyLabels` take a key and are never collected. The consequence's direction is the safe one — a surface printing one of those strings reads as a literal with no owner, so the walk goes falsely **red**, not falsely green — which is why the row is low and why it still needs fixing: a net that reddens on a correct surface is one a reader learns to ignore. **Done, and the row's second function was stale**: `chartFamilyLabels` is `uiCopy.chartFamilies`, so the object walk already collects `Gauge`, `Line`, `Bar` and `Pie`. The fix is a second pass over `glassRefusalKinds`, exported from `ui-copy.ts` as `Object.keys(glassRefusals)` — derived from the table, not a second list — so a kind added to the table is probed without anyone remembering to add it. The red proof is the strings, not a count: with the pass disabled, `ui-copy.test.ts` exits 1 on `AssertionError: Polyline: expected [ 'Vigilia', 'Editor panes', …(452) ] to include 'A Polyline is an open path, so there …'`. **And the review found the same defect one paragraph above the fix**, for arity rather than keys: the probe passes one argument, so `panels.artboardOutside` and `draftRecovery.lead` are collected by nothing — widening the pool cannot close it, because a sentence interpolating the theme's own name can never equal a probe's output, so `copy()`'s docblock now states that limit instead of claiming a superset, and the hole is filed as `vg-592`.
+- [x] **Step 1: `vg-417` — the probe, not the module.** `copy()` calls each exported copy function with generic arguments to enumerate the strings a surface could print, and a function whose result depends on a key cannot be enumerated that way: `glassRefusals` and `chartFamilyLabels` take a key and are never collected. The consequence's direction is the safe one — a surface printing one of those strings reads as a literal with no owner, so the walk goes falsely **red**, not falsely green — which is why the row is low and why it still needs fixing: a net that reddens on a correct surface is one a reader learns to ignore. **Done, and the row's second function was stale**: `chartFamilyLabels` is `uiCopy.chartFamilies`, so the object walk already collects `Gauge`, `Line`, `Bar` and `Pie`. The fix is a second pass over `glassRefusalKinds`, exported from `ui-copy.ts` as `Object.keys(glassRefusals)` — derived from the table, not a second list — so a kind added to the table is probed without anyone remembering to add it. The red proof is the strings, not a count: with the pass disabled, `ui-copy.test.ts` exits 1 on `AssertionError: Polyline: expected [ 'Yunari', 'Editor panes', …(452) ] to include 'A Polyline is an open path, so there …'`. **And the review found the same defect one paragraph above the fix**, for arity rather than keys: the probe passes one argument, so `panels.artboardOutside` and `draftRecovery.lead` are collected by nothing — widening the pool cannot close it, because a sentence interpolating the theme's own name can never equal a probe's output, so `copy()`'s docblock now states that limit instead of claiming a superset, and the hole is filed as `vg-592`.
 - [x] **Step 2: `vg-418` — the four surfaces the walk does not mount.** It mounts the shell, the Settings Appearance/Keyboard/About tabs, the canvas context menu, the opened menu popups and the colour picker, and not the `?` shortcut sheet, the publish popover, the library dialog or the new-document dialog. A literal in one of those is owned by nothing. **The header is not the fix** — it now states these four are not mounted, and a comment can vanish silently where a mount cannot. **Done, all four mounted** through `READ_SURFACES`, each read over `body` where a `Dialog` and a `Popover` portal, each asserting non-empty before its words are compared so a mount that renders nothing reddens rather than agreeing with nothing, and the list's length guarded so a dropped mount takes its read with it. **All four were reachable in jsdom** — `vg-215`'s finding is about a popover's close, not its open — which answers the row's own "not established". The vocabulary grew to reach them: `spokenIn` now reads `h1`–`h6` and `dt`, which is how the sheet's heading, its six group names and every row label are read. **One limit is stated rather than implied and is filed as `vg-591`**: the popover is mounted and read for two words only, because its warning is a bare `<span>` no reader reads and its trigger carries the `aria-controls` the button rule skips.
 - [x] **Step 3: Close both**, with a case that fails when the keyed enumeration is disabled and one that fails when a mount is removed. **Done, both reproduced on the integrated tree and restored with `cmp` and a SHA-256 rather than with git**: disabling the keyed pass reddens `ui-copy.test.ts`; dropping the new-document entry reddens the surfaces case with `expected [ { …(2) }, { …(2) }, { …(2) } ] to have a length of 4 but got 3`; and emptying the library mount reddens it with `the library dialog: expected [] to not deeply equal []`. `npm run gate` exit 0 on the integrated tree — 264 test files, 3487 tests. Both rows verified. The review's three further findings are filed as `vg-591` (the reader's vocabulary), `vg-592` (the one-argument probe) and `vg-593` (the selection lead's refusal paragraph, which prints a table sentence no net reads); the seat's own finding about the library dialog's literals is `vg-594`.
 
@@ -4445,9 +4445,9 @@ reading the acceptance section's verdicts.
 **Interfaces:**
 - Produces: `vg-438` closed
 
-- [x] **Step 1: The trap, measured rather than argued.** `npm run build -w @vigilia/editor` exit 0 leaves `packages/editor/dist` holding `assets/`, `favicon.svg` and `index.html`; `npm run build:fixture -w @vigilia/editor` exit 0 then adds `control-fixture.html`. So a whole-suite browser run against a bundle built by `build` alone fails the fixture-mounting `design-language-*.spec.ts` specs as a missing page and reads as a product regression. **Reproduced on the integrated tree, and the row's own premise corrected**: the failure is not a 404 — `vite preview` defaults to `appType: 'spa'` and answers `/control-fixture.html` with **200** and `text/html` serving `index.html`, measured as `has #control-fixture: false`, `has #app: true`. So a status check would have been a guard that cannot fail, and the check keys on the fixture's own `#control-fixture` marker instead — static markup `index.html`'s `#app` is not.
+- [x] **Step 1: The trap, measured rather than argued.** `npm run build -w @yunari/editor` exit 0 leaves `packages/editor/dist` holding `assets/`, `favicon.svg` and `index.html`; `npm run build:fixture -w @yunari/editor` exit 0 then adds `control-fixture.html`. So a whole-suite browser run against a bundle built by `build` alone fails the fixture-mounting `design-language-*.spec.ts` specs as a missing page and reads as a product regression. **Reproduced on the integrated tree, and the row's own premise corrected**: the failure is not a 404 — `vite preview` defaults to `appType: 'spa'` and answers `/control-fixture.html` with **200** and `text/html` serving `index.html`, measured as `has #control-fixture: false`, `has #app: true`. So a status check would have been a guard that cannot fail, and the check keys on the fixture's own `#control-fixture` marker instead — static markup `index.html`'s `#app` is not.
 - [x] **Step 2: The cause is deliberate and documented**, in `packages/editor/vite.config.fixture.ts`: the fixture is a second invocation rather than a second `rollupOptions.input` so the production build emits exactly the bundle graph it emitted before the fixture existed and does not ship test scaffolding. **So the fix is not to fold the fixture into the production build** — it is to make the missing page say so, or to make the run produce it. **Taken: make it say so, in the one opener.** `openFixture` in `tests/e2e/design-language-readers.ts` is the single opener all three fixture-mounting specs share (`design-language-contrast`, `-controls` and `-layout`, through `prepareControls`), so the check is scoped to exactly the specs that need the page. The process-wide `tests/e2e/global-setup.ts` was rejected with the reason: it would refuse every spec including host, player, snapping and glass specs that never open the fixture. **`glass-authoring` and `snapping` are not consumers** — each defines its own local `openFixture` that builds its own page into the root preview.
-- [x] **Step 3: Close it**, by running the whole suite against a `build`-only bundle and reading what the fixture-mounting specs report. **Done on the integrated tree, against a `dist` built by `npm run build` alone**: `npx playwright test tests/e2e/design-language-controls.spec.ts --project=desktop-chromium --workers=1 --grep "the control set renders in the design language"` exits 1 with the named cause and the recipe, thrown at `openFixture` through `prepareControls`; after `npm run build:fixture -w @vigilia/editor` the same command exits 0 with 1 passed. `npm run gate` exit 0. `vg-438` is verified. **The verification itself produced a finding**: the first red-proof attempt read `1 passed` because a preview server left running by the seat's own worktree was answering the shared 4174 port over *that* worktree's `dist` — `reuseExistingServer: true` — so the controller measured somebody else's bundle. Killing it and re-running reddened correctly. That is filed as `vg-595`, and it is the second time this phase has caught a false result by re-running rather than by reading.
+- [x] **Step 3: Close it**, by running the whole suite against a `build`-only bundle and reading what the fixture-mounting specs report. **Done on the integrated tree, against a `dist` built by `npm run build` alone**: `npx playwright test tests/e2e/design-language-controls.spec.ts --project=desktop-chromium --workers=1 --grep "the control set renders in the design language"` exits 1 with the named cause and the recipe, thrown at `openFixture` through `prepareControls`; after `npm run build:fixture -w @yunari/editor` the same command exits 0 with 1 passed. `npm run gate` exit 0. `vg-438` is verified. **The verification itself produced a finding**: the first red-proof attempt read `1 passed` because a preview server left running by the seat's own worktree was answering the shared 4174 port over *that* worktree's `dist` — `reuseExistingServer: true` — so the controller measured somebody else's bundle. Killing it and re-running reddened correctly. That is filed as `vg-595`, and it is the second time this phase has caught a false result by re-running rather than by reading.
 
 ---
 
@@ -4576,7 +4576,7 @@ schema's sync test for Task 23.3.
 **Interfaces:**
 - Produces: `vg-178` closed
 
-- [x] **Step 1: Declare whether the rows are direct dependencies only or the installed closure**, in the file that owns the convention, and apply it to whichever dependency ships next. The risk has not gone with the dependency the row was filed on: the next shipped package arrives with the same unstated rule. **Done, and which file owns it was the task's own decision: `THIRD-PARTY-NOTICES.md`.** It holds the entries, and CI's `licences` job (`.github/workflows/ci.yml:133`, `:140`) is the one machine check either file has — but it derives every non-`@vigilia/` name from the workspace manifests and requires each to **appear** in the file (`grep -qiF "$name"`, `:176`), a case-insensitive substring test rather than a row check or a scope check: `fabric` has no standalone occurrence in the file and passes on the substring inside `| Fabric.js 7.4.0 |` at `:22`. So the convention belongs where the check points, and what that check enforces is presence. The paragraph added at `:7` states **scope** and the **form** separately, because the file has two shapes — "**Scope: direct dependencies only — the packages a workspace `package.json` declares in `dependencies` or `devDependencies`, `@vigilia/` workspace packages excluded — never the installed closure**", then "**The form varies by section, not by package**: a table for the runtime/editor dependencies and a paragraph for the build/test ones, so an entry is a row only where its section is one" — and the form clause is measured, not assumed: of the 29 non-`@vigilia/` declared packages, **16 appear in no `| `-prefixed line at all — 14 of them devDependencies, the other two (`tailwindcss`, `@tailwindcss/vite`) declared in the editor's `dependencies`**. It sits directly under the header's existing "current development inventory, not a release-grade transitive audit", so the disclaimer a reader meets first is sharpened rather than contradicted; its **Release rule** (`:222`) now names itself the closure half and names the other release rule rather than claiming exclusivity. `docs/engineering/dependencies.md:5` states the same scope and points at the owner — the first version's "the tables here follow it" was false, since `react` (`src/web/packages/editor/package.json:26`) and `systeminformation` (`src/web/packages/host/package.json:26`) are declared direct dependencies with no row in that file. **Nothing in `npm run gate` reads either file**, which is why this survived four plans: the only script naming them is `scripts/generate-font-trios.mjs`, and no `npm run` check parses them, so no test reddens on this by design — CI's presence grep is the exception, and it reads presence alone, not the convention. **Applied to what has shipped since the removal**: diffing every workspace manifest at `1e7324ae` (the ADR-0038 commit) against HEAD names `@google/design.md` 0.4.0 (2026-10-11) and `node-forge` 1.4.0 with `@types/node-forge` 1.3.11 (2026-10-18), each already an entry in both files — so the convention is applied by measuring conformance, and no entry was invented for a package not in a manifest.
+- [x] **Step 1: Declare whether the rows are direct dependencies only or the installed closure**, in the file that owns the convention, and apply it to whichever dependency ships next. The risk has not gone with the dependency the row was filed on: the next shipped package arrives with the same unstated rule. **Done, and which file owns it was the task's own decision: `THIRD-PARTY-NOTICES.md`.** It holds the entries, and CI's `licences` job (`.github/workflows/ci.yml:133`, `:140`) is the one machine check either file has — but it derives every non-`@yunari/` name from the workspace manifests and requires each to **appear** in the file (`grep -qiF "$name"`, `:176`), a case-insensitive substring test rather than a row check or a scope check: `fabric` has no standalone occurrence in the file and passes on the substring inside `| Fabric.js 7.4.0 |` at `:22`. So the convention belongs where the check points, and what that check enforces is presence. The paragraph added at `:7` states **scope** and the **form** separately, because the file has two shapes — "**Scope: direct dependencies only — the packages a workspace `package.json` declares in `dependencies` or `devDependencies`, `@yunari/` workspace packages excluded — never the installed closure**", then "**The form varies by section, not by package**: a table for the runtime/editor dependencies and a paragraph for the build/test ones, so an entry is a row only where its section is one" — and the form clause is measured, not assumed: of the 29 non-`@yunari/` declared packages, **16 appear in no `| `-prefixed line at all — 14 of them devDependencies, the other two (`tailwindcss`, `@tailwindcss/vite`) declared in the editor's `dependencies`**. It sits directly under the header's existing "current development inventory, not a release-grade transitive audit", so the disclaimer a reader meets first is sharpened rather than contradicted; its **Release rule** (`:222`) now names itself the closure half and names the other release rule rather than claiming exclusivity. `docs/engineering/dependencies.md:5` states the same scope and points at the owner — the first version's "the tables here follow it" was false, since `react` (`src/web/packages/editor/package.json:26`) and `systeminformation` (`src/web/packages/host/package.json:26`) are declared direct dependencies with no row in that file. **Nothing in `npm run gate` reads either file**, which is why this survived four plans: the only script naming them is `scripts/generate-font-trios.mjs`, and no `npm run` check parses them, so no test reddens on this by design — CI's presence grep is the exception, and it reads presence alone, not the convention. **Applied to what has shipped since the removal**: diffing every workspace manifest at `1e7324ae` (the ADR-0038 commit) against HEAD names `@google/design.md` 0.4.0 (2026-10-11) and `node-forge` 1.4.0 with `@types/node-forge` 1.3.11 (2026-10-18), each already an entry in both files — so the convention is applied by measuring conformance, and no entry was invented for a package not in a manifest.
 - [x] **Step 2: Record that the row's original premise is discharged** — `grep -rn radix` over every `package.json` in the workspace returns nothing, because `ADR-0038` took the popover and its eighteen siblings out of the manifest. The row closes on the convention, not on the removal. *(Measured rather than transcribed: `grep -rn --include=package.json radix .` from the repo root prints nothing and exits 1, so the premise the row filed is discharged by removal — `1e7324ae`, 2026-10-08 — and the close rests on the convention instead.)*
 - [x] **Step 3: Close it.** *(Done — `vg-178` moved to `backlog-archive.jsonl` as `verified`, edited by line rather than round-tripped: `git diff --numstat` reads one line added to the archive and one removed from the live file, 471 → 472 and 204 → 203, and no id sits in both. Its `check` is `grep -n "never the installed closure" THIRD-PARTY-NOTICES.md docs/engineering/dependencies.md` — run from the repo root, exit 0, one match in each file (`THIRD-PARTY-NOTICES.md:9`, `docs/engineering/dependencies.md:6`) — a clause of the scope statement that no interrogative form of the question can contain, in **both** files because the title names both as silent. The check took three versions and each failure is worth keeping: the first grepped `direct dependencies only`, which is in the row's own **title** in interrogative form ("whether its rows are direct dependencies only or the installed closure") and so passed on a file posing the question; the second reached the owning file alone, and would have passed with `docs/engineering/dependencies.md` reverted to silence, which is half the row's own subject. The title-word rule is satisfied through **8 words measured from the checker's own `wordsOf`** rather than by eye (`third`, `party`, `notices`, `docs`, `engineering`, `dependencies`, `installed`, `closure`). `artefacts` is `1e9f83af441f92a06d2c199c00de9a5a644f8beb`, the record commit and an ancestor of HEAD. `npm run backlog:check` exit 0, 675 items across both registers. `npm run gate` exit 1 at `design:check` on the pre-existing `vg-626` ceiling and on nothing else — the chain reached it, so every step before it exits 0 (biome, `gates:self-test`, `status:check`, `docs:check`, `scratch:check`) — and because the chain stops there, `typecheck` and `test` were run alone: `npm run typecheck` exit 0, `npm run test` exit 0 with 287 files / 3918 tests. No red-proof, because no behaviour was added.)*
 
@@ -5203,7 +5203,7 @@ phase boundary.
 **Interfaces:**
 - Produces: `vg-572` closed
 
-- [x] **Step 1: Run the measurement `vg-028` asked for and never took.** A per-frame reader of the artboard's box, the canvas `viewportTransform` and the object's rect, on a phone-sized viewport whose height changes under the page, for longer than the thirty seconds that failed to reproduce the original. **Taken**: `tests/e2e/host-viewport-refit.spec.ts`, opt-in behind `VIGILIA_VIEWPORT_PROBE`, two 54 s recordings per orientation on the built player at 60 fps.
+- [x] **Step 1: Run the measurement `vg-028` asked for and never took.** A per-frame reader of the artboard's box, the canvas `viewportTransform` and the object's rect, on a phone-sized viewport whose height changes under the page, for longer than the thirty seconds that failed to reproduce the original. **Taken**: `tests/e2e/host-viewport-refit.spec.ts`, opt-in behind `YUNARI_VIEWPORT_PROBE`, two 54 s recordings per orientation on the built player at 60 fps.
 - [x] **Step 2: The leading candidate is the viewport rather than a notice** — a phone's browser chrome showing or hiding changes the host's height and the `ResizeObserver` re-fits the scene — but the trigger is not established, so it is measured rather than assumed. **Measured, and the candidate is refuted**: a height change cannot move a width-limited composition horizontally at all — portrait `scale` 0.609375 and `offsetX` 0 stay fixed, every object's `sx` span is 0 across 3249 frames — and on a height-limited landscape composition it contracts symmetrically about the centre instead of sliding one way.
 - [x] **Step 3: Do not close this with `vg-028`'s notice case**, which already passes and covers a different mechanism.
 - [x] **Step 4: Close it — or, if the measurement shows the re-fit is correct behaviour for a viewport change, correct the claim instead.** A row's subject is a claim, and this one's claim is that the slide is a defect. **The claim is corrected and the row stays open**: the viewport is refuted as the mechanism, but a chrome strip still takes room from the artboard by design, and this task's own recording contains the crop strip moving `stray-quarter` 30.61 px at mount — excluded from the reading only because its baseline was captured after the strip settled. `vg-572` now names `player/src/chrome.ts`, and Task 25.7's removal of the strip is the event that closes it.
@@ -5229,9 +5229,9 @@ phase boundary.
 **Interfaces:**
 - Produces: `vg-578` closed, `vg-191` narrowed or withdrawn, decision 0027 superseded
 
-- [x] **Step 1: The mark goes, and with it the toggle.** `VIGILIA_BLEEDS_PROPERTY`, `objectBleeds` and `isBleedMark` leave `renderer-core/src/theme/bleed.ts`; the envelope validator stops pinning the mark; `SceneBox.bleeds` and the `bleeds` term in `countable` leave `scene-fabric/src/artboard-crop.ts`; `selection-inspector/bleed.ts` and the Position row that renders it are deleted. Nothing is marked any more, so every overhang counts as cropped. **Done, and the count proves it**: the group case moved `counted: 2` → `counted: 3`, because the group no longer carries a mark for `countable` to skip.
-- [ ] **Step 2: The display stops saying it.** `cropNoticeText` and `showCropNotice` go, with the `vigilia-crop` strip and the rules that paint it. This is the half that removes a signal a reader currently gets, so the browser reading that closes it is the display showing a cropped composition and saying nothing about it. **It is also the event `vg-572` waits on**: the crop strip is the last strip that takes room from the artboard, Task 25.5 measured it moving the composition 30.61 px when it arrives, and this row cannot close until a reading shows the composition holding still where a strip would have taken room. **Done, and `vg-572` closed on it**: after the removal the composition holds one transform, one painted height and one `sy` per object across 539 portrait and 538 landscape mounted frames — including the mount frames where the strip used to arrive — against two values of each before, with no frame carrying a `vigilia-crop` strip.
-- [x] **Step 3: The persisted key is RULED gone, and the evidence that made it safe is already gathered.** The user ruled on 2026-10-18: remove `vigiliaBleeds` from the published schema (`schema/theme-document.schema.json`, at the repo root), from `envelope-keys.ts`'s hand-maintained keys and from every existing theme. **This step's original pointer was wrong and is corrected here**: it named `renderer-core/src/theme/validate.ts`, which does not exist, because ADR-0041 retired schema v1 by deletion. The decider is `envelope-keys.ts` (ADR-0023) for the closed bags, with the published schema and `fabric-envelope-validate.ts` covering the object shape — and `fabricObject` is deliberately in neither key list, because the schema publishes that shape with `additionalProperties: {jsonValue}` rather than `false`. That is exactly why retiring a key there is a schema deletion rather than a migration, and an independent review drove it end to end: a document carrying the key still loads through the host's own route, with a JSON-identical envelope. No authored work is stranded by it — `git grep` finds the key in the schema, the source, decision 0027 and the tests, and in no tracked theme file; the only two theme files carrying it are gitignored and written by the specs that exercise the notice; and the author's own app folder (`~/.vigilia/themes/`, four themes) carries none. `fabric-envelope-schema-sync.test.ts` is the case that keeps the schema and `validate.ts` in step, so it is what proves the two moved together. Record the consequence rather than leaving it to be discovered: with the mark gone the count cannot exclude a deliberate bleed, so an object that runs off the edge on purpose reads as a fault for as long as it stands, and the user ruled the count stays anyway because it is actionable.
+- [x] **Step 1: The mark goes, and with it the toggle.** `YUNARI_BLEEDS_PROPERTY`, `objectBleeds` and `isBleedMark` leave `renderer-core/src/theme/bleed.ts`; the envelope validator stops pinning the mark; `SceneBox.bleeds` and the `bleeds` term in `countable` leave `scene-fabric/src/artboard-crop.ts`; `selection-inspector/bleed.ts` and the Position row that renders it are deleted. Nothing is marked any more, so every overhang counts as cropped. **Done, and the count proves it**: the group case moved `counted: 2` → `counted: 3`, because the group no longer carries a mark for `countable` to skip.
+- [ ] **Step 2: The display stops saying it.** `cropNoticeText` and `showCropNotice` go, with the `yunari-crop` strip and the rules that paint it. This is the half that removes a signal a reader currently gets, so the browser reading that closes it is the display showing a cropped composition and saying nothing about it. **It is also the event `vg-572` waits on**: the crop strip is the last strip that takes room from the artboard, Task 25.5 measured it moving the composition 30.61 px when it arrives, and this row cannot close until a reading shows the composition holding still where a strip would have taken room. **Done, and `vg-572` closed on it**: after the removal the composition holds one transform, one painted height and one `sy` per object across 539 portrait and 538 landscape mounted frames — including the mount frames where the strip used to arrive — against two values of each before, with no frame carrying a `yunari-crop` strip.
+- [x] **Step 3: The persisted key is RULED gone, and the evidence that made it safe is already gathered.** The user ruled on 2026-10-18: remove `yunariBleeds` from the published schema (`schema/theme-document.schema.json`, at the repo root), from `envelope-keys.ts`'s hand-maintained keys and from every existing theme. **This step's original pointer was wrong and is corrected here**: it named `renderer-core/src/theme/validate.ts`, which does not exist, because ADR-0041 retired schema v1 by deletion. The decider is `envelope-keys.ts` (ADR-0023) for the closed bags, with the published schema and `fabric-envelope-validate.ts` covering the object shape — and `fabricObject` is deliberately in neither key list, because the schema publishes that shape with `additionalProperties: {jsonValue}` rather than `false`. That is exactly why retiring a key there is a schema deletion rather than a migration, and an independent review drove it end to end: a document carrying the key still loads through the host's own route, with a JSON-identical envelope. No authored work is stranded by it — `git grep` finds the key in the schema, the source, decision 0027 and the tests, and in no tracked theme file; the only two theme files carrying it are gitignored and written by the specs that exercise the notice; and the author's own app folder (`~/.yunari/themes/`, four themes) carries none. `fabric-envelope-schema-sync.test.ts` is the case that keeps the schema and `validate.ts` in step, so it is what proves the two moved together. Record the consequence rather than leaving it to be discovered: with the mark gone the count cannot exclude a deliberate bleed, so an object that runs off the edge on purpose reads as a fault for as long as it stands, and the user ruled the count stays anyway because it is actionable.
 - [x] **Step 4: Propagate in one pass, not three.** Decision 0027 is superseded by a note of its own; the plans and specs that require the notice or the mark are corrected where they are current truth and left alone where they are dated records; `vg-191`'s subject loses one half, so the row is narrowed or withdrawn rather than left asking for a fixture that no longer describes anything. **Done, with one piece deliberately left open**: 0027 is superseded by 0069, and `vg-191` turned out to lose its subject rather than half of it — with the notice gone a bleeding document raises no strip at all, so the pair its ruling asked a fixture for cannot be raised, and the remaining data-gap half is already covered. Withdrawal is the user's decision, so the row is corrected with its disposition recorded as pending. `vg-586` was filed for the two exports the removal left without a production consumer. The artboard panel's crop figure STAYS — ruled by the controller, open to the user — because it is the editor's own count on the surface where the figure is actionable; what changes there is that nothing is excluded from it.
 
 ### Task 25.8: The host serves a secure origin, or the two features it gates are ruled absent

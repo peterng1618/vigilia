@@ -8,10 +8,10 @@ import {
   glassTreatment,
   objectName,
   type Sample,
-  VIGILIA_GLASS_PROPERTY,
-  VIGILIA_NAME_PROPERTY,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+  YUNARI_GLASS_PROPERTY,
+  YUNARI_NAME_PROPERTY,
+} from "@yunari/renderer-core";
 import {
   Circle,
   Ellipse,
@@ -25,17 +25,17 @@ import {
   Textbox,
 } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
-import { refreshBoundText, VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
+import { YunariChart, type YunariChartOptions } from "./chart-object.js";
+import { refreshBoundText, YUNARI_TEXT_PROPERTY } from "./fabric-text.js";
 import {
   objectAssetReference,
   setObjectAssetReference,
-  VIGILIA_ASSET_PROPERTY,
+  YUNARI_ASSET_PROPERTY,
 } from "./object-asset.js";
 import {
   applyObjectPalettePaints,
   paintPropertyFor,
-  VIGILIA_PAINT_PROPERTY,
+  YUNARI_PAINT_PROPERTY,
 } from "./object-paint.js";
 import {
   applyObjectTypePresets,
@@ -83,8 +83,8 @@ function sample(value: number): Sample {
 }
 
 function chartOptions(
-  overrides: Partial<VigiliaChartOptions> = {},
-): VigiliaChartOptions {
+  overrides: Partial<YunariChartOptions> = {},
+): YunariChartOptions {
   return {
     family: "line",
     settings: { ...defaultLineSettings },
@@ -97,7 +97,7 @@ function chartOptions(
       false,
     ),
     ...overrides,
-  } as VigiliaChartOptions;
+  } as YunariChartOptions;
 }
 
 function canvasOf(...objects: readonly object[]): StaticCanvas {
@@ -161,7 +161,7 @@ describe("the persisted key set, per class", () => {
       [
         "Rect",
         () => new Rect({ width: 10, height: 10 }),
-        // No `vigiliaGlass`: the allowlist makes a property *available*, not
+        // No `yunariGlass`: the allowlist makes a property *available*, not
         // mandatory, so an old scene gains no key. This exact-key assertion is
         // what proves that, for every listed class.
         ["height", "id", "left", "top", "type", "version", "width"],
@@ -202,8 +202,8 @@ describe("the persisted key set, per class", () => {
         ["height", "id", "left", "objects", "top", "type", "version", "width"],
       ],
       [
-        "VigiliaChart",
-        () => new VigiliaChart(chartOptions()),
+        "YunariChart",
+        () => new YunariChart(chartOptions()),
         [
           "family",
           "height",
@@ -232,7 +232,7 @@ describe("the persisted key set, per class", () => {
     // §67, structurally rather than by inspection: the built option holds live
     // samples in `series[].data`, and a guard on key *names* passed while they
     // sat there. `renderScale` is device state in a portable document.
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
     chart.set("id", "chart-1");
 
     const keys = keysOf(serialiseScene(canvasOf(chart)));
@@ -285,7 +285,7 @@ describe("Fabric’s own keys are held to the same rule", () => {
     // `FabricText.toObject` writes `styles` on every text object whatever the
     // caller asked for, and the table is a race with the repaint that wrote it
     // — two exports of one document disagree on the range. The authored
-    // equivalent is `vigiliaText.runs`; nothing reads `styles` back.
+    // equivalent is `yunariText.runs`; nothing reads `styles` back.
     const text = new FabricText("CPU 48%");
     text.set("id", "readout");
     text.set("styles", { 0: { 0: { fontSize: 24 } } });
@@ -338,7 +338,7 @@ describe("identity survives a round trip", () => {
 
     await reviveScene(revived, scene);
 
-    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({
+    expect(scene.objects[0]![YUNARI_ASSET_PROPERTY]).toEqual({
       assetId: "logo",
       kind: "svg",
     });
@@ -363,7 +363,7 @@ describe("identity survives a round trip", () => {
 
     const scene = serialiseScene(canvasOf(source));
 
-    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({
+    expect(scene.objects[0]![YUNARI_ASSET_PROPERTY]).toEqual({
       assetId: "logo",
       kind: "image",
     });
@@ -376,7 +376,7 @@ describe("identity survives a round trip", () => {
     // picture no reader could load — the one case where the URL is all there is.
     const scene = serialiseScene(canvasOf(image()));
 
-    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toBeUndefined();
+    expect(scene.objects[0]![YUNARI_ASSET_PROPERTY]).toBeUndefined();
     expect(scene.objects[0]!["src"]).toBeDefined();
   });
 
@@ -428,7 +428,7 @@ describe("identity survives a round trip", () => {
     );
     // The reference is untouched: it is the authored truth, and the URL is what
     // this session resolves it to.
-    expect(handed.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({
+    expect(handed.objects[0]![YUNARI_ASSET_PROPERTY]).toEqual({
       assetId: "pasted-probe",
       kind: "image",
     });
@@ -489,7 +489,7 @@ describe("identity survives a round trip", () => {
   it("persists palette references and reapplies their resolved paint", async () => {
     const rect = new Rect({ width: 10, height: 10, fill: "#000" });
     rect.set("id", "panel");
-    rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.panel" });
+    rect.set(YUNARI_PAINT_PROPERTY, { fill: "palette.panel" });
     const scene = serialiseScene(canvasOf(rect));
     const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
     await reviveScene(revived, scene);
@@ -498,7 +498,7 @@ describe("identity survives a round trip", () => {
       palette: { panel: { name: "Panel", value: "#123456" } },
     });
 
-    expect(scene.objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({
+    expect(scene.objects[0]![YUNARI_PAINT_PROPERTY]).toEqual({
       fill: "palette.panel",
     });
     expect(revived.getObjects()[0]!.fill).toBe("#123456");
@@ -510,13 +510,13 @@ describe("identity survives a round trip", () => {
     // save, so a missing entry fails here rather than at some later render.
     const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
     panel.set("id", "panel");
-    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
+    panel.set(YUNARI_GLASS_PROPERTY, { blurRadius: 16 });
     const scene = serialiseScene(canvasOf(panel));
     const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
 
     await reviveScene(revived, scene);
 
-    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+    expect(scene.objects[0]![YUNARI_GLASS_PROPERTY]).toEqual({
       blurRadius: 16,
     });
     expect(glassTreatment(revived.getObjects()[0]!)).toEqual({
@@ -530,13 +530,13 @@ describe("identity survives a round trip", () => {
     // save, so a missing entry fails here rather than at some later render.
     const rect = new Rect({ width: 40, height: 24 });
     rect.set("id", "panel");
-    rect.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    rect.set(YUNARI_NAME_PROPERTY, "Header panel");
     const scene = serialiseScene(canvasOf(rect));
     const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
 
     await reviveScene(revived, scene);
 
-    expect(scene.objects[0]![VIGILIA_NAME_PROPERTY]).toBe("Header panel");
+    expect(scene.objects[0]![YUNARI_NAME_PROPERTY]).toBe("Header panel");
     expect(objectName(revived.getObjects()[0]!)).toBe("Header panel");
   });
 
@@ -550,7 +550,7 @@ describe("identity survives a round trip", () => {
 
     await reviveScene(revived, scene);
 
-    expect(keysOf(scene)).not.toContain(VIGILIA_NAME_PROPERTY);
+    expect(keysOf(scene)).not.toContain(YUNARI_NAME_PROPERTY);
     expect(objectName(revived.getObjects()[0]!)).toBeUndefined();
   });
 
@@ -560,22 +560,22 @@ describe("identity survives a round trip", () => {
     // scene that never had a name.
     const rect = new Rect({ width: 40, height: 24 });
     rect.set("id", "panel");
-    rect.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    rect.set(YUNARI_NAME_PROPERTY, "Header panel");
     const canvas = canvasOf(rect);
-    rect.set(VIGILIA_NAME_PROPERTY, undefined);
+    rect.set(YUNARI_NAME_PROPERTY, undefined);
 
     const scene = serialiseScene(canvas);
 
-    expect(keysOf(scene)).not.toContain(VIGILIA_NAME_PROPERTY);
+    expect(keysOf(scene)).not.toContain(YUNARI_NAME_PROPERTY);
   });
 
   it("retains a nested display name on a grouped child", async () => {
     const panel = new Rect({ width: 40, height: 24 });
     panel.set("id", "panel");
-    panel.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    panel.set(YUNARI_NAME_PROPERTY, "Header panel");
     const group = new Group([panel]);
     group.set("id", "card");
-    group.set(VIGILIA_NAME_PROPERTY, "Card");
+    group.set(YUNARI_NAME_PROPERTY, "Card");
     const scene = serialiseScene(canvasOf(group));
     const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
 
@@ -592,7 +592,7 @@ describe("identity survives a round trip", () => {
   it("retains a nested glass treatment on a grouped panel", async () => {
     const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
     panel.set("id", "panel");
-    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 24 });
+    panel.set(YUNARI_GLASS_PROPERTY, { blurRadius: 24 });
     const group = new Group([panel]);
     group.set("id", "card");
     const scene = serialiseScene(canvasOf(group));
@@ -615,10 +615,10 @@ describe("identity survives a round trip", () => {
     await reviveScene(revived, {
       version: "7.4.0",
       objects: [
-        { type: "Rect", id: "a", vigiliaGlass: { blurRadius: 9999 } },
-        { type: "Rect", id: "b", vigiliaGlass: { blurRadius: "16" } },
-        { type: "Rect", id: "c", vigiliaGlass: { blurRadius: 16, surface: 1 } },
-        { type: "Rect", id: "d", vigiliaGlass: { blurRadius: 12 } },
+        { type: "Rect", id: "a", yunariGlass: { blurRadius: 9999 } },
+        { type: "Rect", id: "b", yunariGlass: { blurRadius: "16" } },
+        { type: "Rect", id: "c", yunariGlass: { blurRadius: 16, surface: 1 } },
+        { type: "Rect", id: "d", yunariGlass: { blurRadius: 12 } },
       ],
     });
 
@@ -632,13 +632,13 @@ describe("identity survives a round trip", () => {
     // same allowlist, so a treatment survives it only if the entry exists.
     const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
     panel.set("id", "panel");
-    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 12 });
+    panel.set(YUNARI_GLASS_PROPERTY, { blurRadius: 12 });
 
     const copy = await panel.clone([...SCENE_PERSISTED_PROPERTIES]);
     copy.set("id", "panel-copy");
 
     const scene = serialiseScene(canvasOf(copy as Rect));
-    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+    expect(scene.objects[0]![YUNARI_GLASS_PROPERTY]).toEqual({
       blurRadius: 12,
     });
   });
@@ -650,23 +650,23 @@ describe("identity survives a round trip", () => {
     // theme package would carry device state between machines.
     const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
     panel.set("id", "panel");
-    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
-    panel.set("vigiliaGlassSurface", { width: 1280, height: 720 });
-    panel.set("vigiliaGlassTint", "rgba(10,15,22,0.82)");
-    panel.set("vigiliaGlassSample", 42.7);
-    panel.set("vigiliaGlassMedia", { kind: "video", element: "<video />" });
+    panel.set(YUNARI_GLASS_PROPERTY, { blurRadius: 16 });
+    panel.set("yunariGlassSurface", { width: 1280, height: 720 });
+    panel.set("yunariGlassTint", "rgba(10,15,22,0.82)");
+    panel.set("yunariGlassSample", 42.7);
+    panel.set("yunariGlassMedia", { kind: "video", element: "<video />" });
 
     const scene = serialiseScene(canvasOf(panel));
     const json = JSON.stringify(scene);
 
-    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+    expect(scene.objects[0]![YUNARI_GLASS_PROPERTY]).toEqual({
       blurRadius: 16,
     });
     for (const leak of [
-      "vigiliaGlassSurface",
-      "vigiliaGlassTint",
-      "vigiliaGlassSample",
-      "vigiliaGlassMedia",
+      "yunariGlassSurface",
+      "yunariGlassTint",
+      "yunariGlassSample",
+      "yunariGlassMedia",
       "42.7",
       "<video",
     ]) {
@@ -686,7 +686,7 @@ describe("identity survives a round trip", () => {
       shadow: new Shadow({ color: "#000000", blur: 18, offsetY: 4 }),
     });
     panel.set("id", "panel");
-    panel.set(VIGILIA_PAINT_PROPERTY, { shadowColor: "palette.edge" });
+    panel.set(YUNARI_PAINT_PROPERTY, { shadowColor: "palette.edge" });
     const scene = serialiseScene(canvasOf(panel));
     const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
 
@@ -698,7 +698,7 @@ describe("identity survives a round trip", () => {
     const saved = serialiseScene(revived).objects[0]!;
     const shadow = saved["shadow"] as Record<string, unknown>;
 
-    expect(saved[VIGILIA_PAINT_PROPERTY]).toEqual({
+    expect(saved[YUNARI_PAINT_PROPERTY]).toEqual({
       shadowColor: "palette.edge",
     });
     expect(shadow["color"]).toBe("#123456");
@@ -709,7 +709,7 @@ describe("identity survives a round trip", () => {
 
   it("reapplies a persisted text run type preset", () => {
     const text = new Textbox("CPU", { fontFamily: "Old", fontSize: 10 });
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [
         { kind: "literal", text: "CPU", typePreset: "typePresets.metric" },
       ],
@@ -735,8 +735,8 @@ describe("identity survives a round trip", () => {
 
   it("reassigns object paint and authored text references before token deletion", () => {
     const text = new Textbox("CPU");
-    text.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.old" });
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_PAINT_PROPERTY, { fill: "palette.old" });
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [
         {
           kind: "literal",
@@ -750,15 +750,15 @@ describe("identity survives a round trip", () => {
     expect(
       reassignObjectPaletteReferences(canvas, "palette.old", "palette.new"),
     ).toBe(2);
-    expect(text.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.new" });
-    expect(text.get(VIGILIA_TEXT_PROPERTY)).toMatchObject({
+    expect(text.get(YUNARI_PAINT_PROPERTY)).toEqual({ fill: "palette.new" });
+    expect(text.get(YUNARI_TEXT_PROPERTY)).toMatchObject({
       runs: [{ style: { color: { ref: "palette.new" } } }],
     });
   });
 
   it("reassigns every authored text-run type preset before deletion", () => {
     const text = new Textbox("CPU 42%");
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [
         { kind: "literal", text: "CPU ", typePreset: "typePresets.old" },
         { kind: "literal", text: "42%", typePreset: "typePresets.old" },
@@ -773,7 +773,7 @@ describe("identity survives a round trip", () => {
         "typePresets.new",
       ),
     ).toBe(2);
-    expect(text.get(VIGILIA_TEXT_PROPERTY)).toMatchObject({
+    expect(text.get(YUNARI_TEXT_PROPERTY)).toMatchObject({
       runs: [
         { typePreset: "typePresets.new" },
         { typePreset: "typePresets.new" },
@@ -790,14 +790,14 @@ describe("identity survives a round trip", () => {
     };
     const text = new FabricText("CPU 48%");
     text.set("id", "readout");
-    text.set(VIGILIA_TEXT_PROPERTY, authored);
+    text.set(YUNARI_TEXT_PROPERTY, authored);
 
     const scene = serialiseScene(canvasOf(text));
     const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
     await reviveScene(revived, scene);
 
-    expect(scene.objects[0]![VIGILIA_TEXT_PROPERTY]).toEqual(authored);
-    expect(revived.getObjects()[0]!.get(VIGILIA_TEXT_PROPERTY)).toEqual(
+    expect(scene.objects[0]![YUNARI_TEXT_PROPERTY]).toEqual(authored);
+    expect(revived.getObjects()[0]!.get(YUNARI_TEXT_PROPERTY)).toEqual(
       authored,
     );
   });
@@ -805,7 +805,7 @@ describe("identity survives a round trip", () => {
   it("does not save a runtime text value", () => {
     const text = new FabricText("CPU --");
     text.set("id", "readout");
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [
         { kind: "literal", text: "CPU " },
         { kind: "value", bindingId: "load" },
@@ -836,7 +836,7 @@ describe("identity survives a round trip", () => {
     });
     text.set("id", "readout");
     text.clipPath = new Rect({ width: 40, height: 30 });
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "value", bindingId: "load" }],
       wrap: false,
       overflow: "ellipsis",
@@ -867,7 +867,7 @@ describe("identity survives a round trip", () => {
       top: 100,
     });
     text.set("id", "readout");
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "value", bindingId: "load" }],
       overflow: "visible",
       align: "right",
@@ -903,7 +903,7 @@ describe("identity survives a round trip", () => {
   it("paints a hosted reading in the consumer's units, not the author's", () => {
     const text = new FabricText("--");
     text.set("id", "readout");
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "value", bindingId: "temp", precision: 0 }],
     });
     const source = {
@@ -1129,7 +1129,7 @@ describe("the Fabric theme envelope", () => {
 
 describe("reviving replaces chart resources", () => {
   it("disposes existing charts, including charts nested in groups", async () => {
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
     const existing = canvasOf(new Group([chart]));
     const replacement = serialiseScene(
       canvasOf(new Rect({ width: 10, height: 10 })),
@@ -1146,8 +1146,8 @@ describe("reviving replaces chart resources", () => {
 describe("a settings object cannot be mutated in place", () => {
   it("freezes what it was given, deeply", () => {
     const settings = { ...defaultLineSettings };
-    const chart = new VigiliaChart(
-      chartOptions({ settings } as Partial<VigiliaChartOptions>),
+    const chart = new YunariChart(
+      chartOptions({ settings } as Partial<YunariChartOptions>),
     );
 
     expect(Object.isFrozen(chart.settings)).toBe(true);
@@ -1160,7 +1160,7 @@ describe("a settings object cannot be mutated in place", () => {
   });
 
   it("leaves an earlier snapshot unchanged when settings are replaced", () => {
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
     chart.set("id", "chart-1");
 
     const before = serialiseScene(canvasOf(chart)).objects[0]!["settings"];
@@ -1225,11 +1225,11 @@ describe("there is exactly one owner of scene serialisation", () => {
     ).toBeGreaterThan(10);
     expect(SCENE_PERSISTED_PROPERTIES).toEqual([
       "id",
-      VIGILIA_NAME_PROPERTY,
-      VIGILIA_TEXT_PROPERTY,
-      VIGILIA_PAINT_PROPERTY,
-      VIGILIA_ASSET_PROPERTY,
-      VIGILIA_GLASS_PROPERTY,
+      YUNARI_NAME_PROPERTY,
+      YUNARI_TEXT_PROPERTY,
+      YUNARI_PAINT_PROPERTY,
+      YUNARI_ASSET_PROPERTY,
+      YUNARI_GLASS_PROPERTY,
       // The unit a card was authored as, on the starter and on a copy (§77).
       // Named literally rather than through a constant, because there is no
       // Fabric-side constant for it and one would have a single reader.
@@ -1270,7 +1270,7 @@ describe("a refusal both surfaces apply", () => {
       fill: "#4da3ff",
       stroke: "",
     });
-    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    arc.set(YUNARI_PAINT_PROPERTY, { fill: "palette.cpu" });
     return serialiseThemeEnvelope(canvasOf(arc), {
       id: "theme",
       artboard: { width: 1920, height: 1080 },
@@ -1295,8 +1295,8 @@ describe("a refusal both surfaces apply", () => {
     await reviveThemeEnvelope(canvas, filledArcEnvelope());
 
     const arc = canvas.getObjects()[0] as Arc;
-    expect(arc.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.cpu" });
-    expect(serialiseScene(canvas).objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({
+    expect(arc.get(YUNARI_PAINT_PROPERTY)).toEqual({ fill: "palette.cpu" });
+    expect(serialiseScene(canvas).objects[0]![YUNARI_PAINT_PROPERTY]).toEqual({
       fill: "palette.cpu",
     });
   });
@@ -1355,7 +1355,7 @@ describe("a refusal both surfaces apply", () => {
  * re-resolve the reference afterwards. Only one of them can be the one that
  * speaks for a given arc, because otherwise a single load says the same
  * sentence twice — and the half that said *nothing* was the half no test
- * reached, because every arc fixture in the suite set `VIGILIA_PAINT_PROPERTY`.
+ * reached, because every arc fixture in the suite set `YUNARI_PAINT_PROPERTY`.
  */
 describe("a refusal is spoken once, from the site that raised it", () => {
   /** A filled arc as a hand-authored file carries it, with or without a
@@ -1399,7 +1399,7 @@ describe("a refusal is spoken once, from the site that raised it", () => {
     // well would make one load two identical sentences, which is the same
     // crying wolf the diagnostic exists to avoid.
     const arc = bareArc();
-    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    arc.set(YUNARI_PAINT_PROPERTY, { fill: "palette.cpu" });
     const told: string[] = [];
     const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
     await reviveThemeEnvelope(canvas, envelopeWith(arc), undefined, {

@@ -10,7 +10,7 @@
  * synchronously, a commit travels out through the callbacks it was built with,
  * and `destroy` releases what it created.
  */
-import type { FabricPalette } from "@vigilia/renderer-core";
+import type { FabricPalette } from "@yunari/renderer-core";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPalettePanel } from "./panel.js";
@@ -77,7 +77,7 @@ describe("palette panel", () => {
   it("paints the tokens on render without waiting for a frame", () => {
     const panel = createPalettePanel(document.body, vi.fn());
     expect(
-      document.querySelectorAll("[data-vigilia-palette-token-row]"),
+      document.querySelectorAll("[data-yunari-palette-token-row]"),
     ).toHaveLength(0);
 
     panel.render(palette);
@@ -87,8 +87,8 @@ describe("palette panel", () => {
     // would be a frame behind the document it describes.
     expect(
       Array.from(
-        document.querySelectorAll("[data-vigilia-palette-token-row]"),
-        (row) => row.getAttribute("data-vigilia-palette-token-row"),
+        document.querySelectorAll("[data-yunari-palette-token-row]"),
+        (row) => row.getAttribute("data-yunari-palette-token-row"),
       ),
     ).toEqual(["background", "accent"]);
   });
@@ -98,7 +98,7 @@ describe("palette panel", () => {
     const panel = createPalettePanel(document.body, change);
     panel.render(palette);
 
-    await commitField("[data-vigilia-palette-color]", "rgb(16 32 48)");
+    await commitField("[data-yunari-palette-color]", "rgb(16 32 48)");
 
     expect(change).toHaveBeenLastCalledWith({
       ...palette,
@@ -116,7 +116,7 @@ describe("palette panel", () => {
 
     await act(async () => {
       panel.root
-        .querySelector<HTMLButtonElement>("[data-vigilia-palette-delete]")!
+        .querySelector<HTMLButtonElement>("[data-yunari-palette-delete]")!
         .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
@@ -144,7 +144,7 @@ describe("palette panel", () => {
     const figure = (): string =>
       panel.root
         .querySelector(
-          '[data-vigilia-palette-token-row="background"] [data-vigilia-palette-usage]',
+          '[data-yunari-palette-token-row="background"] [data-yunari-palette-usage]',
         )
         ?.textContent?.trim() ?? "";
     expect(figure()).toBe("1");
@@ -158,7 +158,7 @@ describe("palette panel", () => {
     const stated =
       bare.root
         .querySelector(
-          '[data-vigilia-palette-token-row="background"] [data-vigilia-palette-usage]',
+          '[data-yunari-palette-token-row="background"] [data-yunari-palette-usage]',
         )
         ?.textContent?.trim() ?? "";
     // §97: a panel with no scene to read says so rather than defaulting to 0.
@@ -175,7 +175,7 @@ describe("palette panel", () => {
 
     expect(panel.root.isConnected).toBe(false);
     expect(
-      document.querySelectorAll("[data-vigilia-palette-token-row]"),
+      document.querySelectorAll("[data-yunari-palette-token-row]"),
     ).toHaveLength(0);
   });
 
@@ -191,8 +191,8 @@ describe("palette panel", () => {
 
     expect(
       Array.from(
-        document.querySelectorAll("[data-vigilia-palette-token-row]"),
-        (row) => row.getAttribute("data-vigilia-palette-token-row"),
+        document.querySelectorAll("[data-yunari-palette-token-row]"),
+        (row) => row.getAttribute("data-yunari-palette-token-row"),
       ),
     ).toEqual(["accent", "accent2"]);
   });

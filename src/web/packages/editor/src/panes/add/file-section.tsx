@@ -32,9 +32,9 @@ import { uiCopy } from "../../ui-copy.js";
  * not grow it.
  *
  * The element contracts the imperative panel carried are preserved verbatim:
- * `data-vigilia-asset-select`, `-preview`, `-import`, `-replace`, `-remove` and
+ * `data-yunari-asset-select`, `-preview`, `-import`, `-replace`, `-remove` and
  * the two `-input` file pickers, plus the `role="alert"` that carries a refusal
- * in words. `data-vigilia-panel` is the pane's, written by `Pane`, and is
+ * in words. `data-yunari-panel` is the pane's, written by `Pane`, and is
  * deliberately not written again here.
  */
 interface FileSectionProps {
@@ -259,7 +259,7 @@ export function FileSection({
       <ControlSelect
         shape="headed"
         label={uiCopy.panels.assetList}
-        data={{ "data-vigilia-asset-select": "" }}
+        data={{ "data-yunari-asset-select": "" }}
         value={chosen?.id ?? ""}
         options={declarations.map((asset) => ({
           id: asset.id,
@@ -276,30 +276,30 @@ export function FileSection({
           is what keeps the previous asset's picture from standing as if it were
           this one's. */}
       <img
-        className="vigilia-asset-preview"
-        data-vigilia-asset-preview=""
+        className="yunari-asset-preview"
+        data-yunari-asset-preview=""
         alt={chosen === undefined ? "" : fileNameOf(chosen)}
         src={previewUrl}
         hidden={previewUrl === undefined}
       />
-      <div className="vigilia-field-row">
+      <div className="yunari-field-row">
         <button
           type="button"
-          data-vigilia-asset-import=""
+          data-yunari-asset-import=""
           onClick={() => importInput.current?.click()}
         >
           {uiCopy.panels.importFile}
         </button>
         <button
           type="button"
-          data-vigilia-asset-replace=""
+          data-yunari-asset-replace=""
           onClick={() => replaceInput.current?.click()}
         >
           {uiCopy.panels.replaceAsset}
         </button>
         <button
           type="button"
-          data-vigilia-asset-remove=""
+          data-yunari-asset-remove=""
           onClick={() => void submit(removeChosen)}
         >
           {uiCopy.panels.removeAsset}
@@ -312,7 +312,7 @@ export function FileSection({
           <>
             <button
               type="button"
-              data-vigilia-asset-normalize=""
+              data-yunari-asset-normalize=""
               disabled={normalizing}
               onClick={() => void submit(() => normalizeVideo("contain"))}
             >
@@ -322,7 +322,7 @@ export function FileSection({
             </button>
             <button
               type="button"
-              data-vigilia-asset-fill=""
+              data-yunari-asset-fill=""
               disabled={normalizing}
               onClick={() => void submit(() => normalizeVideo("cover"))}
             >
@@ -332,8 +332,8 @@ export function FileSection({
               // Spec rule 4: the author previews the normalized asset, not the
               // master, before the press that writes it.
               <video
-                className="vigilia-asset-preview"
-                data-vigilia-asset-normalized-preview=""
+                className="yunari-asset-preview"
+                data-yunari-asset-normalized-preview=""
                 controls
                 src={pendingPreviewUrl}
               />
@@ -341,7 +341,7 @@ export function FileSection({
             {pending !== undefined && (
               <button
                 type="button"
-                data-vigilia-asset-use-normalized=""
+                data-yunari-asset-use-normalized=""
                 onClick={() => void submit(useNormalized)}
               >
                 {uiCopy.panels.useNormalizedVideo}
@@ -356,7 +356,7 @@ export function FileSection({
         type="file"
         hidden
         accept={ASSET_FILE_ACCEPT}
-        data-vigilia-asset-import-input=""
+        data-yunari-asset-import-input=""
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
@@ -368,7 +368,7 @@ export function FileSection({
         type="file"
         hidden
         accept={ASSET_FILE_ACCEPT}
-        data-vigilia-asset-replace-input=""
+        data-yunari-asset-replace-input=""
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";

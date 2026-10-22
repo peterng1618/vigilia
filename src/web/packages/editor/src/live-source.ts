@@ -3,7 +3,7 @@ import {
   type LiveSourceStatus,
   SAMPLE_STREAM_PATH,
   type SampleSource,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { createPreviewSource } from "./preview-source.js";
 import { uiCopy } from "./ui-copy.js";
 

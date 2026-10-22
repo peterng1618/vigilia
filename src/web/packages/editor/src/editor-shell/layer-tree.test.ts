@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import {
   defaultGaugeSettings,
   defaultLineSettings,
-} from "@vigilia/renderer-core";
-import { Arc, reviveThemeEnvelope, VigiliaChart } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { Arc, reviveThemeEnvelope, YunariChart } from "@yunari/scene-fabric";
 import {
   Ellipse,
   FabricImage,
@@ -325,7 +325,7 @@ describe("the kind, read as one glyph per row", () => {
   });
 
   it("names a chart's family, and names none rather than guessing", () => {
-    const gauge = new VigiliaChart({
+    const gauge = new YunariChart({
       id: "ram-gauge",
       family: "gauge",
       settings: defaultGaugeSettings,
@@ -340,13 +340,13 @@ describe("the kind, read as one glyph per row", () => {
     // says otherwise — the one thing a kind mark must never do. A theme made
     // by a newer build is the case, so the cast is the point rather than a
     // convenience: `family` is validated on load, not here.
-    const future = new VigiliaChart({
+    const future = new YunariChart({
       id: "future",
       family: "radial",
       settings: defaultGaugeSettings,
       width: 10,
       height: 10,
-    } as unknown as ConstructorParameters<typeof VigiliaChart>[0]);
+    } as unknown as ConstructorParameters<typeof YunariChart>[0]);
     const unknown = projectLayers({ ...base, root: [future] });
     expect(unknown[0]?.mark).toEqual({ kind: "chart", family: undefined });
   });
@@ -378,7 +378,7 @@ describe("the kind, read as one glyph per row", () => {
   });
 
   it("keeps every key a chart reads, in the order the document declares them", () => {
-    const trends = new VigiliaChart({
+    const trends = new YunariChart({
       id: "trends-chart",
       family: "line",
       settings: defaultLineSettings,
@@ -829,7 +829,7 @@ describe("layer tree lookups", () => {
 
 describe("the row's role, in the document's own terms", () => {
   it("counts a chart's series from its own bindings and names its family", () => {
-    const trends = new VigiliaChart({
+    const trends = new YunariChart({
       id: "trends",
       family: "line",
       settings: defaultLineSettings,
@@ -856,7 +856,7 @@ describe("the row's role, in the document's own terms", () => {
   it("counts no series for a chart the document binds to nothing", () => {
     // An unbound chart must not throw, and must report zero rather than one:
     // the count is the document's, not a default a chart is assumed to have.
-    const gauge = new VigiliaChart({
+    const gauge = new YunariChart({
       id: "gauge",
       family: "gauge",
       settings: defaultGaugeSettings,
@@ -876,13 +876,13 @@ describe("the row's role, in the document's own terms", () => {
     // to claim that family — the role must refuse it for the same reason, or
     // the row names a kind the document never did. A theme made by a newer
     // build is the case, so the cast is the point rather than a convenience.
-    const future = new VigiliaChart({
+    const future = new YunariChart({
       id: "future",
       family: "mystery",
       settings: defaultGaugeSettings,
       width: 10,
       height: 10,
-    } as unknown as ConstructorParameters<typeof VigiliaChart>[0]);
+    } as unknown as ConstructorParameters<typeof YunariChart>[0]);
     const rows = projectLayers({
       ...base,
       root: [future],
@@ -971,7 +971,7 @@ describe("the row's role, in the document's own terms", () => {
     const examples: Record<LayerKind, FabricObject> = {
       text: new Textbox("hi", { id: "text-1" }),
       shape: new Rect({ id: "shape-1", width: 10, height: 10 }),
-      chart: new VigiliaChart({
+      chart: new YunariChart({
         id: "chart-1",
         family: "gauge",
         settings: defaultGaugeSettings,

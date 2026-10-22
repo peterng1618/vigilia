@@ -5,7 +5,7 @@
  * — rather than styling the shell paints, so the fixture lives beside the test
  * that drives it.
  */
-import type { FabricGlobals } from "@vigilia/renderer-core";
+import type { FabricGlobals } from "@yunari/renderer-core";
 
 export const RUN_GLOBALS = {
   typePresets: {

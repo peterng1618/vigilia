@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { assertBlur, assertMediaOffset, readGlass } from "./glass-probe.js";
 import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
@@ -14,7 +14,7 @@ const EDITOR = "http://127.0.0.1:4174/";
  * This is where the media can load at all. The host cannot serve a packaged
  * asset to the player - its asset route and the player's asset resolver disagree
  * about the `assets/` prefix, so a hosted theme's media 404s (recorded in
- * [issue #3](https://github.com/peterng1618/vigilia/issues/3); the two owners are
+ * [issue #3](https://github.com/peterng1618/yunari/issues/3); the two owners are
  * outside this task). So the blur and the media-offset claims are proved here, on the
  * mount that can load the media.
  *

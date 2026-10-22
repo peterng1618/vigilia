@@ -1,5 +1,5 @@
-import type { Sample, SampleEntry } from "@vigilia/renderer-core";
-import { describeSemanticKey, diskDeviceId } from "@vigilia/renderer-core";
+import type { Sample, SampleEntry } from "@yunari/renderer-core";
+import { describeSemanticKey, diskDeviceId } from "@yunari/renderer-core";
 import type { DeviceAssignment } from "./lhm-mapping.js";
 import {
   type BlockDeviceLike,
@@ -18,7 +18,7 @@ import type {
 import { redactForBrowser } from "./provider.js";
 
 /**
- * Hardware metrics come from `systeminformation` rather than a collector Vigilia
+ * Hardware metrics come from `systeminformation` rather than a collector Yunari
  * maintains (§97). The library owns the platform-specific reads; this provider
  * only maps its answers onto the semantic vocabulary and reports honestly when
  * the platform will not say.

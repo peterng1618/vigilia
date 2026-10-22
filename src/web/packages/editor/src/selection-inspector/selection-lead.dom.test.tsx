@@ -56,7 +56,7 @@ function arrangeView(
 }
 
 const arrangeButtons = (host: HTMLElement): readonly HTMLButtonElement[] => [
-  ...host.querySelectorAll<HTMLButtonElement>("[data-vigilia-arrange-action]"),
+  ...host.querySelectorAll<HTMLButtonElement>("[data-yunari-arrange-action]"),
 ];
 
 const publish = (
@@ -75,10 +75,10 @@ describe("createSelectionLeadRoot", () => {
     // to state, so the block is absent rather than drawn blank. The block's own
     // edge goes with it — a rule with nothing between it and the subject's own
     // would be the boundary this component exists to place, drawn twice.
-    expect(host.querySelector("[data-vigilia-selection-lead]")).toBeNull();
+    expect(host.querySelector("[data-yunari-selection-lead]")).toBeNull();
     expect(host.innerHTML).toBe("");
-    expect(host.querySelector("[data-vigilia-arrange-row]")).toBeNull();
-    expect(host.querySelector("[data-vigilia-glass-refusal]")).toBeNull();
+    expect(host.querySelector("[data-yunari-arrange-row]")).toBeNull();
+    expect(host.querySelector("[data-yunari-glass-refusal]")).toBeNull();
     root.destroy();
   });
 
@@ -88,9 +88,9 @@ describe("createSelectionLeadRoot", () => {
 
     publish(root, { glassRefusal: reason, arrange: [] });
 
-    expect(
-      host.querySelector("[data-vigilia-glass-refusal]")?.textContent,
-    ).toBe(reason);
+    expect(host.querySelector("[data-yunari-glass-refusal]")?.textContent).toBe(
+      reason,
+    );
     root.destroy();
   });
 
@@ -123,8 +123,8 @@ describe("createSelectionLeadRoot", () => {
 
     // The refusal is about the subject the panel has just named, so it stands
     // with it — above the actions, which are the column's first controls.
-    const refusal = host.querySelector("[data-vigilia-glass-refusal]");
-    const row = host.querySelector("[data-vigilia-arrange-row]");
+    const refusal = host.querySelector("[data-yunari-glass-refusal]");
+    const row = host.querySelector("[data-yunari-arrange-row]");
     expect(refusal).not.toBeNull();
     expect(row).not.toBeNull();
     expect(
@@ -147,13 +147,13 @@ describe("createSelectionLeadRoot", () => {
     // actions and the first section sharing a band. jsdom has no cascade, so
     // what is read is the declaration the class names — which is the part a
     // second component could take away from here without noticing.
-    const block = host.querySelector("[data-vigilia-selection-lead]");
+    const block = host.querySelector("[data-yunari-selection-lead]");
     expect(block?.className).toContain("border-b");
     expect(block?.className).toContain("border-edge");
     // And the block is the one that carries both parts, so a case that moves
     // the rule elsewhere has to move it out of the element they share.
-    const refusal = host.querySelector("[data-vigilia-glass-refusal]");
-    const row = host.querySelector("[data-vigilia-arrange-row]");
+    const refusal = host.querySelector("[data-yunari-glass-refusal]");
+    const row = host.querySelector("[data-yunari-arrange-row]");
     expect(refusal?.parentElement).toBe(block);
     expect(row?.parentElement).toBe(block);
     root.destroy();
@@ -188,9 +188,9 @@ describe("createSelectionLeadRoot", () => {
     publish(root, { glassRefusal: "why not", arrange: [] });
 
     expect(arrangeButtons(host)).toHaveLength(0);
-    expect(
-      host.querySelector("[data-vigilia-glass-refusal]")?.textContent,
-    ).toBe("why not");
+    expect(host.querySelector("[data-yunari-glass-refusal]")?.textContent).toBe(
+      "why not",
+    );
     root.destroy();
   });
 });

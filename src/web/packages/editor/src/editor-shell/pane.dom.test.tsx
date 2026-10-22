@@ -76,8 +76,8 @@ it("names the section and draws the title bar DESIGN.md's panes wear", () => {
 
   // The DOM name is the browsable contract the browser specs share, so the
   // chrome is drawn around it rather than moving it: the section is what
-  // `data-vigilia-panel` names, and the title bar is inside it.
-  const pane = host.querySelector('[data-vigilia-panel="layers"]');
+  // `data-yunari-panel` names, and the title bar is inside it.
+  const pane = host.querySelector('[data-yunari-panel="layers"]');
   expect(pane).not.toBeNull();
   expect(pane?.querySelector(".editor-shell-pane-name")?.textContent).toBe(
     "Layers",
@@ -97,7 +97,7 @@ it("draws the registry's commands disabled with nothing selected, never an empty
   const empty = render(bridge(nothing()));
   const emptyButtons = [
     ...(empty.host
-      .querySelector("[data-vigilia-layer-actions]")
+      .querySelector("[data-yunari-layer-actions]")
       ?.querySelectorAll("button") ?? []),
   ];
   expect(
@@ -112,7 +112,7 @@ it("draws the registry's commands disabled with nothing selected, never an empty
   const filled = render(bridge(object()));
   const filledButtons = [
     ...(filled.host
-      .querySelector("[data-vigilia-layer-actions]")
+      .querySelector("[data-yunari-layer-actions]")
       ?.querySelectorAll("button") ?? []),
   ];
   expect(
@@ -138,7 +138,7 @@ it("asks the registry for eligibility and decides nothing itself", () => {
     .sort();
   const rendered = Array.from(
     host
-      .querySelector("[data-vigilia-layer-actions]")
+      .querySelector("[data-yunari-layer-actions]")
       ?.querySelectorAll("button") ?? [],
   )
     .map((button) => button.getAttribute("aria-label"))
@@ -158,11 +158,11 @@ it("marks delete destructive in the footer too, from the registry", () => {
   //
   // The *colour* the mark paints is not asserted here and cannot be: jsdom has
   // no cascade, so a class or an inline value would prove only the string.
-  // `[data-vigilia-destructive]` in the stylesheet is what paints it, and
+  // `[data-yunari-destructive]` in the stylesheet is what paints it, and
   // `editor-shell.control-rules.test.ts` reads that rule as text.
   const marked = Array.from(
     host.querySelectorAll(
-      "[data-vigilia-layer-actions] button[data-vigilia-destructive]",
+      "[data-yunari-layer-actions] button[data-yunari-destructive]",
     ),
   ).map((button) => button.getAttribute("aria-label"));
   expect(marked).toEqual([uiCopy.actions.delete]);

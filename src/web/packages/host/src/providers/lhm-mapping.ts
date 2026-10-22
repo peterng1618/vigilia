@@ -1,7 +1,7 @@
-import { diskDeviceId } from "@vigilia/renderer-core";
+import { diskDeviceId } from "@yunari/renderer-core";
 import type { LhmSensor } from "./lhm-tree.js";
 
-/** Which LHM sensor answers which Vigilia semantic key. Modelled on explicit
+/** Which LHM sensor answers which Yunari semantic key. Modelled on explicit
  * sensor names and LHM sensor kinds, never on provider instance identity (§93).
  *
  * LHM names a hardware node by its *model* ("Intel Core i9-10850K", "NVIDIA

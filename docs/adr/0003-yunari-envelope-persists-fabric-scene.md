@@ -1,15 +1,15 @@
-# ADR-0003: Persist Fabric scene inside the Vigilia envelope
+# ADR-0003: Persist Fabric scene inside the Yunari envelope
 
 **Status:** Accepted
 
 ## Context
 
-Vigilia needs product semantics that Fabric JSON does not own, while duplicating
+Yunari needs product semantics that Fabric JSON does not own, while duplicating
 Fabric geometry/grouping into a second document model caused drift.
 
 ## Decision
 
-The versioned Vigilia envelope owns product semantics, globals, assets, bindings
+The versioned Yunari envelope owns product semantics, globals, assets, bindings
 and metadata. Fabric JSON is the persisted scene and owns geometry, transforms,
 grouping, stacking, visibility, locks and custom-object state.
 

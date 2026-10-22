@@ -19,7 +19,7 @@ carries the corrected measurement and the adjudication of the rows it adds.
 file was deleted, and no row here has been re-established as dead. The scanner's
 own header names the reason (`scripts/dead-code-sweep.mjs:14-22`): the
 false-positive engine in this repository is *string-resolved vocabulary* —
-`data-vigilia-*` attributes, `--vigilia-*`/`--shell-*` custom properties,
+`data-yunari-*` attributes, `--yunari-*`/`--shell-*` custom properties,
 `KIND_*` registries, Fabric JSON keys, classes composed by template literal —
 all of which are live with no importer anywhere, and none of which this graph can
 see. `dead-export` and `redundant-export` are deliberately separate kinds because
@@ -133,7 +133,7 @@ What the two tasks removed, by commit:
   (`renderer-core/src/scene/measurement.ts`), `CAPABILITY_TYPES` with its
   `NODE_TYPES` import (`renderer-core/src/theme/capabilities.ts`), and the
   `export { countable, EDGE_TOLERANCE }` re-export in `player/src/artboard-crop.ts`
-  — both names reachable from `@vigilia/scene-fabric`'s own barrel, which is
+  — both names reachable from `@yunari/scene-fabric`'s own barrel, which is
   where every other consumer takes them from.
 - **`fd32a420` (Task 5)** — the `"unresolved-asset"` member of
   `renderer-core/src/scene/plan.ts`'s `PlanIssue.code`, the sweep's one
@@ -380,7 +380,7 @@ Inside the candidate space that means:
   and would hide a real one only if a config ever moved under a walked root.
 - `.js` is in no scanned set at all, since `SCANNED_EXT` is `\.(ts|tsx|mjs)$`
   (`:276`). The two `.js` files under `src/web` are therefore unmodelled:
-  `packages/host/bin/vigilia.js`, whose hardcoded entry-point line (`:343`) is
+  `packages/host/bin/yunari.js`, whose hardcoded entry-point line (`:343`) is
   inert — it imports only `node:` builtins and a `URL`, so no edge is lost — and
   `packages/host/public/theme-list.js`, which appears below as an unresolved
   specifier.
@@ -466,8 +466,8 @@ whole-tree checks were run over every production `.ts`/`.tsx`/`.mjs` (packages,
   `MEASUREMENT_SYSTEMS` (comments), and `bottom` / `right` / `countable` (common
   words, plus the sweep's own `barrelRoutes` fixture).
 - A search for the name as a quoted string and as a kebab-case token found
-  **none** of the string-resolved shapes: no row's name is a `data-vigilia-*`
-  attribute, a `--vigilia-*`/`--shell-*` custom property, a `KIND_*` registry
+  **none** of the string-resolved shapes: no row's name is a `data-yunari-*`
+  attribute, a `--yunari-*`/`--shell-*` custom property, a `KIND_*` registry
   constant, a Fabric JSON key, or a class composed by template literal.
 
 Then each row was asked two questions — does its own declaring file read the

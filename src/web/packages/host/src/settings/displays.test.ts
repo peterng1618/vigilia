@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { ChartRefreshRate } from "@vigilia/scene-fabric";
+import type { ChartRefreshRate } from "@yunari/scene-fabric";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createActiveThemeStore } from "./active-theme.js";
 import {
@@ -40,7 +40,7 @@ describe("createDisplayStore", () => {
   let store: DisplayStore;
 
   beforeEach(async () => {
-    directory = await mkdtemp(path.join(os.tmpdir(), "vigilia-displays-"));
+    directory = await mkdtemp(path.join(os.tmpdir(), "yunari-displays-"));
     store = createDisplayStore(directory);
   });
 

@@ -6,11 +6,11 @@ import type { LineOption } from "./line.js";
 import type { PieOption } from "./pie.js";
 
 /**
- * The one place a Vigilia chart option becomes an engine option.
+ * The one place a Yunari chart option becomes an engine option.
  *
  * ## Why this file exists rather than a cast at each call site
  *
- * The four `buildXOption` builders emit **Vigilia's** typed shapes — narrow,
+ * The four `buildXOption` builders emit **Yunari's** typed shapes — narrow,
  * reviewable, unit-tested objects that happen to be structured the way ECharts
  * wants. That is the point of "typed chart settings only": raw engine options
  * never enter the theme format, and a feature never reaches for

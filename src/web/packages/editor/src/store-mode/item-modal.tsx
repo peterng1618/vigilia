@@ -99,7 +99,7 @@ function Pill(props: {
 }): React.JSX.Element {
   return (
     <span
-      data-vigilia-store-item-pill={props.id}
+      data-yunari-store-item-pill={props.id}
       className={`rounded-full border bg-panel-2 px-[var(--space-10)] py-[var(--space-4)] text-xs font-medium ${
         props.proposed
           ? "border-dashed border-edge text-muted"
@@ -127,11 +127,11 @@ function PillGroup(props: {
   if (props.pills.length === 0) return null;
   return (
     <span
-      data-vigilia-store-item-group={props.id}
+      data-yunari-store-item-group={props.id}
       className="flex min-w-0 flex-1 flex-col gap-[var(--space-6)]"
     >
       <span
-        data-vigilia-store-item-group-name=""
+        data-yunari-store-item-group-name=""
         className="text-2xs font-semibold tracking-[0.11em] text-faint uppercase"
       >
         {props.name}
@@ -293,13 +293,13 @@ function Caption(props: {
     <span className="flex flex-col gap-[var(--space-12)] px-[var(--space-24)] py-[var(--space-20)]">
       <span className="flex items-center gap-[var(--space-10)]">
         <span
-          data-vigilia-store-item-name=""
+          data-yunari-store-item-name=""
           className="truncate text-lg text-text"
         >
           {item.name}
         </span>
         <span
-          data-vigilia-store-item-author=""
+          data-yunari-store-item-author=""
           className="flex-none font-mono text-xs text-muted"
         >
           {item.author === undefined
@@ -307,7 +307,7 @@ function Caption(props: {
             : `@${item.author}`}
         </span>
         <span
-          data-vigilia-store-item-kind=""
+          data-yunari-store-item-kind=""
           className="flex-none rounded-full border border-edge px-[var(--space-8)] py-[var(--space-4)] text-2xs text-muted"
         >
           {/* A kind this build does not know prints its own identifier: a client
@@ -318,7 +318,7 @@ function Caption(props: {
         <span className="flex-1" />
         {stamp.length === 0 ? null : (
           <span
-            data-vigilia-store-item-date=""
+            data-yunari-store-item-date=""
             className="flex-none font-mono text-xs text-faint"
           >
             {stamp.map((part, index) => (
@@ -370,7 +370,7 @@ function Caption(props: {
           remove. */}
       {item.origin === undefined ? null : (
         <span
-          data-vigilia-store-item-origin=""
+          data-yunari-store-item-origin=""
           className="truncate text-xs text-faint"
         >
           {[
@@ -405,7 +405,7 @@ function InstallFooter(props: {
   if (state === "installed") {
     return (
       <span
-        data-vigilia-store-item-install={state}
+        data-yunari-store-item-install={state}
         className="flex items-center gap-[var(--space-6)] text-sm text-muted"
       >
         <span className="flex-none text-accent">
@@ -423,8 +423,8 @@ function InstallFooter(props: {
     <Fragment>
       <button
         type="button"
-        id="vigilia-store-item-install"
-        data-vigilia-store-item-install={state}
+        id="yunari-store-item-install"
+        data-yunari-store-item-install={state}
         disabled={busy}
         aria-busy={busy}
         onClick={() => install.onInstall(item)}
@@ -434,7 +434,7 @@ function InstallFooter(props: {
       </button>
       {refusal === undefined ? null : (
         <span
-          data-vigilia-store-item-install-refusal=""
+          data-yunari-store-item-install-refusal=""
           className="max-w-[40ch] text-xs text-warn"
         >
           {refusal}
@@ -481,8 +481,8 @@ function SubmitFooter(props: {
     <Fragment>
       <button
         type="button"
-        id="vigilia-store-item-submit"
-        data-vigilia-store-item-submit={state}
+        id="yunari-store-item-submit"
+        data-yunari-store-item-submit={state}
         disabled={busy || submitted}
         aria-busy={busy}
         onClick={() => submit.onSubmit(item)}
@@ -498,12 +498,12 @@ function SubmitFooter(props: {
       userCode !== undefined &&
       verificationUri !== undefined ? (
         <span
-          data-vigilia-store-item-submit-code=""
+          data-yunari-store-item-submit-code=""
           className="max-w-[40ch] text-xs text-muted"
         >
           {uiCopy.store.submit.authorising(userCode)}{" "}
           <a
-            data-vigilia-store-item-submit-open=""
+            data-yunari-store-item-submit-open=""
             href={verificationUri}
             target="_blank"
             rel="noreferrer"
@@ -518,7 +518,7 @@ function SubmitFooter(props: {
           <span>
             {uiCopy.store.submit.submitted}{" "}
             <a
-              data-vigilia-store-item-submit-url=""
+              data-yunari-store-item-submit-url=""
               href={url}
               target="_blank"
               rel="noreferrer"
@@ -531,7 +531,7 @@ function SubmitFooter(props: {
               host's answer to what changed, and this surface states it rather
               than deriving a second ladder. */}
           {version === undefined ? null : (
-            <span data-vigilia-store-item-submit-version="">
+            <span data-yunari-store-item-submit-version="">
               {uiCopy.store.submit.version(version)}
             </span>
           )}
@@ -539,7 +539,7 @@ function SubmitFooter(props: {
       ) : null}
       {state === "refused" && refusal !== undefined ? (
         <span
-          data-vigilia-store-item-submit-refusal=""
+          data-yunari-store-item-submit-refusal=""
           className="max-w-[40ch] text-xs text-warn"
         >
           {refusal}
@@ -594,7 +594,7 @@ export function ItemModal(props: {
             is not the text sheet `.editor-shell-dialog` describes. */}
         <DialogPrimitive.Backdrop className="editor-shell-dialog-overlay" />
         <DialogPrimitive.Popup
-          data-vigilia-store-item=""
+          data-yunari-store-item=""
           aria-label={item.name}
           className="fixed top-1/2 left-1/2 z-[71] max-h-[90vh] w-[960px] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[var(--radius-lg)] border border-edge bg-panel text-sm text-text shadow-[var(--elev-3)]"
         >
@@ -604,15 +604,15 @@ export function ItemModal(props: {
                 the product already draws a theme against rather than a second
                 dark surface with its own reason. */}
             <span
-              data-vigilia-store-item-stage=""
-              className="flex h-[420px] items-center justify-center p-[var(--space-20)] [background:var(--vigilia-canvas-bg)]"
+              data-yunari-store-item-stage=""
+              className="flex h-[420px] items-center justify-center p-[var(--space-20)] [background:var(--yunari-canvas-bg)]"
             >
               {/* The picture at the theme's own ratio, contained in the stage's
                   height: `h-full` with an aspect ratio is what letterboxes it,
                   and `max-w-full` is the one case that overrides the ratio — a
                   theme wider than the stage is capped by the width it has. */}
               <span
-                data-vigilia-store-item-picture=""
+                data-yunari-store-item-picture=""
                 className="h-full max-w-full overflow-hidden rounded-[var(--radius-md)]"
                 style={{
                   aspectRatio: `${item.facets.width} / ${item.facets.height}`,
@@ -635,9 +635,9 @@ export function ItemModal(props: {
                 paints; Escape does the same thing. */}
             <span className="absolute top-[var(--space-12)] right-[var(--space-12)] rounded-md [background:var(--panel)]">
               <ControlIconButton
-                id="vigilia-store-item-close"
+                id="yunari-store-item-close"
                 label={uiCopy.store.item.close}
-                data={{ "data-vigilia-store-item-close": "" }}
+                data={{ "data-yunari-store-item-close": "" }}
                 onClick={onClose}
               >
                 <Glyph icon={CLOSE_GLYPH} size={14} />
@@ -653,13 +653,13 @@ export function ItemModal(props: {
           {remixOf === undefined ? null : (
             <span className="block px-[var(--space-24)] pb-[var(--space-16)] text-xs text-faint">
               {remixParent === undefined || onOpenItem === undefined ? (
-                <span data-vigilia-store-item-remix="">
+                <span data-yunari-store-item-remix="">
                   {uiCopy.store.item.remixedFrom(remixOf.name)}
                 </span>
               ) : (
                 <button
                   type="button"
-                  data-vigilia-store-item-remix=""
+                  data-yunari-store-item-remix=""
                   onClick={() => onOpenItem(remixParent.id)}
                   className="text-xs text-faint underline"
                 >
@@ -687,13 +687,13 @@ export function ItemModal(props: {
             ) : (
               FOOTER_ACTIONS.map((action) => {
                 const reason = CELL_ACTION_REASONS[action];
-                const controlId = `vigilia-store-item-${action}`;
+                const controlId = `yunari-store-item-${action}`;
                 return (
                   <Fragment key={action}>
                     <button
                       type="button"
                       id={controlId}
-                      data-vigilia-store-item-action={action}
+                      data-yunari-store-item-action={action}
                       {...(action === "delete" ? DESTRUCTIVE : {})}
                       disabled={reason !== undefined}
                       aria-describedby={

@@ -215,28 +215,28 @@ test("captures the shell with the Add pane open and nothing selected", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   // §7.2's four slots, and only a shell that has the rail has them.
   await expect(page.locator(".editor-shell-rail-slot")).toHaveCount(4);
 
   await openPane(page, "Add");
-  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="add"]')).toBeVisible();
   // Exactly one of the rail's four panes is out. Scoped to the rail's own
   // column (`.editor-shell-panel`) because the inspector is built from the same
   // `Pane` component and carries `style` and `selection` panels of its own — a
-  // bare `[data-vigilia-panel]` count of six panes is not "one pane showing".
+  // bare `[data-yunari-panel]` count of six panes is not "one pane showing".
   // `:visible`, not a bare count: every pane stays mounted and the ones that
   // are not showing carry `hidden` (`display: none`), which is not showing.
   // **A direct child of the rail's column**, because the document carries more
   // panes than the rail's four: the inspector's `style` and `selection` panels
-  // are `Pane`s of their own, and a bare `[data-vigilia-panel]` count of six is
+  // are `Pane`s of their own, and a bare `[data-yunari-panel]` count of six is
   // not "one pane showing". The Document pane's own References section was the
-  // one sub-panel that named itself `data-vigilia-panel="references"`, and it
+  // one sub-panel that named itself `data-yunari-panel="references"`, and it
   // went with item 17 (`vg-474`).
   await expect(
-    page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
+    page.locator(".editor-shell-panel > [data-yunari-panel]:visible"),
   ).toHaveCount(1);
 
   // Park the pointer over the stage before the shot. `openPane` clicked the Add
@@ -271,7 +271,7 @@ test("captures the shell with the Add pane open and nothing selected", async ({
  * facts are asserted before a picture is written, and the third is the failure
  * this capture exists to catch:
  *
- * - the pane's own `[data-vigilia-panel]` handle is showing, and it is the only
+ * - the pane's own `[data-yunari-panel]` handle is showing, and it is the only
  *   pane the rail's column has out (the shell keeps every pane mounted and
  *   hides the others, so a leftover second pane shows as two);
  * - the handle is the **host's** — `editor-shell/pane.tsx` writes it, so it
@@ -293,7 +293,7 @@ test("captures each pane of the four-slot rail in the design language", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   // §7.2's four slots, one pane each.
@@ -322,18 +322,18 @@ test("captures each pane of the four-slot rail in the design language", async ({
     // measured, the Tokens pane is 220×2166, so its image was 1800px of blank
     // page and the status bar, none of which an author ever sees.
     const column = page.locator(".editor-shell-panel");
-    const pane = page.locator(`[data-vigilia-panel="${panel}"]`);
+    const pane = page.locator(`[data-yunari-panel="${panel}"]`);
     await expect(pane, `${slot}: its pane is not showing`).toBeVisible();
     // One pane out, read as a **direct child** of the rail's column: the
     // inspector's `style` and `selection` panels are `Pane`s of their own, so
     // the rail's column is what says which of the four is showing. The
     // Document pane's own References section was the one sub-panel that named
-    // itself `data-vigilia-panel="references"`, making a descendant match read
+    // itself `data-yunari-panel="references"`, making a descendant match read
     // 2 — measured, `["document", "references"]` — until item 17 removed it
     // (`vg-474`). A visible `pane` plus one visible direct child is what says
     // it is the one the rail has out.
     await expect(
-      page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
+      page.locator(".editor-shell-panel > [data-yunari-panel]:visible"),
       `${slot} is not the pane the rail has out`,
     ).toHaveCount(1);
 
@@ -351,21 +351,21 @@ test("captures each pane of the four-slot rail in the design language", async ({
     // is the only reader left for the Document half of "neither read-only
     // section renders anywhere", and the frame below is the reader an author
     // trusts. The pane holds two regions now; the third named itself twice — its
-    // own `data-vigilia-panel="references"` handle and its "This document"
+    // own `data-yunari-panel="references"` handle and its "This document"
     // heading — so both are read here, at the moment the frame is written.
     if (panel === "document") {
-      const regions = pane.locator("[data-vigilia-section]");
+      const regions = pane.locator("[data-yunari-section]");
       await expect(regions, "the Document pane's own regions").toHaveCount(2);
       expect(
         await regions.evaluateAll((elements) =>
           elements.map((element) =>
-            element.getAttribute("data-vigilia-section"),
+            element.getAttribute("data-yunari-section"),
           ),
         ),
         "the Document pane is Theme settings and the artboard, and nothing else",
       ).toEqual(["theme", "artboard"]);
       await expect(
-        pane.locator('[data-vigilia-panel="references"]'),
+        pane.locator('[data-yunari-panel="references"]'),
         "the document's own references sub-panel is back",
       ).toHaveCount(0);
       // The section rendered *last* in the pane — `editor-session.ts` appended
@@ -438,14 +438,14 @@ test("captures the settings modal's three tabs in the design language", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   // §7 moved the palette chip out of the header; a chip or a choice row still
   // there means this is the old header and the frame would be of the wrong thing.
   await expect(
     page.locator(
-      ".editor-shell-header .editor-shell-palette-swatch, .editor-shell-header [data-vigilia-palette-choice]",
+      ".editor-shell-header .editor-shell-palette-swatch, .editor-shell-header [data-yunari-palette-choice]",
     ),
   ).toHaveCount(0);
 
@@ -476,14 +476,14 @@ test("captures the settings modal's three tabs in the design language", async ({
   // version is the build's own and is always there.
   await show("About");
   await expect(
-    dialog.locator('[data-vigilia-about-fact="schema-version"]'),
+    dialog.locator('[data-yunari-about-fact="schema-version"]'),
   ).toHaveText(/\S/);
   // The product version is the workspace manifest's, injected by Vite's `define`
   // at build time, so a bundle built without that step shows no version at all —
   // asserted as a version shape rather than as "some text", which `undefined`
   // would satisfy (`vg-279`).
   await expect(
-    dialog.locator('[data-vigilia-about-fact="product-version"]'),
+    dialog.locator('[data-yunari-about-fact="product-version"]'),
   ).toHaveText(/^\d+\.\d+\.\d+/);
   // **The release row must be absent, and this assertion is what says so.** It
   // renders only where the open document carries `metadata.version`
@@ -493,7 +493,7 @@ test("captures the settings modal's three tabs in the design language", async ({
   // reddens and the capture is re-taken, rather than a changed modal being
   // photographed while a non-assertion records it.
   await expect(
-    dialog.locator('[data-vigilia-about-fact="release-version"]'),
+    dialog.locator('[data-yunari-about-fact="release-version"]'),
   ).toHaveCount(0);
   testInfo.annotations.push({
     type: "about",

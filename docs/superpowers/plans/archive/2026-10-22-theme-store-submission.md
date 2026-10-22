@@ -6,7 +6,7 @@
 
 **Architecture:** The host owns identity and the PR — the browser never sees a token, and the host is the only process that can hold one. GitHub's device flow gives a token; a hand-rolled `fetch` client forks the catalogue repo, commits `catalogue/<id>/` into the author's fork, and opens a PR. The catalogue repo validates each PR and auto-merges only when the author is verified, validation is green and the diff touches only that author's own item.
 
-**Tech Stack:** Node 22+ global `fetch`, TypeScript, Vitest; GitHub Actions (Node) in `peterng1618/vigilia-store`.
+**Tech Stack:** Node 22+ global `fetch`, TypeScript, Vitest; GitHub Actions (Node) in `peterng1618/yunari-store`.
 
 **Spec:** `docs/superpowers/specs/2026-10-12-theme-store-design.md` — read § "Submission: the app opens the pull request", § "The trust ladder", § "Identity: the device flow" and the Acceptance line for **E**. The plan argues from the spec; where they disagree, the spec wins.
 
@@ -84,7 +84,7 @@
 - Consumes: Task 1's client, Task 2's store.
 - Produces: `POST /api/github/device` → `{ userCode, verificationUri, expiresIn, interval }`; `POST /api/github/device/poll` → `{ state, login? }`; `DELETE /api/github/token` → `{ ok: true }`.
 
-- [ ] **Step 1: Failing tests** — device start answers the four fields and never the `device_code`; poll answers `pending` then `ok` with `login`; `DELETE` clears the file; all three refuse a foreign `Origin` and a non-loopback `Host` (reuse the existing cases); with no `VIGILIA_GITHUB_CLIENT_ID` the start answers `503` naming registration.
+- [ ] **Step 1: Failing tests** — device start answers the four fields and never the `device_code`; poll answers `pending` then `ok` with `login`; `DELETE` clears the file; all three refuse a foreign `Origin` and a non-loopback `Host` (reuse the existing cases); with no `YUNARI_GITHUB_CLIENT_ID` the start answers `503` naming registration.
 - [ ] **Step 2: Run, watch fail.**
 - [ ] **Step 3: Implement.** The pending device code lives in host memory, keyed by nothing the browser sends: the browser polls one route for the one pending flow. On `ok`, the host fetches `GET https://api.github.com/user` with the token to learn the login, writes the identity, and answers `{ state: "ok", login }`. The token is never in a response or a log.
 - [ ] **Step 4: Green.**
@@ -180,7 +180,7 @@
 
 - [ ] **Step 1: Register the captures** in the Theme store section before taking them: the code dialog, and a submitted theme with its PR link.
 - [ ] **Step 2: Add the claims** against routed host routes: signing in shows a code; a submitted theme shows the PR link and the control no longer offers Submit; a refusal states the host's sentence.
-- [ ] **Step 3: Rebuild, then** `VIGILIA_CAPTURE=1 npx playwright test tests/e2e/editor-rail.spec.ts --workers=1`, exit read directly; then the same without capture.
+- [ ] **Step 3: Rebuild, then** `YUNARI_CAPTURE=1 npx playwright test tests/e2e/editor-rail.spec.ts --workers=1`, exit read directly; then the same without capture.
 - [ ] **Step 4: Look at each capture** and say what it shows in the report.
 - [ ] **Step 5: Commit** `test(store): submission, seen in a browser`.
 
@@ -191,11 +191,11 @@
 ### Task 9: Validation, as a command the Action can run
 
 **Files:**
-- Create: `src/web/packages/host/src/themes/validate-item.ts` (+ test), wired as a host binary command (`packages/host/bin/vigilia.js`) or a second bin entry.
-- Modify: `C:\tmp\vigilia-store\.github\workflows\` (the catalogue repo, outside this tree).
+- Create: `src/web/packages/host/src/themes/validate-item.ts` (+ test), wired as a host binary command (`packages/host/bin/yunari.js`) or a second bin entry.
+- Modify: `C:\tmp\yunari-store\.github\workflows\` (the catalogue repo, outside this tree).
 
 **Interfaces:**
-- Produces: `vigilia validate-item <catalogueDir>` → exit 0 and a line, or exit 1 naming the first refusal.
+- Produces: `yunari validate-item <catalogueDir>` → exit 0 and a line, or exit 1 naming the first refusal.
 
 - [ ] **Step 1: Failing tests** — a valid `catalogue/<id>/` passes; a missing `item.json`, an unknown kind, a package that does not parse, and a `packageUrl` that does not name the package beside it each fail with their own sentence.
 - [ ] **Step 2: Run, watch fail.**
@@ -206,13 +206,13 @@
 ### Task 10: The two workflows, and the verified list
 
 **Files (catalogue repo, outside this tree):**
-- Create: `C:\tmp\vigilia-store\.github\workflows\validate.yml`, `.github\workflows\auto-merge.yml`, `verified-authors.txt`
+- Create: `C:\tmp\yunari-store\.github\workflows\validate.yml`, `.github\workflows\auto-merge.yml`, `verified-authors.txt`
 - Modify: `.github\workflows\index.yml` if it must exclude PR branches
 
 - [ ] **Step 1: `validate.yml`** — on `pull_request` touching `catalogue/**`, check the app out at a pinned commit, run `validate-item` for each changed `catalogue/<dir>`, fail the job on the first refusal.
 - [ ] **Step 2: `auto-merge.yml`** — on `pull_request` (`opened`, `synchronize`, `reopened`): read the author; refuse unless the author is in `verified-authors.txt`; refuse unless every changed path is under `catalogue/<id>/` for **one** id, and none is under `.github/`; require the validate workflow's conclusion through `workflow_run` or by making auto-merge depend on validate via `needs`; merge with `gh pr merge --squash`.
 - [ ] **Step 3: Prove the refusal** — build a PR that touches `.github/` from a login in the list on a scratch branch and show the job refuses it. Record the run URL.
-- [ ] **Step 4: Push is an external action** — the controller asks the user before the first push to `peterng1618/vigilia-store`; a local clone is enough for the task's tests.
+- [ ] **Step 4: Push is an external action** — the controller asks the user before the first push to `peterng1618/yunari-store`; a local clone is enough for the task's tests.
 - [ ] **Step 5: Commit** in the catalogue repo, and record the sha in the plan ledger.
 
 ---

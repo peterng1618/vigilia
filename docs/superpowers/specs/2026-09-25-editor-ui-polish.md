@@ -29,7 +29,7 @@ Observed, driving the running editor (`vite preview`, starter theme):
 
 **Figma UI3, when in doubt.** Panels, row rhythm, selection treatment, toolbar
 placement, icon sizing and spacing follow it. This is a deliberate reference, not
-a mandate to copy: Vigilia is a display-theme authoring surface with its own
+a mandate to copy: Yunari is a display-theme authoring surface with its own
 domain (palette tokens, type presets, value runs) that Figma has no equivalent
 for, and those keep their own shape.
 
@@ -125,9 +125,9 @@ comply. Replace them with an opt-in field primitive, so a panel opts into densit
 rather than being forced into it:
 
 ```css
-.vigilia-field     { display: grid; grid-template-columns: 72px 1fr; align-items: center; }
-.vigilia-field-row { display: flex; gap: 6px; }
-.vigilia-numeric   { font-variant-numeric: tabular-nums; }
+.yunari-field     { display: grid; grid-template-columns: 72px 1fr; align-items: center; }
+.yunari-field-row { display: flex; gap: 6px; }
+.yunari-numeric   { font-variant-numeric: tabular-nums; }
 ```
 
 Field surfaces become DOM factories under `editor-shell/controls/`:
@@ -202,7 +202,7 @@ that was actually observed; "rendered" means measured in the built bundle in a r
 - Object actions appear in the layer panel's bottom row, not per row, and render
   from the same registry the canvas dock uses. — **rendered.** `snapping.spec.ts`'s
   "layer-panel object actions match canvas dock" selects an object, then asserts the
-  visible `[data-vigilia-layer-actions]` sits inside the visible layers panel, inside no
+  visible `[data-yunari-layer-actions]` sits inside the visible layers panel, inside no
   layer row, below both the rendered tree and the last row, and within the panel's box —
   and that its button labels equal the canvas dock's, so the two surfaces are compared as
   entry sets rather than against a hard-coded list.

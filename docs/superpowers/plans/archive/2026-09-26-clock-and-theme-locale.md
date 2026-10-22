@@ -399,7 +399,7 @@ it("requires the theme to declare the language its text is written in", () => {
   // validator handles them separately.
   const withoutLocale = withMetadata(fixture(), {
     name: "Fixture",
-    author: "Vigilia",
+    author: "Yunari",
   });
 
   const missing = validateFabricThemeEnvelope(withoutLocale);
@@ -586,7 +586,7 @@ Expected: FAIL — `locale` is `undefined`.
 // new-fabric-theme.ts
     metadata: {
       name: "Twilight system dashboard",
-      author: "Vigilia",
+      author: "Yunari",
       description:
         "A v2 scene exercising supported Fabric primitives and every chart family.",
       // The editor's own copy is English, so a new theme starts where its
@@ -849,14 +849,14 @@ Then the test, inside the existing `describe("binding a text run to a sensor")`:
 // runs.dom.test.ts
 it("previews a format in the document's own language", () => {
   const editor = harness([{ kind: "value", bindingId: "clock-date" }], "ja");
-  choose(editor.pick<HTMLSelectElement>("[data-vigilia-run-source]"), "date.today");
+  choose(editor.pick<HTMLSelectElement>("[data-yunari-run-source]"), "date.today");
 
-  const format = editor.pick<HTMLInputElement>("[data-vigilia-run-format]");
+  const format = editor.pick<HTMLInputElement>("[data-yunari-run-format]");
   format.value = "dddd";
   format.dispatchEvent(new Event("input"));
 
   const preview = editor.pick<HTMLElement>(
-    "[data-vigilia-run-format-preview]",
+    "[data-yunari-run-format-preview]",
   ).textContent;
 
   // The preview must read the language the paint will, or an author chooses a
@@ -1093,7 +1093,7 @@ git commit -m "feat(scene-fabric): paint bound text in the document's language"
 ```ts
 // theme-languages.test.ts
 import { describe, expect, it } from "vitest";
-import { isLocaleName } from "@vigilia/renderer-core";
+import { isLocaleName } from "@yunari/renderer-core";
 import { languageLabel, THEME_LANGUAGES } from "./theme-languages.js";
 
 describe("the languages an author may pick", () => {
@@ -1127,7 +1127,7 @@ it("writes the chosen language into the theme's metadata", () => {
   panel.render({ width: 1280, height: 720 }, { name: "Before", locale: "en" });
 
   const language = panel.root.querySelector<HTMLSelectElement>(
-    "[data-vigilia-theme-language]",
+    "[data-yunari-theme-language]",
   )!;
   expect(language.value).toBe("en");
 
@@ -1150,7 +1150,7 @@ it("writes the chosen language into the theme's metadata", () => {
   // the name functions rather than `formatInstant`, so a broken formatter cannot
   // make both sides of the assertion wrong together.
   const sample = panel.root.querySelector<HTMLOutputElement>(
-    "[data-vigilia-theme-language-sample]",
+    "[data-yunari-theme-language-sample]",
   )!.textContent!;
   const parts = parseInstant(instantIn(Date.now()))!;
   expect(sample).toContain(monthName(parts, "vi", "long"));
@@ -1166,7 +1166,7 @@ it("keeps a declared language that is outside the list", () => {
   );
 
   const language = panel.root.querySelector<HTMLSelectElement>(
-    "[data-vigilia-theme-language]",
+    "[data-yunari-theme-language]",
   )!;
 
   // Welsh is not one of the fifteen, but a document declaring it must not be
@@ -1180,7 +1180,7 @@ Two existing assertions in this file compare the whole metadata object with `toE
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run packages/editor/src/theme-languages.test.ts packages/editor/src/artboard-panel.dom.test.ts`
-Expected: FAIL — `theme-languages.ts` does not exist, and the panel has no `[data-vigilia-theme-language]`.
+Expected: FAIL — `theme-languages.ts` does not exist, and the panel has no `[data-yunari-theme-language]`.
 
 - [ ] **Step 3: Implement the list and the control**
 
@@ -1231,7 +1231,7 @@ Typing it `readonly string[]` rather than `as const` is deliberate: the panel ca
 
 ```ts
 // artboard-panel.ts — beside the name/author/description inputs
-  const language = selectInput(uiCopy.panels.language, "vigiliaThemeLanguage");
+  const language = selectInput(uiCopy.panels.language, "yunariThemeLanguage");
   refreshLanguageOptions(language.select);
 ```
 
@@ -1269,7 +1269,7 @@ The spec asks that the author see the actual words rather than only a language's
 ```ts
 // artboard-panel.ts — beside the version output, which is the same element shape
   const languageSample = document.createElement("output");
-  languageSample.dataset["vigiliaThemeLanguageSample"] = "";
+  languageSample.dataset["yunariThemeLanguageSample"] = "";
 
 /** The words this language actually spells, for the instant a clock would read. */
 function refreshLanguageSample(locale: string): void {

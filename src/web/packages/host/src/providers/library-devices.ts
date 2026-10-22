@@ -1,4 +1,4 @@
-import { diskDeviceId } from "@vigilia/renderer-core";
+import { diskDeviceId } from "@yunari/renderer-core";
 import { displayNameFor } from "../settings/devices.js";
 
 /**

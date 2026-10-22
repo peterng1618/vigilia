@@ -40,7 +40,7 @@ const HOST_SPECS = /host-(player|settings|media|chrome|walkthrough).spec.ts/;
  * joining `HOST_SPECS`, whose `desktop-host` project would run it a second time
  * at a size the reading is not about (`vg-571`). The preview projects ignore it
  * for the reason they ignore the rest: it needs the real host. The file itself
- * skips unless `VIGILIA_EDGE_PROBE` is set, and a run whose every selected test
+ * skips unless `YUNARI_EDGE_PROBE` is set, and a run whose every selected test
  * is skipped starts no `webServer` — so the default path costs neither the
  * hundred seconds nor a host.
  */
@@ -132,7 +132,7 @@ export default defineConfig({
     {
       // The real Node host, not a preview server: hosted theme loading, package
       // asset serving and the SSE stream are otherwise never browser-tested.
-      command: `node packages/host/bin/vigilia.js --no-browser --port ${HOST_PORT} --app-dir ${HOST_APP_DIR}`,
+      command: `node packages/host/bin/yunari.js --no-browser --port ${HOST_PORT} --app-dir ${HOST_APP_DIR}`,
       // http, which the host still serves beside https on the same port
       // (0070). The pairing link these specs drive is the one the host prints,
       // and what that link should carry belongs to the per-display-themes

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { type FabricObject, StaticCanvas, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
+import { YUNARI_TEXT_PROPERTY } from "./fabric-text.js";
 import {
   applyObjectTypePresets,
   reassignObjectTypePresetReferences,
@@ -38,7 +38,7 @@ function textbox(
   runs: readonly Readonly<Record<string, unknown>>[],
 ): Textbox {
   const object = new Textbox("CPU", { id });
-  object.set(VIGILIA_TEXT_PROPERTY, { runs });
+  object.set(YUNARI_TEXT_PROPERTY, { runs });
   return object;
 }
 

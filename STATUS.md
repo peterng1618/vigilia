@@ -1,6 +1,6 @@
-# Vigilia status
+# Yunari status
 
-Updated: 2026-10-22
+Updated: 2026-10-23
 Branch: `main`
 
 ## Current objective
@@ -11,15 +11,15 @@ The theme store spec (phases A–G) and the theme-versioning spec are **landed**
 
 - **The R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md)) is written and **awaits the owner's execution choice**; the spec was approved 2026-10-23 and no task has run.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; the user picks when one starts.
-- **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Vigilia smoke theme`, 1.0.0), and `ci/catalogue-workflows` is merged so the `682379fc` pin and UUID regex are live.
+- **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0), and `ci/catalogue-workflows` is merged so the `682379fc` pin and UUID regex are live.
 - **Decisions `0088`–`0092`** carry the store's measured choices: raw-path index, host-side download, a hand-rolled GitHub client, a bundled GPL `ffmpeg-static`, and the token ratchet's scope.
 - **Captures `store-submit-version` and `store-remix-credit`** are the newest registered actions, beside the install and submission ones.
 
 ## Last completed change
 
-- **The R2 store backend plan is written**: five phases from the Worker package and D1 schema through public reads, auth, submission, unpublish, the Mine surface and the cutover.
-- **Each task carries its own tests**, including the unpublish 404 across every version, one download increment per request, the version-ladder refusal and the presign ownership boundary.
-- **The plan states the risks**: Workers Free's 10 ms CPU is measured before any free-tier claim, and the OAuth round trip is manual evidence.
+- **Vigilia is renamed Yunari** across 722 tracked files: product name, `@yunari/*` packages, `yunari-dashboard` binary, `YUNARI_*` env vars, CSS/DOM prefixes and the `.yunari-theme` extension.
+- **Workspace relinked and rebuilt**: `npm install`, `npm run build`, and `npm run gate` exits 0 with 4385 tests.
+- **Git history and untracked SDD evidence keep the old name**, and the `~/.vigilia` local library is not migrated to `~/.yunari`.
 
 ## Next
 

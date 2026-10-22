@@ -1,5 +1,5 @@
 /** Persisted reference to bytes declared by the editor's open theme package. */
-export const VIGILIA_ASSET_PROPERTY = "vigiliaAsset";
+export const YUNARI_ASSET_PROPERTY = "yunariAsset";
 
 export interface FabricAssetReference {
   readonly assetId: string;
@@ -18,14 +18,14 @@ export function setObjectAssetReference(
 ): void {
   if (!isFabricAssetReference(reference))
     throw new Error("Invalid asset reference.");
-  object.set(VIGILIA_ASSET_PROPERTY, reference);
+  object.set(YUNARI_ASSET_PROPERTY, reference);
 }
 
 /** Read a validated asset reference without trusting arbitrary revived JSON. */
 export function objectAssetReference(
   object: Pick<AssetObject, "get">,
 ): FabricAssetReference | undefined {
-  const value = object.get(VIGILIA_ASSET_PROPERTY);
+  const value = object.get(YUNARI_ASSET_PROPERTY);
   return isFabricAssetReference(value) ? value : undefined;
 }
 

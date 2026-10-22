@@ -34,7 +34,7 @@ export interface SubmitOptions {
 /** The REST root is fixed, so a test's fake `fetch` matches a known path. */
 const API_BASE = "https://api.github.com";
 const DEFAULT_OWNER = "peterng1618";
-const DEFAULT_REPO = "vigilia-store";
+const DEFAULT_REPO = "yunari-store";
 const MAIN = "main";
 const DEFAULT_BRANCH = MAIN;
 
@@ -209,7 +209,7 @@ export async function submitToCatalogue(
       title: `Add ${themeId} to the catalogue`,
       head: `${login}:${branch}`,
       base: DEFAULT_BRANCH,
-      body: `Submitted from Vigilia.\n\nThe theme's files are in \`${files.path}\`.`,
+      body: `Submitted from Yunari.\n\nThe theme's files are in \`${files.path}\`.`,
     },
   );
   if ("error" in pull) return refuse("pull", pull.error);

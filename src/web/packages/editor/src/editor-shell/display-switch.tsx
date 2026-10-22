@@ -121,7 +121,7 @@ export function DisplaySwitch({
           // dropping the label and letting "51%" stand alone — would leave a
           // control no voice user could ask for by what it is.
           aria-label={`${uiCopy.display.label}: ${percent}`}
-          data-vigilia-zoom=""
+          data-yunari-zoom=""
         >
           {/* The zoom, always — never the display's name.
            *

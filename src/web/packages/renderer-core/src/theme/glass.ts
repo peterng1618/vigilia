@@ -5,7 +5,7 @@
  */
 
 /** Persisted treatment property; Fabric JSON is the only place it is written. */
-export const VIGILIA_GLASS_PROPERTY = "vigiliaGlass";
+export const YUNARI_GLASS_PROPERTY = "yunariGlass";
 
 /**
  * Measured bound, not a preference. Task 1's radius sweep held 2.5–3.7 ms per
@@ -69,7 +69,7 @@ export function supportsGlass(type: string): boolean {
 export function glassTreatment(object: {
   get(name: string): unknown;
 }): GlassTreatment | undefined {
-  const value = object.get(VIGILIA_GLASS_PROPERTY);
+  const value = object.get(YUNARI_GLASS_PROPERTY);
   if (!isGlassTreatment(value)) return undefined;
   return { blurRadius: value.blurRadius };
 }

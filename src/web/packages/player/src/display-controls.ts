@@ -58,13 +58,13 @@ export type DisplayControls = {
  */
 export function mountDisplayControls(): DisplayControls {
   const shade = document.createElement("div");
-  shade.dataset["vigiliaDimmer"] = "";
+  shade.dataset["yunariDimmer"] = "";
   // No dimming until the reader asks for some, written by the same owner as
   // every later value (the slider's own handler).
   shade.style.opacity = "0";
 
   const bar = document.createElement("div");
-  bar.dataset["vigiliaControls"] = "";
+  bar.dataset["yunariControls"] = "";
   bar.setAttribute("role", "group");
   bar.setAttribute("aria-label", uiCopy.controls.group);
   // Hidden until a tap reveals it. Set here rather than in the stylesheet so
@@ -76,16 +76,16 @@ export function mountDisplayControls(): DisplayControls {
   const row = document.createElement("div");
 
   const say = document.createElement("p");
-  say.dataset["vigiliaControlsSay"] = "";
+  say.dataset["yunariControlsSay"] = "";
   // A refusal is a sentence the reader asked for by pressing a control, so it
   // is announced and not only drawn.
   say.setAttribute("aria-live", "polite");
 
   const fullscreen = control(
-    "vigiliaFullscreen",
+    "yunariFullscreen",
     uiCopy.controls.fullscreen.label,
   );
-  const awake = control("vigiliaKeepAwake", uiCopy.controls.keepAwake.label);
+  const awake = control("yunariKeepAwake", uiCopy.controls.keepAwake.label);
 
   const dim = document.createElement("input");
   dim.type = "range";
@@ -96,7 +96,7 @@ export function mountDisplayControls(): DisplayControls {
   // what a dimmer's own knob does and what a slider beside a picture is read as.
   // The overlay is the inverse of it, so the resting position is full light.
   dim.value = "100";
-  dim.dataset["vigiliaDim"] = "";
+  dim.dataset["yunariDim"] = "";
   dim.setAttribute("aria-label", uiCopy.controls.dim.label);
   dim.addEventListener("input", () => {
     shade.style.opacity = String((1 - Number(dim.value) / 100) * MAX_DIM);
@@ -175,7 +175,7 @@ export function mountDisplayControls(): DisplayControls {
   // and pressing it is how a reader gets the sentence. Marking it disabled
   // would say it does nothing, which is the one thing it must not be.
   if (!canFullscreen) {
-    fullscreen.dataset["vigiliaUnavailable"] = "";
+    fullscreen.dataset["yunariUnavailable"] = "";
     fullscreen.setAttribute(
       "aria-description",
       uiCopy.controls.fullscreen.unavailable,
@@ -222,7 +222,7 @@ export function mountDisplayControls(): DisplayControls {
     wakeLock !== undefined && typeof wakeLock.request === "function";
   // Operable and explained, for the reason the fullscreen control is.
   if (!canWake) {
-    awake.dataset["vigiliaUnavailable"] = "";
+    awake.dataset["yunariUnavailable"] = "";
     awake.setAttribute(
       "aria-description",
       uiCopy.controls.keepAwake.unavailable,
@@ -246,8 +246,8 @@ export function mountDisplayControls(): DisplayControls {
     awake.setAttribute("aria-pressed", holding ? "true" : "false");
     // Wanted and not held is the ordinary state this API produces, and it is
     // drawn apart from "off" so the reader can tell the two apart.
-    if (wantAwake && !holding) awake.dataset["vigiliaWaiting"] = "";
-    else delete awake.dataset["vigiliaWaiting"];
+    if (wantAwake && !holding) awake.dataset["yunariWaiting"] = "";
+    else delete awake.dataset["yunariWaiting"];
   }
 
   /** Requests the lock if the reader wants one and the page is on screen.

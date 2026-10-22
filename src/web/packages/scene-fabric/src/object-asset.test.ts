@@ -29,7 +29,7 @@ describe("Fabric asset references", () => {
 
   it("ignores malformed persisted references", () => {
     const target = object();
-    target.set("vigiliaAsset", {
+    target.set("yunariAsset", {
       assetId: "",
       kind: "gif",
       previewUrl: "blob:local",

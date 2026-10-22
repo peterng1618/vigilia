@@ -2,7 +2,7 @@ import type {
   FabricThemeEnvelope,
   ThemeMetadata,
   ThemeRemix,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type { AssetManager } from "../asset-manager/index.js";
 import type { ErrorManager } from "../error-manager/index.js";
 import {

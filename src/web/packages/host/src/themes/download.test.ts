@@ -1,10 +1,10 @@
-import { MAX_ARCHIVE_BYTES } from "@vigilia/theme-package";
+import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TIMEOUT_MS, downloadPackage } from "./download.js";
 
 /** A release asset on an allowed host, and the hop GitHub actually answers. */
 const ASSET =
-  "https://github.com/peterng1618/vigilia-store/releases/download/v1/aurora.zip";
+  "https://github.com/peterng1618/yunari-store/releases/download/v1/aurora.zip";
 const ASSET_HOST = "https://release-assets.githubusercontent.com/aurora.zip";
 
 type Handler = (
@@ -82,7 +82,7 @@ describe("downloadPackage", () => {
     const { fetch, seen } = injectedFetch(() => new Response("no"));
 
     const result = await downloadPackage(
-      "http://github.com/peterng1618/vigilia-store/aurora.zip",
+      "http://github.com/peterng1618/yunari-store/aurora.zip",
       { fetch },
     );
 

@@ -19,7 +19,7 @@ crossing a trust boundary on its way to a fixed-width strip on a wall**, and
 the awkward part is that both ends of it are ours: the host composes the
 sentence and the player renders it, and the same message crosses both.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `ProviderHealth` (`provider.ts:18`), `ProviderFailure` (`registry.ts`,
 carrying the same "May reach a browser; keep redacted" note), every

@@ -1,13 +1,13 @@
-import type { FabricGlobals } from "@vigilia/renderer-core";
-import { paletteTokenOptions } from "@vigilia/renderer-core";
+import type { FabricGlobals } from "@yunari/renderer-core";
+import { paletteTokenOptions } from "@yunari/renderer-core";
 import {
   Arc,
   applyObjectPalettePaints,
   type FabricPaintRefs,
   paintPropertyFor,
-  VIGILIA_PAINT_PROPERTY,
   Wedge,
-} from "@vigilia/scene-fabric";
+  YUNARI_PAINT_PROPERTY,
+} from "@yunari/scene-fabric";
 import {
   Circle,
   Ellipse,
@@ -116,7 +116,7 @@ function hasSweep(object: FabricObject): boolean {
     for the same reason `writeRef` is: the frosted-glass control reads this
     object's fill before it decides whether to move it. */
 export function paintRefs(object: FabricObject): FabricPaintRefs {
-  const value = object.get(VIGILIA_PAINT_PROPERTY);
+  const value = object.get(YUNARI_PAINT_PROPERTY);
   return typeof value === "object" && value !== null
     ? (value as FabricPaintRefs)
     : {};
@@ -141,7 +141,7 @@ export function writeRef(
   };
   if (ref === undefined) delete next[property];
   else next[property] = ref;
-  object.set(VIGILIA_PAINT_PROPERTY, next);
+  object.set(YUNARI_PAINT_PROPERTY, next);
 }
 
 /** The theme's tokens, each under the name its author gave it, as the entries a
@@ -220,7 +220,7 @@ export function panelMaterialFields(
         : uiCopy.inspectorFields.panelFill,
       refs[paintProperty],
       false,
-      { "data-vigilia-panel-fill": "" },
+      { "data-yunari-panel-fill": "" },
     ),
   );
 
@@ -234,7 +234,7 @@ export function panelMaterialFields(
         refs.stroke,
         false,
         {
-          "data-vigilia-panel-stroke": "",
+          "data-yunari-panel-stroke": "",
         },
       ),
     );
@@ -246,7 +246,7 @@ export function panelMaterialFields(
       uiCopy.inspectorFields.panelBorder,
       Math.round(object.get("strokeWidth") as number),
       edge,
-      { "data-vigilia-panel-border": "" },
+      { "data-yunari-panel-border": "" },
     ),
   );
 
@@ -259,7 +259,7 @@ export function panelMaterialFields(
         uiCopy.inspectorFields.panelRadius,
         Math.round(object.get("rx") as number),
         radiusBound(edge),
-        { "data-vigilia-panel-radius": "" },
+        { "data-yunari-panel-radius": "" },
       ),
     );
   }
@@ -271,7 +271,7 @@ export function panelMaterialFields(
       refs.shadowColor,
       true,
       {
-        "data-vigilia-panel-shadow": "",
+        "data-yunari-panel-shadow": "",
       },
     ),
   );
@@ -286,7 +286,7 @@ export function panelMaterialFields(
         uiCopy.inspectorFields.panelShadowBlur,
         Math.round(shadow.blur),
         edge,
-        { "data-vigilia-panel-shadow-blur": "" },
+        { "data-yunari-panel-shadow-blur": "" },
       ),
       // Unbounded, because Fabric's own `offsetY` is: a shadow above a panel is
       // legitimate, and a floor of zero would display a value the field then
@@ -297,7 +297,7 @@ export function panelMaterialFields(
         "panel-shadow-offset",
         uiCopy.inspectorFields.panelShadowOffset,
         Math.round(shadow.offsetY),
-        { "data-vigilia-panel-shadow-offset": "" },
+        { "data-yunari-panel-shadow-offset": "" },
       ),
     );
   }
@@ -517,7 +517,7 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
       min: MIN_POLYGON_SIDES,
       max: MAX_POLYGON_SIDES,
       integer: true,
-      data: { "data-vigilia-shape-sides": "" },
+      data: { "data-yunari-shape-sides": "" },
     });
   } else if (object instanceof Polyline) {
     fields.push({
@@ -526,7 +526,7 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
       label: uiCopy.inspectorFields.shapePoints,
       value: pointsOf(object),
       multiline: true,
-      data: { "data-vigilia-shape-points": "" },
+      data: { "data-yunari-shape-points": "" },
     });
   }
 
@@ -546,14 +546,14 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
           label: uiCopy.inspectorFields.x,
           value: Math.round(object.get(x) as number),
           integer: true,
-          data: { "data-vigilia-shape-line": x },
+          data: { "data-yunari-shape-line": x },
         },
         {
           id: `shape-line-${y}`,
           label: uiCopy.inspectorFields.y,
           value: Math.round(object.get(y) as number),
           integer: true,
-          data: { "data-vigilia-shape-line": y },
+          data: { "data-yunari-shape-line": y },
         },
       ],
     });
@@ -585,7 +585,7 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
         min: MIN_SWEEP_DEGREES,
         max: MAX_SWEEP_DEGREES,
         integer: true,
-        data: { "data-vigilia-shape-angle": key },
+        data: { "data-yunari-shape-angle": key },
       });
     }
   }
@@ -598,7 +598,7 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
       value: pathDataOf(object),
       multiline: true,
       rows: 3,
-      data: { "data-vigilia-shape-path": "" },
+      data: { "data-yunari-shape-path": "" },
     });
   }
 

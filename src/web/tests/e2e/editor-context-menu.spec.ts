@@ -42,7 +42,7 @@ const SHORT_WINDOW = { width: 1280, height: 420 };
 async function emptyCanvasPoint(page: Page): Promise<{ x: number; y: number }> {
   const point = await page.evaluate(() => {
     const canvas = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.upper-canvas",
+      "#yunari-fabric-editor canvas.upper-canvas",
     );
     if (canvas === null) throw new Error("The editor's upper canvas is gone.");
     const rect = canvas.getBoundingClientRect();
@@ -50,13 +50,13 @@ async function emptyCanvasPoint(page: Page): Promise<{ x: number; y: number }> {
     // reference would throw on the first point rather than answer.
     const editorCanvas = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: { findTarget(event: unknown): { target?: unknown } };
           };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas;
+    ).yunariEditorBridge.editor.canvas;
     for (let fy = 0.95; fy > 0.02; fy -= 0.02) {
       for (let fx = 0.9; fx > 0.02; fx -= 0.02) {
         // Rounded *before* it is tested, and tested at the rounded point: the
@@ -128,20 +128,20 @@ async function emptyCanvasPointHigh(
   const point = await page.evaluate(
     ([minimumX, topBand]) => {
       const canvas = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.upper-canvas",
+        "#yunari-fabric-editor canvas.upper-canvas",
       );
       if (canvas === null)
         throw new Error("The editor's upper canvas is gone.");
       const rect = canvas.getBoundingClientRect();
       const editorCanvas = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: { findTarget(event: unknown): { target?: unknown } };
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       for (let fy = 0.02; fy < topBand; fy += 0.02) {
         for (let fx = 0.02; fx < 0.95; fx += 0.02) {
           // Rounded before it is tested, for the reason `emptyCanvasPoint`
@@ -234,19 +234,19 @@ async function readMenu(page: Page): Promise<{
 async function objectPoint(page: Page): Promise<{ x: number; y: number }> {
   const point = await page.evaluate(() => {
     const canvas = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.upper-canvas",
+      "#yunari-fabric-editor canvas.upper-canvas",
     );
     if (canvas === null) throw new Error("The editor's upper canvas is gone.");
     const rect = canvas.getBoundingClientRect();
     const editorCanvas = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: { findTarget(event: unknown): { target?: unknown } };
           };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas;
+    ).yunariEditorBridge.editor.canvas;
     const overObject = (x: number, y: number): boolean =>
       editorCanvas.findTarget({ clientX: x, clientY: y }).target !== undefined;
     for (let fy = 0.05; fy < 0.95; fy += 0.01) {
@@ -318,7 +318,7 @@ test("an object's own menu prints the chords the Edit menu prints", async ({
   await page.setViewportSize(TALL_WINDOW);
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const point = await objectPoint(page);
@@ -365,7 +365,7 @@ test("the last entry is reachable in a window too short to hold the menu", async
   await page.setViewportSize(SHORT_WINDOW);
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const point = await emptyCanvasPoint(page);
@@ -416,11 +416,11 @@ test("the last entry is reachable in a window too short to hold the menu", async
   const inserted = await page.evaluate(() => {
     const objects = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): unknown[] } };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    ).yunariEditorBridge.editor.canvas.getObjects();
     return objects.length;
   });
   expect(
@@ -455,7 +455,7 @@ test("the menu lands where the pointer was, in a window with room to hold it", a
   await page.setViewportSize(TALL_WINDOW);
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const first = await emptyCanvasPointHigh(page, 0);

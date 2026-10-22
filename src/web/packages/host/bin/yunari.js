@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * The `vigilia` entry point.
+ * The `yunari` entry point.
  *
  * A shim rather than the launcher itself: the launcher is TypeScript, so every
  * decision it makes is typechecked against the same contracts the renderer

@@ -1,4 +1,4 @@
-import type { SampleEntry } from "@vigilia/renderer-core";
+import type { SampleEntry } from "@yunari/renderer-core";
 import type { DeviceAssignment } from "./lhm-mapping.js";
 import type { SensorDescriptor, SensorProvider } from "./provider.js";
 

@@ -39,7 +39,7 @@ type FabricObjectLike = {
 /** What the scene holds, read through the handle. */
 export async function readScene(page: Page): Promise<SceneObject[]> {
   return page.evaluate(() => {
-    // The global is `vigilia-fabric-editor-N` and **N is per instance**:
+    // The global is `yunari-fabric-editor-N` and **N is per instance**:
     // creating a document tears the editor down and the old name is removed
     // rather than left stale, so a handle cached across a `New` reads as a live
     // document after it is gone. Resolved here, at every use.
@@ -90,9 +90,9 @@ export async function readObject(
       renderedWidth: Math.round((object.width ?? 0) * (object.scaleX ?? 1)),
       renderedHeight: Math.round((object.height ?? 0) * (object.scaleY ?? 1)),
       text: (object as { text?: string }).text,
-      vigiliaText: object.get("vigiliaText"),
-      vigiliaPaint: object.get("vigiliaPaint"),
-      vigiliaGlass: object.get("vigiliaGlass"),
+      yunariText: object.get("yunariText"),
+      yunariPaint: object.get("yunariPaint"),
+      yunariGlass: object.get("yunariGlass"),
       settings: object.get("settings"),
     };
   }, name);
@@ -124,10 +124,10 @@ export async function openBlank(
     hasText: "Choose an artboard size",
   });
   await expect(chooser).toBeVisible();
-  await chooseIn(page, "[data-vigilia-new-document-display]", "");
-  await chooseIn(page, "[data-vigilia-new-document-ratio]", ratio);
-  await chooseIn(page, "[data-vigilia-new-document-resolution]", resolution);
-  await page.locator("[data-vigilia-new-document-create]").click();
+  await chooseIn(page, "[data-yunari-new-document-display]", "");
+  await chooseIn(page, "[data-yunari-new-document-ratio]", ratio);
+  await chooseIn(page, "[data-yunari-new-document-resolution]", resolution);
+  await page.locator("[data-yunari-new-document-create]").click();
 
   // **This asks nothing on the path every caller takes, and is kept for the
   // ones that do not.** A `PersistenceManager` is built with the document the
@@ -141,7 +141,7 @@ export async function openBlank(
 }
 
 /** The Add pane's groups, by the kind of object each holds: the values the pane
- *  writes to `data-vigilia-add-group`, which are `insertGroups()`'s `kind`s.
+ *  writes to `data-yunari-add-group`, which are `insertGroups()`'s `kind`s.
  *
  *  **`"text"` is the one kind the pane draws in no group at all** — a group of
  *  one would say a region exists where there is one thing — so its scope is the
@@ -178,8 +178,8 @@ export function addButton(page: Page, label: string, group: AddGroup): Locator {
   // holds it.
   const scope =
     group === "text"
-      ? page.locator('[data-vigilia-panel="add"]')
-      : page.locator(`[data-vigilia-add-group="${group}"]`);
+      ? page.locator('[data-yunari-panel="add"]')
+      : page.locator(`[data-yunari-add-group="${group}"]`);
   return scope.getByRole("button", { name: label, exact: true });
 }
 
@@ -213,23 +213,23 @@ export async function insert(
  * display pass hung on it: it clicked the sparkline and then waited for a fill
  * control a chart does not have.
  *
- * `.vigilia-layer-name` is the one element in a row that holds the name and
+ * `.yunari-layer-name` is the one element in a row that holds the name and
  * nothing else; the row also carries a twisty, a visibility toggle and a lock,
  * so matching the row's own text is matching all of those too.
  */
 export async function selectLayer(page: Page, name: string): Promise<void> {
   await openPane(page, "Composition");
   await page
-    .locator(".vigilia-layer-name")
+    .locator(".yunari-layer-name")
     // Anchored, because `hasText` is a substring match and `cpu-card` would
     // otherwise take `cpu-card-icon` whenever the icon's row came first.
     .filter({
       hasText: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
     })
     .first()
-    // **The row's left end, not its centre.** `.vigilia-layer-name` is
+    // **The row's left end, not its centre.** `.yunari-layer-name` is
     // `flex: 1 1 auto`, so it fills the row and its centre lands under the
-    // attended row's absolutely-positioned state slot (`.vigilia-layer-state`,
+    // attended row's absolutely-positioned state slot (`.yunari-layer-state`,
     // `right: 4px` off the row's own edge, as wide as its controls) — a press
     // there is intercepted, and five of `author-journey-rebuild.spec.ts`'s
     // cases hung on it. The name's own text leads the row, which is where an
@@ -332,20 +332,20 @@ export async function place(
     [GEOMETRY.w, box.w],
     [GEOMETRY.h, box.h],
   ] as const) {
-    await fill(page, `[data-vigilia-geometry="${key}"]`, value);
+    await fill(page, `[data-yunari-geometry="${key}"]`, value);
   }
 }
 
 export async function setName(page: Page, value: string): Promise<void> {
-  await fill(page, "[data-vigilia-name]", value);
+  await fill(page, "[data-yunari-name]", value);
 }
 
 /** A frosted card: the material the reference composition is built from. */
 export async function frost(page: Page, blur: number): Promise<void> {
-  const toggle = page.locator("[data-vigilia-glass-enabled]").first();
+  const toggle = page.locator("[data-yunari-glass-enabled]").first();
   await toggle.scrollIntoViewIfNeeded();
   if (!(await toggle.isChecked())) await toggle.check();
-  await fill(page, "[data-vigilia-glass-blur]", blur);
+  await fill(page, "[data-yunari-glass-blur]", blur);
 }
 
 /** A palette token: what every colour in the composition resolves through. */
@@ -358,8 +358,8 @@ export async function addColour(
   // and is hidden until the slot is asked for.
   await openPane(page, "Tokens");
   await page.getByRole("button", { name: "Add colour", exact: true }).click();
-  await fill(page, "[data-vigilia-palette-name]", name);
-  await fill(page, "[data-vigilia-palette-color]", hex);
+  await fill(page, "[data-yunari-palette-name]", name);
+  await fill(page, "[data-yunari-palette-color]", hex);
 }
 
 /**
@@ -395,8 +395,8 @@ export async function chooseToken(
   //
   // The `SELECT` branch below is **unreachable today, and kept on purpose.**
   // Every caller's hook rides a Base UI trigger — `panel.ts`'s swatch
-  // (`data-vigilia-panel-fill`/`-stroke`, :224/:238) and `chart-fields.tsx`'s
-  // `ControlSelect` (`data-vigilia-chart-paint`, :447) — so `tagName` is always
+  // (`data-yunari-panel-fill`/`-stroke`, :224/:238) and `chart-fields.tsx`'s
+  // `ControlSelect` (`data-yunari-chart-paint`, :447) — so `tagName` is always
   // `"BUTTON"` here and the branch never runs. Its sibling in `choose` *is* live,
   // because `choose` is still called with native-select hooks. A driver that
   // silently assumed Base UI would break without saying so the day a native
@@ -433,11 +433,11 @@ export async function addText(
   await insert(page, "Text", "text");
   await setName(page, object.name);
   await place(page, object);
-  await fill(page, '[data-vigilia-run-text="0"]', object.text);
+  await fill(page, '[data-yunari-run-text="0"]', object.text);
   if (object.preset !== undefined)
-    await choose(page, '[data-vigilia-run-preset="0"]', object.preset);
+    await choose(page, '[data-yunari-run-preset="0"]', object.preset);
   if (object.colour !== undefined)
-    await choose(page, '[data-vigilia-run-colour="0"]', object.colour);
+    await choose(page, '[data-yunari-run-colour="0"]', object.colour);
 }
 
 /** A card: a rectangle, named, placed, frosted and outlined. */
@@ -458,9 +458,9 @@ export async function addCard(
   await setName(page, card.name);
   await place(page, card);
   if (card.radius !== undefined)
-    await fill(page, "[data-vigilia-panel-radius]", card.radius);
+    await fill(page, "[data-yunari-panel-radius]", card.radius);
   if (card.stroke !== undefined)
-    await chooseToken(page, "[data-vigilia-panel-stroke]", card.stroke);
+    await chooseToken(page, "[data-yunari-panel-stroke]", card.stroke);
   if (card.blur !== undefined) await frost(page, card.blur);
 }
 
@@ -484,7 +484,7 @@ export async function addChart(
   for (const key of chart.series) {
     // Scrolled first: the chart's fields sit in a scrolling inspector, and
     // `selectOption` waits for visibility rather than scrolling to it.
-    const chooser = page.locator("[data-vigilia-chart-binding-add]");
+    const chooser = page.locator("[data-yunari-chart-binding-add]");
     // The last of the three waits that spent this suite's whole budget saying
     // nothing. `scrollIntoViewIfNeeded` on a control that is not there waits for
     // the test timeout, and the test that reports it names neither the selector
@@ -496,9 +496,9 @@ export async function addChart(
       );
     }
     // The chooser is plan 1's select. Its options are the document's own
-    // semantic keys, and each carries its key as `data-vigilia-option`, so the series is
+    // semantic keys, and each carries its key as `data-yunari-option`, so the series is
     // named the way the object stores it rather than by a label copied here.
-    await chooseIn(page, "[data-vigilia-chart-binding-add]", key);
+    await chooseIn(page, "[data-yunari-chart-binding-add]", key);
   }
   for (const [index, token] of (chart.paint ?? []).entries()) {
     if (token === undefined) continue;
@@ -510,7 +510,7 @@ export async function addChart(
       family === "line" || family === "pie"
         ? `palette.${index}`
         : PAINT_KEY[family];
-    await chooseToken(page, `[data-vigilia-chart-paint="${key}"]`, token);
+    await chooseToken(page, `[data-yunari-chart-paint="${key}"]`, token);
   }
 }
 

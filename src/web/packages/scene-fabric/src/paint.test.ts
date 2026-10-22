@@ -21,7 +21,7 @@ describe("a box", () => {
   it("has no stroke width when it has no stroke", () => {
     // Fabric folds `strokeWidth` into `_getTransformedDimensions` whether or
     // not a stroke is painted, so the default of 1 inflates the bounding box
-    // and every geometry that depends on it. Same reason `VigiliaChart` pins it.
+    // and every geometry that depends on it. Same reason `YunariChart` pins it.
     expect(paintFor({}, "box")).toMatchObject({ stroke: null, strokeWidth: 0 });
     expect(paintFor({ strokeWidth: 4 }, "box")).toMatchObject({
       stroke: null,

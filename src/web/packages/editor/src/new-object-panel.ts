@@ -2,7 +2,7 @@ import {
   CHART_FAMILIES,
   type ChartFamily,
   type FabricGlobals,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
@@ -92,7 +92,7 @@ export interface InsertGroup {
    * The kind every object in the group is — a group is homogeneous by
    * construction, because that is what merges one. **This is the group's
    * identity, and the heading is not:** the pane scopes a group by it
-   * (`data-vigilia-add-group`), and a scope derived from the heading would move
+   * (`data-yunari-add-group`), and a scope derived from the heading would move
    * the day an author's copy did, which is what the hook exists to stop
    * (`vg-211`).
    */
@@ -310,7 +310,7 @@ export function insertObject(
   });
 }
 
-/** Vigilia creates semantic text while the editor retains generic construction and history. */
+/** Yunari creates semantic text while the editor retains generic construction and history. */
 export function createNewObjectPanel(
   host: HTMLElement,
   editor: EditorInteraction,
@@ -324,7 +324,7 @@ export function createNewObjectPanel(
   // a prop React would have to re-render for.
   const current: { globals: FabricGlobals | undefined } = { globals };
   const root = document.createElement("section");
-  // No `data-vigilia-panel` and no heading here: the pane that mounts this panel
+  // No `data-yunari-panel` and no heading here: the pane that mounts this panel
   // owns the name and the title bar, and a second element under either is a
   // strict-mode failure for every locator that browses by it.
   host.append(root);

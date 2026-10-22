@@ -529,7 +529,7 @@ async function selfTest() {
       "@theme static {\n  --text-xs: 11px;\n  --shadow-raised: 0 12px 28px #0000003d;\n}",
       0,
     ],
-    [":root token block is a definition", "a.css", ":root {\n  --vigilia-input-bg: #ffffff;\n}", 0],
+    [":root token block is a definition", "a.css", ":root {\n  --yunari-input-bg: #ffffff;\n}", 0],
     [
       "a rule that only names a palette is not a definition",
       "editor-shell.css",

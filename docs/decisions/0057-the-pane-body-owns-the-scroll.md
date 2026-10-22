@@ -32,7 +32,7 @@ make it a decision rather than a one-line fix:
   still happen before that, which is the one assertion in
   `shell-layout-scroll.dom.test.ts` that can fail.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** `editor-shell/` for every `overflow` declaration and every scroll
 owner; `paneBody` / `choosePane` / `scrollOf` in `shell-layout.tsx`; `pane.tsx`'s

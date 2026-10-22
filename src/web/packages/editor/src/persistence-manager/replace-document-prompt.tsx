@@ -48,7 +48,7 @@ export function ReplaceDocumentPrompt({
       label={question}
     >
       <p className="editor-shell-dialog-lead">{question}</p>
-      <div className="vigilia-dialog-actions">
+      <div className="yunari-dialog-actions">
         {ANSWERS.map(([value, word]) => (
           <button
             key={value}

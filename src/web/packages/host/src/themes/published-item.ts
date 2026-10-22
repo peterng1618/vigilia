@@ -1,8 +1,8 @@
 import {
   type FabricThemeEnvelope,
   parseCatalogueItemFile,
-} from "@vigilia/renderer-core";
-import { isSemanticVersion, readThemePackage } from "@vigilia/theme-package";
+} from "@yunari/renderer-core";
+import { isSemanticVersion, readThemePackage } from "@yunari/theme-package";
 import { CATALOGUE_RAW_BASE, cataloguePackageUrl } from "./catalogue-source.js";
 import { downloadPackage } from "./download.js";
 

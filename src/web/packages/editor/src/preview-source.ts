@@ -1,8 +1,8 @@
-import { FakeSampleSource } from "@vigilia/fake-source";
+import { FakeSampleSource } from "@yunari/fake-source";
 import {
   LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
   type SampleSource,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 
 const PREVIEW_HISTORY_SECONDS = 300;
 

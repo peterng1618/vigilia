@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { setObjectAssetReference } from "@vigilia/scene-fabric";
+import { setObjectAssetReference } from "@yunari/scene-fabric";
 import { Canvas, FabricImage, Group, Rect, type StaticCanvas } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { fontTrio } from "../font-catalog.js";

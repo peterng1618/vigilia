@@ -3,7 +3,7 @@ import { GridComponent, VisualMapComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 
-/** Registers the narrow canvas-only ECharts feature set required by VigiliaChart.
+/** Registers the narrow canvas-only ECharts feature set required by YunariChart.
  * `VisualMapComponent` carries per-value line-threshold colouring (§85); without
  * it ECharts accepts the option and silently draws one colour. */
 echarts.use([

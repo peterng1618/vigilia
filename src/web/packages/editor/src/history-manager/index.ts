@@ -1,4 +1,4 @@
-import { type SerialisedScene, targetsOf } from "@vigilia/scene-fabric";
+import { type SerialisedScene, targetsOf } from "@yunari/scene-fabric";
 import { ActiveSelection, type Canvas, type FabricObject } from "fabric/es";
 
 type HistoryCanvas = Canvas;

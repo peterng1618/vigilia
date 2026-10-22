@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 import { createElement } from "react";
 import { openModal } from "../components/ui/modal-host.js";
 import { fileNameFor, serializeThemePackage } from "../persist.js";
@@ -22,7 +22,7 @@ function defaultDownloader(name: string, bytes: Uint8Array): void {
   URL.revokeObjectURL(url);
 }
 
-/** Product file export for .vigilia-theme packages. */
+/** Product file export for .yunari-theme packages. */
 export class PersistenceManager {
   /** What was last saved, or `undefined` while nothing has been. A document
    *  with nothing saved behind it — a draft restored after a crash — has no
@@ -144,7 +144,7 @@ export function documentKey(
 /**
  * The document as its author left it, with what the renderer paints taken out.
  *
- * A bound text object carries its authored content in `vigiliaText.runs` — a
+ * A bound text object carries its authored content in `yunariText.runs` — a
  * value run naming a binding, a literal run saying what it says, each with its
  * own `style`. The renderer resolves those into the Fabric `text` and `styles`
  * properties, and those resolutions are what change while the author watches:
@@ -174,7 +174,7 @@ function authoredOnly(theme: FabricThemeEnvelope): FabricThemeEnvelope {
   const strip = (list: readonly unknown[]): unknown[] =>
     list.map((object) => {
       const entry = object as {
-        readonly vigiliaText?: unknown;
+        readonly yunariText?: unknown;
         readonly text?: unknown;
         readonly styles?: unknown;
         readonly objects?: readonly unknown[];
@@ -182,7 +182,7 @@ function authoredOnly(theme: FabricThemeEnvelope): FabricThemeEnvelope {
       const children = Array.isArray(entry.objects)
         ? { objects: strip(entry.objects) }
         : {};
-      if (entry.vigiliaText === undefined) return { ...entry, ...children };
+      if (entry.yunariText === undefined) return { ...entry, ...children };
       const { text: _text, styles: _styles, ...rest } = entry;
       return { ...rest, ...children };
     });

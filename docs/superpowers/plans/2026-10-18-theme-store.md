@@ -533,7 +533,7 @@ taken id; that is the opposite of the spec's rule and is withdrawn.
   own cases
 
 **Interfaces:**
-- Consumes: `readThemePackage` (`@vigilia/theme-package`), `ThemeStore.write` and
+- Consumes: `readThemePackage` (`@yunari/theme-package`), `ThemeStore.write` and
   `isValidThemeId` (`store.ts`), `createThumbnailStore(...).write`.
 - Produces: one host route taking package bytes and answering the id the package
   landed under, or the reader's own refusal. The browser's half is a post and a
@@ -614,7 +614,7 @@ is no way into a document at all.
 
 **Why this is a task** (R135): fourteen files under `tests/e2e/` reach a document
 through the package picker — 26 `setInputFiles` sites on
-`input[accept=".vigilia-theme"]`, plus the `filechooser` route, which is the same
+`input[accept=".yunari-theme"]`, plus the `filechooser` route, which is the same
 handler and not a second route. A.7 ends that route, so the phase's browser proof
 cannot be taken until they are re-pointed.
 
@@ -641,7 +641,7 @@ cannot be taken until they are re-pointed.
   separately.
 - **The stub is the pattern A.6 established** — `editor-rail.spec.ts:1476-1480`,
   "The editor preview serves no `/api/themes` at all".
-- The `Opened <file>.vigilia-theme` assertions become the surface's own words; a
+- The `Opened <file>.yunari-theme` assertions become the surface's own words; a
   status line the product no longer writes is not an assertion to keep.
 
 ### Task A.7d: Opening a library theme shows the editor

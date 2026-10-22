@@ -115,7 +115,7 @@ describe("an icon's counters survive a paint chosen from the panel", () => {
     const icon = storageIcon(null);
     const { canvas, host } = stageWith(icon);
 
-    await choose(host, "data-vigilia-panel-fill", "Text");
+    await choose(host, "data-yunari-panel-fill", "Text");
     canvas.renderAll();
 
     expect(alphaAt(canvas, ...COUNTER)).toBe(0);
@@ -128,7 +128,7 @@ describe("an icon's counters survive a paint chosen from the panel", () => {
 
   it("names the control for what it paints on a stroked path", () => {
     const { host, field } = stageWith(storageIcon(null));
-    const control = field<HTMLElement>("[data-vigilia-panel-fill]");
+    const control = field<HTMLElement>("[data-yunari-panel-fill]");
     const label =
       host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
         ?.textContent ?? control.closest("label")?.textContent;
@@ -136,7 +136,7 @@ describe("an icon's counters survive a paint chosen from the panel", () => {
     // "Fill" was the wrong word: there is no region here to fill.
     expect(label).toBe("Ink");
     // One control on the stroke, not two.
-    expect(host.querySelector("[data-vigilia-panel-stroke]")).toBeNull();
+    expect(host.querySelector("[data-yunari-panel-stroke]")).toBeNull();
   });
 
   it("still floods a path that declares the region it encloses", async () => {
@@ -148,14 +148,12 @@ describe("an icon's counters survive a paint chosen from the panel", () => {
     expect(arrow.fill).not.toBe("");
 
     const { canvas, host } = stageWith(arrow, 400);
-    const control = host.querySelector<HTMLElement>(
-      "[data-vigilia-panel-fill]",
-    );
+    const control = host.querySelector<HTMLElement>("[data-yunari-panel-fill]");
     const label =
       host.querySelector<HTMLLabelElement>(`label[for="${control?.id}"]`)
         ?.textContent ?? control?.closest("label")?.textContent;
 
-    await choose(host, "data-vigilia-panel-fill", "Text");
+    await choose(host, "data-yunari-panel-fill", "Text");
     canvas.renderAll();
 
     expect(label).toBe("Fill");

@@ -5,8 +5,8 @@ import {
   type FabricThemeEnvelope,
   facetRecordOf,
   parseCatalogueIndex,
-} from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+} from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildCatalogueIndexCommand,
@@ -68,7 +68,7 @@ async function catalogueOf(
     readonly packageBytes?: Uint8Array | null;
   }[],
 ): Promise<string> {
-  const root = await mkdtemp(path.join(os.tmpdir(), "vigilia-catalogue-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "yunari-catalogue-"));
   temporary.push(root);
   for (const { id, item, theme, packageBytes } of entries) {
     const directory = path.join(root, id);
@@ -240,7 +240,7 @@ describe("buildCatalogueIndexCommand", () => {
 
     const status = await buildCatalogueIndexCommand([
       "--build-catalogue-index",
-      path.join(os.tmpdir(), "vigilia-catalogue-does-not-exist"),
+      path.join(os.tmpdir(), "yunari-catalogue-does-not-exist"),
       "--out",
       path.join(os.tmpdir(), "index.json"),
       "--generated-at",
@@ -249,7 +249,7 @@ describe("buildCatalogueIndexCommand", () => {
 
     expect(status).toBe(1);
     expect(errors.mock.calls.flat().join("\n")).toContain(
-      "vigilia-catalogue-does-not-exist",
+      "yunari-catalogue-does-not-exist",
     );
   });
 

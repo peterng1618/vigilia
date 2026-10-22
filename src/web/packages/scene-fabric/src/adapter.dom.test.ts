@@ -8,7 +8,7 @@ import {
   type Sample,
   type ScenePlan,
   type TextContent,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   Ellipse,
   type FabricObject,
@@ -18,7 +18,7 @@ import {
 } from "fabric/es";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSceneAdapter, type SceneAdapter } from "./adapter.js";
-import { VigiliaChart } from "./chart-object.js";
+import { YunariChart } from "./chart-object.js";
 
 /**
  * The reconciler, against real Fabric.
@@ -624,7 +624,7 @@ describe("updating a scene", () => {
       ]),
     );
 
-    const chart = adapter.objectFor("drop") as VigiliaChart;
+    const chart = adapter.objectFor("drop") as YunariChart;
 
     expect(chart.disposed).toBe(false);
 
@@ -674,10 +674,10 @@ describe("charts", () => {
 
     const chart = adapter.objectFor("c");
 
-    expect(chart).toBeInstanceOf(VigiliaChart);
+    expect(chart).toBeInstanceOf(YunariChart);
     // `settings` is what the object persists, and it is only in the plan
     // because a renderer may have to create the chart.
-    expect((chart as VigiliaChart).settings).toEqual(defaultLineSettings);
+    expect((chart as YunariChart).settings).toEqual(defaultLineSettings);
     expect(absoluteCentre(chart!)).toEqual({ x: 160, y: 110 });
   });
 
@@ -686,7 +686,7 @@ describe("charts", () => {
 
     adapter.apply(plan([chartNode("c", { width: 300, height: 180 }, 10)]));
 
-    const chart = adapter.objectFor("c") as VigiliaChart;
+    const chart = adapter.objectFor("c") as YunariChart;
     const setOption = vi.spyOn(chart, "setOption");
 
     adapter.apply(plan([chartNode("c", { width: 300, height: 180 }, 90)]));
@@ -699,7 +699,7 @@ describe("charts", () => {
 
     adapter.apply(plan([chartNode("c", { width: 300, height: 180 })]));
 
-    const chart = adapter.objectFor("c") as VigiliaChart;
+    const chart = adapter.objectFor("c") as YunariChart;
 
     adapter.apply(plan([chartNode("c", { width: 400, height: 200 })]));
 
@@ -714,7 +714,7 @@ describe("charts", () => {
   });
 
   it("refuses a chart with no size instead of taking the frame down", () => {
-    // `VigiliaChart` throws on a zero-sized box, correctly. A document that
+    // `YunariChart` throws on a zero-sized box, correctly. A document that
     // gets here is a validation failure, and killing the frame for it would
     // hide every other node's problem.
     const onUnsupported = vi.fn();
@@ -737,7 +737,7 @@ describe("charts", () => {
     adapter.apply(plan([chartNode("c", { width: 300, height: 180 })]));
     adapter.setRenderScale(2);
 
-    expect((adapter.objectFor("c") as VigiliaChart).renderScale).toBe(2);
+    expect((adapter.objectFor("c") as YunariChart).renderScale).toBe(2);
   });
 });
 

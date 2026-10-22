@@ -139,9 +139,7 @@ it("titles a row with what it says rather than the key behind it", async () => {
     ),
   );
 
-  const row = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer="wordmark"]',
-  );
+  const row = host.querySelector<HTMLElement>('[data-yunari-layer="wordmark"]');
   expect(row?.title).toBe("Brand mark");
 });
 
@@ -172,7 +170,7 @@ it("indents a group child and carries the row's controls once it is selected", a
     ),
   );
 
-  const rows = host.querySelectorAll<HTMLElement>("[data-vigilia-layer]");
+  const rows = host.querySelectorAll<HTMLElement>("[data-yunari-layer]");
   expect(rows).toHaveLength(2);
   // One dense line, plus the two state indicators — not six text buttons, and
   // no pen beside the name (`vg-462`).
@@ -183,7 +181,7 @@ it("indents a group child and carries the row's controls once it is selected", a
   // and it carries the generic stack glyph the kind arm draws (§5.1).
   expect(rows[0]?.getAttribute("data-kind")).toBe("group");
   expect(
-    rows[0]?.querySelector('[data-vigilia-layer-mark="group"]'),
+    rows[0]?.querySelector('[data-yunari-layer-mark="group"]'),
   ).not.toBeNull();
 });
 
@@ -262,7 +260,7 @@ it("commits a rename typed into the field on Enter", async () => {
   const host = await renderPanel([textRow], { renameLayer });
   await act(async () =>
     host
-      .querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')
+      .querySelector<HTMLElement>('[data-yunari-layer="wordmark"]')
       ?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
   );
   const input = renameField(host);
@@ -280,7 +278,7 @@ it("does not commit a rename cancelled with Escape", async () => {
   const host = await renderPanel([textRow], { renameLayer });
   await act(async () =>
     host
-      .querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')
+      .querySelector<HTMLElement>('[data-yunari-layer="wordmark"]')
       ?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
   );
   const input = renameField(host);
@@ -301,7 +299,7 @@ it("does not commit when the cancelled field unmounts and blurs", async () => {
   const host = await renderPanel([textRow], { renameLayer });
   await act(async () =>
     host
-      .querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')
+      .querySelector<HTMLElement>('[data-yunari-layer="wordmark"]')
       ?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
   );
   const input = renameField(host);
@@ -321,7 +319,7 @@ it("does not commit when the cancelled field unmounts and blurs", async () => {
 it("opens the rename field from the keyboard and keeps the row's role", async () => {
   const host = await renderPanel([textRow]);
   const row = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer="wordmark"]',
+    '[data-yunari-layer="wordmark"]',
   )!;
   await act(async () => {
     row.dispatchEvent(
@@ -507,7 +505,7 @@ it("shows a shut group as one row offering to open, and no children", async () =
     ),
   );
 
-  const rows = host.querySelectorAll("[data-vigilia-layer]");
+  const rows = host.querySelectorAll("[data-yunari-layer]");
   expect(rows).toHaveLength(2);
   const twisty = host.querySelector('[aria-label="Expand CPU card"]');
   expect(twisty?.getAttribute("aria-expanded")).toBe("false");
@@ -572,19 +570,19 @@ it("marks the group whose children are current and dims the rest", async () => {
   );
   expect(
     host
-      .querySelector('[data-vigilia-layer="group"]')
+      .querySelector('[data-yunari-layer="group"]')
       ?.getAttribute("data-context"),
   ).toBe("true");
   expect(
     host
-      .querySelector('[data-vigilia-layer="other"]')
+      .querySelector('[data-yunari-layer="other"]')
       ?.getAttribute("data-context"),
   ).toBe("false");
   // The child inside the current context is selectable in its own right — the
   // half of the branch that Step 3 adds, and the reason the context is marked.
   expect(
     host
-      .querySelector('[data-vigilia-layer="child"]')
+      .querySelector('[data-yunari-layer="child"]')
       ?.getAttribute("data-context"),
   ).toBe("true");
 });
@@ -607,7 +605,7 @@ it("dims nothing when no group is entered", async () => {
       />,
     ),
   );
-  for (const row of host.querySelectorAll(".vigilia-layer-row"))
+  for (const row of host.querySelectorAll(".yunari-layer-row"))
     expect(row.getAttribute("data-context")).toBeNull();
 });
 
@@ -618,7 +616,7 @@ it("selects the row that was clicked, not the group it sits under", async () => 
   // `parentId`, and group-context work makes wiring that id to `selectLayer`
   // look reasonable. The wire must carry the clicked row's own id.
   await act(async () =>
-    host.querySelector<HTMLElement>('[data-vigilia-layer="child"]')?.click(),
+    host.querySelector<HTMLElement>('[data-yunari-layer="child"]')?.click(),
   );
   expect(selectLayer.mock.calls).toEqual([["child"]]);
 });
@@ -631,8 +629,8 @@ it("draws no action footer of its own, so the pane's toolbar is the only one", a
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(<CompositionPane bridge={bridge(rows)} />));
-  expect(host.querySelector("[data-vigilia-layer-actions]")).toBeNull();
-  expect(host.querySelector('[data-vigilia-layer="child"]')).not.toBeNull();
+  expect(host.querySelector("[data-yunari-layer-actions]")).toBeNull();
+  expect(host.querySelector('[data-yunari-layer="child"]')).not.toBeNull();
 });
 
 it("marks a slot across a group boundary, a container for an empty group, and only the cycle as refused", async () => {
@@ -718,9 +716,9 @@ it("marks a slot across a group boundary, a container for an empty group, and on
           : ({ kind: "slot", before: anchor } as const),
   });
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
   const line = (): HTMLElement =>
-    host.querySelector<HTMLElement>("[data-vigilia-layer-dropline]")!;
+    host.querySelector<HTMLElement>("[data-yunari-layer-dropline]")!;
 
   // The marker is permanent chrome, so "no drop" has to be its hidden state.
   expect(line().hidden).toBe(true);
@@ -806,7 +804,7 @@ it("draws locked as a filled lock and unlocked as an outline one", async () => {
   const lock = (id: string): SVGSVGElement | null =>
     host
       .querySelector(
-        `[data-vigilia-layer="${id}"] button[aria-label="Lock"], [data-vigilia-layer="${id}"] button[aria-label="Unlock"]`,
+        `[data-yunari-layer="${id}"] button[aria-label="Lock"], [data-yunari-layer="${id}"] button[aria-label="Unlock"]`,
       )
       ?.querySelector("svg") ?? null;
 
@@ -962,8 +960,8 @@ it("marks a hidden row so the list says what the canvas is doing", async () => {
     ],
     { renameLayer },
   );
-  const shown = host.querySelector('[data-vigilia-layer="shown"]')!;
-  const hidden = host.querySelector('[data-vigilia-layer="hidden-one"]')!;
+  const shown = host.querySelector('[data-yunari-layer="shown"]')!;
+  const hidden = host.querySelector('[data-yunari-layer="hidden-one"]')!;
 
   expect(shown.getAttribute("data-hidden")).toBe("false");
   expect(hidden.getAttribute("data-hidden")).toBe("true");
@@ -1072,7 +1070,7 @@ it("tells a refused drop target from one that would land, mid-gesture", async ()
     layerDrop: moveRule(tree),
   });
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
   const tree_ = (): HTMLElement =>
     host.querySelector<HTMLElement>('[role="tree"]')!;
 
@@ -1168,9 +1166,9 @@ it("takes the drop line away when the row under the pointer refuses it", async (
   ];
   const host = await renderPanel(tree, { layerDrop: moveRule(tree) });
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
   const line = (): HTMLElement =>
-    host.querySelector<HTMLElement>("[data-vigilia-layer-dropline]")!;
+    host.querySelector<HTMLElement>("[data-yunari-layer-dropline]")!;
 
   await act(async () => row("group").dispatchEvent(dragEvent("dragstart")));
   await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
@@ -1208,7 +1206,7 @@ it("still moves on a drop the panel marked, and refuses the one it did not", asy
     layerDrop: moveRule(tree),
   });
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
 
   // The cycle: the group dropped on its own child. Refused, so the drop does
   // not reach the bridge at all. The mark is read mid-gesture, because a drop
@@ -1271,10 +1269,10 @@ it("restacks the document when a row is dropped on another", async () => {
   const order = (): unknown[] =>
     canvas.getObjects().map((object) => object.get("id"));
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
   const panelOrder = (): (string | null)[] =>
-    [...host.querySelectorAll("[data-vigilia-layer]")].map((element) =>
-      element.getAttribute("data-vigilia-layer"),
+    [...host.querySelectorAll("[data-yunari-layer]")].map((element) =>
+      element.getAttribute("data-yunari-layer"),
     );
 
   const before = order();
@@ -1339,15 +1337,15 @@ it("moves a row into a group and back out, and the panel shows where it landed",
     ),
   );
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
   const has = (id: string): boolean =>
-    host.querySelector(`[data-vigilia-layer="${id}"]`) !== null;
+    host.querySelector(`[data-yunari-layer="${id}"]`) !== null;
   /** Each visible row as the author sees it: the id, and the depth the
    *  indentation is computed from. */
   const read = (): string[] =>
-    [...host.querySelectorAll<HTMLElement>("[data-vigilia-layer]")].map(
+    [...host.querySelectorAll<HTMLElement>("[data-yunari-layer]")].map(
       (element) =>
-        `${element.getAttribute("data-vigilia-layer")}@${element.style.getPropertyValue("--layer-depth")}`,
+        `${element.getAttribute("data-yunari-layer")}@${element.style.getPropertyValue("--layer-depth")}`,
     );
 
   // A group is shut until it is opened, so the child is not a row yet.
@@ -1404,7 +1402,7 @@ it("prints the bound key the projection reported, and nothing where there is non
   ]);
   const bound = (id: string): HTMLElement | null =>
     host.querySelector<HTMLElement>(
-      `[data-vigilia-layer="${id}"] .vigilia-layer-bound`,
+      `[data-yunari-layer="${id}"] .yunari-layer-bound`,
     );
 
   expect(bound("gauge")?.textContent).toBe("ram.used.percent");
@@ -1429,7 +1427,7 @@ it("carries no state icon at all on a default row", async () => {
   ]);
 
   const row = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer="wordmark"]',
+    '[data-yunari-layer="wordmark"]',
   )!;
   expect(row.querySelectorAll("button")).toHaveLength(0);
   expect(row.querySelector('[aria-label="Hide"]')).toBeNull();
@@ -1445,7 +1443,7 @@ it("shows the state icons on hover, on focus and on selection", async () => {
   ]);
   document.body.append(host);
   const row = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer="wordmark"]',
+    '[data-yunari-layer="wordmark"]',
   )!;
   const icons = (): number => row.querySelectorAll("button").length;
   expect(icons()).toBe(0);
@@ -1487,7 +1485,7 @@ it("keeps the icons on a row whose own state is not the default", async () => {
     layerRow({ id: "locked-one", locked: true }),
   ]);
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
 
   // Only the one that differs: a hidden row is still unlocked, so an unlocked
   // row's lock icon would be noise even here.
@@ -1532,17 +1530,17 @@ it("keeps every row reachable in a scene with two hundred of them", async () => 
   );
   const host = await renderPanel(rows);
 
-  const rendered = host.querySelectorAll("[data-vigilia-layer]");
+  const rendered = host.querySelectorAll("[data-yunari-layer]");
   expect(rendered).toHaveLength(200);
   // Every row is still a row with a name and a mark — none is dropped, merged
   // or collapsed to make the treatment fit.
   for (const row of rendered) {
-    expect(row.querySelector(".vigilia-layer-name")?.textContent).not.toBe("");
-    expect(row.querySelector("[data-vigilia-layer-mark]")).not.toBeNull();
+    expect(row.querySelector(".yunari-layer-name")?.textContent).not.toBe("");
+    expect(row.querySelector("[data-yunari-layer-mark]")).not.toBeNull();
   }
   // And the whole tree is still two hundred quiet rows: the default state adds
   // nothing, so a scene that big opens without 400 icons of noise.
-  expect(host.querySelectorAll("[data-vigilia-layer] button")).toHaveLength(0);
+  expect(host.querySelectorAll("[data-yunari-layer] button")).toHaveLength(0);
 });
 
 it("selects any one of two hundred rows through the panel's own click", async () => {
@@ -1564,7 +1562,7 @@ it("selects any one of two hundred rows through the panel's own click", async ()
   for (const at of [0, 57, 142, 199]) {
     const id = `loose-${at}`;
     await act(async () =>
-      host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)?.click(),
+      host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)?.click(),
     );
     // One call, naming that row and nothing else — a panel that answered every
     // click with the same id would satisfy a count-only assertion.
@@ -1577,7 +1575,7 @@ it("selects any one of two hundred rows through the panel's own click", async ()
 
 function roleSpan(host: HTMLElement, id: string): HTMLElement | null {
   return host.querySelector<HTMLElement>(
-    `[data-vigilia-layer="${id}"] .vigilia-layer-role`,
+    `[data-yunari-layer="${id}"] .yunari-layer-role`,
   );
 }
 
@@ -1635,7 +1633,7 @@ it("draws a role on every row, in the vocabulary's own words", async () => {
     expect(span?.textContent).toBe(one.says);
     // The attribute names the arm that drew, so a browser case measures the
     // treatment rather than inferring it from a class — the idiom the mark uses.
-    expect(span?.getAttribute("data-vigilia-layer-role")).toBe(one.role.kind);
+    expect(span?.getAttribute("data-yunari-layer-role")).toBe(one.role.kind);
   }
 });
 
@@ -1665,7 +1663,7 @@ it("names a chart row's family and a shape row's kind for a screen reader", asyn
     }),
   ]);
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
 
   const chart = nameFromContent(row("trends"));
   expect(chart).toContain("Trends");
@@ -1692,18 +1690,16 @@ it("says a row's role once, outside the mark and outside a title", async () => {
       role: { kind: "chart", family: "line", series: 3 },
     }),
   ]);
-  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="trends"]')!;
+  const row = host.querySelector<HTMLElement>('[data-yunari-layer="trends"]')!;
 
-  expect(row.querySelectorAll(".vigilia-layer-role")).toHaveLength(1);
-  expect(
-    row.querySelector(".vigilia-layer-mark .vigilia-layer-role"),
-  ).toBeNull();
-  const span = row.querySelector<HTMLElement>(".vigilia-layer-role")!;
+  expect(row.querySelectorAll(".yunari-layer-role")).toHaveLength(1);
+  expect(row.querySelector(".yunari-layer-mark .yunari-layer-role")).toBeNull();
+  const span = row.querySelector<HTMLElement>(".yunari-layer-role")!;
   expect(span.getAttribute("title")).toBeNull();
   expect(span.getAttribute("aria-hidden")).toBeNull();
   // The key beside it keeps its own tooltip: the role is visible text, and the
   // one column whose tooltip earns its place is the one that clips.
-  expect(row.querySelector(".vigilia-layer-bound")?.getAttribute("title")).toBe(
+  expect(row.querySelector(".yunari-layer-bound")?.getAttribute("title")).toBe(
     "cpu.load",
   );
 });
@@ -1724,10 +1720,10 @@ it("gives the role a fixed width and keeps the name the row's flexible column", 
 
   // The role gives up nothing: one that shrank or ellipsised would say nothing,
   // so it is never the row's flexible element.
-  expect(declarations(".vigilia-layer-role")).toMatch(/flex:\s*none/);
-  expect(declarations(".vigilia-layer-role")).not.toMatch(/flex:\s*1/);
+  expect(declarations(".yunari-layer-role")).toMatch(/flex:\s*none/);
+  expect(declarations(".yunari-layer-role")).not.toMatch(/flex:\s*1/);
   // …and the name keeps the growth, which is the whole of the row's width rule.
-  expect(declarations(".vigilia-layer-name")).toMatch(/flex:\s*1 1 auto/);
+  expect(declarations(".yunari-layer-name")).toMatch(/flex:\s*1 1 auto/);
 });
 
 it("carries a role on every one of two hundred rows", async () => {
@@ -1748,21 +1744,21 @@ it("carries a role on every one of two hundred rows", async () => {
   const host = await renderPanel(rows);
 
   const rendered = [
-    ...host.querySelectorAll<HTMLElement>("[data-vigilia-layer]"),
+    ...host.querySelectorAll<HTMLElement>("[data-yunari-layer]"),
   ];
   expect(rendered).toHaveLength(200);
-  expect(host.querySelectorAll("[data-vigilia-layer-role]")).toHaveLength(200);
+  expect(host.querySelectorAll("[data-yunari-layer-role]")).toHaveLength(200);
   for (const row of rendered) {
     // Never the empty string, on any arm: a name that begins with a gap is a row
     // identified by nothing.
     expect(
-      row.querySelector(".vigilia-layer-role")?.textContent?.trim(),
+      row.querySelector(".yunari-layer-role")?.textContent?.trim(),
     ).not.toBe("");
   }
   expect(roleSpan(host, "loose-0")?.textContent).toBe("Shape");
   expect(roleSpan(host, "card-19")?.textContent).toBe("Group");
   // The role is not a control, so a quiet panel stays quiet at two hundred rows.
-  expect(host.querySelectorAll(".vigilia-layer-role button")).toHaveLength(0);
+  expect(host.querySelectorAll(".yunari-layer-role button")).toHaveLength(0);
 });
 
 // ── …and entering a group is an act of its own ──────────────────────────────
@@ -1786,7 +1782,7 @@ const trends = layerRow({
  *  a locator that resolved to the first would be measuring the twisty. */
 function entryButton(host: HTMLElement, id: string): HTMLButtonElement | null {
   return host.querySelector<HTMLButtonElement>(
-    `[data-vigilia-layer="${id}"] [data-vigilia-layer-entry]`,
+    `[data-yunari-layer="${id}"] [data-yunari-layer-entry]`,
   );
 }
 
@@ -1794,7 +1790,7 @@ function entryButton(host: HTMLElement, id: string): HTMLButtonElement | null {
 async function hover(host: HTMLElement, id: string): Promise<void> {
   await act(async () =>
     host
-      .querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)
+      .querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)
       ?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
   );
 }
@@ -1807,7 +1803,7 @@ it("draws no enter control on a group row the author is not on", async () => {
 
   expect(entryButton(host, "card")).toBeNull();
   expect(
-    host.querySelectorAll<HTMLElement>('[data-vigilia-layer="card"] button'),
+    host.querySelectorAll<HTMLElement>('[data-yunari-layer="card"] button'),
   ).toHaveLength(1);
 });
 
@@ -1939,7 +1935,7 @@ it("makes a group's parts reachable once its control has entered it", async () =
     ),
   );
   const row = (id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+    host.querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)!;
   const click = async (id: string): Promise<void> => {
     await act(async () =>
       row(id).dispatchEvent(new MouseEvent("click", { bubbles: true })),

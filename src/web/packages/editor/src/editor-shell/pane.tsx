@@ -6,7 +6,7 @@ import { Glyph, type LucideIcon } from "./icons.js";
  * a single pane-level action), a body, and an optional footer toolbar.
  *
  * `id` is the pane's DOM name, and it is required: the pane is the one owner of
- * pane identity, so every pane carries `data-vigilia-panel` and no panel inside
+ * pane identity, so every pane carries `data-yunari-panel` and no panel inside
  * one duplicates it. Two elements under one name is a strict-mode failure in
  * the specs that browse by it, which is what a second writer would buy.
  *
@@ -45,7 +45,7 @@ export function Pane(props: {
   } = props;
   return (
     <section
-      data-vigilia-panel={id}
+      data-yunari-panel={id}
       className="editor-shell-pane"
       hidden={hidden}
     >

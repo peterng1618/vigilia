@@ -38,7 +38,7 @@ async function mountSheet(): Promise<Element> {
 /** One row of the sheet, by the action it names. */
 function sheetRow(dialog: Element, action: ProductShortcutId): Element {
   const row = dialog.querySelector(
-    `[data-vigilia-reference-row="${action}"] kbd`,
+    `[data-yunari-reference-row="${action}"] kbd`,
   );
   if (row === null) throw new Error(`no sheet row for ${action}.`);
   return row;

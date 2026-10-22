@@ -1,4 +1,4 @@
-import type { FabricGlobals } from "@vigilia/renderer-core";
+import type { FabricGlobals } from "@yunari/renderer-core";
 import { starterTypePresets } from "./new-fabric-theme-globals.js";
 import { paletteTokenRole } from "./new-object-defaults.js";
 
@@ -67,7 +67,7 @@ export interface TokenSubstitution {
  * having built one.
  *
  * **`literal` is about the reference, not the value.** It is offered only where
- * the format admits one; `vigiliaPaint` and chart settings both require a
+ * the format admits one; `yunariPaint` and chart settings both require a
  * palette token by validation (`fabric-envelope-validate.ts`), so a document
  * with no palette at all still refuses the card. That is the same refusal the
  * Add pane already makes for a theme with nothing to build from, and it is the

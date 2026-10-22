@@ -2,7 +2,7 @@
  * The host's public surface.
  *
  * The wire contract is deliberately **not** re-exported here — it lives in
- * `@vigilia/renderer-core` because both the host and every display import it.
+ * `@yunari/renderer-core` because both the host and every display import it.
  * Re-exporting would invite a second import path for one contract, which is
  * the first step back towards the mirrored pair ADR-0007 removed.
  */

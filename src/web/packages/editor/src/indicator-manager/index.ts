@@ -1,4 +1,4 @@
-import { isLocked } from "@vigilia/scene-fabric";
+import { isLocked } from "@yunari/scene-fabric";
 import type { Canvas, FabricObject } from "fabric/es";
 import { createCursorIndicator } from "./cursor-indicator.js";
 
@@ -57,11 +57,11 @@ export function createIndicatorManager(
     canvas.wrapperEl?.isConnected === true ? canvas.wrapperEl : document.body;
 
   const angle = createCursorIndicator({
-    className: "vigilia-angle-indicator",
+    className: "yunari-angle-indicator",
     parent,
   });
   const size = createCursorIndicator({
-    className: "vigilia-size-indicator",
+    className: "yunari-size-indicator",
     parent,
   });
 

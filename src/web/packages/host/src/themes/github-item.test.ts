@@ -7,12 +7,12 @@ import {
   DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
   parseCatalogueItemFile,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   MAX_ARCHIVE_BYTES,
   readThemePackage,
   writeThemePackage,
-} from "@vigilia/theme-package";
+} from "@yunari/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CATALOGUE_RAW_BASE, cataloguePackageUrl } from "./catalogue-source.js";
 import { submissionFiles } from "./github-item.js";
@@ -141,7 +141,7 @@ describe("submissionFiles", () => {
   let thumbnails: ThumbnailStore;
 
   beforeEach(async () => {
-    libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-item-"));
+    libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-item-"));
     store = createThemeStore(libraryDir);
     thumbnails = createThumbnailStore(libraryDir);
   });
@@ -182,7 +182,7 @@ describe("submissionFiles", () => {
       // Option B: a repository file has no download counter and no reactions.
       downloads: 0,
       favorites: 0,
-      packageUrl: `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${THEME_ID}/${THEME_ID}.zip`,
+      packageUrl: `https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/${THEME_ID}/${THEME_ID}.zip`,
       thumbnail: `catalogue/${THEME_ID}/thumbnail.png`,
     });
 

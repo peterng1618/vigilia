@@ -7,14 +7,14 @@ import {
   isCatalogueId,
   parseCatalogueItemFile,
   type ThemeRemix,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   classifyThemeChange,
   MAX_ARCHIVE_BYTES,
   readThemePackage,
   themeVideoRefusals,
   versionFor,
-} from "@vigilia/theme-package";
+} from "@yunari/theme-package";
 import { cataloguePackageUrl } from "./catalogue-source.js";
 
 /**
@@ -30,7 +30,7 @@ import { cataloguePackageUrl } from "./catalogue-source.js";
  */
 
 const USAGE =
-  "usage: vigilia validate-item <catalogueDir> " +
+  "usage: yunari validate-item <catalogueDir> " +
   "[--previous-item <file> --previous-package <file>]";
 
 /** The two files the workflow `git show`s out of the base commit. */

@@ -9,8 +9,8 @@ import {
   reassignChartPaintReferences,
   type SampleSource,
   seriesPaintFor,
-} from "@vigilia/renderer-core";
-import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { type SceneAdapter, YunariChart } from "@yunari/scene-fabric";
 import { type FabricObject, Group } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import {
@@ -32,7 +32,7 @@ function newChart(
   globals: FabricGlobals | undefined,
   id: string,
   placement: { readonly left: number; readonly top: number },
-): VigiliaChart {
+): YunariChart {
   const common = {
     id,
     // The family is what the author just chose, so it is what the layer list
@@ -58,25 +58,25 @@ function newChart(
 
   switch (family) {
     case "gauge":
-      return new VigiliaChart({
+      return new YunariChart({
         ...common,
         family,
         settings: createNewChartDefaults(globals, family),
       });
     case "line":
-      return new VigiliaChart({
+      return new YunariChart({
         ...common,
         family,
         settings: createNewChartDefaults(globals, family),
       });
     case "bar":
-      return new VigiliaChart({
+      return new YunariChart({
         ...common,
         family,
         settings: createNewChartDefaults(globals, family),
       });
     case "pie":
-      return new VigiliaChart({
+      return new YunariChart({
         ...common,
         family,
         settings: createNewChartDefaults(globals, family),
@@ -93,7 +93,7 @@ function newChart(
  * applied, which is the disagreement this state exists to remove.
  */
 function aspectOf(
-  chart: VigiliaChart,
+  chart: YunariChart,
   ratios: readonly number[],
 ): { readonly aspect: number } | Record<string, never> {
   const width = chart.width * chart.scaleX;
@@ -117,7 +117,7 @@ function aspectOf(
  * guessed ceiling (`vg-469`).
  */
 function drawnEdgeOf(
-  chart: VigiliaChart,
+  chart: YunariChart,
 ): { readonly drawnEdge: number } | Record<string, never> {
   const width = chart.width * chart.scaleX;
   const height = chart.height * chart.scaleY;
@@ -127,7 +127,7 @@ function drawnEdgeOf(
     : {};
 }
 
-/** Vigilia-owned chart semantics layered on the editor's generic canvas mechanics. */
+/** Yunari-owned chart semantics layered on the editor's generic canvas mechanics. */
 export class ChartManager {
   readonly #editor: EditorInteraction;
   readonly #scene: SceneAdapter;
@@ -299,7 +299,7 @@ export class ChartManager {
     // `object.get("objects")` never descended into one and every chart inside
     // a card kept the token its whole group had just lost.
     const visit = (object: FabricObject): void => {
-      if (object instanceof VigiliaChart) {
+      if (object instanceof YunariChart) {
         const settings = reassignChartPaintReferences(
           object.settings,
           from,
@@ -328,7 +328,7 @@ export class ChartManager {
    * id.
    */
   #targetFor(chart: FabricObject): ChartFieldTarget | undefined {
-    if (!(chart instanceof VigiliaChart)) return undefined;
+    if (!(chart instanceof YunariChart)) return undefined;
     const id = chart.get("id");
     if (typeof id !== "string") return undefined;
     return {
@@ -351,14 +351,14 @@ export class ChartManager {
    * the column is redrawn by the inspector instead.
    */
   #announce(chart: FabricObject | undefined): void {
-    if (!(chart instanceof VigiliaChart)) return;
+    if (!(chart instanceof YunariChart)) return;
     this.#editor.canvas.fire("object:modified", { target: chart });
   }
 
   #updateSettings(id: string, settings: ChartContent["settings"]): void {
     const chart = this.#chartFor(id);
 
-    if (chart instanceof VigiliaChart) {
+    if (chart instanceof YunariChart) {
       chart.set("settings", settings);
       this.#applyChart(id, chart);
       this.#editor.canvas.requestRenderAll();
@@ -397,7 +397,7 @@ export class ChartManager {
     const previous = this.#bindings[id] ?? [];
     this.#bindings = { ...this.#bindings, [id]: bindings };
     const chart = this.#chartFor(id);
-    if (chart instanceof VigiliaChart) {
+    if (chart instanceof YunariChart) {
       // A per-series paint is one entry per series, and a series is a binding.
       // Without this a chart inserted from the Add pane declares one series
       // colour and keeps it however many sensors are bound to it, so a
@@ -422,7 +422,7 @@ export class ChartManager {
     const chart = this.#chartFor(id);
     const width = chart === undefined ? 0 : chart.width * chart.scaleX;
     if (
-      !(chart instanceof VigiliaChart) ||
+      !(chart instanceof YunariChart) ||
       !Number.isFinite(width) ||
       width <= 0
     ) {
@@ -441,7 +441,7 @@ export class ChartManager {
 
   readonly #rerasterizeScaledChart = (event: { target?: unknown }): void => {
     const chart = event.target;
-    if (!(chart instanceof VigiliaChart)) return;
+    if (!(chart instanceof YunariChart)) return;
     const width = chart.width * chart.scaleX;
     const height = chart.height * chart.scaleY;
     if (
@@ -481,7 +481,7 @@ export class ChartManager {
     const nowMs = Date.now();
     const visit = (objects: readonly object[]): void => {
       for (const object of objects) {
-        if (object instanceof VigiliaChart) {
+        if (object instanceof YunariChart) {
           const id = object.get("id");
           if (typeof id !== "string") continue;
           // A source that throws costs that chart, the way a throwing option
@@ -541,7 +541,7 @@ export class ChartManager {
    * — is returned by `latest` and excluded by `history`. Reading `history` for a
    * gauge was how a bar kept drawing the old value while its newest changed.
    */
-  #readingSignature(id: string, chart: VigiliaChart, nowMs: number): string {
+  #readingSignature(id: string, chart: YunariChart, nowMs: number): string {
     const content = {
       family: chart.family,
       settings: chart.settings,
@@ -568,10 +568,10 @@ export class ChartManager {
     return content.family === "line" ? `${readings}|now:${nowMs}` : readings;
   }
 
-  #chartFor(id: string): VigiliaChart | undefined {
-    const find = (objects: readonly object[]): VigiliaChart | undefined => {
+  #chartFor(id: string): YunariChart | undefined {
+    const find = (objects: readonly object[]): YunariChart | undefined => {
       for (const object of objects) {
-        if (object instanceof VigiliaChart && object.get("id") === id)
+        if (object instanceof YunariChart && object.get("id") === id)
           return object;
         if (object instanceof Group) {
           const chart = find(object.getObjects());
@@ -585,7 +585,7 @@ export class ChartManager {
 
   #applyChart(
     id: string,
-    chart: VigiliaChart,
+    chart: YunariChart,
     reading?: string,
     nowMs = Date.now(),
   ): void {
@@ -620,8 +620,8 @@ export class ChartManager {
     }
   }
 
-  #selectedChart(): VigiliaChart | undefined {
+  #selectedChart(): YunariChart | undefined {
     const object = this.#editor.canvas.getActiveObject();
-    return object instanceof VigiliaChart ? object : undefined;
+    return object instanceof YunariChart ? object : undefined;
   }
 }

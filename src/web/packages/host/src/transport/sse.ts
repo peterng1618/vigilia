@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import { formatSseEvent, SAMPLE_EVENT } from "@vigilia/renderer-core";
+import { formatSseEvent, SAMPLE_EVENT } from "@yunari/renderer-core";
 import { KeepLatestSlot } from "./keep-latest.js";
 
 /** One display connection. Backpressure keeps only the newest pending snapshot. */

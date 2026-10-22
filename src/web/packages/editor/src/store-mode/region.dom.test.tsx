@@ -125,7 +125,7 @@ function must<T extends Element>(found: T | null, what: string): T {
 /** The region's header row, which every case here reads through. */
 function headerRow(container: HTMLElement): HTMLElement {
   return must(
-    container.querySelector<HTMLElement>("[data-vigilia-store-header]"),
+    container.querySelector<HTMLElement>("[data-yunari-store-header]"),
     "header row",
   );
 }
@@ -134,7 +134,7 @@ function headerRow(container: HTMLElement): HTMLElement {
 function halves(header: HTMLElement): readonly HTMLButtonElement[] {
   return Array.from(
     must(
-      header.querySelector<HTMLElement>("[data-vigilia-store-halves]"),
+      header.querySelector<HTMLElement>("[data-yunari-store-halves]"),
       "halves",
     ).querySelectorAll<HTMLButtonElement>("button"),
   );
@@ -170,7 +170,7 @@ it("shows the two halves as a Segmented inside the region's own header row", asy
   ).toEqual(["true", "false"]);
   expect(
     must(
-      header.querySelector<HTMLElement>("[data-vigilia-store-halves]"),
+      header.querySelector<HTMLElement>("[data-yunari-store-halves]"),
       "halves",
     ).getAttribute("aria-label"),
     "the halves carry no programmatic name of their own",
@@ -199,15 +199,15 @@ it("keeps the facet row on one line and wraps rather than dropping a control", a
   const container = await mount(<StoreModeRegion mode="themes" />);
 
   const row = must(
-    headerRow(container).querySelector<HTMLElement>("[data-vigilia-facet-row]"),
+    headerRow(container).querySelector<HTMLElement>("[data-yunari-facet-row]"),
     "facet row",
   );
   const facets = Array.from(
-    row.querySelectorAll<HTMLButtonElement>("[data-vigilia-facet]"),
+    row.querySelectorAll<HTMLButtonElement>("[data-yunari-facet]"),
   );
   expect(
     facets.map((facet) =>
-      facet.querySelector("[data-vigilia-facet-name]")?.textContent?.trim(),
+      facet.querySelector("[data-yunari-facet-name]")?.textContent?.trim(),
     ),
     "the facet row does not name the five facets, in order",
   ).toEqual([
@@ -238,7 +238,7 @@ it("draws the search well and the sort well, and the sort follows the half", asy
   const header = headerRow(container);
 
   const search = must(
-    header.querySelector<HTMLInputElement>("[data-vigilia-store-search]"),
+    header.querySelector<HTMLInputElement>("[data-yunari-store-search]"),
     "search well",
   );
   expect(
@@ -250,7 +250,7 @@ it("draws the search well and the sort well, and the sort follows the half", asy
   );
 
   const sort = must(
-    header.querySelector<HTMLElement>("[data-vigilia-store-sort]"),
+    header.querySelector<HTMLElement>("[data-yunari-store-sort]"),
     "sort well",
   );
   expect(sort.textContent).toContain(uiCopy.store.sort.local.name);
@@ -258,7 +258,7 @@ it("draws the search well and the sort well, and the sort follows the half", asy
   await act(async () => halves(header)[1]?.click());
 
   expect(
-    header.querySelector<HTMLElement>("[data-vigilia-store-sort]")?.textContent,
+    header.querySelector<HTMLElement>("[data-yunari-store-sort]")?.textContent,
     "the sort kept the local half's key on the online half",
   ).toContain(uiCopy.store.sort.online.updated);
 });
@@ -286,11 +286,11 @@ it("opens a facet as a group of checkbox rows, and counts what is chosen", async
   ];
   const container = await mount(<FacetFixture facets={facets} />);
   const trigger = must(
-    container.querySelector<HTMLButtonElement>("[data-vigilia-facet]"),
+    container.querySelector<HTMLButtonElement>("[data-yunari-facet]"),
     "facet button",
   );
   expect(
-    trigger.querySelector("[data-vigilia-facet-count]"),
+    trigger.querySelector("[data-yunari-facet-count]"),
     "a facet with nothing chosen claims a count",
   ).toBeNull();
 
@@ -298,14 +298,12 @@ it("opens a facet as a group of checkbox rows, and counts what is chosen", async
 
   const rows = Array.from(
     document.body.querySelectorAll<HTMLButtonElement>(
-      "[data-vigilia-facet-option]",
+      "[data-yunari-facet-option]",
     ),
   );
   expect(
     rows.map((row) =>
-      row
-        .querySelector("[data-vigilia-facet-option-name]")
-        ?.textContent?.trim(),
+      row.querySelector("[data-yunari-facet-option-name]")?.textContent?.trim(),
     ),
     "the facet did not offer its options",
   ).toEqual(["Ada", "Bob"]);
@@ -318,19 +316,19 @@ it("opens a facet as a group of checkbox rows, and counts what is chosen", async
 
   expect(
     document.body
-      .querySelectorAll("[data-vigilia-facet-option]")[0]
+      .querySelectorAll("[data-yunari-facet-option]")[0]
       ?.getAttribute("aria-checked"),
     "choosing a value did not check its row",
   ).toBe("true");
   expect(
-    trigger.querySelector("[data-vigilia-facet-count]")?.textContent,
+    trigger.querySelector("[data-yunari-facet-count]")?.textContent,
     "the trigger does not count what is chosen",
   ).toBe("1");
 });
 
 /**
  * The region is the Themes mode's surface and no other's. The shell renders one
- * `[data-vigilia-mode-region]` section for every non-editor mode, and A.8 mounts
+ * `[data-yunari-mode-region]` section for every non-editor mode, and A.8 mounts
  * the Host mode's own region in it — so a region that drew itself in a mode it
  * does not own would be the second surface in one section.
  */
@@ -413,13 +411,13 @@ async function mountStore(
 /** The cells the gallery draws, in order. */
 function cells(): readonly HTMLElement[] {
   return Array.from(
-    document.body.querySelectorAll<HTMLElement>("[data-vigilia-store-cell]"),
+    document.body.querySelectorAll<HTMLElement>("[data-yunari-store-cell]"),
   );
 }
 
 /** The cells' ids in the order the grid draws them. */
 function drawnIds(): readonly (string | null)[] {
-  return cells().map((cell) => cell.getAttribute("data-vigilia-store-cell"));
+  return cells().map((cell) => cell.getAttribute("data-yunari-store-cell"));
 }
 
 /** One entry of the sort well chosen, the way a person chooses it: Base UI
@@ -427,7 +425,7 @@ function drawnIds(): readonly (string | null)[] {
  *  it, and the popup opens on a queue `act` does not drain by itself. */
 async function chooseSort(id: string): Promise<void> {
   const trigger = must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-sort]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-sort]"),
     "sort well",
   );
   await act(async () => {
@@ -441,7 +439,7 @@ async function chooseSort(id: string): Promise<void> {
     });
   }
   const option = must(
-    document.body.querySelector<HTMLElement>(`[data-vigilia-option="${id}"]`),
+    document.body.querySelector<HTMLElement>(`[data-yunari-option="${id}"]`),
     `${id} sort option`,
   );
   await act(async () => {
@@ -466,7 +464,7 @@ async function chooseSort(id: string): Promise<void> {
 async function pressCell(id: string, action: CellAction): Promise<void> {
   const button = must(
     document.body.querySelector<HTMLButtonElement>(
-      `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-action="${action}"]`,
+      `[data-yunari-store-cell="${id}"] [data-yunari-store-cell-action="${action}"]`,
     ),
     `${action} on ${id}`,
   );
@@ -478,7 +476,7 @@ async function pressCell(id: string, action: CellAction): Promise<void> {
 async function pressCellSurface(id: string): Promise<void> {
   const surface = must(
     document.body.querySelector<HTMLButtonElement>(
-      `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-surface]`,
+      `[data-yunari-store-cell="${id}"] [data-yunari-store-cell-surface]`,
     ),
     `${id}'s own surface`,
   );
@@ -487,7 +485,7 @@ async function pressCellSurface(id: string): Promise<void> {
 
 /** Whether the item's own surface is on screen, read where it portals to. */
 function itemIsOpen(): boolean {
-  return document.body.querySelector("[data-vigilia-store-item]") !== null;
+  return document.body.querySelector("[data-yunari-store-item]") !== null;
 }
 
 /** The way out of the item's own surface, pressed. */
@@ -495,7 +493,7 @@ async function closeItem(): Promise<void> {
   await act(async () =>
     must(
       document.body.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-item-close]",
+        "[data-yunari-store-item-close]",
       ),
       "close control",
     ).click(),
@@ -505,11 +503,11 @@ async function closeItem(): Promise<void> {
 /** The page the pager says is in force, or `undefined` when it draws none. */
 function currentPage(): number | undefined {
   const shown = document.body.querySelector<HTMLElement>(
-    "[data-vigilia-store-page][aria-current]",
+    "[data-yunari-store-page][aria-current]",
   );
   return shown === null
     ? undefined
-    : Number(shown.getAttribute("data-vigilia-store-page"));
+    : Number(shown.getAttribute("data-yunari-store-page"));
 }
 
 /** One run of a facet popover: the heading it is drawn under, or `undefined`
@@ -544,7 +542,7 @@ async function openFacet(
   await act(async () =>
     must(
       document.body.querySelector<HTMLButtonElement>(
-        `[data-vigilia-facet="${facetId}"]`,
+        `[data-yunari-facet="${facetId}"]`,
       ),
       `${facetId} facet`,
     ).click(),
@@ -560,14 +558,14 @@ async function openFacet(
     classes: string;
   }[] = [];
   for (const row of popup.querySelectorAll<HTMLElement>(
-    "[data-vigilia-facet-option]",
+    "[data-yunari-facet-option]",
   )) {
     const wrapper = must(row.parentElement, "a facet option's own run");
-    const owner = wrapper.closest("[data-vigilia-facet-group]");
-    const group = owner?.getAttribute("data-vigilia-facet-group") ?? undefined;
+    const owner = wrapper.closest("[data-yunari-facet-group]");
+    const group = owner?.getAttribute("data-yunari-facet-group") ?? undefined;
     const value =
       row
-        .querySelector("[data-vigilia-facet-option-name]")
+        .querySelector("[data-yunari-facet-option-name]")
         ?.textContent?.trim() ?? "";
     const last = runs.at(-1);
     if (last !== undefined && last.group === group) last.values.push(value);
@@ -576,7 +574,7 @@ async function openFacet(
 
   return {
     hint:
-      popup.querySelector("[data-vigilia-facet-hint]")?.textContent?.trim() ??
+      popup.querySelector("[data-yunari-facet-hint]")?.textContent?.trim() ??
       undefined,
     runs: runs.map(({ group, values }) => ({ group, values })),
     runClasses: runs.map((run) => run.classes),
@@ -587,9 +585,7 @@ async function openFacet(
  *  native setter, which a plain `value =` write does not go through. */
 async function type(query: string): Promise<void> {
   const well = must(
-    document.body.querySelector<HTMLInputElement>(
-      "[data-vigilia-store-search]",
-    ),
+    document.body.querySelector<HTMLInputElement>("[data-yunari-store-search]"),
     "search well",
   );
   await act(async () => {
@@ -626,7 +622,7 @@ it("lists the items and opens one from the cell's own surface", async () => {
   ]);
 
   expect(
-    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    cells().map((cell) => cell.getAttribute("data-yunari-store-cell")),
     "the region draws no cells for the items it listed",
   ).toEqual(["living-room", "porch-strip"]);
 
@@ -634,7 +630,7 @@ it("lists the items and opens one from the cell's own surface", async () => {
 
   expect(
     document.body
-      .querySelector("[data-vigilia-store-item-name]")
+      .querySelector("[data-yunari-store-item-name]")
       ?.textContent?.trim(),
     "the cell's own surface did not open the item's own surface",
   ).toBe("Porch strip");
@@ -677,7 +673,7 @@ it("asks for the theme as a document from the cell's open action and the modal's
   await act(async () =>
     must(
       document.body.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-item-action='open']",
+        "[data-yunari-store-item-action='open']",
       ),
       "the modal's open action",
     ).click(),
@@ -697,7 +693,7 @@ it("asks for the theme as a document from the cell's open action and the modal's
   ).toBe(true);
   expect(
     document.body
-      .querySelector("[data-vigilia-store-item-name]")
+      .querySelector("[data-yunari-store-item-name]")
       ?.textContent?.trim(),
     "the modal's own open action moved the item's own surface",
   ).toBe("Porch strip");
@@ -714,7 +710,7 @@ it("offers the two different empty states, and not the same one twice", async ()
   await mountStore([]);
 
   const empty = must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-empty]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-empty]"),
     "empty state",
   );
   expect(
@@ -736,7 +732,7 @@ it("offers the two different empty states, and not the same one twice", async ()
   await type("nothing matches this");
 
   const filtered = must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-empty]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-empty]"),
     "empty state after a query",
   );
   expect(
@@ -772,7 +768,7 @@ it("returns to page one when a filter changes", async () => {
 
   const second = must(
     document.body.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-page='2']",
+      "[data-yunari-store-page='2']",
     ),
     "second page numeral",
   );
@@ -782,7 +778,7 @@ it("returns to page one when a filter changes", async () => {
   await type("Themed");
 
   expect(
-    document.body.querySelector("[data-vigilia-store-page='2']"),
+    document.body.querySelector("[data-yunari-store-page='2']"),
     "the filter left fewer pages than this case is about",
   ).not.toBeNull();
   expect(
@@ -802,25 +798,25 @@ it("closes back onto the same page, filter and sort", async () => {
 
   const second = must(
     document.body.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-page='2']",
+      "[data-yunari-store-page='2']",
     ),
     "second page numeral",
   );
   await act(async () => second.click());
 
-  const opened = String(cells()[0]?.getAttribute("data-vigilia-store-cell"));
+  const opened = String(cells()[0]?.getAttribute("data-yunari-store-cell"));
   await pressCellSurface(opened);
   await closeItem();
 
   expect(
-    document.body.querySelector("[data-vigilia-store-item]"),
+    document.body.querySelector("[data-yunari-store-item]"),
     "the item's own surface did not close",
   ).toBeNull();
   expect(currentPage(), "closing the item lost the page").toBe(2);
   expect(
     must(
       document.body.querySelector<HTMLInputElement>(
-        "[data-vigilia-store-search]",
+        "[data-yunari-store-search]",
       ),
       "search well",
     ).value,
@@ -1072,7 +1068,7 @@ async function mountOver(host: ActiveThemeHost): Promise<void> {
  */
 function assignIsOpen(): boolean {
   return (
-    document.body.querySelector("[data-vigilia-store-assign-status]") !== null
+    document.body.querySelector("[data-yunari-store-assign-status]") !== null
   );
 }
 
@@ -1081,7 +1077,7 @@ function assignStatus(): string {
   return (
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-assign-status]",
+        "[data-yunari-store-assign-status]",
       ),
       "the display choice",
     ).textContent?.trim() ?? ""
@@ -1097,7 +1093,7 @@ async function openAssign(themeId: string): Promise<void> {
 function assignSelect(): HTMLButtonElement {
   return must(
     document.body.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-assign-display]",
+      "[data-yunari-store-assign-display]",
     ),
     "the display select",
   );
@@ -1107,9 +1103,9 @@ function assignSelect(): HTMLButtonElement {
 function assignValue(): string {
   return (
     must(
-      assignSelect().querySelector<HTMLElement>("[data-vigilia-value]"),
+      assignSelect().querySelector<HTMLElement>("[data-yunari-value]"),
       "the display select's value",
-    ).getAttribute("data-vigilia-value") ?? ""
+    ).getAttribute("data-yunari-value") ?? ""
   );
 }
 
@@ -1136,8 +1132,8 @@ async function openDisplays(): Promise<void> {
 async function offeredDisplays(): Promise<readonly string[]> {
   await openDisplays();
   return Array.from(
-    document.body.querySelectorAll<HTMLElement>("[data-vigilia-option]"),
-  ).map((option) => option.getAttribute("data-vigilia-option") ?? "");
+    document.body.querySelectorAll<HTMLElement>("[data-yunari-option]"),
+  ).map((option) => option.getAttribute("data-yunari-option") ?? "");
 }
 
 /** Presses one display inside the select that is open. **Base UI commits a list
@@ -1145,9 +1141,7 @@ async function offeredDisplays(): Promise<readonly string[]> {
  *  press is part of the interaction rather than a detail of the driver. */
 async function chooseDisplay(value: string): Promise<void> {
   const option = must(
-    document.body.querySelector<HTMLElement>(
-      `[data-vigilia-option="${value}"]`,
-    ),
+    document.body.querySelector<HTMLElement>(`[data-yunari-option="${value}"]`),
     `the ${value} display`,
   );
   await act(async () =>
@@ -1287,7 +1281,7 @@ it("offers no choice at all when the read of the displays failed", async () => {
     "a failed read is not reported as the host's own refusal",
   ).toBe("Settings are available on this PC only.");
   expect(
-    document.body.querySelector("[data-vigilia-store-assign-display]"),
+    document.body.querySelector("[data-yunari-store-assign-display]"),
     "a failed read was drawn as a choice with nothing in it",
   ).toBeNull();
 });
@@ -1412,7 +1406,7 @@ it("opens the same choice from the modal's own assign action", async () => {
   await act(async () =>
     must(
       document.body.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-item-action='assign']",
+        "[data-yunari-store-item-action='assign']",
       ),
       "the modal's assign action",
     ).click(),
@@ -1584,7 +1578,7 @@ function installHost(options: {
 function installControl(id: string): HTMLButtonElement {
   return must(
     document.body.querySelector<HTMLButtonElement>(
-      `[data-vigilia-store-cell="${id}"] button[data-vigilia-store-cell-install]`,
+      `[data-yunari-store-cell="${id}"] button[data-yunari-store-cell-install]`,
     ),
     `${id}'s install control`,
   );
@@ -1613,10 +1607,10 @@ function installReadings(): readonly (readonly [
   string | null,
 ])[] {
   return cells().map((cell) => [
-    cell.getAttribute("data-vigilia-store-cell"),
+    cell.getAttribute("data-yunari-store-cell"),
     cell
-      .querySelector("[data-vigilia-store-cell-install]")
-      ?.getAttribute("data-vigilia-store-cell-install") ?? null,
+      .querySelector("[data-yunari-store-cell-install]")
+      ?.getAttribute("data-yunari-store-cell-install") ?? null,
   ]);
 }
 
@@ -1640,21 +1634,21 @@ it("lists the catalogue on the online half and the library on the local one", as
   ]);
 
   expect(
-    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    cells().map((cell) => cell.getAttribute("data-yunari-store-cell")),
     "the local half does not list the library",
   ).toEqual(["living-room"]);
 
   await showOnline();
 
   expect(
-    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    cells().map((cell) => cell.getAttribute("data-yunari-store-cell")),
     "the online half lists nothing",
   ).toEqual(["office-wall"]);
 
   await act(async () => halves(headerRow(document.body))[0]?.click());
 
   expect(
-    cells().map((cell) => cell.getAttribute("data-vigilia-store-cell")),
+    cells().map((cell) => cell.getAttribute("data-yunari-store-cell")),
     "the local half changed when the catalogue arrived",
   ).toEqual(["living-room"]);
 });
@@ -1779,7 +1773,7 @@ it("says the store has nothing yet in its own words", async () => {
   await showOnline();
 
   const empty = must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-empty]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-empty]"),
     "empty catalogue state",
   );
   expect(
@@ -1807,12 +1801,12 @@ it("draws only the refusal line when every catalogue entry was refused", async (
   await showOnline();
 
   expect(
-    document.body.querySelector("[data-vigilia-store-empty]"),
+    document.body.querySelector("[data-yunari-store-empty]"),
     "an all-refused catalogue draws the empty-catalogue sentence",
   ).toBeNull();
   expect(
     must(
-      document.body.querySelector<HTMLElement>("[data-vigilia-store-refusal]"),
+      document.body.querySelector<HTMLElement>("[data-yunari-store-refusal]"),
       "refusal line",
     ).textContent,
     "the refusal line does not say what the catalogue held",
@@ -1838,7 +1832,7 @@ it("names the identifier of a kind the store skipped", async () => {
   await showOnline();
 
   const line = must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-refusal]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-refusal]"),
     "refusal line",
   );
   expect(
@@ -1857,7 +1851,7 @@ it("names the identifier of a kind the store skipped", async () => {
   expect(
     follows(
       must(
-        document.body.querySelector("[data-vigilia-store-gallery]"),
+        document.body.querySelector("[data-yunari-store-gallery]"),
         "gallery",
       ),
       line,
@@ -1867,7 +1861,7 @@ it("names the identifier of a kind the store skipped", async () => {
   expect(
     follows(
       line,
-      must(document.body.querySelector("[data-vigilia-store-pager]"), "pager"),
+      must(document.body.querySelector("[data-yunari-store-pager]"), "pager"),
     ),
     "the refusal line is not above the pager",
   ).toBe(true);
@@ -1886,11 +1880,11 @@ it("leaves the online half unset when the catalogue read failed", async () => {
 
   expect(cells(), "a failed read was drawn as a listing").toEqual([]);
   expect(
-    document.body.querySelector("[data-vigilia-store-empty]"),
+    document.body.querySelector("[data-yunari-store-empty]"),
     "a failed read was drawn as an empty catalogue",
   ).toBeNull();
   expect(
-    document.body.querySelector("[data-vigilia-store-refusal]"),
+    document.body.querySelector("[data-yunari-store-refusal]"),
     "a failed read claimed something it could not read",
   ).toBeNull();
 });
@@ -1929,7 +1923,7 @@ it("installs from the cell's Install and re-lists so the cell reads Installed", 
     "the cell still offers Install after the re-list gained the copy",
   ).toEqual([["office-wall", "installed"]]);
   expect(
-    document.body.querySelector('[data-vigilia-store-cell="office-wall"]')
+    document.body.querySelector('[data-yunari-store-cell="office-wall"]')
       ?.textContent,
     "the cell does not read the listing's own word after the install",
   ).toContain(uiCopy.store.cell.installStates.installed);
@@ -2023,7 +2017,7 @@ it("installs from the modal's Install and the modal then reads Installed", async
   await act(async () =>
     must(
       document.body.querySelector<HTMLButtonElement>(
-        '[data-vigilia-store-item-install="install"]',
+        '[data-yunari-store-item-install="install"]',
       ),
       "the modal's install control",
     ).click(),
@@ -2037,7 +2031,7 @@ it("installs from the modal's Install and the modal then reads Installed", async
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        '[data-vigilia-store-item-install="installed"]',
+        '[data-yunari-store-item-install="installed"]',
       ),
       "the modal's installed mark",
     ).tagName,
@@ -2107,7 +2101,7 @@ it("leaves the control as it was and states the host's reason when the install i
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-install-refusal]",
+        "[data-yunari-store-cell-install-refusal]",
       ),
       "the refusal reason",
     ).textContent,
@@ -2214,7 +2208,7 @@ it("announces a refusal once while its cell and its modal both draw it", async (
   await act(async () =>
     must(
       document.body.querySelector<HTMLButtonElement>(
-        '[data-vigilia-store-item-install="install"]',
+        '[data-yunari-store-item-install="install"]',
       ),
       "the modal's install control",
     ).click(),
@@ -2224,7 +2218,7 @@ it("announces a refusal once while its cell and its modal both draw it", async (
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-install-refusal]",
+        "[data-yunari-store-cell-install-refusal]",
       ),
       "the cell's refusal sentence",
     ).textContent,
@@ -2284,7 +2278,7 @@ it("says the theme was installed when the re-list fails", async () => {
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-install-refusal]",
+        "[data-yunari-store-cell-install-refusal]",
       ),
       "the re-list failure's sentence",
     ).textContent,
@@ -2299,7 +2293,7 @@ it("says the theme was installed when the re-list fails", async () => {
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-install-announcement]",
+        "[data-yunari-store-install-announcement]",
       ),
       "the live region",
     ).textContent,
@@ -2368,7 +2362,7 @@ it("draws no catalogue refusal on a library item whose id collides", async () =>
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-install-refusal]",
+        "[data-yunari-store-cell-install-refusal]",
       ),
       "the catalogue cell's refusal",
     ).textContent,
@@ -2380,12 +2374,12 @@ it("draws no catalogue refusal on a library item whose id collides", async () =>
 
   const local = must(
     document.body.querySelector<HTMLElement>(
-      '[data-vigilia-store-cell="office-wall"]',
+      '[data-yunari-store-cell="office-wall"]',
     ),
     "the local cell whose id collides",
   );
   expect(
-    local.querySelector("[data-vigilia-store-cell-install-refusal]"),
+    local.querySelector("[data-yunari-store-cell-install-refusal]"),
     "a library item drew a catalogue refusal it has no control for",
   ).toBeNull();
 });
@@ -2416,7 +2410,7 @@ it("releases the control when the press rejects rather than answering", async ()
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-install-refusal]",
+        "[data-yunari-store-cell-install-refusal]",
       ),
       "the rejected press's sentence",
     ).textContent,
@@ -2481,13 +2475,13 @@ function deviceAnswer(interval = 5): Response {
   );
 }
 
-const SUBMIT_PR_URL = "https://github.com/peterng1618/vigilia-store/pull/7";
+const SUBMIT_PR_URL = "https://github.com/peterng1618/yunari-store/pull/7";
 
 /** The modal's Submit control, or the failure that the library half draws none. */
 function submitControl(): HTMLButtonElement {
   return must(
     document.body.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-item-submit]",
+      "[data-yunari-store-item-submit]",
     ),
     "the modal's submit control",
   );
@@ -2503,7 +2497,7 @@ function liveRegion(): string {
   return (
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-install-announcement]",
+        "[data-yunari-store-install-announcement]",
       ),
       "the live region",
     ).textContent ?? ""
@@ -2548,7 +2542,7 @@ it("shows the code and the verification link when the host asks for a sign-in", 
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-item-submit-code]",
+        "[data-yunari-store-item-submit-code]",
       ),
       "the sign-in code",
     ).textContent,
@@ -2556,7 +2550,7 @@ it("shows the code and the verification link when the host asks for a sign-in", 
   ).toContain("ABCD-1234");
   const link = must(
     document.body.querySelector<HTMLAnchorElement>(
-      "[data-vigilia-store-item-submit-open]",
+      "[data-yunari-store-item-submit-open]",
     ),
     "the verification link",
   );
@@ -2634,7 +2628,7 @@ it("retries the submission once the poll answers ok and shows the pull request",
 
   const link = must(
     document.body.querySelector<HTMLAnchorElement>(
-      "[data-vigilia-store-item-submit-url]",
+      "[data-yunari-store-item-submit-url]",
     ),
     "the pull request link",
   );
@@ -2645,7 +2639,7 @@ it("retries the submission once the poll answers ok and shows the pull request",
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-item-submit-version]",
+        "[data-yunari-store-item-submit-version]",
       ),
       "the version sentence",
     ).textContent,
@@ -2698,7 +2692,7 @@ it("states the host's refusal beside the control and re-enables it", async () =>
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-item-submit-refusal]",
+        "[data-yunari-store-item-submit-refusal]",
       ),
       "the submit refusal",
     ).textContent,
@@ -2745,7 +2739,7 @@ it("keeps one theme's submission answer off another theme's surface", async () =
   await pressSubmit();
   await settle();
   expect(
-    document.body.querySelector("[data-vigilia-store-item-submit-refusal]"),
+    document.body.querySelector("[data-yunari-store-item-submit-refusal]"),
     "the theme that was refused stated nothing",
   ).not.toBeNull();
 
@@ -2753,7 +2747,7 @@ it("keeps one theme's submission answer off another theme's surface", async () =
   await pressCellSurface("office-wall");
 
   expect(
-    document.body.querySelector("[data-vigilia-store-item-submit-refusal]"),
+    document.body.querySelector("[data-yunari-store-item-submit-refusal]"),
     "another theme's refusal is drawn on this theme",
   ).toBeNull();
   expect(
@@ -2767,7 +2761,7 @@ it("keeps one theme's submission answer off another theme's surface", async () =
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-item-submit-refusal]",
+        "[data-yunari-store-item-submit-refusal]",
       ),
       "the refused theme's own sentence",
     ).textContent,
@@ -2809,7 +2803,7 @@ it("draws another theme's Submit busy while a submission is in flight", async ()
   await pressSubmit();
   await settle();
   expect(
-    document.body.querySelector("[data-vigilia-store-item-submit-code]"),
+    document.body.querySelector("[data-yunari-store-item-submit-code]"),
     "A did not reach the authorising window the case is about",
   ).not.toBeNull();
 
@@ -2874,7 +2868,7 @@ it("states an expired sign-in and lets the author submit again", async () => {
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-item-submit-refusal]",
+        "[data-yunari-store-item-submit-refusal]",
       ),
       "the expired sign-in's sentence",
     ).textContent,
@@ -2906,7 +2900,7 @@ const REMIX = {
 /** The credit's own node, whichever of the two shapes it is drawn as. */
 function remixCredit(): HTMLElement {
   return must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-item-remix]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-item-remix]"),
     "remix credit",
   );
 }
@@ -2948,7 +2942,7 @@ it("credits a remix from the routed index and opens the parent item", async () =
 
   expect(
     document.body
-      .querySelector("[data-vigilia-store-item-name]")
+      .querySelector("[data-yunari-store-item-name]")
       ?.textContent?.trim(),
     "pressing the credit did not open the parent item",
   ).toBe(REMIX.name);

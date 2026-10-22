@@ -1,5 +1,5 @@
 {
-  "name": "@vigilia/editor",
+  "name": "@yunari/editor",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,9 +15,9 @@
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@vigilia/renderer-core": "*",
-    "@vigilia/scene-fabric": "*",
-    "@vigilia/theme-package": "*",
+    "@yunari/renderer-core": "*",
+    "@yunari/scene-fabric": "*",
+    "@yunari/theme-package": "*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "echarts": "6.1.0",
@@ -28,7 +28,7 @@
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.3.3"
   },
-  "//": "The editor adds interaction and inspectors over @vigilia/renderer-core, and is migrating its rendering and interaction onto Fabric — see spec 0013. Fabric IS an expected dependency here now; the 2026-09 prohibition is reversed, because Fabric renders the player too and §31's one-renderer rule is satisfied rather than waived. Import from 'fabric/es', never bare 'fabric': the default entry is one pre-bundled file no tree-shaker can see into and costs 45 KB gzip more for identical imports. Still no UI framework: one is worth adding when the inspector surface is real enough to judge the trade.",
+  "//": "The editor adds interaction and inspectors over @yunari/renderer-core, and is migrating its rendering and interaction onto Fabric — see spec 0013. Fabric IS an expected dependency here now; the 2026-09 prohibition is reversed, because Fabric renders the player too and §31's one-renderer rule is satisfied rather than waived. Import from 'fabric/es', never bare 'fabric': the default entry is one pre-bundled file no tree-shaker can see into and costs 45 KB gzip more for identical imports. Still no UI framework: one is worth adding when the inspector surface is real enough to judge the trade.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -37,6 +37,6 @@
   "devDependencies": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vigilia/fake-source": "*"
+    "@yunari/fake-source": "*"
   }
 }

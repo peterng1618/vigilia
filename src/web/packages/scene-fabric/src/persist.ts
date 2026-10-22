@@ -2,9 +2,9 @@ import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
   SUPPORTED_SCHEMA_VERSION,
-  VIGILIA_GLASS_PROPERTY,
-  VIGILIA_NAME_PROPERTY,
-} from "@vigilia/renderer-core";
+  YUNARI_GLASS_PROPERTY,
+  YUNARI_NAME_PROPERTY,
+} from "@yunari/renderer-core";
 import {
   Circle,
   classRegistry,
@@ -16,19 +16,19 @@ import {
   type StaticCanvas,
   Textbox,
 } from "fabric/es";
-// Ensures `VigiliaChart` is registered before `loadFromJSON` revives custom objects.
-import { VigiliaChart } from "./chart-object.js";
-import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
+// Ensures `YunariChart` is registered before `loadFromJSON` revives custom objects.
+import { YunariChart } from "./chart-object.js";
+import { YUNARI_TEXT_PROPERTY } from "./fabric-text.js";
 import {
   isFabricAssetReference,
-  VIGILIA_ASSET_PROPERTY,
+  YUNARI_ASSET_PROPERTY,
 } from "./object-asset.js";
 import {
   ARC_FILL_REFUSED,
   type PaintApplicationOptions,
   refusalIsPaintPasses,
   refusesFill,
-  VIGILIA_PAINT_PROPERTY,
+  YUNARI_PAINT_PROPERTY,
 } from "./object-paint.js";
 
 // `fabric/es` is selective: register every baseline scene class that v2 JSON
@@ -58,11 +58,11 @@ classRegistry.setClass(Textbox);
 export const SCENE_PERSISTED_PROPERTIES = [
   "id",
   // The display name an author reads; the id beside it stays the stable key.
-  VIGILIA_NAME_PROPERTY,
-  VIGILIA_TEXT_PROPERTY,
-  VIGILIA_PAINT_PROPERTY,
-  VIGILIA_ASSET_PROPERTY,
-  VIGILIA_GLASS_PROPERTY,
+  YUNARI_NAME_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
+  YUNARI_PAINT_PROPERTY,
+  YUNARI_ASSET_PROPERTY,
+  YUNARI_GLASS_PROPERTY,
   // The unit a card was authored as, on the starter and on a copy (§77). An
   // authored fact about the document, so it has to survive the save like every
   // other authored key — a copy whose origin is remembered only until the first
@@ -164,7 +164,7 @@ export async function reviveScene(
  * is; nothing here restates it.
  *
  * **The half only this site can report is reported here.** An arc carrying a
- * `vigiliaPaint` is refused again by the editor's paint pass, which has its own
+ * `yunariPaint` is refused again by the editor's paint pass, which has its own
  * channel and says the same sentence — so reporting it here too would say it
  * twice on one load. An arc with no reference never reaches that pass, and was
  * previously refused in silence: the author watched a figure vanish with nothing
@@ -208,7 +208,7 @@ export async function reviveThemeEnvelope(
  * The scene as Fabric should load it, with every asset reference turned into
  * the URL that asset resolves to.
  *
- * `vigiliaAsset` is the authored truth and `src` is whatever the session that
+ * `yunariAsset` is the authored truth and `src` is whatever the session that
  * decoded the image happened to hold — for a pasted image, a `blob:` URL that
  * means nothing in another tab, another browser, or on a phone. Fabric
  * enlivens an image from `src` alone, so resolving here rather than after the
@@ -234,7 +234,7 @@ function resolveObjectAsset(
   resolveAsset: (assetId: string) => string | undefined,
 ): Readonly<Record<string, unknown>> {
   const children = object["objects"];
-  const reference = object[VIGILIA_ASSET_PROPERTY];
+  const reference = object[YUNARI_ASSET_PROPERTY];
   const url = isFabricAssetReference(reference)
     ? resolveAsset(reference.assetId)
     : undefined;
@@ -264,7 +264,7 @@ export function assertFabricThemeEnvelopeCompatible(
 
 function disposeObjects(objects: readonly object[]): void {
   for (const object of objects) {
-    if (object instanceof VigiliaChart) {
+    if (object instanceof YunariChart) {
       object.dispose();
     } else if (object instanceof Group) {
       disposeObjects(object.getObjects());
@@ -277,7 +277,7 @@ function removeRuntimeText(
   objects: readonly Readonly<Record<string, unknown>>[],
 ): void {
   for (const object of objects) {
-    const runs = valueRuns(object[VIGILIA_TEXT_PROPERTY]);
+    const runs = valueRuns(object[YUNARI_TEXT_PROPERTY]);
     if (runs !== undefined) {
       (object as Record<string, unknown>)["text"] = runs
         .map((run) => (run.kind === "literal" ? run.text : "—"))
@@ -299,14 +299,14 @@ function removeRuntimeText(
  * on construction and every pass puts it back at the box, so a file that
  * carried it would show a different number the moment the document opened and
  * the editor would report the author's own document as edited (§67).
- * `vigiliaText.box` is the owner; `applyClip` and `assertBoxHeight` rebuild
+ * `yunariText.box` is the owner; `applyClip` and `assertBoxHeight` rebuild
  * these from it on the first refresh after revival.
  */
 function removeDerivedTextClips(
   objects: readonly Readonly<Record<string, unknown>>[],
 ): void {
   for (const object of objects) {
-    if (isRecord(object[VIGILIA_TEXT_PROPERTY])) {
+    if (isRecord(object[YUNARI_TEXT_PROPERTY])) {
       delete (object as Record<string, unknown>)["clipPath"];
       delete (object as Record<string, unknown>)["height"];
     }
@@ -325,14 +325,14 @@ function removeDerivedTextClips(
  * reference is the authored truth and every reader resolves it before the load,
  * so persisting the URL ships a dead handle beside the live thing.
  *
- * Only where the reference is. An image with no `vigiliaAsset` has nothing to
+ * Only where the reference is. An image with no `yunariAsset` has nothing to
  * resolve, and dropping its `src` would leave a picture no one can load.
  */
 function removeResolvedAssetSources(
   objects: readonly Readonly<Record<string, unknown>>[],
 ): void {
   for (const object of objects) {
-    if (isFabricAssetReference(object[VIGILIA_ASSET_PROPERTY])) {
+    if (isFabricAssetReference(object[YUNARI_ASSET_PROPERTY])) {
       delete (object as Record<string, unknown>)["src"];
     }
     const children = object["objects"];
@@ -348,7 +348,7 @@ function removeResolvedAssetSources(
  * `FabricText.toObject` writes `styles` on every text object whatever the
  * caller asked for, and `stylesToArray` reports whatever ranges the last
  * repaint left — so two exports of one unchanged document disagree on it. The
- * authored equivalent is `vigiliaText.runs`, which nothing here touches, and
+ * authored equivalent is `yunariText.runs`, which nothing here touches, and
  * no reader reads `styles` back.
  */
 function removeDerivedTextStyles(

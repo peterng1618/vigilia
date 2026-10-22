@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { SUPPORTED_SCHEMA_VERSION } from "@vigilia/renderer-core";
+import { SUPPORTED_SCHEMA_VERSION } from "@yunari/renderer-core";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -75,7 +75,7 @@ function railSlotIds(host: HTMLElement): readonly (string | null)[] {
  *  selector on the text would pass for a row that had lost its hook. */
 function paletteChoice(palette: ShellPalette): HTMLButtonElement {
   const found = document.querySelector<HTMLButtonElement>(
-    `[data-vigilia-palette-choice="${palette}"]`,
+    `[data-yunari-palette-choice="${palette}"]`,
   );
   if (found === null) throw new Error(`no "${palette}" choice in the tab.`);
   return found;
@@ -91,7 +91,7 @@ function paletteGroup(): HTMLElement {
 /** Follow-the-system, the toggle beneath the six. */
 function followToggle(): HTMLButtonElement {
   const found = document.querySelector<HTMLButtonElement>(
-    "[data-vigilia-follow-system]",
+    "[data-yunari-follow-system]",
   );
   if (found === null) throw new Error("No follow-the-system toggle.");
   return found;
@@ -266,7 +266,7 @@ async function openTab(label: string): Promise<void> {
  *  what the tab renders where the document carries no version. */
 function aboutField(id: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(
-    `[data-vigilia-about-fact="${id}"]`,
+    `[data-yunari-about-fact="${id}"]`,
   );
 }
 
@@ -274,7 +274,7 @@ function aboutField(id: string): HTMLElement | null {
  *  to `body`, so the read is the document's, not the harness's. */
 function aboutText(): string {
   return (
-    document.querySelector<HTMLElement>("[data-vigilia-about]")?.textContent ??
+    document.querySelector<HTMLElement>("[data-yunari-about]")?.textContent ??
     ""
   );
 }
@@ -323,12 +323,12 @@ describe("Settings", () => {
     await openTab(uiCopy.settings.keyboard);
 
     const arm = document.querySelector<HTMLButtonElement>(
-      '[data-vigilia-shortcut-arm="publish.surface"]',
+      '[data-yunari-shortcut-arm="publish.surface"]',
     );
     if (arm === null) throw new Error("no arm control in the Keyboard tab.");
     await press(arm);
     const row = document.querySelector<HTMLElement>(
-      '[data-vigilia-shortcut-row="publish.surface"]',
+      '[data-yunari-shortcut-row="publish.surface"]',
     );
     if (row === null) throw new Error("no row to record into.");
     expect(row.hasAttribute("data-armed")).toBe(true);
@@ -348,7 +348,7 @@ describe("Settings", () => {
     await openTab(uiCopy.settings.keyboard);
 
     const arm = document.querySelector<HTMLButtonElement>(
-      '[data-vigilia-shortcut-arm="edit.undo"]',
+      '[data-yunari-shortcut-arm="edit.undo"]',
     );
     if (arm === null) throw new Error("no arm control in the Keyboard tab.");
     await press(arm);
@@ -479,7 +479,7 @@ describe("Settings", () => {
     await press(gear(host));
     await press(paletteChoice(chosen));
 
-    expect(localStorage.getItem("vigilia.editor.shell-palette")).toBe(chosen);
+    expect(localStorage.getItem("yunari.editor.shell-palette")).toBe(chosen);
     expect(document.documentElement.getAttribute("data-shell-palette")).toBe(
       chosen,
     );
@@ -489,7 +489,7 @@ describe("Settings", () => {
     expect(localStorage.length, "a second store entry is a second owner").toBe(
       1,
     );
-    expect(localStorage.key(0)).toBe("vigilia.editor.shell-palette");
+    expect(localStorage.key(0)).toBe("yunari.editor.shell-palette");
     // And the toggle it turned off says so.
     expect(followToggle().getAttribute("aria-checked")).toBe("false");
   });
@@ -593,14 +593,12 @@ describe("About", () => {
     await openTab(uiCopy.settings.about);
 
     expect(versionFacts(released)).toEqual([
-      { id: "product-version", value: __VIGILIA_VERSION__ },
+      { id: "product-version", value: __YUNARI_VERSION__ },
       { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
       { id: "release-version", value: released },
     ]);
     // And what the tab renders is those facts, each string on its own owner.
-    expect(aboutField("product-version")?.textContent).toBe(
-      __VIGILIA_VERSION__,
-    );
+    expect(aboutField("product-version")?.textContent).toBe(__YUNARI_VERSION__);
     expect(aboutField("schema-version")?.textContent).toBe(
       String(SUPPORTED_SCHEMA_VERSION),
     );
@@ -622,16 +620,14 @@ describe("About", () => {
 
     // The product and schema versions are this build's own facts and are always
     // shown.
-    expect(aboutField("product-version")?.textContent).toBe(
-      __VIGILIA_VERSION__,
-    );
+    expect(aboutField("product-version")?.textContent).toBe(__YUNARI_VERSION__);
     expect(aboutField("schema-version")?.textContent).toBe(
       String(SUPPORTED_SCHEMA_VERSION),
     );
     // The release version is absent, and absence is a gap stated by rendering
     // nothing — never `panels.notSet`, never a dash that could read as data.
     expect(versionFacts(undefined)).toEqual([
-      { id: "product-version", value: __VIGILIA_VERSION__ },
+      { id: "product-version", value: __YUNARI_VERSION__ },
       { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
     ]);
     expect(aboutField("release-version")).toBeNull();
@@ -718,7 +714,7 @@ describe("the modal's own language", () => {
     await openTab(uiCopy.settings.about);
 
     const row = document.querySelector<HTMLElement>(
-      "[data-vigilia-about] dl > div",
+      "[data-yunari-about] dl > div",
     );
     if (row === null) throw new Error("no read-only row in the About tab.");
     const tracks = getComputedStyle(row).gridTemplateColumns.split(/\s+/);
@@ -740,7 +736,7 @@ describe("the modal's own language", () => {
     await openTab(uiCopy.settings.keyboard);
 
     const row = document.querySelector<HTMLElement>(
-      '[data-vigilia-shortcut-row="publish.surface"]',
+      '[data-yunari-shortcut-row="publish.surface"]',
     );
     if (row === null) throw new Error("no rebind row in the Keyboard tab.");
     const style = getComputedStyle(row);

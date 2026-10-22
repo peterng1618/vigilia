@@ -47,7 +47,7 @@ what did they learn".
 What had to be built, and what made it non-obvious. The *shape* of the problem,
 not the feature request.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 Searched: <owners, symbols, partial implementations>
 Found: <what exists, or "nothing">
 

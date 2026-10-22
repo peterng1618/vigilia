@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking.
 
-**Goal:** Replace the adopted image-editor package with native @vigilia/editor mechanics over fabric/es while preserving the v2 authoring contract.
+**Goal:** Replace the adopted image-editor package with native @yunari/editor mechanics over fabric/es while preserving the v2 authoring contract.
 
 **Architecture:** scene-fabric continues to own Fabric persistence, revival and renderer primitives. The editor introduces narrowly owned native mechanics for history, object actions and interactive canvas lifecycle; existing product panels consume those mechanics directly. The current fork-extensions composition is dissolved into the editor root rather than copied behind a new wrapper.
 
@@ -24,7 +24,7 @@
 
 - Invalid v2 envelopes must fail before the mounted canvas changes; Task 2 adds the mount rejection test.
 - Runtime refresh must not make the document dirty or add an undo entry; Task 1 tests suspended history and Task 4 exercises live bindings.
-- Undo/redo must revive VigiliaChart objects without persisted engine pixels; Task 1 tests the native history callback boundary and Task 4 retains chart hydration coverage.
+- Undo/redo must revive YunariChart objects without persisted engine pixels; Task 1 tests the native history callback boundary and Task 4 retains chart hydration coverage.
 - Replacing an image/SVG must preserve its asset declaration/reference and reject unsafe SVG; Task 4 retains asset-manager DOM tests.
 - Disposal during New/Open must disconnect observers, background media and product listeners before replacing the canvas; Task 2 tests replacement and failed mounts.
 
@@ -43,7 +43,7 @@
 - Modify: src/web/packages/editor/src/new-object-panel.dom.test.ts
 
 **Interfaces:**
-- Consumes: serialiseScene and reviveScene from @vigilia/scene-fabric; Fabric Canvas, FabricObject, IText, FabricImage, Group and ActiveSelection from fabric/es.
+- Consumes: serialiseScene and reviveScene from @yunari/scene-fabric; Fabric Canvas, FabricObject, IText, FabricImage, Group and ActiveSelection from fabric/es.
 - Produces: EditorHistory with save(), reset(), undo(), redo(), suspend(callback), dispose(); EditorActions with addText(), importImage(), lock(), unlock(), and stack-order actions.
 
 - [ ] **Step 1: Write failing history tests**
@@ -319,7 +319,7 @@ Expected: all commands pass. Stop at the first failure and report it rather than
 
 - [ ] **Step 6: Capture and inspect changed editor flows**
 
-Run: $env:VIGILIA_CAPTURE='1'; npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'package round-trip|chart creation|background media|live text' --workers=1
+Run: $env:YUNARI_CAPTURE='1'; npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'package round-trip|chart creation|background media|live text' --workers=1
 
 Expected: PASS. Inspect each emitted selected PNG and record only observations that change a decision in .agents/status.md.
 

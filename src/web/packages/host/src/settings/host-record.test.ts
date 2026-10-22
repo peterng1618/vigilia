@@ -11,7 +11,7 @@ describe("readOrMintHostRecord", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-host-record-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-host-record-"));
   });
 
   afterEach(async () => {

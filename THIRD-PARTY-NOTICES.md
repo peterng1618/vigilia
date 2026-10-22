@@ -1,11 +1,11 @@
 # Third-party notices
 
-Vigilia is MIT licensed; see [LICENSE](LICENSE). This is the current development
+Yunari is MIT licensed; see [LICENSE](LICENSE). This is the current development
 inventory, not a release-grade transitive audit. Provenance:
 [`docs/engineering/dependencies.md`](docs/engineering/dependencies.md).
 
 **Scope: direct dependencies only — the packages a workspace `package.json`
-declares in `dependencies` or `devDependencies`, `@vigilia/` workspace packages
+declares in `dependencies` or `devDependencies`, `@yunari/` workspace packages
 excluded — never the installed closure.** A package reached only through another
 package's own dependencies has no entry here, and its absence is not a missing
 notice; the closure is enumerated at release time, by the release rule in
@@ -37,8 +37,8 @@ Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
 
 ### LibreHardwareMonitor (bundled external program)
 
-A Vigilia release ships LibreHardwareMonitor v0.9.6 (MPL-2.0) as an external
-program, staged by `npm run vendor:lhm -w @vigilia/host`. Vigilia links nothing
+A Yunari release ships LibreHardwareMonitor v0.9.6 (MPL-2.0) as an external
+program, staged by `npm run vendor:lhm -w @yunari/host`. Yunari links nothing
 and compiles nothing: it runs the executable and reads the JSON its web server
 publishes. It is not a dependency and its source is not vendored.
 
@@ -76,7 +76,7 @@ may carry linked-library obligations.
 
 Four entries were added on 2026-10-13 — `class-variance-authority`, `clsx` and
 `tailwind-merge` to the runtime/editor table and `@playwright/mcp` to this
-section. CI's `licences` job derives every non-`@vigilia/` name from the
+section. CI's `licences` job derives every non-`@yunari/` name from the
 workspace manifests and fails on one absent from this file, and these four had
 been declared without an entry. Their licences were read from each installed
 package's own `package.json` (`.license`), which is also why they sit in two
@@ -218,7 +218,7 @@ dependency. Fonttrio is MIT licensed; preserve its attribution when shipping
 derived pairing data.
 
 LibreHardwareMonitor and PawnIO are planned integrations, not current
-dependencies. Re-review their licences if Vigilia starts shipping them.
+dependencies. Re-review their licences if Yunari starts shipping them.
 
 ## Release rule
 

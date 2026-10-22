@@ -254,7 +254,7 @@ function Fixture(): React.JSX.Element {
         <aside className="editor-shell-panel w-[246px] bg-panel p-[var(--space-12)]">
           <InspectorSection id="pane-fields" title="Pane fields">
             <div data-fixture="pane-text">
-              <ControlText label="Author" value="Vigilia" onCommit={noop} />
+              <ControlText label="Author" value="Yunari" onCommit={noop} />
             </div>
             {/* The two shapes a row takes when a drawing shapes it differently.
                 The boxed switch is the settings modal's (`settings.html:89-93`)

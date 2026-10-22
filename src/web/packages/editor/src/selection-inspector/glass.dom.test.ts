@@ -2,13 +2,13 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defaultGaugeSettings, supportsGlass } from "@vigilia/renderer-core";
+import { defaultGaugeSettings, supportsGlass } from "@yunari/renderer-core";
 import {
   Arc,
-  VIGILIA_PAINT_PROPERTY,
-  VigiliaChart,
   Wedge,
-} from "@vigilia/scene-fabric";
+  YUNARI_PAINT_PROPERTY,
+  YunariChart,
+} from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   Circle,
@@ -53,7 +53,7 @@ afterEach(() => {
 });
 
 /**
- * The kinds a published theme may carry `vigiliaGlass` on.
+ * The kinds a published theme may carry `yunariGlass` on.
  *
  * `renderer-core` now exports the guard itself, so the control asks it rather
  * than keeping its own list. The **published schema** is that same list, and
@@ -135,7 +135,7 @@ function panel(): Rect {
 /** A panel as the Add pane makes it: the card surface it hands every new shape. */
 function newPanel(): Rect {
   const rect = panel();
-  rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.panel" });
+  rect.set(YUNARI_PAINT_PROPERTY, { fill: "palette.panel" });
   rect.set("fill", "#081523d9");
   return rect;
 }
@@ -147,7 +147,7 @@ function newPanel(): Rect {
  * longer exists and would have narrowed silently.
  */
 function glassControl(host: HTMLElement): HTMLElement | null {
-  return host.querySelector<HTMLElement>("[data-vigilia-glass-enabled]");
+  return host.querySelector<HTMLElement>("[data-yunari-glass-enabled]");
 }
 
 /** Whether the switch reads as on, from the state it announces. */
@@ -185,7 +185,7 @@ function nameOf(host: HTMLElement, control: HTMLElement): string {
 
 /** The glass blur slider, re-read because a committed edit republished the view. */
 function blurField(host: HTMLElement): HTMLInputElement {
-  return host.querySelector<HTMLInputElement>("[data-vigilia-glass-blur]")!;
+  return host.querySelector<HTMLInputElement>("[data-yunari-glass-blur]")!;
 }
 
 /** The visible invalid-input line a converted number field shows, when one is. */
@@ -200,7 +200,7 @@ function invalidLine(host: HTMLElement): Element | null {
  */
 function refusalNote(host: HTMLElement): string {
   return (
-    host.querySelector<HTMLElement>("[data-vigilia-glass-refusal]")
+    host.querySelector<HTMLElement>("[data-yunari-glass-refusal]")
       ?.textContent ?? ""
   );
 }
@@ -230,8 +230,8 @@ const LIVE_KIND: Readonly<Record<string, () => unknown>> = {
   Text: () => new Text("Hi", { left: 0, top: 0 }),
   IText: () => new IText("Hi", { left: 0, top: 0 }),
   Image: () => new FabricImage("", { left: 0, top: 0, width: 40, height: 40 }),
-  VigiliaChart: () =>
-    new VigiliaChart({
+  YunariChart: () =>
+    new YunariChart({
       id: "chart",
       family: "gauge",
       width: 100,
@@ -276,12 +276,12 @@ const UNFROSTABLE: readonly string[] = [
   "Line",
   "Arc",
   "Textbox",
-  "VigiliaChart",
+  "YunariChart",
 ];
 
 /** What the author calls the kind, where that is not the class name. */
 const SHOWN_AS: Readonly<Record<string, string>> = {
-  VigiliaChart: "chart",
+  YunariChart: "chart",
   Textbox: "Text",
 };
 
@@ -294,7 +294,7 @@ describe("the glass control in the selection inspector", () => {
     expect(panel()).toBeInstanceOf(Rect);
     expect(enabled.tagName).toBe("BUTTON");
     expect(enabled.getAttribute("role")).toBe("switch");
-    expect(host.querySelector("[data-vigilia-glass-blur]")).toBeNull();
+    expect(host.querySelector("[data-yunari-glass-blur]")).toBeNull();
 
     await setGlass(host, true);
 
@@ -303,8 +303,8 @@ describe("the glass control in the selection inspector", () => {
     // affordance the pre-plan field drew.
     expect(blur.type).toBe("range");
     for (const selector of [
-      "[data-vigilia-glass-enabled]",
-      "[data-vigilia-glass-blur]",
+      "[data-yunari-glass-enabled]",
+      "[data-yunari-glass-blur]",
     ]) {
       const control = host.querySelector<HTMLElement>(selector)!;
       expect(nameOf(host, control), selector).toBeTruthy();
@@ -318,7 +318,7 @@ describe("the glass control in the selection inspector", () => {
     await setGlass(host, true);
 
     // The authored property is the only place a radius exists.
-    expect(rect.get("vigiliaGlass")).toEqual({
+    expect(rect.get("yunariGlass")).toEqual({
       blurRadius: expect.any(Number),
     });
     // Nothing re-resolves the glass lifecycle on its own, so the control is
@@ -329,24 +329,24 @@ describe("the glass control in the selection inspector", () => {
 
   it("removes the treatment when the author turns it off", async () => {
     const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 12 });
+    rect.set("yunariGlass", { blurRadius: 12 });
     const { history, refreshGlass, host } = setup(rect);
 
-    expect(host.querySelector("[data-vigilia-glass-blur]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-glass-blur]")).not.toBeNull();
 
     await setGlass(host, false);
 
-    expect(rect.get("vigiliaGlass")).toBeUndefined();
+    expect(rect.get("yunariGlass")).toBeUndefined();
     expect(refreshGlass).toHaveBeenCalledTimes(1);
     expect(history.saveState).toHaveBeenCalledTimes(1);
     // A radius box over a panel with no treatment accepts an edit and applies
     // none, so it goes with the treatment.
-    expect(host.querySelector("[data-vigilia-glass-blur]")).toBeNull();
+    expect(host.querySelector("[data-yunari-glass-blur]")).toBeNull();
   });
 
   it("reads back the radius an author already set", () => {
     const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 24 });
+    rect.set("yunariGlass", { blurRadius: 24 });
     const { host } = setup(rect);
 
     expect(blurField(host).value).toBe("24");
@@ -354,7 +354,7 @@ describe("the glass control in the selection inspector", () => {
 
   it("offers the blur as a slider bounded by the published maximum", () => {
     const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 24 });
+    rect.set("yunariGlass", { blurRadius: 24 });
     const { host } = setup(rect);
     const blur = blurField(host);
 
@@ -370,7 +370,7 @@ describe("the glass control in the selection inspector", () => {
 
   it("moves the blur radius and refreshes the composite", async () => {
     const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 8 });
+    rect.set("yunariGlass", { blurRadius: 8 });
     const { history, refreshGlass, host } = setup(rect);
 
     // One keyboard step: jsdom has no layout, so a pointer drag ends on no
@@ -378,7 +378,7 @@ describe("the glass control in the selection inspector", () => {
     // commit here.
     await slide(blurField(host), "ArrowRight");
 
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 9 });
+    expect(rect.get("yunariGlass")).toEqual({ blurRadius: 9 });
     expect(refreshGlass).toHaveBeenCalledTimes(1);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
@@ -386,7 +386,7 @@ describe("the glass control in the selection inspector", () => {
   it("lands on the published maximum when the author sweeps to the end", async () => {
     const bound = PUBLISHED_BLUR_MAXIMUM;
     const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 12 });
+    rect.set("yunariGlass", { blurRadius: 12 });
     const { history, host } = setup(rect);
 
     await slide(blurField(host), "End");
@@ -396,26 +396,26 @@ describe("the glass control in the selection inspector", () => {
     // there and the well reads the landed value — a bound the author can reach
     // is what teaches it. The writer lands the value on the owner's own
     // `MAX_GLASS_BLUR_RADIUS` too, for a bypassed commit.
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: bound });
+    expect(rect.get("yunariGlass")).toEqual({ blurRadius: bound });
     expect(history.saveState).toHaveBeenCalled();
     expect(blurField(host).value).toBe(String(bound));
   });
 
   it("lands on zero when the author sweeps to the start", async () => {
     const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 12 });
+    rect.set("yunariGlass", { blurRadius: 12 });
     const { history, host } = setup(rect);
 
     await slide(blurField(host), "Home");
 
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 0 });
+    expect(rect.get("yunariGlass")).toEqual({ blurRadius: 0 });
     expect(history.saveState).toHaveBeenCalled();
     expect(blurField(host).value).toBe("0");
   });
 
   it("disconnects a glass control when the selection moves under it", () => {
     const first = panel();
-    first.set("vigiliaGlass", { blurRadius: 12 });
+    first.set("yunariGlass", { blurRadius: 12 });
     const { host, history, editor, inspector } = setup(first);
     const blur = blurField(host);
     const second = panel();
@@ -431,7 +431,7 @@ describe("the glass control in the selection inspector", () => {
     // is not the number's fault — so nothing is reported either.
     inspector.render();
 
-    expect(first.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
+    expect(first.get("yunariGlass")).toEqual({ blurRadius: 12 });
     expect(history.saveState).not.toHaveBeenCalled();
     expect(editor.errorManager.warn).not.toHaveBeenCalled();
     expect(blur.isConnected).toBe(false);
@@ -448,7 +448,7 @@ describe("the glass control in the selection inspector", () => {
 
     inspector.render();
 
-    expect(first.get("vigiliaGlass")).toBeUndefined();
+    expect(first.get("yunariGlass")).toBeUndefined();
     expect(history.saveState).not.toHaveBeenCalled();
     expect(refreshGlass).not.toHaveBeenCalled();
     expect(enabled.isConnected).toBe(false);
@@ -466,8 +466,8 @@ describe("the glass control in the selection inspector", () => {
     // The refusal replaces the control and nothing else: the fields the editor
     // does serve for this subject are untouched.
     expect(refusalNote(host)).toContain("Text");
-    expect(host.querySelector("[data-vigilia-opacity]")).not.toBeNull();
-    expect(host.querySelector("[data-vigilia-name]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-opacity]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-name]")).not.toBeNull();
   });
 
   it.each(FROSTABLE)("offers the control enabled on a %s", (kind) => {
@@ -533,7 +533,7 @@ describe("the glass control in the selection inspector", () => {
     );
 
     expect(wrote).toBe(false);
-    expect(line.get("vigiliaGlass")).toBeUndefined();
+    expect(line.get("yunariGlass")).toBeUndefined();
     expect(history.saveState).not.toHaveBeenCalled();
     expect(refreshGlass).not.toHaveBeenCalled();
   });
@@ -542,10 +542,10 @@ describe("the glass control in the selection inspector", () => {
     const rect = panel();
     const { host } = setup(rect);
     for (const hook of [
-      "[data-vigilia-panel-fill]",
-      "[data-vigilia-panel-stroke]",
-      "[data-vigilia-panel-border]",
-      "[data-vigilia-panel-shadow]",
+      "[data-yunari-panel-fill]",
+      "[data-yunari-panel-stroke]",
+      "[data-yunari-panel-border]",
+      "[data-yunari-panel-shadow]",
     ]) {
       expect(host.querySelector(hook), hook).not.toBeNull();
     }
@@ -556,18 +556,18 @@ describe("the glass control in the selection inspector", () => {
     const group = new Group([new Rect({ width: 40, height: 40 })]);
     const absence = setup(group).host;
     for (const hook of [
-      "[data-vigilia-panel-fill]",
-      "[data-vigilia-panel-stroke]",
-      "[data-vigilia-panel-border]",
-      "[data-vigilia-panel-radius]",
-      "[data-vigilia-panel-shadow]",
+      "[data-yunari-panel-fill]",
+      "[data-yunari-panel-stroke]",
+      "[data-yunari-panel-border]",
+      "[data-yunari-panel-radius]",
+      "[data-yunari-panel-shadow]",
     ]) {
       expect(absence.querySelector(hook), hook).toBeNull();
     }
     // And no Paint section stands over the group at all: the glass row was the
     // only thing left in it, and a section whose whole body is one refusal is
     // not a question a group is asked (`vg-465`).
-    expect(absence.querySelector('[data-vigilia-section="paint"]')).toBeNull();
+    expect(absence.querySelector('[data-yunari-section="paint"]')).toBeNull();
     expect(refusalNote(absence)).toBe(
       uiCopy.inspectorFields.glassRefused("Group"),
     );
@@ -578,8 +578,8 @@ describe("the glass control in the selection inspector", () => {
     rect.set("locked", true);
     const { host } = setup(rect);
 
-    expect(host.querySelector("[data-vigilia-glass-enabled]")).toBeNull();
-    expect(host.querySelector("[data-vigilia-panel-fill]")).toBeNull();
+    expect(host.querySelector("[data-yunari-glass-enabled]")).toBeNull();
+    expect(host.querySelector("[data-yunari-panel-fill]")).toBeNull();
   });
 
   it("gives a new card the frosted surface, not the opaque one", async () => {
@@ -592,7 +592,7 @@ describe("the glass control in the selection inspector", () => {
 
     await setGlass(host, true);
 
-    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(rect.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.frost",
     });
     // Resolved, not only referenced: a reference nothing re-resolves would leave
@@ -610,7 +610,7 @@ describe("the glass control in the selection inspector", () => {
 
     // The picker shows the token's own name, so the author reads the same word
     // the palette panel does rather than a raw reference.
-    expect(valueText(host, "data-vigilia-panel-fill")).toBe("Frosted panel");
+    expect(valueText(host, "data-yunari-panel-fill")).toBe("Frosted panel");
   });
 
   it("leaves a fill the author chose, because glass is not the author", async () => {
@@ -619,26 +619,26 @@ describe("the glass control in the selection inspector", () => {
     // is no record of which hand set a reference, so the current card default is
     // the only honest test for "a default" — and anything else is left alone.
     const rect = newPanel();
-    rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.none" });
+    rect.set(YUNARI_PAINT_PROPERTY, { fill: "palette.none" });
     const { history, host } = setup(rect);
 
     await setGlass(host, true);
 
-    expect(rect.get("vigiliaGlass")).toEqual({
+    expect(rect.get("yunariGlass")).toEqual({
       blurRadius: expect.any(Number),
     });
-    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.none" });
+    expect(rect.get(YUNARI_PAINT_PROPERTY)).toEqual({ fill: "palette.none" });
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
   it("leaves a card that already carries the frosted surface alone", async () => {
     const rect = newPanel();
-    rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.frost" });
+    rect.set(YUNARI_PAINT_PROPERTY, { fill: "palette.frost" });
     const { host } = setup(rect);
 
     await setGlass(host, true);
 
-    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.frost" });
+    expect(rect.get(YUNARI_PAINT_PROPERTY)).toEqual({ fill: "palette.frost" });
   });
 
   it("does not put a surface on a shape the treatment cannot reach", async () => {
@@ -660,8 +660,8 @@ describe("the glass control in the selection inspector", () => {
     );
 
     expect(wrote).toBe(false);
-    expect(group.get("vigiliaGlass")).toBeUndefined();
-    expect(group.get(VIGILIA_PAINT_PROPERTY)).toBeUndefined();
+    expect(group.get("yunariGlass")).toBeUndefined();
+    expect(group.get(YUNARI_PAINT_PROPERTY)).toBeUndefined();
     expect(history.saveState).not.toHaveBeenCalled();
     expect(refreshGlass).not.toHaveBeenCalled();
   });
@@ -712,7 +712,7 @@ describe("the glass control in the selection inspector", () => {
   it("answers every kind the schema allows, authorable or explained", () => {
     /**
      * The gap the controller ruled on: a kind the published schema lets carry
-     * `vigiliaGlass` but the inspector gives no control for — and, since
+     * `yunariGlass` but the inspector gives no control for — and, since
      * `vg-465`, the second half of it: a kind the panel answers with silence.
      * Every kind either offers the control or says why it does not, so a kind
      * added to the vocabulary cannot reopen the gap silently.

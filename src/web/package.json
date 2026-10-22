@@ -1,5 +1,5 @@
 {
-  "name": "vigilia-web",
+  "name": "yunari-web",
   "private": true,
   "//version": "The product's version, and the only place a release writes it (`vg-279`). The workspace's own packages stay 0.0.0 — they are private members of this tree, not released artifacts — so the host CLI and the editor bundle both read this field rather than a copy of it.",
   "version": "0.1.0",
@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "build:player": "npm run build -w @vigilia/player",
+    "build:player": "npm run build -w @yunari/player",
     "format": "biome format --write ..",
     "format:check": "biome format ..",
     "lint": "biome lint ..",
@@ -28,7 +28,7 @@
     "test:rebuild": "playwright test --config playwright.rebuild.config.ts --workers=1",
     "test:display": "playwright test --config playwright.display.config.ts --workers=1",
     "fonts:generate": "node scripts/generate-font-trios.mjs",
-    "size": "npm run size -w @vigilia/player",
+    "size": "npm run size -w @yunari/player",
     "status:check": "node ../../scripts/check-status.mjs",
     "docs:check": "node ../../scripts/check-doc-references.mjs",
     "scratch:check": "node ../../scripts/scratch-gate.mjs --sweep",

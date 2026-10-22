@@ -21,7 +21,7 @@
 - **A row's wording being unchanged says nothing.** The redesign moved underneath these rows; days-old text about live code is exactly what this pass exists to test. Triage at HEAD, never from the row's prose.
 - **A negative claim needs its search named.** "No gate reads X" is only worth what the recorded search is worth. Name the command and its result.
 - **Browser reproductions serialise.** `--workers=1`, never two Playwright suites at once (strictPort 4173/4174), and **show the test count** — a `--grep` matching nothing exits 0 having run zero tests.
-- **Build before browser runs**: `npm run build`, then `npm run build:fixture -w @vigilia/editor`.
+- **Build before browser runs**: `npm run build`, then `npm run build:fixture -w @yunari/editor`.
 - **Do not touch** plugins, skills, hooks, MCP servers, Claude/Codex settings, `AGENTS.md`, `STATUS.md` or `DESIGN.md`.
 - **Read-only does not mean unverified.** Every verdict carries the command or file that produced it.
 

@@ -29,7 +29,7 @@
  * `Harness` is the session's half of that contract: a commit comes back as a new
  * palette prop, exactly as `editor-session`'s `render()` hands one back.
  */
-import type { FabricPalette } from "@vigilia/renderer-core";
+import type { FabricPalette } from "@yunari/renderer-core";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
@@ -210,7 +210,7 @@ async function chooseIn(control: string, id: string): Promise<void> {
   await click(trigger);
   await flush();
   const option = document.querySelector<HTMLElement>(
-    `[role="option"][data-vigilia-option="${id}"]`,
+    `[role="option"][data-yunari-option="${id}"]`,
   );
   if (option === null) throw new Error(`no option ${id} in ${control}`);
   await pointerDown(option);
@@ -230,8 +230,8 @@ const usageWith =
 /** The token ids the list offers, in order — every token but the reserved one. */
 function listedTokenIds(host: HTMLElement): string[] {
   return Array.from(
-    host.querySelectorAll<HTMLElement>("[data-vigilia-palette-token-row]"),
-    (row) => row.getAttribute("data-vigilia-palette-token-row") ?? "",
+    host.querySelectorAll<HTMLElement>("[data-yunari-palette-token-row]"),
+    (row) => row.getAttribute("data-yunari-palette-token-row") ?? "",
   );
 }
 
@@ -239,16 +239,16 @@ function listedTokenIds(host: HTMLElement): string[] {
 function usageFigure(host: HTMLElement, id: string): string {
   return (
     host
-      .querySelector(`[data-vigilia-palette-token-row="${id}"]`)
-      ?.querySelector("[data-vigilia-palette-usage]")
+      .querySelector(`[data-yunari-palette-token-row="${id}"]`)
+      ?.querySelector("[data-yunari-palette-usage]")
       ?.textContent?.trim() ?? ""
   );
 }
 
 const pickerHost = (host: HTMLElement): Element | null =>
-  host.querySelector("[data-vigilia-palette-picker]");
+  host.querySelector("[data-yunari-palette-picker]");
 const fieldsHost = (host: HTMLElement): Element | null =>
-  host.querySelector("[data-vigilia-palette-fields]");
+  host.querySelector("[data-yunari-palette-fields]");
 
 it("lists every token with its name and its usage figure, and skips the none token", async () => {
   const { host } = await mount(PAINT_LIST_PALETTE, {
@@ -279,7 +279,7 @@ it("states a missing reading rather than fabricating a zero when there is no sce
   expect(usageFigure(host, "background")).not.toBe("0");
   // With no scene there is no list of users either: an empty one would read as
   // a measurement of zero rather than as an absent reading.
-  expect(host.querySelector("[data-vigilia-palette-users]")).toBeNull();
+  expect(host.querySelector("[data-yunari-palette-users]")).toBeNull();
 });
 
 it("keeps the picker's element standing while a value changes", async () => {
@@ -287,11 +287,11 @@ it("keeps the picker's element standing while a value changes", async () => {
   const beforeHost = pickerHost(host);
   const beforeFields = fieldsHost(host);
   const beforeTrigger = host.querySelector(
-    "[data-vigilia-palette-picker] button",
+    "[data-yunari-palette-picker] button",
   );
   expect(beforeHost).not.toBeNull();
 
-  await commitField("[data-vigilia-palette-color]", TYPED_PAINT);
+  await commitField("[data-yunari-palette-color]", TYPED_PAINT);
 
   expect(pickerHost(host), "a colour change re-renders in place").toBe(
     beforeHost,
@@ -300,7 +300,7 @@ it("keeps the picker's element standing while a value changes", async () => {
     beforeFields,
   );
   expect(
-    host.querySelector("[data-vigilia-palette-picker] button"),
+    host.querySelector("[data-yunari-palette-picker] button"),
     "the trigger the popover is anchored to is still the same node",
   ).toBe(beforeTrigger);
 });
@@ -310,7 +310,7 @@ it("remounts the field set when the paint kind changes", async () => {
   const before = fieldsHost(host);
   expect(before).not.toBeNull();
 
-  await chooseIn("[data-vigilia-palette-kind]", "gradient");
+  await chooseIn("[data-yunari-palette-kind]", "gradient");
 
   // The other direction of the rule above: a gradient is a different shape of
   // fields, so the set is rebuilt — which is what the imperative panel did and
@@ -335,7 +335,7 @@ it("rebuilds the field set when the token changes, so the picker cannot show the
   const before = pickerHost(host);
   expect(before).not.toBeNull();
 
-  await click(host.querySelector('[data-vigilia-palette-token-row="accent"]')!);
+  await click(host.querySelector('[data-yunari-palette-token-row="accent"]')!);
 
   expect(pickerHost(host), "a token switch rebuilds the field set").not.toBe(
     before,
@@ -347,11 +347,11 @@ it("refuses a colour the engine cannot paint, and associates the reason with the
     usage: undefined,
   });
 
-  await commitField("[data-vigilia-palette-color]", "not-a-colour");
+  await commitField("[data-yunari-palette-color]", "not-a-colour");
 
   expect(change).not.toHaveBeenCalled();
   const field = host.querySelector<HTMLInputElement>(
-    "[data-vigilia-palette-color]",
+    "[data-yunari-palette-color]",
   );
   expect(field, "the colour field is not an input").not.toBeNull();
   if (field === null) return;
@@ -374,8 +374,8 @@ it("edits the token the author picks, and commits it under its own stable id", a
     usage: undefined,
   });
 
-  await click(host.querySelector('[data-vigilia-palette-token-row="accent"]')!);
-  await commitField("[data-vigilia-palette-color]", EDITED_ACCENT_PAINT);
+  await click(host.querySelector('[data-yunari-palette-token-row="accent"]')!);
+  await commitField("[data-yunari-palette-color]", EDITED_ACCENT_PAINT);
 
   expect(change).toHaveBeenLastCalledWith({
     ...PAINT_LIST_PALETTE,
@@ -392,7 +392,7 @@ it("carries the colour across a paint-kind switch in both directions", async () 
   // and undo was the way back.
   const { host, change } = await mount(FROSTED_PANEL, { usage: undefined });
 
-  await chooseIn("[data-vigilia-palette-kind]", "gradient");
+  await chooseIn("[data-yunari-palette-kind]", "gradient");
   expect(change).toHaveBeenLastCalledWith({
     frost: {
       name: "Frosted panel",
@@ -411,11 +411,11 @@ it("carries the colour across a paint-kind switch in both directions", async () 
   // takes that rather than white.
   await type(
     document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-stop-color]",
+      "[data-yunari-palette-stop-color]",
     )!,
     MOVED_FROST_PAINT,
   );
-  await chooseIn("[data-vigilia-palette-kind]", "solid");
+  await chooseIn("[data-yunari-palette-kind]", "solid");
   expect(change).toHaveBeenLastCalledWith({
     frost: {
       name: "Frosted panel",
@@ -428,7 +428,7 @@ it("carries the colour across a paint-kind switch in both directions", async () 
 it("edits a gradient's angle, its stops and an added stop", async () => {
   const { host, change } = await mount(GLOW_GRADIENT, { usage: undefined });
 
-  await commitField("[data-vigilia-palette-angle]", "45");
+  await commitField("[data-yunari-palette-angle]", "45");
   expect(change).toHaveBeenLastCalledWith({
     glow: {
       name: "Glow",
@@ -447,7 +447,7 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
   // it was built with would write the second stop list over the first.
   await type(
     document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-stop-color]",
+      "[data-yunari-palette-stop-color]",
     )!,
     RED_PAINT,
   );
@@ -465,7 +465,7 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
     },
   });
 
-  await click(host.querySelector("[data-vigilia-palette-add-stop]")!);
+  await click(host.querySelector("[data-yunari-palette-add-stop]")!);
   expect(change).toHaveBeenLastCalledWith({
     glow: {
       name: "Glow",
@@ -492,7 +492,7 @@ it("gives a gradient stop's bounded offset a track, and keeps the fraction the w
   const { host, change } = await mount(GLOW_GRADIENT, { usage: undefined });
 
   const track = host.querySelector<HTMLInputElement>(
-    "[data-vigilia-palette-stop-offset]",
+    "[data-yunari-palette-stop-offset]",
   );
   expect(track, "the offset is not a track's own range input").not.toBeNull();
   expect(track?.type, "the offset is still a text box").toBe("range");
@@ -511,7 +511,7 @@ it("gives a gradient stop's bounded offset a track, and keeps the fraction the w
   // stored 0.375, which is the shown/stored gap `vg-494` is about.
   await type(
     document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-stop-offset-well]",
+      "[data-yunari-palette-stop-offset-well]",
     )!,
     "0.375",
   );
@@ -537,9 +537,9 @@ it("carries a replacement into the delete, and deletes through the port", async 
     onDelete: remove,
   });
 
-  await chooseIn("[data-vigilia-palette-replacement]", "accent");
+  await chooseIn("[data-yunari-palette-replacement]", "accent");
   await click(
-    host.querySelector<HTMLButtonElement>("[data-vigilia-palette-delete]")!,
+    host.querySelector<HTMLButtonElement>("[data-yunari-palette-delete]")!,
   );
 
   expect(remove).toHaveBeenCalledWith("background", "accent");
@@ -554,11 +554,11 @@ it("names the objects a token is used by, for the chosen token", async () => {
   });
 
   expect(
-    host.querySelector("[data-vigilia-palette-users]")?.textContent,
+    host.querySelector("[data-yunari-palette-users]")?.textContent,
   ).toContain("Card title");
 
-  await click(host.querySelector('[data-vigilia-palette-token-row="accent"]')!);
-  const users = host.querySelector("[data-vigilia-palette-users]")?.textContent;
+  await click(host.querySelector('[data-yunari-palette-token-row="accent"]')!);
+  const users = host.querySelector("[data-yunari-palette-users]")?.textContent;
   expect(users).toContain("Header");
   expect(users).not.toContain("Card title");
 });

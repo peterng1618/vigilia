@@ -1,12 +1,12 @@
-import type { TextRun } from "@vigilia/renderer-core";
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+import type { TextRun } from "@yunari/renderer-core";
+import { YUNARI_TEXT_PROPERTY } from "@yunari/scene-fabric";
 
 /**
  * The authored text a run lives in, as plain reads.
  *
  * The one property that owns a text object's runs, and the reads that pull them
  * out of it. Read here rather than in the editor because both the projection
- * and the write rules need them — through `VIGILIA_TEXT_PROPERTY`, which
+ * and the write rules need them — through `YUNARI_TEXT_PROPERTY`, which
  * `scene-fabric` owns and the rest of the editor already imports, so this file
  * is not a second spelling of the key.
  */
@@ -20,7 +20,7 @@ export interface ObjectWithText {
 
 /** The runs of a text object, or none when it is not a run-bearing object. */
 export function textRunsOf(object: ObjectWithText): readonly TextRun[] {
-  const content = object.get(VIGILIA_TEXT_PROPERTY) as
+  const content = object.get(YUNARI_TEXT_PROPERTY) as
     | { readonly runs?: readonly TextRun[] }
     | undefined;
   return content?.runs ?? [];
@@ -30,7 +30,7 @@ export function textRunsOf(object: ObjectWithText): readonly TextRun[] {
 export function authoredContentOf(
   object: ObjectWithText,
 ): Record<string, unknown> | undefined {
-  const content = object.get(VIGILIA_TEXT_PROPERTY);
+  const content = object.get(YUNARI_TEXT_PROPERTY);
   return typeof content === "object" && content !== null
     ? (content as Record<string, unknown>)
     : undefined;

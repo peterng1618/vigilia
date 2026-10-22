@@ -25,7 +25,7 @@
 - Run everything from `src/web/`. The scripts are `package.json`'s — read them there.
 - **Biome is run as `./node_modules/.bin/biome`, not `npm run lint`** when a task needs its exit code, because the npm script is a bare `biome lint ..` with no reporter control.
 - **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break.
-- **`VIGILIA_CAPTURE=1` and `--workers=1`** for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
+- **`YUNARI_CAPTURE=1` and `--workers=1`** for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
 - **A new test must be shown to fail when the behaviour it guards is disabled**, before it is trusted. Every task below states its red proof.
 
 ## Review Focus
@@ -402,7 +402,7 @@ The fixture mounts the **built React controls**, not HTML strings that imitate t
 
 Computed styles prove resolved geometry and contrast, not token provenance: a hard-coded colour equal to a palette role passes a computed equality check. `design:check` owns source provenance; the browser owns rendered treatment. Scope the spacing assertion to authored layout properties, not browser defaults, glyph bounds, percentages or values after rem conversion. Convert lengths consistently at the tested root font size. Negative proof: plant a literal matching a role and require the source guard to fail; plant off-scale spacing in a mounted control and require the browser assertion to fail.
 
-Only registered screenshot actions with `VIGILIA_CAPTURE=1` write committed evidence; ordinary assertions run without capture. Report collected tests from runner output/JSON, never infer collection from exit 0. Do not assume a no-match Playwright run succeeds on every version.
+Only registered screenshot actions with `YUNARI_CAPTURE=1` write committed evidence; ordinary assertions run without capture. Report collected tests from runner output/JSON, never infer collection from exit 0. Do not assume a no-match Playwright run succeeds on every version.
 
 - [ ] **Step 3: Prove the spec is not vacuous — Review Focus 5**
 
@@ -445,7 +445,7 @@ steps above.
 rhythm. `refused` is a reason, not a flag: it keeps the row, names the reason
 through `aria-describedby`, and refuses at `readOnly` rather than going natively
 disabled, so refusal reaches a keyboard user. `data` belongs to the focus target,
-never a wrapper. `InspectorSection` renders `data-vigilia-section` from its own
+never a wrapper. `InspectorSection` renders `data-yunari-section` from its own
 `id` — the hook plan 3's locators read. `wellClasses` carries the hover raise, and
 a blocked well does not.
 

@@ -26,7 +26,7 @@ the layer is sized to**. That is a geometry question the artboard transform alre
 and it interacts with glass: the sampler is told the media's rect and must be told the right
 one, or a frosted panel over a display-filled background samples the wrong pixels.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `Artboard`, `backgroundMedia`, `barColor`, `computeArtboardTransform`,
 `ArtboardBars`, `artboardScreenRect`, `displayScreenRect`, `BackdropMedia`, `mediaDrawArgs`,

@@ -21,7 +21,7 @@ The declaration carries `kind` (`image | svg | gif | video | font`) and
 `path`. `kind` alone is not a media type — `image` spans PNG, JPEG, WebP and
 AVIF — so something has to turn the declaration into a `content-type`.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `renderer-core/src/theme/document.ts` (`AssetReference`, `AssetKind`
 and the comment that *"Asset type is declared explicitly; renderers should not

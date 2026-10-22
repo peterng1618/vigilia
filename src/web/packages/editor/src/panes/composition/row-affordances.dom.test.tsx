@@ -76,7 +76,7 @@ async function renderPane(
  *  is outside the slot, so this is the affordances and nothing else. */
 function affordanceLabels(host: HTMLElement): readonly (string | null)[] {
   return [
-    ...host.querySelectorAll<HTMLElement>(".vigilia-layer-state button"),
+    ...host.querySelectorAll<HTMLElement>(".yunari-layer-state button"),
   ].map((button) => button.getAttribute("aria-label"));
 }
 
@@ -84,7 +84,7 @@ function affordanceLabels(host: HTMLElement): readonly (string | null)[] {
 async function hover(host: HTMLElement, id: string): Promise<void> {
   await act(async () =>
     host
-      .querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)
+      .querySelector<HTMLElement>(`[data-yunari-layer="${id}"]`)
       ?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
   );
 }
@@ -166,7 +166,7 @@ it("reaches visibility and lock from the keyboard, with a name each", async () =
   document.body.append(host);
 
   const line = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer="loose-0"]',
+    '[data-yunari-layer="loose-0"]',
   )!;
   // The row the keyboard can land on at all: `focusin` alone would fire on a row
   // nothing can focus, so the tab stop is asserted rather than assumed.
@@ -178,7 +178,7 @@ it("reaches visibility and lock from the keyboard, with a name each", async () =
   );
 
   const controls = [
-    ...host.querySelectorAll<HTMLButtonElement>(".vigilia-layer-state button"),
+    ...host.querySelectorAll<HTMLButtonElement>(".yunari-layer-state button"),
   ];
   expect(controls.map((control) => control.getAttribute("aria-label"))).toEqual(
     [uiCopy.panels.hide, uiCopy.actions.lock],
@@ -232,7 +232,7 @@ it("reaches visibility and lock from the keyboard, with a name each", async () =
     await act(async () =>
       host
         .querySelector<HTMLButtonElement>(
-          `.vigilia-layer-state button[aria-label="${label}"]`,
+          `.yunari-layer-state button[aria-label="${label}"]`,
         )
         ?.click(),
     );
@@ -255,7 +255,7 @@ it("draws no rename control on an attended row, and the name still opens for typ
   // taking the pointer and keyboard routes with it.
   const host = await renderPane([row()]);
   const line = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer="loose-0"]',
+    '[data-yunari-layer="loose-0"]',
   )!;
   await hover(host, "loose-0");
 

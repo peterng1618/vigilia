@@ -4,7 +4,7 @@ import {
   type Sample,
   type SampleSource,
   type SensorStatus,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 
 /** Deterministic synthetic SampleSource for development/tests. Never real telemetry. */
 

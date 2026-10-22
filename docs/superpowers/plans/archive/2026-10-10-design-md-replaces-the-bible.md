@@ -81,7 +81,7 @@ Copy the values from `src/web/packages/editor/src/editor-shell/editor-shell.css`
 already a copy of it. `spacing` takes `--space-4`…`--space-32` as
 `4: 4px … 32: 32px`; `rounded` takes `--radius-sm/md/lg/xl`; `typography` takes
 each `--text-*` with its `--text-*--line-height` companion as `lineHeight`.
-`name: Vigilia`, `version: alpha`, and the two `omitted` entries with the spec's
+`name: Yunari`, `version: alpha`, and the two `omitted` entries with the spec's
 reasons verbatim for `colors` and `components`.
 
 `fontFamily` is required by the format's `Typography`: measure what the CSS

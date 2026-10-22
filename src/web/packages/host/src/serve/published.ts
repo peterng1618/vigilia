@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 
 /**
  * The document an author is looking at, held while they are looking at it.

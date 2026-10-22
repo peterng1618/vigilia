@@ -17,7 +17,7 @@ not carry: the reference may be **in a code span or in prose**, not only in a li
 directory has an **`archive/` fallback**, so a bare filename may resolve in either place; and the
 referencing files are **any tracked text file**, not only markdown.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: the three gates that already resolve something, and every reader of the plans directory.
 Found: `scripts/check-status.mjs` resolves the active-plan slug against `docs/superpowers/plans/`

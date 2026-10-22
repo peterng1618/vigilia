@@ -26,10 +26,10 @@
 - No new dependency; no change to `packages/renderer-core`, the player, the host or the theme format; Fabric JSON stays the persisted scene.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on. Refuse an invalid numeric input rather than coercing it to zero.
 - **Browser specs run at `--workers=1`** — a red at the default worker count on this box is contention, not a measurement (`vg-285`); re-run a failing spec alone before believing it.
-- **`npm run build -w @vigilia/editor` empties `dist` and deletes `control-fixture.html`, so `npm run build:fixture` must follow it.** Playwright previews the **built** bundles; rebuild after every source change and after reverting a deliberate break.
+- **`npm run build -w @yunari/editor` empties `dist` and deletes `control-fixture.html`, so `npm run build:fixture` must follow it.** Playwright previews the **built** bundles; rebuild after every source change and after reverting a deliberate break.
 - **A red proof's restore is proved with `cmp`, not `git diff`** — a Windows text-mode write leaves CRLF and `git checkout` normalises, so only a byte comparison shows the file is back.
 - **Gates run unpiped from `src/web/`.**
-- **Captures** follow [`docs/evidence/screenshots/README.md`](../../evidence/screenshots/README.md): built bundles, `VIGILIA_CAPTURE=1`, `--workers=1`, registered actions only.
+- **Captures** follow [`docs/evidence/screenshots/README.md`](../../evidence/screenshots/README.md): built bundles, `YUNARI_CAPTURE=1`, `--workers=1`, registered actions only.
 - Report anything not actually verified, in the report and in the commit.
 
 ### Verified at drafting
@@ -308,7 +308,7 @@ Task 8 owns this proof, because it owns the class. Step 2's correction is proved
 
 **Outcome:** The Keyboard panel matches what Task 4 drew — the reference's header and its return-to-default action, the chord mark, the per-row affordance — and the four states §13.1 requires are driven and captured.
 
-**Owning symbols/landmarks:** `settings-keyboard.tsx` — `shortcutReferenceGroups()`, the `kbd`, `ControlIconButton` (the pencil), the per-row `editor-shell-keyboard-action` reset, the foot `data-vigilia-shortcut-reset-all`, the armed row's `data-armed`, `editor-shell-keyboard-reason`; `editor-shell.css` — `.editor-shell-dialog kbd`, `.editor-shell-keyboard dd`, `[data-armed]`, `.editor-shell-keyboard-action`, `.editor-shell-keyboard-reason`, `.editor-shell-keyboard-notice`; the Task 4 drawing.
+**Owning symbols/landmarks:** `settings-keyboard.tsx` — `shortcutReferenceGroups()`, the `kbd`, `ControlIconButton` (the pencil), the per-row `editor-shell-keyboard-action` reset, the foot `data-yunari-shortcut-reset-all`, the armed row's `data-armed`, `editor-shell-keyboard-reason`; `editor-shell.css` — `.editor-shell-dialog kbd`, `.editor-shell-keyboard dd`, `[data-armed]`, `.editor-shell-keyboard-action`, `.editor-shell-keyboard-reason`, `.editor-shell-keyboard-notice`; the Task 4 drawing.
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/settings-keyboard.tsx`

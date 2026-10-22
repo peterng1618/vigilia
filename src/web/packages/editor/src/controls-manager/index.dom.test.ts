@@ -19,7 +19,7 @@ import { applyEditorControls } from "./index.js";
 /** A `Textbox` in the vg-089 state: a 90px run in an authored 27-tall box. */
 function textbox(height: number): Textbox {
   const object = new Textbox("CPU", { width: 140, height, fontSize: 90 });
-  object.set("vigiliaText", {
+  object.set("yunariText", {
     runs: [{ kind: "literal", text: "CPU" }],
     box: { width: 140, height },
   });
@@ -47,7 +47,7 @@ function press(object: Textbox, key: string): void {
 }
 
 function boxOf(object: Textbox): unknown {
-  return (object.get("vigiliaText") as { box?: unknown }).box;
+  return (object.get("yunariText") as { box?: unknown }).box;
 }
 
 describe("a textbox's vertical edge writes the authored box", () => {
@@ -75,7 +75,7 @@ describe("a textbox's vertical edge writes the authored box", () => {
     // height alone would leave `{ height }` with no width, and `authoredBox`
     // would multiply an `undefined` width by the scale on the next pass.
     const object = new Textbox("CPU", { width: 140, fontSize: 90 });
-    object.set("vigiliaText", { runs: [{ kind: "literal", text: "CPU" }] });
+    object.set("yunariText", { runs: [{ kind: "literal", text: "CPU" }] });
 
     drag(object, "mb", 130);
 
@@ -100,7 +100,7 @@ describe("a textbox's vertical edge writes the authored box", () => {
   });
 
   it("records the dragged height unscaled, on a scaled object", () => {
-    // `vigiliaText.box` is the number the object measures against and
+    // `yunariText.box` is the number the object measures against and
     // `boxFrom` puts the scale back on for the clip. Multiplying here would
     // grow the box by the scale on every drag.
     const object = textbox(27);

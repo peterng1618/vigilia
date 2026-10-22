@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { SETTINGS_SECTIONS } from "@vigilia/renderer-core";
+import { SETTINGS_SECTIONS } from "@yunari/renderer-core";
 import { type FabricObject, IText, Rect } from "fabric/es";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -149,12 +149,12 @@ function renderedSections(view: SelectionView): HTMLElement[] {
       />,
     );
   });
-  return [...host.querySelectorAll<HTMLElement>("[data-vigilia-section]")];
+  return [...host.querySelectorAll<HTMLElement>("[data-yunari-section]")];
 }
 
 const headerOf = (id: string): HTMLButtonElement =>
   host.querySelector<HTMLButtonElement>(
-    `[data-vigilia-section="${id}"] > h2 > button`,
+    `[data-yunari-section="${id}"] > h2 > button`,
   )!;
 
 const isOpen = (id: string): boolean =>
@@ -164,7 +164,7 @@ describe("SelectionColumn", () => {
   it("renders the questions in the order SETTINGS_SECTIONS decides", () => {
     const ids = renderedSections(
       viewOf(new Rect({ width: 40, height: 20 })),
-    ).map((element) => element.dataset["vigiliaSection"]);
+    ).map((element) => element.dataset["yunariSection"]);
 
     expect(ids).toEqual(SETTINGS_SECTIONS.map((section) => section.id));
   });
@@ -177,13 +177,13 @@ describe("SelectionColumn", () => {
     // beside this one (`index.dom.test.ts`).
     const text = new IText("", { left: 0, top: 0 });
     text.set({
-      vigiliaText: {
+      yunariText: {
         runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
       },
     });
     const view = viewOf(text);
     const ids = renderedSections(view).map(
-      (element) => element.dataset["vigiliaSection"],
+      (element) => element.dataset["yunariSection"],
     );
 
     expect(ids).not.toContain("paint");
@@ -223,7 +223,7 @@ describe("SelectionColumn", () => {
     for (const element of sections.slice(1)) {
       expect(
         element.className,
-        `${element.dataset["vigiliaSection"]} lost its top rule, so two sections ` +
+        `${element.dataset["yunariSection"]} lost its top rule, so two sections ` +
           "now run together",
       ).toContain("border-t");
     }
@@ -274,7 +274,7 @@ describe("SelectionColumn", () => {
       );
     });
     const track = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-opacity]",
+      "[data-yunari-opacity]",
     )!;
 
     // One keyboard step: the moving value reaches the preview and the release
@@ -330,7 +330,7 @@ describe("SelectionColumn", () => {
     const applyFace = vi.fn(async () => undefined);
     const text = new IText("", { left: 0, top: 0 });
     text.set({
-      vigiliaText: {
+      yunariText: {
         runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
       },
     });
@@ -348,10 +348,10 @@ describe("SelectionColumn", () => {
       );
     });
 
-    const field = host.querySelector("[data-vigilia-font-face-field]");
+    const field = host.querySelector("[data-yunari-font-face-field]");
     expect(field).not.toBeNull();
     const row = field?.querySelector<HTMLButtonElement>(
-      "[data-vigilia-font-face-row]",
+      "[data-yunari-font-face-row]",
     );
     expect(row).toBeTruthy();
     await act(async () => row?.click());

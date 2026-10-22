@@ -38,8 +38,8 @@ Facts this design is argued from, each at its owner:
   directory, the package file, the URL and the package's own id to one value.
 - `item.json`'s `createdAt` is the submission instant on every submission
   (`github-item.ts:113-127`), so a re-publish resets the item's recorded birth.
-- Theme ids are literals and slugs: the starter is `vigilia-demo-dashboard`
-  (`new-fabric-theme.ts:37`), every blank theme is `vigilia-new-theme`
+- Theme ids are literals and slugs: the starter is `yunari-demo-dashboard`
+  (`new-fabric-theme.ts:37`), every blank theme is `yunari-new-theme`
   (`:270`), and a save lands under the document's own id
   (`theme-library-manager/index.ts:232`). Import keeps the package's id when it
   is free and stamps a suffixed one when it is not (`import.ts:102-107,141-148`).
@@ -49,7 +49,7 @@ Facts this design is argued from, each at its owner:
   `ThemeLibraryEntry.origin`). Nothing copies it into the document or into a
   published item, so it dies with the machine.
 - The catalogue's CI runs `validate-item` per touched directory
-  (`C:\tmp\vigilia-store\.github\workflows\validate.yml:38-56`) with
+  (`C:\tmp\yunari-store\.github\workflows\validate.yml:38-56`) with
   `fetch-depth: 0`, and auto-merge admits only paths matching
   `catalogue/[A-Za-z0-9_-]{1,64}/…` (`auto-merge.yml:123`).
 

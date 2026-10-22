@@ -12,7 +12,7 @@
 
 ## The problem
 
-Task 6 ships the control that writes `vigiliaGlass`. Two facts about the
+Task 6 ships the control that writes `yunariGlass`. Two facts about the
 existing lifecycle make the control a lie the moment it is written:
 
 1. `createGlass` discovers panels only in `sync()`, which is subscribed to
@@ -29,7 +29,7 @@ existing lifecycle make the control a lie the moment it is written:
 Neither is a hypothetical. Both are reachable from the first keystroke of the
 control Task 6 is asked to ship.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scene-fabric/src/glass.ts` (`createGlass`, `GlassHandle`, `attach`,
 `sync`, `composite`, `Panel`), `editor/src/editor-shell.ts` (the only editor

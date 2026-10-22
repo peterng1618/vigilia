@@ -31,7 +31,7 @@ const OUT = path.join(
 );
 const FONTTRIO_RAW = `https://raw.githubusercontent.com/kapishdima/fonttrio/${COMMIT}`;
 const FONTSOURCE_API = "https://api.fontsource.org/v1/fonts";
-const UA = { "User-Agent": "vigilia-font-catalogue" };
+const UA = { "User-Agent": "yunari-font-catalogue" };
 const ROLES = ["heading", "body", "mono"];
 
 /**

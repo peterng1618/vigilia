@@ -13,23 +13,23 @@ const { version } = JSON.parse(
 ) as { version: string };
 
 export default defineConfig({
-  define: { __VIGILIA_VERSION__: JSON.stringify(version) },
+  define: { __YUNARI_VERSION__: JSON.stringify(version) },
   plugins: [tailwindcss()],
   resolve: {
     alias: {
       // shadcn's own convention, and the reason a components.json can point at
       // this package's source without every generated import being rewritten.
       "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "@vigilia/renderer-core": fileURLToPath(
+      "@yunari/renderer-core": fileURLToPath(
         new URL("../renderer-core/src/index.ts", import.meta.url),
       ),
-      "@vigilia/theme-package": fileURLToPath(
+      "@yunari/theme-package": fileURLToPath(
         new URL("../theme-package/src/index.ts", import.meta.url),
       ),
       // SCAFFOLD: the fixture themes and the synthetic sample source. The
       // editor will open real documents (Gate 4) and preview live data through
       // the transport (Gate 3) instead.
-      "@vigilia/fake-source": fileURLToPath(
+      "@yunari/fake-source": fileURLToPath(
         new URL("../fake-source/src/index.ts", import.meta.url),
       ),
     },

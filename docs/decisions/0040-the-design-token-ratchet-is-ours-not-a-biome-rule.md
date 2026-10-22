@@ -19,7 +19,7 @@ correct answer (any block that defines tokens, palettes included), must not call
 every value the bible prints outside §3's spacing table a violation, and must
 report success only when it actually looked at files.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scripts/*.mjs` (seven files: `backlog-check`, `check-status`,
 `ownership-enforcement`, `ownership-overlap`, `ownership-sweep`, `reuse-gate`,

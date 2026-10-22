@@ -17,7 +17,7 @@
  * quietly the wrong figure passes here.
  */
 
-import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
+import { YUNARI_PAINT_PROPERTY } from "@yunari/scene-fabric";
 import { type FabricObject, StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { createNewShape, type ShapeKind } from "./new-object-defaults.js";
@@ -135,7 +135,7 @@ describe("a swept angle, measured", () => {
     // A closed figure's paint belongs to its interior; an open one is stroked,
     // exactly as a polyline and a line already are. An arc that arrived filled
     // would flood the area between the sweep and its chord.
-    expect(arc.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(arc.get(YUNARI_PAINT_PROPERTY)).toEqual({
       stroke: expect.any(String),
     });
     expect(arc.fill).toBeNull();
@@ -144,7 +144,7 @@ describe("a swept angle, measured", () => {
   it("fills a wedge, because its interior is the region the author asked for", () => {
     const wedge = createNewShape("shape-wedge", globals, "wedge", placement);
 
-    expect(wedge.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(wedge.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: expect.any(String),
     });
   });

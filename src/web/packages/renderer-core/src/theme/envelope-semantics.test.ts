@@ -8,7 +8,7 @@ import {
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
 
 /**
- * The Vigilia-owned half of an envelope, decided without Fabric.
+ * The Yunari-owned half of an envelope, decided without Fabric.
  *
  * These are the cases that outlived the retired v1 document validator: the
  * semantic checks over metadata, id, artboard, globals, assets and background

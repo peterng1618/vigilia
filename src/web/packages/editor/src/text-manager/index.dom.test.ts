@@ -1,8 +1,5 @@
 // @vitest-environment jsdom
-import {
-  applyAuthoredText,
-  VIGILIA_TEXT_PROPERTY,
-} from "@vigilia/scene-fabric";
+import { applyAuthoredText, YUNARI_TEXT_PROPERTY } from "@yunari/scene-fabric";
 import { Canvas, IText, Textbox } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createTextManager } from "./index.js";
@@ -38,7 +35,7 @@ function reading(id = "ram-value"): Textbox {
     originX: "left",
     originY: "top",
   });
-  object.set(VIGILIA_TEXT_PROPERTY, {
+  object.set(YUNARI_TEXT_PROPERTY, {
     wrap: true,
     overflow: "ellipsis",
     align: "center",
@@ -145,7 +142,7 @@ describe("double-clicking a bound run", () => {
     expect(object.text).toBe(TOKEN);
     object.exitEditing();
 
-    expect(object.get(VIGILIA_TEXT_PROPERTY)).toEqual({
+    expect(object.get(YUNARI_TEXT_PROPERTY)).toEqual({
       wrap: true,
       overflow: "ellipsis",
       align: "center",
@@ -168,7 +165,7 @@ describe("double-clicking a bound run", () => {
     object.set("text", "MEM 16.0 GB");
     object.exitEditing();
 
-    const authored = object.get(VIGILIA_TEXT_PROPERTY) as {
+    const authored = object.get(YUNARI_TEXT_PROPERTY) as {
       runs: Readonly<Record<string, unknown>>[];
     };
     // The value run became what the author typed, and kept its type preset.
@@ -197,7 +194,7 @@ describe("a width the author dragged", () => {
       canvas.fire("object:resizing", {
         transform: { target: object },
       } as never);
-      const authored = object.get(VIGILIA_TEXT_PROPERTY) as {
+      const authored = object.get(YUNARI_TEXT_PROPERTY) as {
         box?: { width: number };
       };
       expect(authored.box?.width, `step ${width}`).toBe(width);
@@ -238,7 +235,7 @@ describe("typing over an object that carries more than one run", () => {
    */
   function twoRuns(): Textbox {
     const object = new Textbox("42%", { id: "cpu-value", left: 40, top: 30 });
-    object.set(VIGILIA_TEXT_PROPERTY, {
+    object.set(YUNARI_TEXT_PROPERTY, {
       runs: [
         { kind: "value" as const, bindingId: "load" },
         { kind: "literal" as const, text: "%" },
@@ -263,7 +260,7 @@ describe("typing over an object that carries more than one run", () => {
     object.set("text", "typed over");
     object.exitEditing();
 
-    const authored = object.get(VIGILIA_TEXT_PROPERTY) as {
+    const authored = object.get(YUNARI_TEXT_PROPERTY) as {
       runs: readonly { kind: string }[];
     };
     expect(authored.runs).toHaveLength(2);
@@ -313,7 +310,7 @@ describe("what a text object an author inserts can do", () => {
   it("keeps a grown type inside the authored box it was given", () => {
     // **The claim under test, and the measurement behind it.** The starter's
     // `cpu-card-title` is authored 140 x 27.12 for its 24px face. Applying the
-    // `90-600` preset leaves `vigiliaText.box` at exactly {140, 27.12} — it does
+    // `90-600` preset leaves `yunariText.box` at exactly {140, 27.12} — it does
     // not grow — while Fabric's own measured height goes 27.12 -> 101.7 and the
     // clip is rebuilt at the box's 27.12. So the glyphs are far taller than the
     // box that is told to contain them, and the canvas shows the title cut off,
@@ -325,7 +322,7 @@ describe("what a text object an author inserts can do", () => {
     // fits — an author who picks a larger face is left with text they cannot
     // read and a Height field that is right about a box that is wrong.
     const object = reading("cpu-card-title");
-    object.set(VIGILIA_TEXT_PROPERTY, {
+    object.set(YUNARI_TEXT_PROPERTY, {
       wrap: true,
       overflow: "clip",
       align: "left",
@@ -352,7 +349,7 @@ describe("what a text object an author inserts can do", () => {
     applyAuthoredText(canvas, globals);
 
     const box = (
-      object.get(VIGILIA_TEXT_PROPERTY) as {
+      object.get(YUNARI_TEXT_PROPERTY) as {
         box: { width: number; height: number };
       }
     ).box;

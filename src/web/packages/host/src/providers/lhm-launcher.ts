@@ -4,7 +4,7 @@ import path from "node:path";
 
 /**
  * Runs a local LibreHardwareMonitor so its web server can be read (§97). LHM is
- * an external program: Vigilia launches it and stops only the process it
+ * an external program: Yunari launches it and stops only the process it
  * started itself, never one the machine owner is already running.
  *
  * LHM's executable is manifested `requireAdministrator`, because reading most

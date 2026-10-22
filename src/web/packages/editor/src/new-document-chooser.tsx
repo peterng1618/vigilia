@@ -1,4 +1,4 @@
-import { MAX_ARTBOARD_DIMENSION } from "@vigilia/renderer-core";
+import { MAX_ARTBOARD_DIMENSION } from "@yunari/renderer-core";
 import { createElement, useId, useState } from "react";
 import {
   ARTBOARD_ORIENTATIONS,
@@ -79,7 +79,7 @@ export function NewDocumentChooser({
     nearest.resolution,
     nearest.orientation,
   );
-  const sizeId = `vigilia-new-document-size-${useId().replace(/[^\w-]/g, "")}`;
+  const sizeId = `yunari-new-document-size-${useId().replace(/[^\w-]/g, "")}`;
 
   /** The size the author has settled on, and the display they named. Two values
    *  rather than one, because the display is a choice the technical controls do
@@ -162,7 +162,7 @@ export function NewDocumentChooser({
       <div className="flex flex-col gap-[var(--space-8)]">
         <ControlSelect
           label={uiCopy.newDocument.display}
-          data={{ "data-vigilia-new-document-display": "" }}
+          data={{ "data-yunari-new-document-display": "" }}
           value={display}
           options={displayOptions(opening)}
           onChange={pickDisplay}
@@ -171,27 +171,27 @@ export function NewDocumentChooser({
             is out of the accessibility tree, so nothing here is
             reachable-but-unnamed. */}
         <div
-          data-vigilia-new-document-custom=""
+          data-yunari-new-document-custom=""
           hidden={!custom}
           className="flex flex-col gap-[var(--space-8)]"
         >
           <ControlSelect
             label={uiCopy.panels.ratio}
-            data={{ "data-vigilia-new-document-ratio": "" }}
+            data={{ "data-yunari-new-document-ratio": "" }}
             value={preset?.ratio ?? CUSTOM}
             options={ratioOptions()}
             onChange={(id) => derive("ratio", id)}
           />
           <ControlSelect
             label={uiCopy.panels.orientation}
-            data={{ "data-vigilia-new-document-orientation": "" }}
+            data={{ "data-yunari-new-document-orientation": "" }}
             value={preset?.orientation ?? CUSTOM}
             options={orientationOptions()}
             onChange={(id) => derive("orientation", id)}
           />
           <ControlSelect
             label={uiCopy.panels.resolution}
-            data={{ "data-vigilia-new-document-resolution": "" }}
+            data={{ "data-yunari-new-document-resolution": "" }}
             value={preset?.resolution ?? CUSTOM}
             options={resolutionOptions()}
             onChange={(id) => derive("resolution", id)}
@@ -205,7 +205,7 @@ export function NewDocumentChooser({
               {
                 label: uiCopy.panels.widthMark,
                 value: chosen.width,
-                data: { "data-vigilia-new-document-width": "" },
+                data: { "data-yunari-new-document-width": "" },
                 integer: true,
                 min: 1,
                 max: MAX_ARTBOARD_DIMENSION,
@@ -214,7 +214,7 @@ export function NewDocumentChooser({
               {
                 label: uiCopy.panels.heightMark,
                 value: chosen.height,
-                data: { "data-vigilia-new-document-height": "" },
+                data: { "data-yunari-new-document-height": "" },
                 integer: true,
                 min: 1,
                 max: MAX_ARTBOARD_DIMENSION,
@@ -226,25 +226,25 @@ export function NewDocumentChooser({
         {/* The size on screen, live. Four controls that only combine into a
             number are four guesses, and the author would find out the size only
             after committing to it. */}
-        <div className="vigilia-field">
+        <div className="yunari-field">
           <label htmlFor={sizeId}>{uiCopy.panels.size}</label>
           <output
             id={sizeId}
-            // `tabular-nums` was `.vigilia-dialog .vigilia-dialog-size`'s only
+            // `tabular-nums` was `.yunari-dialog .yunari-dialog-size`'s only
             // rule, and the popup is `.editor-shell-dialog` now, so the
             // descendant match is gone: this number is the one that must not
             // jitter as its digits change.
             className="tabular-nums"
-            data-vigilia-new-document-size=""
+            data-yunari-new-document-size=""
           >
             {`${chosen.width} × ${chosen.height}`}
           </output>
         </div>
-        <div className="vigilia-dialog-actions">
+        <div className="yunari-dialog-actions">
           <button
             type="button"
             className={ACTION_BUTTON}
-            data-vigilia-new-document-cancel=""
+            data-yunari-new-document-cancel=""
             onClick={settle.dismiss}
           >
             {uiCopy.newDocument.cancel}
@@ -252,7 +252,7 @@ export function NewDocumentChooser({
           <button
             type="button"
             className={ACTION_BUTTON}
-            data-vigilia-new-document-create=""
+            data-yunari-new-document-create=""
             onClick={() => settle.close(answer())}
           >
             {uiCopy.newDocument.create}

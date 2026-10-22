@@ -1,5 +1,5 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { describe, expect, it } from "vitest";
 import {
   fileNameFor,
@@ -130,11 +130,11 @@ describe("serializeThemePackage", () => {
 });
 
 describe("fileNameFor", () => {
-  it("uses the theme id with .vigilia-theme extension", () => {
-    expect(fileNameFor(validEnvelope)).toBe("living-room.vigilia-theme");
+  it("uses the theme id with .yunari-theme extension", () => {
+    expect(fileNameFor(validEnvelope)).toBe("living-room.yunari-theme");
   });
 
-  it("falls back to theme.vigilia-theme when id is not filename-safe", () => {
-    expect(fileNameFor({ id: "../../etc/passwd" })).toBe("theme.vigilia-theme");
+  it("falls back to theme.yunari-theme when id is not filename-safe", () => {
+    expect(fileNameFor({ id: "../../etc/passwd" })).toBe("theme.yunari-theme");
   });
 });

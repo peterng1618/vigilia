@@ -1,6 +1,6 @@
 # Superpowers specs
 
-Superpowers owns Vigilia's design/spec workflow. New design/spec artifacts belong
+Superpowers owns Yunari's design/spec workflow. New design/spec artifacts belong
 here; do not create a parallel `.agents/specs/` system.
 
 ## Where a spec stands

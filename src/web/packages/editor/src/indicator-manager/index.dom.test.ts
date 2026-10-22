@@ -84,7 +84,7 @@ describe("IndicatorManager", () => {
       { transform: { target: object }, e: pointer() } as never,
     );
     const element = document.querySelector<HTMLElement>(
-      ".vigilia-angle-indicator",
+      ".yunari-angle-indicator",
     );
     expect(element?.textContent).toBe("30°");
     expect(element?.style.display).not.toBe("none");
@@ -111,7 +111,7 @@ describe("IndicatorManager", () => {
     );
 
     expect(
-      document.querySelector<HTMLElement>(".vigilia-size-indicator")
+      document.querySelector<HTMLElement>(".yunari-size-indicator")
         ?.textContent,
     ).toBe("100 × 50");
     indicators.destroy();
@@ -132,7 +132,7 @@ describe("IndicatorManager", () => {
     );
 
     expect(
-      document.querySelector<HTMLElement>(".vigilia-angle-indicator")?.style
+      document.querySelector<HTMLElement>(".yunari-angle-indicator")?.style
         .display,
     ).toBe("none");
     indicators.destroy();
@@ -155,7 +155,7 @@ describe("IndicatorManager", () => {
     );
 
     expect(
-      document.querySelector<HTMLElement>(".vigilia-size-indicator")?.style
+      document.querySelector<HTMLElement>(".yunari-size-indicator")?.style
         .display,
     ).toBe("none");
     indicators.destroy();
@@ -167,8 +167,8 @@ describe("IndicatorManager", () => {
 
     indicators.destroy();
 
-    expect(document.querySelector(".vigilia-angle-indicator")).toBeNull();
-    expect(document.querySelector(".vigilia-size-indicator")).toBeNull();
+    expect(document.querySelector(".yunari-angle-indicator")).toBeNull();
+    expect(document.querySelector(".yunari-size-indicator")).toBeNull();
   });
 
   it("reports scene size rather than screen size when the camera is zoomed", () => {
@@ -191,7 +191,7 @@ describe("IndicatorManager", () => {
     );
 
     expect(
-      document.querySelector<HTMLElement>(".vigilia-size-indicator")
+      document.querySelector<HTMLElement>(".yunari-size-indicator")
         ?.textContent,
     ).toBe("100 × 50");
     indicators.destroy();

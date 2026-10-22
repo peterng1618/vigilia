@@ -14,7 +14,7 @@
 
 ## Intent and scope
 
-Let authors recreate the supplied dashboard through Vigilia's editor, with live
+Let authors recreate the supplied dashboard through Yunari's editor, with live
 data and matching editor/player output. **Progressively update the actual default
 starter theme as capabilities land**, not a separate showcase. Imported fonts,
 wallpaper and decorative image/SVG assets are allowed; hand-edited scene JSON,
@@ -43,7 +43,7 @@ keeps its relative order behind this milestone. This does not silently expand th
 
 ## Visual target and matching boundary
 
-- Upper-left tracked `VIGILIA` wordmark and `SYSTEM INSIGHTS` subtitle.
+- Upper-left tracked `YUNARI` wordmark and `SYSTEM INSIGHTS` subtitle.
 - Top row: large clock/date card, then CPU, GPU, RAM and VRAM cards. Clock has
   separate PM text and a thin divider above the date.
 - CPU/GPU: blue/purple outline icons, large usage percentages, model-name captions,
@@ -294,7 +294,7 @@ References consulted: [Fabric custom properties](https://fabricjs.com/docs/using
 [Fabric caching](https://fabricjs.com/docs/fabric-object-caching),
 [Canvas filtering](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/filter),
 [CSS backdrop filtering](https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter).
-These identify primitives, not proof of Vigilia integration.
+These identify primitives, not proof of Yunari integration.
 
 Next gate: review the queued implementation plan and select its execution method.
 After snapping closes and `STATUS.md` activates this plan, approve and run Task 1's

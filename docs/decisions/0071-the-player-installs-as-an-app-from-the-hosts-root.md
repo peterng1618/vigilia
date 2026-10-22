@@ -28,7 +28,7 @@ So the question is not "how do we write a service worker". It is **where the
 script lives, and what the host already allows** — and both answers land on two
 watchlisted files.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `grep -rniE "serviceworker|service-worker|webmanifest|manifest\.json|workbox|vite-plugin-pwa|beforeinstallprompt|appmanifest"`
 over `src/web/packages`, `src/web/tests`, `docs` and `scripts`, plus

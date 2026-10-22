@@ -33,7 +33,7 @@ describe("the player's load-failure page", () => {
   it("keeps the reason, labelled as a reason", () => {
     const { view } = mount();
     const reason = view.querySelector<HTMLElement>(
-      "[data-vigilia-load-failure-reason]",
+      "[data-yunari-load-failure-reason]",
     );
 
     expect(reason?.textContent).toContain(REASON);
@@ -43,7 +43,7 @@ describe("the player's load-failure page", () => {
   it("offers a retry that asks for the display again", () => {
     const { view, retry } = mount();
     const control = view.querySelector<HTMLButtonElement>(
-      "[data-vigilia-load-failure-retry]",
+      "[data-yunari-load-failure-retry]",
     );
 
     // A failure with no way to try again is the stranding this fixes: a host
@@ -57,7 +57,7 @@ describe("the player's load-failure page", () => {
   it("leaves a route onward to the host", () => {
     const { view } = mount();
     const link = view.querySelector<HTMLAnchorElement>(
-      "[data-vigilia-load-failure-host]",
+      "[data-yunari-load-failure-host]",
     );
 
     // `/` on a host is its theme chooser, or whichever theme it holds: either
@@ -77,7 +77,7 @@ describe("the player's load-failure page", () => {
     // Never `outline: none` without a replacement: the whole shell follows the
     // same rule, and a display reached by keyboard is a display a reader uses.
     expect(
-      document.getElementById("vigilia-load-failure-style")?.textContent,
+      document.getElementById("yunari-load-failure-style")?.textContent,
     ).toContain(":focus-visible");
   });
 
@@ -89,7 +89,7 @@ describe("the player's load-failure page", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     document.body.replaceChildren();
     const chrome = document.createElement("div");
-    chrome.dataset["vigiliaChrome"] = "top";
+    chrome.dataset["yunariChrome"] = "top";
     const host = document.createElement("div");
     host.id = "artboard";
     document.body.append(chrome, host);
@@ -98,11 +98,11 @@ describe("the player's load-failure page", () => {
     showLoadFailure(new Error("boom"));
 
     const view = document.querySelector<HTMLElement>(
-      "[data-vigilia-load-failure]",
+      "[data-yunari-load-failure]",
     );
     expect(view?.parentElement).toBe(document.body);
     expect(document.getElementById("artboard")).toBeNull();
-    expect(document.querySelector("[data-vigilia-chrome]")).toBeNull();
+    expect(document.querySelector("[data-yunari-chrome]")).toBeNull();
   });
 
   it("carries its own stylesheet once, however many times it is built", () => {
@@ -110,7 +110,7 @@ describe("the player's load-failure page", () => {
     mount();
 
     expect(
-      document.querySelectorAll("#vigilia-load-failure-style"),
+      document.querySelectorAll("#yunari-load-failure-style"),
     ).toHaveLength(1);
   });
 });

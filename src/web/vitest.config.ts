@@ -4,14 +4,14 @@ import { defineConfig } from "vitest/config";
 
 /** The product's version, injected the same way `packages/editor/vite.config.ts`
  *  injects it for the built bundle. The unit suite does not build through that
- *  file, so without this the editor source's `__VIGILIA_VERSION__` would be an
+ *  file, so without this the editor source's `__YUNARI_VERSION__` would be an
  *  unresolved global (`vg-279`). */
 const { version } = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
 ) as { version: string };
 
 export default defineConfig({
-  define: { __VIGILIA_VERSION__: JSON.stringify(version) },
+  define: { __YUNARI_VERSION__: JSON.stringify(version) },
   // shadcn's convention, matched to the editor's own vite alias so a component
   // written for the app resolves in tests too.
   resolve: {

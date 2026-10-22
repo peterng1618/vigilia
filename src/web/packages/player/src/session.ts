@@ -47,7 +47,7 @@ export function displaySession(
       }
 
       const headers = new Headers(init?.headers);
-      headers.set("x-vigilia-session", token);
+      headers.set("x-yunari-session", token);
       return fetcher(input, { ...init, headers });
     },
     streamUrl(path, parameters) {

@@ -8,7 +8,7 @@
  */
 
 /** Persisted property; Fabric JSON is the only place it is written. */
-export const VIGILIA_NAME_PROPERTY = "name";
+export const YUNARI_NAME_PROPERTY = "name";
 
 /**
  * A label, not a document. Matches the bound the palette and type-preset names
@@ -25,7 +25,7 @@ export const MAX_OBJECT_NAME_LENGTH = 120;
 export function objectName(object: {
   get(name: string): unknown;
 }): string | undefined {
-  const value = object.get(VIGILIA_NAME_PROPERTY);
+  const value = object.get(YUNARI_NAME_PROPERTY);
   return isObjectName(value) ? value : undefined;
 }
 

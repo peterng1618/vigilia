@@ -2,8 +2,8 @@ import {
   type Binding,
   type FabricPalette,
   isObjectName,
-} from "@vigilia/renderer-core";
-import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { isLocked, YunariChart } from "@yunari/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
@@ -148,12 +148,12 @@ export interface EditorShellBridge {
 }
 
 /** Fabric's runtime `type` getter lowercases the class tag, so identity is the
- * reliable chart discriminator; the persisted envelope keeps "VigiliaChart". */
+ * reliable chart discriminator; the persisted envelope keeps "YunariChart". */
 function activeKindOf(active: FabricObject | undefined): ActiveKind {
   if (active === undefined) return "none";
   if (active instanceof ActiveSelection || active instanceof Group)
     return "group";
-  return active instanceof VigiliaChart ? "chart" : "object";
+  return active instanceof YunariChart ? "chart" : "object";
 }
 
 /**

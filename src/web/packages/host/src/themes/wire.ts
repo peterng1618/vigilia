@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 import type { ThemeContent } from "./store.js";
 
 /**

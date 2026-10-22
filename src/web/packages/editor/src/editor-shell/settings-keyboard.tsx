@@ -147,7 +147,7 @@ export function SettingsKeyboard(props: {
     };
 
   return (
-    <div className="editor-shell-keyboard" data-vigilia-keyboard="">
+    <div className="editor-shell-keyboard" data-yunari-keyboard="">
       {/* The panel's header, as the drawing draws it
           (`current/settings-keyboard.html`): the glyph, the name, and "Reset all"
           at the trailing edge. **The action moved here from the tab's foot**,
@@ -159,7 +159,7 @@ export function SettingsKeyboard(props: {
         <button
           type="button"
           className="editor-shell-keyboard-action"
-          data-vigilia-shortcut-reset-all=""
+          data-yunari-shortcut-reset-all=""
           onClick={() => {
             if (storage !== undefined) clearShortcutOverrides(storage);
             onOverrides({});
@@ -176,7 +176,7 @@ export function SettingsKeyboard(props: {
             {group.rows.map((row) => (
               <div
                 key={row.action}
-                data-vigilia-shortcut-row={row.action}
+                data-yunari-shortcut-row={row.action}
                 data-armed={armed === row.action ? "" : undefined}
                 // Focusable, so the capture has somewhere to listen that is not
                 // the whole document: the modal's guard covers the page behind
@@ -210,7 +210,7 @@ export function SettingsKeyboard(props: {
                 <dt>{row.label}</dt>
                 <dd>
                   <kbd
-                    data-vigilia-shortcut-chord={row.action}
+                    data-yunari-shortcut-chord={row.action}
                     aria-label={armed === row.action ? undefined : row.spoken}
                   >
                     {armed === row.action
@@ -219,7 +219,7 @@ export function SettingsKeyboard(props: {
                   </kbd>
                   <ControlIconButton
                     label={uiCopy.settings.keyboardRebind}
-                    data={{ "data-vigilia-shortcut-arm": row.action }}
+                    data={{ "data-yunari-shortcut-arm": row.action }}
                     shortcut={{ printed: row.chord, spoken: row.spoken }}
                     onClick={() =>
                       armed === row.action ? disarm() : onArmed(row.action)
@@ -230,7 +230,7 @@ export function SettingsKeyboard(props: {
                   <button
                     type="button"
                     className="editor-shell-keyboard-action"
-                    data-vigilia-shortcut-reset={row.action}
+                    data-yunari-shortcut-reset={row.action}
                     onClick={() => {
                       if (storage !== undefined)
                         clearShortcutOverride(storage, row.action);
@@ -255,7 +255,7 @@ export function SettingsKeyboard(props: {
                 {armed === row.action ? (
                   <p
                     className="editor-shell-keyboard-reason"
-                    data-vigilia-shortcut-reason=""
+                    data-yunari-shortcut-reason=""
                     role="alert"
                   >
                     {reason}

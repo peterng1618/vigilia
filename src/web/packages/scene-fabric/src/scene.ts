@@ -5,7 +5,7 @@ import {
   computeArtboardTransform,
   type SceneHandle,
   type ScenePlan,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { StaticCanvas } from "fabric/es";
 import {
   createSceneAdapter,
@@ -91,7 +91,7 @@ export function mountFabricScene(
   }
 
   const element = document.createElement("canvas");
-  element.dataset["vigilia"] = "artboard";
+  element.dataset["yunari"] = "artboard";
   element.style.position = "absolute";
   element.style.top = "0";
   element.style.left = "0";

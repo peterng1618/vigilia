@@ -82,7 +82,7 @@ function TrioFavoriteButton({
     <button
       ref={ref}
       type="button"
-      data-vigilia-font-favorite=""
+      data-yunari-font-favorite=""
       aria-pressed={favorite}
       aria-label={label}
       onClick={onToggle}
@@ -111,7 +111,7 @@ export interface FontPickerProps {
  * state the host would have to reconcile.
  *
  * A face is applied by clicking its row, so the row is the control that
- * carries `data-vigilia-font-face`; the trio chooser and its apply button keep
+ * carries `data-yunari-font-face`; the trio chooser and its apply button keep
  * the two selectors the panel's browser tests read. Every chooser is
  * `ControlSelect`, so each is a keyboard-operable combobox in a well rather
  * than a hand-authored native control (§2.2).
@@ -230,10 +230,10 @@ export function FontPicker({
         // Two names for one element: `…-font-face-row` is this row's own
         // marker, and `…-font-face` is the selector the panel's browser tests
         // and the archived plan read for "the control that applies a face".
-        data-vigilia-font-face-row=""
-        data-vigilia-font-face=""
-        data-vigilia-font-family={face.family}
-        data-vigilia-font-clamped={face.clamped === true ? "true" : "false"}
+        data-yunari-font-face-row=""
+        data-yunari-font-face=""
+        data-yunari-font-family={face.family}
+        data-yunari-font-clamped={face.clamped === true ? "true" : "false"}
         className="flex items-baseline gap-2 px-1 text-left"
         style={{
           position: "absolute",
@@ -251,12 +251,12 @@ export function FontPicker({
         <span className="truncate">{face.family}</span>
         <span className="ml-auto shrink-0">{face.weight}</span>
         {face.clamped === true && (
-          <span data-vigilia-font-note="" className="shrink-0 text-[11px]">
+          <span data-yunari-font-note="" className="shrink-0 text-[11px]">
             {uiCopy.panels.fontClamped}
           </span>
         )}
         {loading && (
-          <span data-vigilia-font-note="" className="shrink-0 text-[11px]">
+          <span data-yunari-font-note="" className="shrink-0 text-[11px]">
             {uiCopy.panels.loadingFont}
           </span>
         )}
@@ -265,7 +265,7 @@ export function FontPicker({
   };
 
   return (
-    <div data-vigilia-font-picker="" className="grid gap-1.5">
+    <div data-yunari-font-picker="" className="grid gap-1.5">
       <input
         type="search"
         aria-label={uiCopy.panels.fontSearch}
@@ -276,9 +276,9 @@ export function FontPicker({
       {catalogFacets().map((field) => (
         <ControlSelect
           key={field.field}
-          id={`vigilia-font-facet-${field.field}`}
+          id={`yunari-font-facet-${field.field}`}
           label={FACET_COPY[field.field]}
-          data={{ "data-vigilia-font-facet": field.field }}
+          data={{ "data-yunari-font-facet": field.field }}
           value={facet?.field === field.field ? facet.value : ""}
           options={facetOptions(field)}
           // A second kind replaces the first, because the query holds one facet;
@@ -292,9 +292,9 @@ export function FontPicker({
         {uiCopy.panels.fontFacetRule}
       </p>
       <ControlSelect
-        id="vigilia-font-sort"
+        id="yunari-font-sort"
         label={uiCopy.panels.fontSort}
-        data={{ "data-vigilia-font-sort": "" }}
+        data={{ "data-yunari-font-sort": "" }}
         value={sort}
         options={[
           { id: "name", name: uiCopy.panels.fontSortName },
@@ -315,9 +315,9 @@ export function FontPicker({
       <ControlSelect
         // `…-font-trio` is the archived plan's selector for the trio chooser,
         // and the browser tests read it to pick a trio.
-        id="vigilia-font-trio"
+        id="yunari-font-trio"
         label={uiCopy.panels.trio}
-        data={{ "data-vigilia-font-trio": "" }}
+        data={{ "data-yunari-font-trio": "" }}
         value={trioId}
         options={trios.map((trio) => ({ id: trio.id, name: trio.name }))}
         onChange={setTrioId}
@@ -326,8 +326,8 @@ export function FontPicker({
         `…-font-apply` is what the archived plan's tests reach for. */}
       <button
         type="button"
-        data-vigilia-font-trio-apply=""
-        data-vigilia-font-apply=""
+        data-yunari-font-trio-apply=""
+        data-yunari-font-apply=""
         className="self-start"
         onClick={() => onApplyTrio(trioId)}
       >
@@ -353,7 +353,7 @@ export function FontPicker({
         </>
       )}
       <ul
-        data-vigilia-font-trio-list=""
+        data-yunari-font-trio-list=""
         aria-label={uiCopy.panels.fontTrios}
         className="m-0 max-h-40 list-none overflow-y-auto p-0"
       >
@@ -365,7 +365,7 @@ export function FontPicker({
             />
             <button
               type="button"
-              data-vigilia-font-trio-row=""
+              data-yunari-font-trio-row=""
               className="min-w-0 flex-1 truncate text-left"
               onClick={() => onApplyTrio(trio.id)}
             >

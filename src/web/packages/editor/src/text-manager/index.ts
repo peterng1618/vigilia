@@ -1,9 +1,9 @@
-import type { TextContent, TextRun } from "@vigilia/renderer-core";
+import type { TextContent, TextRun } from "@yunari/renderer-core";
 import {
   type PlanTextObject,
-  VIGILIA_TEXT_PROPERTY,
   writeAuthoredBoxDimension,
-} from "@vigilia/scene-fabric";
+  YUNARI_TEXT_PROPERTY,
+} from "@yunari/scene-fabric";
 import { type Canvas, IText, Textbox } from "fabric/es";
 import { uiCopy } from "../ui-copy.js";
 
@@ -25,7 +25,7 @@ interface TextManager {
 
 /** The runs and box this object was authored with, or nothing to write back. */
 function authoredOf(object: PlanTextObject): TextContent | undefined {
-  const authored = object.get(VIGILIA_TEXT_PROPERTY);
+  const authored = object.get(YUNARI_TEXT_PROPERTY);
   return typeof authored === "object" &&
     authored !== null &&
     Array.isArray((authored as Record<string, unknown>)["runs"])
@@ -54,7 +54,7 @@ function keepTypedText(object: PlanTextObject): "written" | "refused" {
   if (authored.runs.length > 1) return "refused";
 
   const first = authored.runs[0] as TextRun | undefined;
-  object.set(VIGILIA_TEXT_PROPERTY, {
+  object.set(YUNARI_TEXT_PROPERTY, {
     ...authored,
     runs: [
       {
@@ -85,7 +85,7 @@ function adoptResizedBox(object: object): void {
   const authored = authoredOf(target);
   if (authored?.box === undefined) return;
 
-  // Unscaled: `vigiliaText.box` is the object's size *before* `scaleX`.
+  // Unscaled: `yunariText.box` is the object's size *before* `scaleX`.
   // `assertBox` divides the stored number by the scale to get Fabric's `width`
   // and `boxFrom` multiplies it back for the clip and the placement, so the
   // stored number is `width` itself. Writing `width * scaleX` handed the next

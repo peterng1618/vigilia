@@ -79,7 +79,7 @@ function defaultLhmExecutable(): string {
 function hostCommand(argv: readonly string[]): string {
   return [
     process.execPath,
-    path.join(here, "..", "bin", "vigilia.js"),
+    path.join(here, "..", "bin", "yunari.js"),
     ...argv,
     "-n",
   ]
@@ -145,7 +145,7 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Launching LHM is opt-in via `--lhm-exe`, never automatic: its manifest
   // requires administrator rights, so starting it unattended would raise a UAC
   // prompt on every host start. The provider reads whichever server answers,
-  // whether Vigilia launched it or the owner already runs it.
+  // whether Yunari launched it or the owner already runs it.
   const lhm =
     lhmExecutable === undefined
       ? { started: false, stop: (): void => undefined }
@@ -159,7 +159,7 @@ export async function run(argv: readonly string[]): Promise<number> {
   // extended sensors (CPU temperature, fans, GPU detail) when the machine owner
   // runs it; the systeminformation-backed provider answers everything else, and
   // covers any key LHM could not read. Both are optional sources, never a
-  // collector Vigilia maintains (§97).
+  // collector Yunari maintains (§97).
   const lhmProvider = new LhmSensorProvider({ baseUrl: lhmUrl });
   const libraryProvider = new LibrarySensorProvider();
   // Time is a reading from this PC, so displays agree and a wrong device clock
@@ -376,7 +376,7 @@ export async function run(argv: readonly string[]): Promise<number> {
    *  certificate covers it either way, and the console names it. */
   const lan = await lanAddress();
 
-  console.log(`\nVigilia v${VERSION}`);
+  console.log(`\nYunari v${VERSION}`);
 
   if (bound !== wanted) {
     console.log(

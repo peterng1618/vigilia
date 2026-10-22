@@ -3,7 +3,7 @@ import {
   type PlanIssue,
   planArtboard,
   type ScenePlan,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 
 /**
  * The plan a hosted envelope mounts from.

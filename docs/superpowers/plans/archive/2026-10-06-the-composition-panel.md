@@ -31,7 +31,7 @@ change remove a step, or does it remove a freedom?*
 **Four of §3's landmarks have already landed and are not rebuilt here.** Measured on `f8197102`:
 the row's **thumbnail** is `LayerMark` and `treatment()` (`layer-panel.tsx:90-153`) — a text row's
 own words in its own face, a chart's family icon, a shape's paint, an image's own picture, and
-nothing for a group; the **bound key** is the `.vigilia-layer-bound` column
+nothing for a group; the **bound key** is the `.yunari-layer-bound` column
 (`layer-panel.tsx:635-642`) fed from the document's own envelope; **lock and eye appear only when
 they are true** (`layer-panel.tsx:395-397`); and **expansion is available and stays available**,
 the twisty and the arrow keys being untouched by this plan. What is open is the row's **role**,
@@ -104,7 +104,7 @@ The spec implies these and no step below exercises them by name. Each is pinned 
 the task named.
 
 1. **A role that guesses where the document says nothing.** An unrecognised chart family, a
-   group with no `provenance`, a text object whose runs were authored before `vigiliaText`: a
+   group with no `provenance`, a text object whose runs were authored before `yunariText`: a
    row that names a kind the document does not claim is the one thing a mark must never do, and
    `chartMark` already says so in its own comment. Pinned in Task 1.
 2. **The kind announced twice, or not announced at all.** A treeitem's accessible name is the
@@ -230,12 +230,12 @@ guess here.
 
 **Interfaces:**
 - Consumes: `LayerRow.role` and `uiCopy.panels.layerRoles` from Task 1.
-- Produces: a `span.vigilia-layer-role` in the row, **after the name and before the bound
-  column**, carrying the role string; `data-vigilia-layer-role` names the arm that drew so a
+- Produces: a `span.yunari-layer-role` in the row, **after the name and before the bound
+  column**, carrying the role string; `data-yunari-layer-role` names the arm that drew so a
   browser case measures the treatment rather than inferring it from a class, the idiom
-  `data-vigilia-layer-mark` already uses.
-- Keeps: `.vigilia-layer-mark`, `.vigilia-layer-name`, `.vigilia-layer-bound` and
-  `.vigilia-layer-state` and their order relative to each other.
+  `data-yunari-layer-mark` already uses.
+- Keeps: `.yunari-layer-mark`, `.yunari-layer-name`, `.yunari-layer-bound` and
+  `.yunari-layer-state` and their order relative to each other.
 
 **Constraints:** the role is **visible text, not a `title`** — a tooltip reaches no keyboard-only
 author, and the spec's sentence is "each row carries whatever identifies it without expansion".
@@ -256,7 +256,7 @@ contributes to the name — never repeated in the mark, never hidden, never in a
 row whose name is already assembled from its columns. Review Focus 2 is the assertion that the
 name changed: a chart row's accessible name contains its family, which it did not before.
 
-**Failure modes to design against:** the role rendered inside `.vigilia-layer-mark`, which
+**Failure modes to design against:** the role rendered inside `.yunari-layer-mark`, which
 `flex-basis`es the slot and would truncate it; a role that pushes the bound column out on a
 340px row; the role in both the visible span and a `title`, so a pointer hears it twice and a
 screen reader hears it once by accident; a group's role arm rendering the empty string, which
@@ -336,7 +336,7 @@ short form stands.
 **Constraints:** the number to beat is the comment's own record, and it is a record rather than
 this task's measurement — **measure, do not restate it**. The rows to measure are the starter
 with **every group open**, because that is what the comment measured and what a card-heavy
-document actually is. The measurement is `.vigilia-layer-name`'s `scrollWidth > clientWidth`
+document actually is. The measurement is `.yunari-layer-name`'s `scrollWidth > clientWidth`
 per row, not a visual judgement, and it is taken with the panel's scrollbar in place. Taking the
 width from the stage is the one thing to check twice: the canvas is `minmax(0, 1fr)` and every
 pixel comes off the stage, which is the most valuable space in the app. If the role costs more
@@ -491,7 +491,7 @@ case the projection already agreed with it.
 - Consumes: `bridge.enterGroup(id)` / `bridge.exitGroup()` from Task 4, and
   `bridge.groupContext()` which the panel already reads at `layer-panel.tsx:324` (the plan first
   said `:302`; Task 2's role span shifted it).
-- Produces: one control in the state slot (`.vigilia-layer-state`), on a row whose
+- Produces: one control in the state slot (`.yunari-layer-state`), on a row whose
   `hasChildren` is true, whose label names the group and whose direction depends on whether that
   group is the one entered — *enter* for any other group, *leave* for the entered one.
 - Keeps: the visibility rule the slot already implements (`layer-panel.tsx:417-419`) —
@@ -521,7 +521,7 @@ needs 74px. The landed rule scopes the extra 24px to the rows that actually draw
 ordinary row's bound column is untouched:
 
 ```css
-.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3)) .vigilia-layer-bound {
+.yunari-layer-row:has(.yunari-layer-state button:nth-child(3)) .yunari-layer-bound {
   max-width: calc(100% - 74px);
   margin-right: 74px;
 }
@@ -653,7 +653,7 @@ races the re-projection. Wait on the bridge's `groupContext()`, not on the butto
   source — so there is no production counterpart to disable. The behaviour the rewired specs pin was
   red-proved where it was written: `4d15992c` dropped the group's name from the control's label and
   read `expected 'Enter' to be 'Enter CPU card'`. What the specs add here is a route, and the route
-  failing is structural: `enterLayer`'s first act is to click `[data-vigilia-layer-entry]`, so its
+  failing is structural: `enterLayer`'s first act is to click `[data-yunari-layer-entry]`, so its
   absence is a timeout, not a silent pass.
 - **A red test this task inherited is now `vg-151`, and Task 10 owns settling whether this plan
   caused it.** `reference-theme.spec.ts:1441` ("text above a glass panel stays sharp through a real
@@ -777,7 +777,7 @@ is what would drop it.
   multi-selection it renders more, not less.
 
 **Constraints:** this is a **move and a deletion, not a rewrite** — `documentGlobals`
-(`style.ts:46-79`) keeps its `data-vigilia-globals` marker and its `createResolutionLine` lines,
+(`style.ts:46-79`) keeps its `data-yunari-globals` marker and its `createResolutionLine` lines,
 so the browser case that reads it today still reads it. The Style tab's *selection* mode is what
 is deleted, and it is deleted because it is a second door to the right column's Spends:
 `style.ts:101-119` and `per-kind-column.ts:551-614` call the same `paintReferencesOf` / `typePresetOf` /
@@ -886,11 +886,11 @@ never registered in `docs/evidence/screenshots/README.md`, so the table needs no
 42 sites all *click a tab*. But the document panels were reachable **without clicking anything**
 while the Design tab was `keepMounted`, and the specs that used that reach never name a tab at all.
 Task 7 measured the consequence: `editor.spec.ts`'s *"edits an artboard palette token through the
-property surface"* now times out waiting for `[data-vigilia-palette-token]` with *"element is not
+property surface"* now times out waiting for `[data-yunari-palette-token]` with *"element is not
 visible"*, because the panel moved into a pane that is hidden until it is asked for.
 
-Measured across `tests/e2e`: **64 references to `[data-vigilia-artboard-*]`, `[data-vigilia-palette-*]`
-and `[data-vigilia-type-preset]` across 7 files** — `editor.spec.ts` 29, `panel-labels.spec.ts` 22,
+Measured across `tests/e2e`: **64 references to `[data-yunari-artboard-*]`, `[data-yunari-palette-*]`
+and `[data-yunari-type-preset]` across 7 files** — `editor.spec.ts` 29, `panel-labels.spec.ts` 22,
 `shell-appearance.spec.ts` 5, `editor-pane-bar.spec.ts` 3 (Task 7's own new case),
 `glass-authoring.spec.ts` 2, `rebuild-driver.ts` 2, `inspector-sections.spec.ts` 1. **A reference
 count is not a failure count** — the failures are the cases that reach *on load*, and the way to
@@ -930,14 +930,14 @@ screenshot of the composition panel under the style tab's name.
 **Interfaces:**
 - Consumes: `openPane` (`editor-pane-bar.ts:24`), `expandLayer` and `enterLayer`
   (`editor-canvas.ts:171`, Task 6), `selectLayer` and `readScene` (`rebuild-driver.ts:179`,
-  `:39`), and the `LayerPanel`'s own markers — `data-vigilia-layer`, `data-vigilia-layer-mark`,
-  `data-vigilia-layer-role`, and `.vigilia-layer-bound` (**a class, not a data attribute** —
+  `:39`), and the `LayerPanel`'s own markers — `data-yunari-layer`, `data-yunari-layer-mark`,
+  `data-yunari-layer-role`, and `.yunari-layer-bound` (**a class, not a data attribute** —
   `layer-panel.tsx:689`; the `data-` spelling here was a slip, and the three other places this
   plan names it, `:34`, `:237` and `:513`, already have it right).
 - Produces: the browser contract for the whole panel, and the capture rows in the evidence
   table pointing at this spec.
 
-**Constraints:** capture requires `VIGILIA_CAPTURE=1` and `--workers=1`, and an action not
+**Constraints:** capture requires `YUNARI_CAPTURE=1` and `--workers=1`, and an action not
 registered in `docs/evidence/screenshots/README.md` is not captured. Screenshots are evidence,
 not cross-platform golden files — the assertions are numeric or textual and the image is for a
 human. **The table's last paragraph names the specs that carry captures**
@@ -973,7 +973,7 @@ sample of a flaky spec is not a measurement.
   `reference-theme.spec.ts:1441` fails at 0.74 against its 0.8024 floor. The reading is sized by
   the fit zoom, and Task 3 (`104adefc`) took 20px off the stage by widening the left column
   340px → 360px, so run that one test **at `75e9c6d4`** — the commit before `104adefc` — and at
-  plan 4's HEAD, **rebuilding `@vigilia/editor` for each**, because the spec measures a built
+  plan 4's HEAD, **rebuilding `@yunari/editor` for each**, because the spec measures a built
   bundle. Two samples, both recorded. If the earlier commit passes, the floor is a zoom-coupled
   constant of the `vg-136`/`vg-137` class and `vg-151` closes with that as its `check`; if it fails
   there too, plan 4 did not cause it and the row keeps its open state with the bisect recorded as

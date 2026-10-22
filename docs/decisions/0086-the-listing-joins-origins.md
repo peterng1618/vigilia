@@ -16,7 +16,7 @@ listing route**, and three things about it are not obvious: which side the join 
 keyed on, what a theme with no origin looks like on the wire, and what happens when
 the sweep fails after the folder has already been trashed.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every `themeStore.list()` call site in `server.ts`; `/api/themes/active`'s
 GET and `activeThemeMap`; `assignedThemeFor`; the display DELETE's
@@ -39,7 +39,7 @@ does *not* exist is any route that joins a per-theme settings store onto `/api/t
 Searched: `src/web/packages/host/package.json`'s dependencies and `server.ts`'s
 imports.
 
-Found: `@vigilia/renderer-core`, `@vigilia/scene-fabric`, `@vigilia/theme-package`,
+Found: `@yunari/renderer-core`, `@yunari/scene-fabric`, `@yunari/theme-package`,
 `node-forge`, `systeminformation`; HTTP is `node:http` with no framework, no router,
 no middleware. No ORM, no data-mapper, no `lodash`-style `keyBy`/`merge`. A join here
 is `Array.prototype.map` plus an object spread, which the file already does in

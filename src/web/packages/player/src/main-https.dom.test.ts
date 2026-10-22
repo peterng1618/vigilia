@@ -17,15 +17,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 function skeleton(): void {
   document.body.replaceChildren();
   const top = document.createElement("div");
-  top.id = "vigilia-chrome-top";
-  top.dataset["vigiliaChrome"] = "top";
+  top.id = "yunari-chrome-top";
+  top.dataset["yunariChrome"] = "top";
   const host = document.createElement("div");
   host.id = "artboard";
   Object.defineProperty(host, "clientWidth", { value: 412 });
   Object.defineProperty(host, "clientHeight", { value: 839 });
   const bottom = document.createElement("div");
-  bottom.id = "vigilia-chrome-bottom";
-  bottom.dataset["vigiliaChrome"] = "bottom";
+  bottom.id = "yunari-chrome-bottom";
+  bottom.dataset["yunariChrome"] = "bottom";
   document.body.append(top, host, bottom);
 }
 

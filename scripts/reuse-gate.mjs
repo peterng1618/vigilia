@@ -10,7 +10,7 @@
  * in review. See docs/decisions/README.md.
  *
  * Escape hatch, for a decision genuinely recorded elsewhere: set
- * VIGILIA_SKIP_REUSE_GATE=1 for the invocation. It is deliberately awkward, so
+ * YUNARI_SKIP_REUSE_GATE=1 for the invocation. It is deliberately awkward, so
  * using it is visible in the transcript.
  */
 import { execFileSync } from "node:child_process";
@@ -272,7 +272,7 @@ if (process.argv.includes("--self-test")) {
 }
 
 try {
-  if (process.env.VIGILIA_SKIP_REUSE_GATE === "1") process.exit(0);
+  if (process.env.YUNARI_SKIP_REUSE_GATE === "1") process.exit(0);
 
   const input = JSON.parse(readStdin() || "{}");
   const path = input.tool_input?.file_path ?? input.tool_input?.path ?? "";
@@ -303,7 +303,7 @@ try {
       "  them is worth nothing.",
       "",
       "  If the decision is genuinely recorded elsewhere, set",
-      "  VIGILIA_SKIP_REUSE_GATE=1 and say where it is recorded.",
+      "  YUNARI_SKIP_REUSE_GATE=1 and say where it is recorded.",
       "",
     ].join("\n"),
   );

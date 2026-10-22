@@ -70,7 +70,7 @@ async function captureColumn(
   const viewport = page.viewportSize();
   const needed = await page.evaluate(() => {
     const scroller = document.querySelector(".editor-shell-inspector");
-    const content = document.querySelector('[data-vigilia-panel="selection"]');
+    const content = document.querySelector('[data-yunari-panel="selection"]');
     const chrome =
       window.innerHeight - (scroller?.clientHeight ?? window.innerHeight);
     // A little slack: the panel's box is measured before the resize reflows,
@@ -96,15 +96,15 @@ const EDITOR_PNG = Buffer.from(
 
 /** The section ids the column renders, in document order. */
 async function sectionIds(page: Page): Promise<string[]> {
-  // **Scoped to the column, because `[data-vigilia-section]` is not the
+  // **Scoped to the column, because `[data-yunari-section]` is not the
   // column's.** The Document pane renders its own sections from the same
   // component (plan 4 Task 8), they are always mounted, and they sit earlier in
   // document order — so an unscoped read answered `theme, artboard, style`
   // first and every case below compared the wrong list.
   return page
-    .locator(`${COLUMN} [data-vigilia-section]`)
+    .locator(`${COLUMN} [data-yunari-section]`)
     .evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute("data-vigilia-section") ?? ""),
+      nodes.map((node) => node.getAttribute("data-yunari-section") ?? ""),
     );
 }
 
@@ -120,7 +120,7 @@ async function isOpen(page: Page, id: string): Promise<boolean> {
  *  Scoped to the column for the reason `sectionIds` states. */
 async function controlCount(
   page: Page,
-  scope = `${COLUMN} [data-vigilia-section]`,
+  scope = `${COLUMN} [data-yunari-section]`,
 ): Promise<number> {
   return page
     .locator(`${scope} input, ${scope} select, ${scope} button`)
@@ -141,9 +141,9 @@ async function controlCount(
  */
 async function subjectLeadsColumn(page: Page): Promise<boolean> {
   return page.evaluate(() => {
-    const panel = document.querySelector('[data-vigilia-panel="selection"]');
+    const panel = document.querySelector('[data-yunari-panel="selection"]');
     const subject = panel?.firstElementChild ?? null;
-    const section = panel?.querySelector("[data-vigilia-section]") ?? null;
+    const section = panel?.querySelector("[data-yunari-section]") ?? null;
     if (subject === null || section === null) return false;
     const hasCopy = (subject.textContent ?? "").trim().length > 0;
     // DOCUMENT_POSITION_FOLLOWING (4): `section` follows `subject`.
@@ -158,7 +158,7 @@ async function positionValues(
   return page.evaluate(() => {
     const value = (key: string): string | undefined =>
       document.querySelector<HTMLInputElement>(
-        `[data-vigilia-geometry="${key}"]`,
+        `[data-yunari-geometry="${key}"]`,
       )?.value;
     return {
       left: value("left"),
@@ -194,7 +194,7 @@ async function opacityTrackBox(
 ): Promise<{ x: number; y: number; width: number; height: number } | null> {
   return page.evaluate(() => {
     const input = document.querySelector<HTMLInputElement>(
-      'input[type="range"][data-vigilia-opacity]',
+      'input[type="range"][data-yunari-opacity]',
     );
     const box = input?.parentElement?.parentElement?.getBoundingClientRect();
     return box === undefined
@@ -244,11 +244,11 @@ async function builtOption(page: Page, name: string): Promise<unknown> {
     };
     const roots = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): readonly Chart[] } };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    ).yunariEditorBridge.editor.canvas.getObjects();
     const find = (objects: readonly Chart[]): Chart | undefined => {
       for (const object of objects) {
         if (object.get("name") === wanted) return object;
@@ -272,11 +272,11 @@ async function chartSettings(page: Page, name: string): Promise<unknown> {
     };
     const roots = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): readonly Chart[] } };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    ).yunariEditorBridge.editor.canvas.getObjects();
     const find = (objects: readonly Chart[]): Chart | undefined => {
       for (const object of objects) {
         if (object.get("name") === wanted) return object;
@@ -318,7 +318,7 @@ async function colourInsideObject(
       };
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: { getObjects(): readonly Obj[] };
               viewport: {
@@ -332,7 +332,7 @@ async function colourInsideObject(
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const find = (objects: readonly Obj[]): Obj | undefined => {
         for (const object of objects) {
           if (object.get("name") === objectName) return object;
@@ -346,7 +346,7 @@ async function colourInsideObject(
         throw new Error(`no object named ${objectName}`);
 
       const canvas = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.lower-canvas",
+        "#yunari-fabric-editor canvas.lower-canvas",
       );
       const context = canvas?.getContext("2d");
       if (canvas === null || context === null || context === undefined)
@@ -420,20 +420,20 @@ async function openPackage(page: Page, bytes: Buffer): Promise<void> {
  */
 async function selectStarterGauge(page: Page): Promise<void> {
   await enterLayer(page, "group-ram-card");
-  await page.locator('[data-vigilia-layer="ram-gauge"]').click();
+  await page.locator('[data-yunari-layer="ram-gauge"]').click();
   await expect
     .poll(() =>
       page.evaluate(
         () =>
           (
             window as unknown as {
-              vigiliaEditorBridge: {
+              yunariEditorBridge: {
                 editor: {
                   canvas: { getActiveObject(): { id?: string } | undefined };
                 };
               };
             }
-          ).vigiliaEditorBridge.editor.canvas.getActiveObject()?.id ?? null,
+          ).yunariEditorBridge.editor.canvas.getActiveObject()?.id ?? null,
       ),
     )
     .toBe("ram-gauge");
@@ -445,17 +445,17 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
 
     // The starter's own hierarchy, before any panel is touched.
     const rows = await page
-      .locator("[data-vigilia-layer]")
+      .locator("[data-yunari-layer]")
       .evaluateAll((nodes) =>
-        nodes.map((node) => node.getAttribute("data-vigilia-layer")),
+        nodes.map((node) => node.getAttribute("data-yunari-layer")),
       );
     expect(rows).toHaveLength(10);
 
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
     // **Three, not four: the card is a Group, and a Group has no render boundary
     // for the treatment to reach.** `vg-465` (item 8) withholds the section there
     // and says so in the lead block instead, so it is gone rather than empty.
@@ -484,8 +484,8 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
 
     /**
      * The Layer section's slider as the author reads it: the track's box, the
@@ -503,7 +503,7 @@ test.describe("the per-kind inspector column", () => {
     const slider = async () =>
       page.evaluate(() => {
         const input = document.querySelector<HTMLInputElement>(
-          'input[type="range"][data-vigilia-opacity]',
+          'input[type="range"][data-yunari-opacity]',
         );
         const track = input?.parentElement?.parentElement ?? null;
         const row = input?.closest('[role="group"]') ?? null;
@@ -511,7 +511,7 @@ test.describe("the per-kind inspector column", () => {
           row === null
             ? null
             : row.querySelector<HTMLInputElement>(
-                "input[data-vigilia-opacity-well]",
+                "input[data-yunari-opacity-well]",
               );
         const box = track?.getBoundingClientRect();
         return {
@@ -583,8 +583,8 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
 
     const box = await opacityTrackBox(page);
     expect(box, "the Layer section draws no opacity slider").not.toBeNull();
@@ -630,10 +630,10 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
 
-    const well = page.locator("input[data-vigilia-opacity-well]");
+    const well = page.locator("input[data-yunari-opacity-well]");
     await well.fill("40");
     await well.blur();
     const opacity = async (): Promise<number> =>
@@ -663,15 +663,15 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
 
     // The typed route the well owns (item 10). A bound typed past is **kept
     // with its reason rather than coerced** (§5): the field that lands the
     // value the author typed is the one that teaches nothing about the bound,
     // and an invalid `aria-invalid` does not raise `blur`.
-    const track = page.locator('input[type="range"][data-vigilia-opacity]');
-    const well = page.locator("input[data-vigilia-opacity-well]");
+    const track = page.locator('input[type="range"][data-yunari-opacity]');
+    const well = page.locator("input[data-yunari-opacity-well]");
     await expect(well).toHaveValue("100");
     // The well is named by the row's own label rather than by a label element
     // beside it, so the association is what proves it is this row's field.
@@ -707,7 +707,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await insert(page, "Rectangle", "shape");
 
@@ -715,11 +715,9 @@ test.describe("the per-kind inspector column", () => {
     // rather than declared beside it, so the gesture and the drag cannot step
     // by different amounts — which is why the two readings below are compared
     // rather than the numbers 1 and 0 being asserted outright.
-    const track = page.locator(
-      'input[type="range"][data-vigilia-panel-border]',
-    );
+    const track = page.locator('input[type="range"][data-yunari-panel-border]');
     await expect(track).toHaveAttribute("step", "1");
-    const well = page.locator("input[data-vigilia-panel-border-well]");
+    const well = page.locator("input[data-yunari-panel-border-well]");
     const step = Number(await track.getAttribute("step"));
     const start = Number(await well.inputValue());
     const box = await track.boundingBox();
@@ -756,20 +754,20 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await insert(page, "Rectangle", "shape");
 
     // A shadow's blur and offset are only offered while there is a shadow for
     // them to change, so the census asks for one the way an author does: through
     // the picker, on whatever solid token the document offers.
-    const tokens = await optionsOf(page, "[data-vigilia-panel-shadow]");
+    const tokens = await optionsOf(page, "[data-yunari-panel-shadow]");
     const ink = tokens.find((token) => token !== "");
     expect(
       ink,
       "the document offers no solid token for a shadow",
     ).toBeDefined();
-    await chooseIn(page, "[data-vigilia-panel-shadow]", ink as string);
+    await chooseIn(page, "[data-yunari-panel-shadow]", ink as string);
 
     /**
      * The census, read off the rendered column rather than off the projection.
@@ -810,11 +808,11 @@ test.describe("the per-kind inspector column", () => {
     // Bounded, so every one of them carries both halves: the panel's three
     // pixel measures, the Layer section's opacity, and geometry's rotation.
     for (const [name, value] of [
-      ["data-vigilia-panel-border"],
-      ["data-vigilia-panel-radius"],
-      ["data-vigilia-panel-shadow-blur"],
-      ["data-vigilia-opacity"],
-      ["data-vigilia-geometry", "angle"],
+      ["data-yunari-panel-border"],
+      ["data-yunari-panel-radius"],
+      ["data-yunari-panel-shadow-blur"],
+      ["data-yunari-opacity"],
+      ["data-yunari-geometry", "angle"],
     ] as const) {
       const field = await shape(name, value);
       expect(field.range, `${name} ${value ?? ""} draws no track`).toBe(1);
@@ -825,9 +823,9 @@ test.describe("the per-kind inspector column", () => {
     // it, and no second well either. The shadow's offset is above the panel as
     // well as below it, and the position pair is the artboard's own extent.
     for (const [name, value] of [
-      ["data-vigilia-panel-shadow-offset"],
-      ["data-vigilia-geometry", "left"],
-      ["data-vigilia-geometry", "width"],
+      ["data-yunari-panel-shadow-offset"],
+      ["data-yunari-geometry", "left"],
+      ["data-yunari-geometry", "width"],
     ] as const) {
       const field = await shape(name, value);
       expect(field.range, `${name} draws a track for an unbounded number`).toBe(
@@ -842,14 +840,14 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     // The stage behind a transparent chart is the same `#223047` as the
     // remainder's own ink, so the artboard is given a different ground first:
     // otherwise "no remainder" measures 6,610 pixels of somebody else's paint.
     // The artboard panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.frost");
+    await chooseIn(page, "[data-yunari-artboard-background]", "palette.frost");
     await addChart(page, {
       family: "Pie",
       name: "pie",
@@ -872,8 +870,8 @@ test.describe("the per-kind inspector column", () => {
     expect((await data()).map((entry) => entry.name)).toEqual(["cpu.load"]);
     expect(await colourInsideObject(page, "pie", REMAINDER_INK)).toBe(0);
 
-    await chooseIn(page, '[data-vigilia-chart-setting="total"]', "fixed");
-    const value = page.locator('[data-vigilia-chart-setting="total.value"]');
+    await chooseIn(page, '[data-yunari-chart-setting="total"]', "fixed");
+    const value = page.locator('[data-yunari-chart-setting="total.value"]');
     await value.fill("400");
     await value.blur();
     await expect(value).toHaveValue("400");
@@ -894,7 +892,7 @@ test.describe("the per-kind inspector column", () => {
     expect(drawn).toBeGreaterThan(1000);
 
     // Unset again: the remainder goes, and so does its ink.
-    await chooseIn(page, '[data-vigilia-chart-setting="total"]', "sum");
+    await chooseIn(page, '[data-yunari-chart-setting="total"]', "sum");
     await expect.poll(async () => (await data()).length).toBe(1);
     expect(await colourInsideObject(page, "pie", REMAINDER_INK)).toBe(0);
   });
@@ -904,7 +902,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await addChart(page, {
       family: "Line",
@@ -917,10 +915,10 @@ test.describe("the per-kind inspector column", () => {
     });
 
     const duration = page.locator(
-      '[data-vigilia-chart-setting="animation.durationMs"]',
+      '[data-yunari-chart-setting="animation.durationMs"]',
     );
     const easing = page.locator(
-      '[data-vigilia-chart-setting="animation.easing"]',
+      '[data-yunari-chart-setting="animation.easing"]',
     );
     await expect(duration).toBeVisible();
     await expect(easing).toBeVisible();
@@ -933,19 +931,19 @@ test.describe("the per-kind inspector column", () => {
     await expect(duration).toHaveAttribute("type", "range");
     await expect(duration).toHaveAttribute("max", "5000");
     await expect(
-      page.locator('[data-vigilia-chart-setting-well="animation.durationMs"]'),
+      page.locator('[data-yunari-chart-setting-well="animation.durationMs"]'),
     ).toHaveValue("1000");
     await expect(await choiceOf(easing)).toBe("");
 
     await typeIntoControl(
       page,
-      page.locator('[data-vigilia-chart-setting-well="animation.durationMs"]'),
+      page.locator('[data-yunari-chart-setting-well="animation.durationMs"]'),
       "2500",
     );
     await expect(duration).toHaveValue("2500");
     await chooseIn(
       page,
-      '[data-vigilia-chart-setting="animation.easing"]',
+      '[data-yunari-chart-setting="animation.easing"]',
       "cubicInOut",
     );
     await expect(await choiceOf(easing)).toBe("Cubic in-out");
@@ -981,13 +979,13 @@ test.describe("the per-kind inspector column", () => {
     // The reopened document shows the author's values — 2500 and cubicInOut —
     // and not the defaults 1000 and linear.
     await expect(
-      page.locator('[data-vigilia-chart-setting="animation.durationMs"]'),
+      page.locator('[data-yunari-chart-setting="animation.durationMs"]'),
     ).toHaveValue("2500");
     // The control shows the easing's label, not its id: the id behind a choice
     // is Base UI's state and never reaches the DOM.
     await expect(
       await choiceOf(
-        page.locator('[data-vigilia-chart-setting="animation.easing"]'),
+        page.locator('[data-yunari-chart-setting="animation.easing"]'),
       ),
     ).toBe("Cubic in-out");
     expect(await chartSettings(page, "line")).toMatchObject({
@@ -1000,7 +998,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await addChart(page, {
       family: "Line",
@@ -1046,7 +1044,7 @@ test.describe("the per-kind inspector column", () => {
         return rows;
       }, attribute);
 
-    const settings = await census("data-vigilia-chart-setting");
+    const settings = await census("data-yunari-chart-setting");
     // Not vacuous: the surface is mounted and these two rows are its two shapes.
     expect(settings.map((row) => row.key)).toContain("animation.durationMs");
     expect(settings.map((row) => row.key)).toContain("windowSeconds");
@@ -1077,7 +1075,7 @@ test.describe("the per-kind inspector column", () => {
     // bounded `Precision` sat typed-only in. The hook's value is
     // `${binding.id}.${property}` and a binding's id is minted per series, so
     // the row is found by the property half rather than by the key's whole text.
-    const series = await census("data-vigilia-binding-field");
+    const series = await census("data-yunari-binding-field");
     const seriesOf = (
       property: string,
     ): { type: string; paired: boolean } | undefined => {
@@ -1104,7 +1102,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
 
     const report = async (kind: string): Promise<void> => {
@@ -1115,14 +1113,14 @@ test.describe("the per-kind inspector column", () => {
     // A free shape: its own geometry and ink, at the same density.
     await insert(page, "Rectangle", "shape");
     await report("shape");
-    await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(1);
-    await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-panel-fill]")).toHaveCount(1);
+    await expect(page.locator("[data-yunari-crop]")).toHaveCount(0);
 
     // A text box: typography, and no crop — it has no pixels to crop.
     await insert(page, "Text", "text");
     await report("text");
-    await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
-    await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-crop]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-panel-fill]")).toHaveCount(0);
 
     // An image: the one kind that can crop, and not a panel either.
     await openPane(page, "Add");
@@ -1132,8 +1130,8 @@ test.describe("the per-kind inspector column", () => {
       buffer: EDITOR_PNG,
     });
     await report("image");
-    await expect(page.locator("[data-vigilia-crop]")).toHaveCount(1);
-    await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-crop]")).toHaveCount(1);
+    await expect(page.locator("[data-yunari-panel-fill]")).toHaveCount(0);
 
     // A chart: its family's own questions, in the column it belongs to.
     await addChart(page, {
@@ -1147,7 +1145,7 @@ test.describe("the per-kind inspector column", () => {
     });
     await report("chart");
     await expect(
-      page.locator('[data-vigilia-chart-setting="thickness"]'),
+      page.locator('[data-yunari-chart-setting="thickness"]'),
     ).toBeVisible();
 
     // A group: its bounds and its children's effective appearance, never a
@@ -1156,11 +1154,11 @@ test.describe("the per-kind inspector column", () => {
     // The inserts above dirtied the document, so this reload is offered its own
     // draft back.
     await answerDialogIfShown(page, "Discard");
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
     await report("group");
-    await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
-    await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-panel-fill]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-crop]")).toHaveCount(0);
   });
 
   test("drives the Line-endpoint geometry field, and the non-numeric draft is refused by the control", async ({
@@ -1168,7 +1166,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     // The Shape group's own Line: the label is a shape and a chart family, and
     // the group the caller names is what says which one was asked for (`vg-537`).
@@ -1179,7 +1177,7 @@ test.describe("the per-kind inspector column", () => {
     // undefined}`, and the inspector sets no `refused` on a shape's own
     // geometry — so Playwright's editability wait is not what an earlier probe
     // hit, and a field a browser cannot type into is not what the product does.
-    const endpoint = page.locator('[data-vigilia-shape-line="x1"]');
+    const endpoint = page.locator('[data-yunari-shape-line="x1"]');
     await expect(endpoint).toHaveCount(1);
     await expect(endpoint).toBeEditable();
     expect(
@@ -1209,7 +1207,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await addChart(page, {
       family: "Line",
@@ -1228,7 +1226,7 @@ test.describe("the per-kind inspector column", () => {
     // titles 600 (`:149`); §4 gives `--faint` to counts (`:103`). Both were
     // inherited before this case existed — the count took the heading's sans
     // and `--muted`, the name the shell's 400.
-    const count = page.locator("[data-vigilia-section-count]").first();
+    const count = page.locator("[data-yunari-section-count]").first();
     await expect(count).toBeVisible();
     expect(
       await count.evaluate((el) => getComputedStyle(el).fontFamily),
@@ -1238,14 +1236,14 @@ test.describe("the per-kind inspector column", () => {
     // span beside it is `aria-hidden` too, so it is excluded by name.
     const chevron = page
       .locator(
-        '[data-vigilia-section="position"] span[aria-hidden]:not([data-vigilia-section-rule])',
+        '[data-yunari-section="position"] span[aria-hidden]:not([data-yunari-section-rule])',
       )
       .first();
     expect(await count.evaluate((el) => getComputedStyle(el).color)).toBe(
       await chevron.evaluate((el) => getComputedStyle(el).color),
     );
 
-    await expect(page.locator("[data-vigilia-subject-name]")).toHaveCSS(
+    await expect(page.locator("[data-yunari-subject-name]")).toHaveCSS(
       "font-weight",
       "600",
     );
@@ -1256,7 +1254,7 @@ test.describe("the per-kind inspector column", () => {
     // case — the read-only rows' omitted dashed divider, where `column.tsx`'s
     // §5.1 note won instead — left with the read-only section (item 17).
     const rule = page.locator(
-      '[data-vigilia-section="position"] [data-vigilia-section-rule]',
+      '[data-yunari-section="position"] [data-yunari-section-rule]',
     );
     await expect(rule).toHaveCSS("height", "1px");
     expect(
@@ -1269,7 +1267,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await addChart(page, {
       family: "Line",
@@ -1289,7 +1287,7 @@ test.describe("the per-kind inspector column", () => {
     // mark goes, so the assertion is on the *rendered sibling* the mark is and
     // the text the block is left with — a class check would pin the shape and
     // not the glyph family.
-    const name = page.locator("[data-vigilia-subject-name]");
+    const name = page.locator("[data-yunari-subject-name]");
     await expect(name).toBeVisible();
     const block = await name.evaluate((node) => {
       const mark = node.previousElementSibling;
@@ -1315,13 +1313,13 @@ test.describe("the per-kind inspector column", () => {
     // below it draws its own. **Computed rather than read off the class list**:
     // the whole reason this row exists is that the fix is a rendered boundary,
     // and no jsdom case applies the stylesheet that decides it — a rule that
-    // put a border back on `[data-vigilia-section]` would leave every one of
+    // put a border back on `[data-yunari-section]` would leave every one of
     // them green.
     const borders = await page
-      .locator(`${COLUMN} [data-vigilia-section]`)
+      .locator(`${COLUMN} [data-yunari-section]`)
       .evaluateAll((nodes) =>
         nodes.map((node) => ({
-          id: node.getAttribute("data-vigilia-section") ?? "",
+          id: node.getAttribute("data-yunari-section") ?? "",
           top: getComputedStyle(node).borderTopWidth,
         })),
       );
@@ -1344,7 +1342,7 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
 
     // §7.4's requirement is a property of the line, not its spelling: "the
@@ -1354,11 +1352,11 @@ test.describe("the per-kind inspector column", () => {
     // The string's provenance stays pinned in jsdom, where it is compared
     // against `uiCopy.inspectorFields.nothingSelected` itself
     // (`selection-inspector/index.dom.test.ts`).
-    await expect(page.locator("[data-vigilia-nothing-selected]")).toHaveText(
+    await expect(page.locator("[data-yunari-nothing-selected]")).toHaveText(
       /canvas/i,
     );
     expect(await sectionIds(page)).toEqual([]);
-    await expect(page.locator("[data-vigilia-geometry]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-geometry]")).toHaveCount(0);
   });
 
   test("withholds a locked object's writing fields, and stands no section at all", async ({
@@ -1366,18 +1364,18 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
 
     // Locking through the layer row's own control notifies the column, which
     // follows it with no further selection event — `vg-148`'s fix, asserted here
     // rather than worked around by re-selecting, because a workaround would keep
     // passing after the notify was removed.
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
     await page
-      .locator('[data-vigilia-layer="group-cpu-card"] [aria-label="Lock"]')
+      .locator('[data-yunari-layer="group-cpu-card"] [aria-label="Lock"]')
       .click();
 
-    await expect(page.locator("[data-vigilia-locked]")).toBeVisible();
+    await expect(page.locator("[data-yunari-locked]")).toBeVisible();
 
     // Everything that writes is gone, so no question has anything left under it
     // and none of them stands a header over nothing. **An inspector may be
@@ -1386,9 +1384,9 @@ test.describe("the per-kind inspector column", () => {
     // header over a locked object's absent rows. The lead block still names the
     // lock, which is the surface that says why.
     expect(await sectionIds(page)).toEqual([]);
-    await expect(page.locator("[data-vigilia-name]")).toHaveCount(0);
-    await expect(page.locator("[data-vigilia-geometry]")).toHaveCount(0);
-    await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-name]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-geometry]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-panel-fill]")).toHaveCount(0);
   });
 
   test("undoes a chart settings edit, in the column and on the canvas", async ({
@@ -1396,10 +1394,10 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await selectStarterGauge(page);
 
-    const thickness = page.locator('[data-vigilia-chart-setting="thickness"]');
+    const thickness = page.locator('[data-yunari-chart-setting="thickness"]');
     await expect(thickness).toBeVisible();
     const drawn = async (): Promise<number | undefined> => {
       const option = (await builtOption(page, "ram-gauge")) as {
@@ -1433,8 +1431,8 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
+    await page.locator('[data-yunari-layer="group-cpu-card"]').click();
 
     // The picture is the rebuilt column, so the column is asserted first. The
     // subject leads, the card's questions render and each of them is open
@@ -1472,27 +1470,27 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await insert(page, "Text", "text");
 
     // Scoped to Content: the field is the text section's, and a field that
     // rendered anywhere in the column would satisfy an unscoped read.
     const field = page.locator(
-      '[data-vigilia-section="content"] [data-vigilia-font-face-field]',
+      '[data-yunari-section="content"] [data-yunari-font-face-field]',
     );
     await expect(field).toBeVisible();
 
     // The catalogue itself, not an empty list standing in for one.
-    const rows = field.locator("[data-vigilia-font-face-row]");
+    const rows = field.locator("[data-yunari-font-face-row]");
     await expect(rows.first()).toBeVisible();
     expect(
-      await rows.first().getAttribute("data-vigilia-font-family"),
+      await rows.first().getAttribute("data-yunari-font-family"),
     ).toBeTruthy();
     // The trio half and the facet choosers belong to the same control, so a
     // field that reached only the face list would be a partial mount.
-    await expect(field.locator("[data-vigilia-font-trio]")).toHaveCount(1);
-    await expect(field.locator("[data-vigilia-font-sort]")).toHaveCount(1);
+    await expect(field.locator("[data-yunari-font-trio]")).toHaveCount(1);
+    await expect(field.locator("[data-yunari-font-sort]")).toHaveCount(1);
 
     // Operable, not merely present: the search is bound to the query the rows
     // are drawn from, so a term no family holds empties the window and clearing
@@ -1505,7 +1503,7 @@ test.describe("the per-kind inspector column", () => {
 
     // A shape has no face, so it is offered no browser over one.
     await insert(page, "Rectangle", "shape");
-    await expect(page.locator("[data-vigilia-font-face-field]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-font-face-field]")).toHaveCount(0);
   });
 
   test("captures the sectioned column a shape gets", async ({
@@ -1513,11 +1511,11 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await openBlank(page);
     await insert(page, "Rectangle", "shape");
     await expect(
-      page.locator("[data-vigilia-panel-fill]").first(),
+      page.locator("[data-yunari-panel-fill]").first(),
     ).toBeVisible();
 
     // The same preconditions, to the degree they apply: the subject leads and
@@ -1532,10 +1530,10 @@ test.describe("the per-kind inspector column", () => {
   test("captures the chart's column", async ({ page }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     await selectStarterGauge(page);
     await expect(
-      page.locator('[data-vigilia-chart-setting="thickness"]'),
+      page.locator('[data-yunari-chart-setting="thickness"]'),
     ).toBeVisible();
 
     expect(await subjectLeadsColumn(page)).toBe(true);
@@ -1550,14 +1548,14 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
     // The dark half of the comparison: `inspector-controls.html` is drawn on
     // graphite, and a capture of one palette cannot show a hard-coded hex. The
     // same real selection — the starter's gauge child — is read in both.
     await choosePalette(page, "graphite");
     await selectStarterGauge(page);
     await expect(
-      page.locator('[data-vigilia-chart-setting="thickness"]'),
+      page.locator('[data-yunari-chart-setting="thickness"]'),
     ).toBeVisible();
 
     expect(await subjectLeadsColumn(page)).toBe(true);

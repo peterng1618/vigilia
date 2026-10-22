@@ -9,7 +9,7 @@
  * controls rather than a native `<select>`.
  */
 
-import type { FacetRecord } from "@vigilia/renderer-core";
+import type { FacetRecord } from "@yunari/renderer-core";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
@@ -111,7 +111,7 @@ async function choose(
 ): Promise<unknown> {
   const pending = open(themes);
   await chooseIn("theme", value);
-  await pressButton("[data-vigilia-library-open]");
+  await pressButton("[data-yunari-library-open]");
   return pending;
 }
 
@@ -139,7 +139,7 @@ describe("the library chooser", () => {
     expect(idsIn(uiCopy.library.templates)).toEqual([STARTER_TEMPLATE.id]);
     expect(idsIn(uiCopy.library.yourThemes)).toEqual(["mine"]);
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -160,7 +160,7 @@ describe("the library chooser", () => {
     const pending = open([]);
     await openControl("theme");
     expect(allOptionIds()).toEqual([STARTER_TEMPLATE.id]);
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -181,11 +181,11 @@ describe("the library chooser", () => {
     expect(del.disabled).toBe(false);
 
     // Pressing it opens the confirmation and removes nothing yet.
-    await pressButton("[data-vigilia-library-delete]");
+    await pressButton("[data-yunari-library-delete]");
     expect(removed).toEqual([]);
-    await pressButtonIn(topDialog(), "[data-vigilia-library-cancel]");
+    await pressButtonIn(topDialog(), "[data-yunari-library-cancel]");
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -206,14 +206,14 @@ describe("the library chooser", () => {
     await chooseIn("theme", "from-store");
     expect(remix.disabled).toBe(false);
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
   it("remixes the chosen theme from the parent its origin names", async () => {
     const pending = open([installedTheme("from-store", "Store theme")]);
     await chooseIn("theme", "from-store");
-    await pressButton("[data-vigilia-library-remix]");
+    await pressButton("[data-yunari-library-remix]");
 
     // The parent is the catalogue item the copy was installed from, and its
     // version is the one this copy holds — not a version the theme declares.
@@ -245,14 +245,14 @@ describe("the library chooser", () => {
     await chooseIn("theme", "from-store");
     expect(duplicate.disabled).toBe(true);
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
   it("duplicates the chosen theme without inventing a parent", async () => {
     const pending = open([listedTheme("mine", "My theme")]);
     await chooseIn("theme", "mine");
-    await pressButton("[data-vigilia-library-duplicate]");
+    await pressButton("[data-yunari-library-duplicate]");
 
     // There is no catalogue item to name, so the answer carries only the id the
     // caller reads the theme by — no `remixOf`.
@@ -267,7 +267,7 @@ describe("the library chooser", () => {
       },
     } as unknown as ThemeLibraryClient);
     await chooseIn("theme", "mine");
-    await pressButton("[data-vigilia-library-delete]");
+    await pressButton("[data-yunari-library-delete]");
 
     // The confirm names the theme, because a destructive act the author cannot
     // see the target of is the thing they have to be stopped from.
@@ -276,7 +276,7 @@ describe("the library chooser", () => {
     // And says where it goes, which is the whole reason this is allowed.
     expect(confirm.textContent).toMatch(/recycle bin|trash/i);
 
-    await pressButton("[data-vigilia-library-delete-confirm]");
+    await pressButton("[data-yunari-library-delete-confirm]");
     await flush();
 
     expect(removed).toEqual(["mine"]);
@@ -286,7 +286,7 @@ describe("the library chooser", () => {
 
     // The chooser itself is still open: the author carries on with what is
     // theirs rather than being dropped out of the library.
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -298,16 +298,16 @@ describe("the library chooser", () => {
       },
     } as unknown as ThemeLibraryClient);
     await chooseIn("theme", "mine");
-    await pressButton("[data-vigilia-library-delete]");
+    await pressButton("[data-yunari-library-delete]");
 
     const confirm = topDialog();
-    await pressButtonIn(confirm, "[data-vigilia-library-cancel]");
+    await pressButtonIn(confirm, "[data-yunari-library-cancel]");
 
     expect(removed).toEqual([]);
     await openControl("theme");
     expect(allOptionIds()).toContain("mine");
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -329,7 +329,7 @@ describe("the library chooser", () => {
     // without this the precondition the browser supplies is missing and the
     // assertion below would be measuring the harness rather than the dialog.
     deleteButton().focus();
-    await pressButton("[data-vigilia-library-delete]");
+    await pressButton("[data-yunari-library-delete]");
     const confirm = topDialog();
 
     // **The two roots are siblings** (`theme-library-dialog.tsx:159`, `:221`),
@@ -345,7 +345,7 @@ describe("the library chooser", () => {
     await flush();
 
     expect(
-      document.querySelector("[data-vigilia-library-delete-confirm]"),
+      document.querySelector("[data-yunari-library-delete-confirm]"),
     ).toBeNull();
     // **Focus is back on the control that asked**, not on `body`: the
     // confirmation is a second `Dialog.Root` and Base UI restores the element
@@ -360,7 +360,7 @@ describe("the library chooser", () => {
     expect(settled).toBe(false);
     expect(removed).toEqual([]);
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -381,8 +381,8 @@ describe("the library chooser", () => {
     expect(libraryStatus().textContent).toBe("");
 
     await chooseIn("theme", "mine");
-    await pressButton("[data-vigilia-library-delete]");
-    await pressButton("[data-vigilia-library-delete-confirm]");
+    await pressButton("[data-yunari-library-delete]");
+    await pressButton("[data-yunari-library-delete-confirm]");
     await flush();
 
     // Nothing was lost, so the row stays and the reason is on screen: a silent
@@ -392,7 +392,7 @@ describe("the library chooser", () => {
     expect(libraryStatus().hidden).toBe(false);
     expect(libraryStatus().textContent).toContain("no trash command");
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -401,14 +401,14 @@ describe("the library chooser", () => {
     const dialog = topDialog();
 
     expect(dialog.getAttribute("aria-label")).toBeTruthy();
-    const trigger = dialog.querySelector("[data-vigilia-library-theme]");
+    const trigger = dialog.querySelector("[data-yunari-library-theme]");
     if (trigger === null) throw new Error("no theme control");
     expect(
       trigger.getAttribute("aria-label") !== null ||
         dialog.querySelector(`label[for="${trigger.id}"]`) !== null,
     ).toBe(true);
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -421,14 +421,14 @@ describe("the library chooser", () => {
     // its delete is the only one that is ever disabled, so its `disabled:` mark
     // is the variant the shared treatment had to keep.
     const button = document.querySelector<HTMLButtonElement>(
-      "[data-vigilia-library-open]",
+      "[data-yunari-library-open]",
     );
     if (button === null) throw new Error("no open button");
     expect(button.className).toContain("px-[var(--space-12)]");
     expect(button.className).toContain("enabled:hover:border-accent");
     expect(button.className).toContain("disabled:text-faint");
 
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 });
@@ -454,19 +454,19 @@ describe("promptThemeConflict", () => {
     async (choice) => {
       const pending = openConflict();
       const button = document.querySelector<HTMLButtonElement>(
-        `[data-vigilia-library-${choice}]`,
+        `[data-yunari-library-${choice}]`,
       );
       if (button === null) throw new Error(`no ${choice} button`);
       expect(button.textContent).toBeTruthy();
 
-      await pressButton(`[data-vigilia-library-${choice}]`);
+      await pressButton(`[data-yunari-library-${choice}]`);
       await expect(pending).resolves.toBe(choice);
     },
   );
 
   it("keeps both versions when the author says neither", async () => {
     const pending = openConflict();
-    await pressButton("[data-vigilia-library-cancel]");
+    await pressButton("[data-yunari-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -540,7 +540,7 @@ async function pressButtonIn(
 /** A select's trigger, opened, and the options of its own popup. */
 async function openControl(marker: string): Promise<readonly Element[]> {
   const trigger = document.querySelector<HTMLElement>(
-    `[data-vigilia-library-${marker}]`,
+    `[data-yunari-library-${marker}]`,
   );
   if (trigger === null) throw new Error(`no ${marker} control`);
   await click(trigger);
@@ -558,7 +558,7 @@ async function openControl(marker: string): Promise<readonly Element[]> {
 async function chooseIn(marker: string, id: string): Promise<void> {
   const options = await openControl(marker);
   const option = options.find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+    (candidate) => candidate.getAttribute("data-yunari-option") === id,
   );
   if (option === undefined) throw new Error(`no option ${id} in ${marker}`);
   await pointerDown(option);
@@ -568,7 +568,7 @@ async function chooseIn(marker: string, id: string): Promise<void> {
 
 function allOptionIds(): string[] {
   return [...document.querySelectorAll<HTMLElement>('[role="option"]')].map(
-    (option) => option.getAttribute("data-vigilia-option") ?? "",
+    (option) => option.getAttribute("data-yunari-option") ?? "",
   );
 }
 
@@ -580,7 +580,7 @@ function groups(): { readonly label: string; readonly ids: string[] }[] {
         document.getElementById(group.getAttribute("aria-labelledby") ?? "")
           ?.textContent ?? "",
       ids: [...group.querySelectorAll<HTMLElement>('[role="option"]')].map(
-        (option) => option.getAttribute("data-vigilia-option") ?? "",
+        (option) => option.getAttribute("data-yunari-option") ?? "",
       ),
     }),
   );
@@ -592,7 +592,7 @@ function idsIn(label: string): string[] {
 
 function deleteButton(): HTMLButtonElement {
   const button = document.querySelector<HTMLButtonElement>(
-    "[data-vigilia-library-delete]",
+    "[data-yunari-library-delete]",
   );
   if (button === null) throw new Error("no delete control");
   return button;
@@ -600,7 +600,7 @@ function deleteButton(): HTMLButtonElement {
 
 function remixButton(): HTMLButtonElement {
   const button = document.querySelector<HTMLButtonElement>(
-    "[data-vigilia-library-remix]",
+    "[data-yunari-library-remix]",
   );
   if (button === null) throw new Error("no remix control");
   return button;
@@ -608,7 +608,7 @@ function remixButton(): HTMLButtonElement {
 
 function duplicateButton(): HTMLButtonElement {
   const button = document.querySelector<HTMLButtonElement>(
-    "[data-vigilia-library-duplicate]",
+    "[data-yunari-library-duplicate]",
   );
   if (button === null) throw new Error("no duplicate control");
   return button;
@@ -619,7 +619,7 @@ function duplicateButton(): HTMLButtonElement {
  *  something to say. */
 function libraryStatus(): HTMLElement {
   const node = document.querySelector<HTMLElement>(
-    "[data-vigilia-library-status]",
+    "[data-yunari-library-status]",
   );
   if (node === null) throw new Error("no library status region");
   return node;

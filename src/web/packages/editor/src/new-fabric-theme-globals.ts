@@ -1,4 +1,4 @@
-import type { FabricPalette, TypePreset } from "@vigilia/renderer-core";
+import type { FabricPalette, TypePreset } from "@yunari/renderer-core";
 
 /**
  * The starter theme's palette, type presets and the two lookups the scene
@@ -57,7 +57,7 @@ export const newPresetType: TypePreset = {
 /**
  * The palette is the single place a colour is named. `solidOf` below repeats
  * the solid ones because a scene object also carries Fabric's own resolved
- * colour beside its `vigiliaPaint` reference — one authored fact, two
+ * colour beside its `yunariPaint` reference — one authored fact, two
  * representations, not two authored facts.
  *
  * The artboard's own paint is `none`, because the backdrop is a packaged media
@@ -151,7 +151,7 @@ export type StarterPaletteId = keyof typeof starterPalette;
 
 /**
  * The solid colour behind each token, for the Fabric fields a scene object also
- * writes beside its `vigiliaPaint` reference.
+ * writes beside its `yunariPaint` reference.
  *
  * A v2 object carries the resolved colour *and* the reference, so the reference
  * is the thing that has to be right; this is the resolved half, read from the
@@ -246,7 +246,7 @@ export const starterTypePresets = {
       family: "Segoe UI, sans-serif",
       size: 36,
       weight: "500",
-      // Measured off the reference, not judged by eye: the glyphs of "VIGILIA"
+      // Measured off the reference, not judged by eye: the glyphs of "YUNARI"
       // stand 26px cap height and the five advances between them average 45px
       // at a 36px face, which is 0.78 em once each letter's own advance is out.
       letterSpacing: 28,

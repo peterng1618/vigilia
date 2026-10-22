@@ -12,11 +12,11 @@
 
 ## Global Constraints
 
-- Active editor files are validated v2 `.vigilia-theme` packages, including valid empty asset sets; JSON is not an active save/open route.
+- Active editor files are validated v2 `.yunari-theme` packages, including valid empty asset sets; JSON is not an active save/open route.
 - Scope is existing authoring only: artboard/fit/paint, palette, type presets, semantic text, charts/settings/bindings/paint, layers and arrange.
 - Images/SVG, fonts, video, widgets, new shape creation and broader text editing are explicitly out of scope; themes will not use them yet.
 - Host storage validates the complete package before atomic replacement; mutation is loopback-only while player reads may reach displays.
-- Player does not import `@vigilia/theme-package`, editor code, or interactive `Canvas`.
+- Player does not import `@yunari/theme-package`, editor code, or interactive `Canvas`.
 - Runtime samples, connection state and preview data never enter envelope/package/history/dirty state. Editor defaults to a deterministic fluctuating `PreviewSource`; Live host telemetry is an explicit switch. Player routes default to live data.
 - Preserve `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `fabric/es`, v2 validation and player size/import gates.
 
@@ -73,11 +73,11 @@ export interface ThemeStore {
 }
 ```
 
-Add `--themes-dir` with a stable Vigilia-data default. Parse/validate before writing `<id>.vigilia-theme.tmp`, then rename over the sibling package. Reuse existing method and loopback guards; only `PUT` mutates.
+Add `--themes-dir` with a stable Yunari-data default. Parse/validate before writing `<id>.yunari-theme.tmp`, then rename over the sibling package. Reuse existing method and loopback guards; only `PUT` mutates.
 
 - [ ] **Step 4: Run focused proof**
 
-Run: `cmd.exe /d /s /c "npm run typecheck -w @vigilia/host && npm test -- --run packages/host/src/themes/store.test.ts packages/host/src/server.test.ts packages/host/src/cli/args.test.ts"`
+Run: `cmd.exe /d /s /c "npm run typecheck -w @yunari/host && npm test -- --run packages/host/src/themes/store.test.ts packages/host/src/server.test.ts packages/host/src/cli/args.test.ts"`
 
 Expected: empty package read/write succeeds, bad replacement preserves content, display reads succeed and remote writes fail.
 
@@ -110,7 +110,7 @@ await client.save('living-room', packageBytes);
 expect(fetch).toHaveBeenCalledWith('/api/themes/living-room', expect.objectContaining({ method: 'PUT' }));
 await expect(client.open('living-room')).resolves.toEqual(packageBytes);
 await manager.save(changedEnvelope);
-expect(downloaded.name).toBe('living-room.vigilia-theme');
+expect(downloaded.name).toBe('living-room.yunari-theme');
 expect(readThemePackage(downloaded.bytes)).toMatchObject({ ok: true, envelope: changedEnvelope });
 ```
 
@@ -132,11 +132,11 @@ export interface ThemeLibraryClient {
 }
 ```
 
-Make `.vigilia-theme` the sole picker/download type and save with `writeThemePackage({ envelope, assets: {} })`. Reject asset-bearing packages with clear copy until asset authoring exists. Add labelled **Open package**, **Save package**, **Open library** and **Save to library** controls/shortcuts. Stage parse/revival before replacing the shell and retain dirty replacement protection.
+Make `.yunari-theme` the sole picker/download type and save with `writeThemePackage({ envelope, assets: {} })`. Reject asset-bearing packages with clear copy until asset authoring exists. Add labelled **Open package**, **Save package**, **Open library** and **Save to library** controls/shortcuts. Stage parse/revival before replacing the shell and retain dirty replacement protection.
 
 - [ ] **Step 4: Run focused proof**
 
-Run: `cmd.exe /d /s /c "npm run typecheck -w @vigilia/editor && npm test -- --run packages/editor/src/theme-library-client.test.ts packages/editor/src/persistence-manager/index.test.ts packages/editor/src/persist.test.ts packages/editor/src/fork-extensions/index.dom.test.ts"`
+Run: `cmd.exe /d /s /c "npm run typecheck -w @yunari/editor && npm test -- --run packages/editor/src/theme-library-client.test.ts packages/editor/src/persistence-manager/index.test.ts packages/editor/src/persist.test.ts packages/editor/src/fork-extensions/index.dom.test.ts"`
 
 Expected: current authored properties survive package download, upload, library open and local reopen; no raw JSON route remains.
 
@@ -201,7 +201,7 @@ Derive the key union from current envelope bindings and reconnect live telemetry
 
 - [ ] **Step 4: Run focused proof**
 
-Run: `cmd.exe /d /s /c "npm run typecheck -w @vigilia/editor && npm run typecheck -w @vigilia/host && npm test -- --run packages/editor/src/preview-source.test.ts packages/editor/src/live-source.test.ts packages/editor/src/chart-manager/index.dom.test.ts packages/editor/src/fork-shell.dom.test.ts packages/host/src/server.test.ts"`
+Run: `cmd.exe /d /s /c "npm run typecheck -w @yunari/editor && npm run typecheck -w @yunari/host && npm test -- --run packages/editor/src/preview-source.test.ts packages/editor/src/live-source.test.ts packages/editor/src/chart-manager/index.dom.test.ts packages/editor/src/fork-shell.dom.test.ts packages/host/src/server.test.ts"`
 
 Expected: preview updates animate charts, live batches repaint charts, disconnect is honest and envelope/package/history do not change.
 
@@ -274,7 +274,7 @@ Run:
 npm run typecheck
 npm test
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test -g "visual review|authors, saves and displays an existing-feature theme" --workers=1
+YUNARI_CAPTURE=1 npx playwright test -g "visual review|authors, saves and displays an existing-feature theme" --workers=1
 npm run size
 npm run test:e2e
 ```

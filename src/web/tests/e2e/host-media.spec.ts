@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { networkInterfaces } from "node:os";
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { HOST_APP_DIR, HOST_PORT } from "./host-theme.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -83,7 +83,7 @@ const envelope = (id: string) => ({
       id: "badge",
       kind: "svg" as const,
       path: "assets/badge.svg",
-      license: { name: "MIT", attribution: "Vigilia test fixture." },
+      license: { name: "MIT", attribution: "Yunari test fixture." },
     },
   ],
   scene: {
@@ -106,8 +106,8 @@ const envelope = (id: string) => ({
         id: PANEL_ID,
         selectable: false,
         evented: false,
-        vigiliaPaint: { fill: "palette.panel", stroke: "palette.edge" },
-        vigiliaGlass: { blurRadius: 16 },
+        yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
+        yunariGlass: { blurRadius: 16 },
       },
     ],
   },
@@ -250,7 +250,7 @@ function panelInk(page: Page): Promise<{
     };
     const canvas = (
       window as unknown as {
-        vigilia?: {
+        yunari?: {
           handle: {
             canvas: {
               getObjects(): Obj[];
@@ -261,7 +261,7 @@ function panelInk(page: Page): Promise<{
           };
         };
       }
-    ).vigilia?.handle.canvas;
+    ).yunari?.handle.canvas;
     if (canvas === undefined) throw new Error("the player has not mounted");
     const object = canvas
       .getObjects()
@@ -333,7 +333,7 @@ function panelInk(page: Page): Promise<{
 function videoDominant(page: Page): Promise<"red" | "green" | "blue"> {
   return page.evaluate(() => {
     const video = document.querySelector<HTMLVideoElement>(
-      "[data-vigilia-background-media] video",
+      "[data-yunari-background-media] video",
     );
     if (video === null || video.readyState < 2 || video.videoWidth === 0) {
       throw new Error("the media layer holds no decoded video frame");
@@ -369,7 +369,7 @@ function videoDominant(page: Page): Promise<"red" | "green" | "blue"> {
 function decodedInk(page: Page): Promise<number> {
   return page.evaluate(({ r, g, b }) => {
     const image = document.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     if (image === null || !image.complete || image.naturalWidth === 0) {
       return 0;
@@ -599,7 +599,7 @@ test.describe("the video frame callback on the real player", () => {
         () =>
           page.evaluate(() => {
             const video = document.querySelector<HTMLVideoElement>(
-              "[data-vigilia-background-media] video",
+              "[data-yunari-background-media] video",
             );
             return video === null
               ? -1
@@ -618,7 +618,7 @@ test.describe("the video frame callback on the real player", () => {
         const scope = window as unknown as {
           __renders: number;
           __frameProbe: { delivered: number; withheld: number };
-          vigilia: {
+          yunari: {
             handle: {
               canvas: {
                 on(event: string, cb: () => void): void;
@@ -636,7 +636,7 @@ test.describe("the video frame callback on the real player", () => {
         const bump = (): void => {
           scope.__renders += 1;
         };
-        const canvas = scope.vigilia.handle.canvas;
+        const canvas = scope.yunari.handle.canvas;
         canvas.on("after:render", bump);
         await new Promise((done) => setTimeout(done, duration));
         canvas.off("after:render", bump);
@@ -680,7 +680,7 @@ test.describe("the video frame callback on the real player", () => {
     // would be resting on a paused video that happens to be cheap to draw.
     const advanced = await page.evaluate(async () => {
       const video = document.querySelector<HTMLVideoElement>(
-        "[data-vigilia-background-media] video",
+        "[data-yunari-background-media] video",
       );
       if (video === null)
         throw new Error("the background video is not mounted");
@@ -734,7 +734,7 @@ test.describe("changing media on the real player", () => {
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
     // The player's failure page, not the `<pre>` it used to be: see the control
     // of the same name in `host-player.spec.ts`, which pins the marker.
-    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-load-failure]")).toHaveCount(0);
 
     // A video element that never decoded would be an element that exists, which
     // is the failure a `200` cannot see.
@@ -743,7 +743,7 @@ test.describe("changing media on the real player", () => {
         () =>
           page.evaluate(() => {
             const video = document.querySelector<HTMLVideoElement>(
-              "[data-vigilia-background-media] video",
+              "[data-yunari-background-media] video",
             );
             return video === null
               ? -1
@@ -758,7 +758,7 @@ test.describe("changing media on the real player", () => {
     // `.src` is the resolved URL, which is what the browser actually requested;
     // the attribute is the unresolved root-relative form the resolver built.
     const src = await page
-      .locator("[data-vigilia-background-media] video")
+      .locator("[data-yunari-background-media] video")
       .evaluate((element) => (element as HTMLVideoElement).src);
     expect(src).toBe(`${HOST}/api/themes/${id}/assets/loop.webm`);
 
@@ -854,7 +854,7 @@ test.describe("changing media on the real player", () => {
         () =>
           page.evaluate(() => {
             const video = document.querySelector<HTMLVideoElement>(
-              "[data-vigilia-background-media] video",
+              "[data-yunari-background-media] video",
             );
             return video?.readyState ?? -1;
           }),
@@ -873,14 +873,14 @@ test.describe("changing media on the real player", () => {
       async ([panelId, left, top, width, height]) => {
         const handle = (
           window as unknown as {
-            vigilia?: {
+            yunari?: {
               handle: {
                 updateArtboard(artboard: unknown): void;
                 canvas: { getObjects(): Array<{ get(n: string): unknown }> };
               };
             };
           }
-        ).vigilia?.handle;
+        ).yunari?.handle;
         if (handle === undefined) throw new Error("the player has not mounted");
         const artboard = {
           width: 640,
@@ -890,7 +890,7 @@ test.describe("changing media on the real player", () => {
           backgroundMedia: { assetId: "badge", fit: "display" },
         };
         handle.updateArtboard(artboard);
-        const layer = document.querySelector("[data-vigilia-background-media]");
+        const layer = document.querySelector("[data-yunari-background-media]");
         const image = layer?.querySelector("img");
         for (let attempt = 0; attempt < 100; attempt += 1) {
           if (image?.complete && image.naturalWidth > 0) break;
@@ -949,7 +949,7 @@ async function startLanHost(port: number): Promise<ChildProcess> {
   const child = spawn(
     "node",
     [
-      "packages/host/bin/vigilia.js",
+      "packages/host/bin/yunari.js",
       "--no-browser",
       "--port",
       String(port),
@@ -1054,7 +1054,7 @@ test.describe("a paired display fetching a theme asset", () => {
       .toBeGreaterThan(200);
 
     const src = await page
-      .locator("[data-vigilia-background-media] img")
+      .locator("[data-yunari-background-media] img")
       .evaluate((element) => (element as HTMLImageElement).src);
 
     // The declared path arrives whole, ahead of the query. Reverting the fix

@@ -35,7 +35,7 @@ The spec's landing order names A–G. **A landed 2026-10-20. C–F cannot start*
 - `npm run gate` is **RED at `design:check`** on the pre-existing `vg-626` ceiling and stops before `typecheck` and `test`. Never record it as a passed gate: run `npm run typecheck` and `npm run test` and cite their own exit codes. Never raise `remainderCeiling`.
 - `STATUS.md` is replaced, not appended: at most 6/5/5/5 bullets, one item per line. `npm run status:check` from `src/web/`.
 - No new dependency. No new `utils`/`helpers`/`shared` folder.
-- Screenshots need `VIGILIA_CAPTURE=1` and `--workers=1`, and only for actions registered in `docs/evidence/screenshots/README.md`.
+- Screenshots need `YUNARI_CAPTURE=1` and `--workers=1`, and only for actions registered in `docs/evidence/screenshots/README.md`.
 
 ## Review Focus
 

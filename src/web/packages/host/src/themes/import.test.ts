@@ -1,14 +1,14 @@
 /**
  * The host's half of an import: which id a package lands under, and that
  * landing never replaces what is already there. The reader is
- * `@vigilia/theme-package`'s and is exercised in its own suite, so the fixtures
+ * `@yunari/theme-package`'s and is exercised in its own suite, so the fixtures
  * here are packages written by the format's own writer.
  */
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { importIdCandidates, importThemePackage } from "./import.js";
 import { createThemeStore, type ThemeStore } from "./store.js";
@@ -75,7 +75,7 @@ describe("importThemePackage", () => {
   let store: ThemeStore;
 
   beforeEach(async () => {
-    library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-import-test-"));
+    library = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-import-test-"));
     store = createThemeStore(library);
   });
 

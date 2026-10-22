@@ -30,7 +30,7 @@ The non-obvious part is the third: a control whose *range* is a projection of a
 derived bound cannot be repaired by clamping, and the platform forbids the
 alternative. That is the shape this note is about.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** `components/ui/` for every reader of `describedById` and `hint`;
 `control-slider.tsx` for its step and its range handling; the selection

@@ -16,7 +16,7 @@
  * old panel only ever *claimed* — re-pointing one selected image — is not what
  * this is, and the case below says so.
  */
-import { setObjectAssetReference } from "@vigilia/scene-fabric";
+import { setObjectAssetReference } from "@yunari/scene-fabric";
 import { FabricImage, Group } from "fabric/es";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -190,15 +190,15 @@ async function mount(
 /** The trigger the asset list's hook now names — the control set's own button,
  *  not the native `<select>` it replaced. */
 const selectControl = (host: HTMLElement): HTMLElement =>
-  host.querySelector<HTMLElement>("[data-vigilia-asset-select]")!;
+  host.querySelector<HTMLElement>("[data-yunari-asset-select]")!;
 
 /** The id the control is standing on, read from the hook `Select.Value` prints
  *  it with: that element carries both the words and the committed id, so this
  *  is the native `.value` read in the only place it still exists. */
 const chosenId = (host: HTMLElement): string | null =>
   selectControl(host)
-    .querySelector("[data-vigilia-value]")
-    ?.getAttribute("data-vigilia-value") ?? null;
+    .querySelector("[data-yunari-value]")
+    ?.getAttribute("data-yunari-value") ?? null;
 
 /** React and floating-ui schedule outside `act`, so a popup is flushed with
  *  macrotasks rather than one — `paint-list.dom.test.tsx`'s rule. */
@@ -274,7 +274,7 @@ const alert = (host: HTMLElement): HTMLElement =>
 async function selectAsset(host: HTMLElement, assetId: string): Promise<void> {
   await openPopup(host);
   const option = popupOptions(host).find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === assetId,
+    (candidate) => candidate.getAttribute("data-yunari-option") === assetId,
   );
   if (option === undefined) {
     throw new Error(`no option ${assetId} in the asset list`);
@@ -344,7 +344,7 @@ async function choose(
 
 /** Imports through the control the author presses. */
 async function importFile(host: HTMLElement, chosen: File): Promise<void> {
-  await choose(host, "[data-vigilia-asset-import-input]", chosen);
+  await choose(host, "[data-yunari-asset-import-input]", chosen);
 }
 
 /** Chooses an asset and swaps its bytes, in that order. */
@@ -354,11 +354,11 @@ async function replaceFile(
   chosen: File,
 ): Promise<void> {
   await selectAsset(host, assetId);
-  await choose(host, "[data-vigilia-asset-replace-input]", chosen);
+  await choose(host, "[data-yunari-asset-replace-input]", chosen);
 }
 
 const removeControl = (host: HTMLElement): HTMLButtonElement =>
-  host.querySelector<HTMLButtonElement>("[data-vigilia-asset-remove]")!;
+  host.querySelector<HTMLButtonElement>("[data-yunari-asset-remove]")!;
 
 describe("the Add pane's file section", () => {
   it("places an image or an SVG, and declares a video or a font without placing it", async () => {
@@ -491,8 +491,8 @@ describe("the Add pane's file section", () => {
       // Both picks land before the first import has finished, which is the
       // window `submit`'s guard closes: a second import into the same manager
       // would interleave declarations and hashes.
-      pick(host, "[data-vigilia-asset-import-input]", IMAGE_FILE);
-      pick(host, "[data-vigilia-asset-import-input]", FONT_FILE);
+      pick(host, "[data-yunari-asset-import-input]", IMAGE_FILE);
+      pick(host, "[data-yunari-asset-import-input]", FONT_FILE);
       await drain();
     });
 
@@ -622,7 +622,7 @@ describe("the Add pane's file section", () => {
     expect(host.querySelector("label")?.htmlFor).toBe(selectControl(host).id);
 
     const preview = host.querySelector<HTMLImageElement>(
-      "[data-vigilia-asset-preview]",
+      "[data-yunari-asset-preview]",
     )!;
     await selectAsset(host, "logo");
     expect(preview.getAttribute("src")).toBeTruthy();
@@ -639,16 +639,16 @@ describe("the Add pane's file section", () => {
     const { host } = await mount();
 
     const importInput = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-asset-import-input]",
+      "[data-yunari-asset-import-input]",
     )!;
     const replaceInput = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-asset-replace-input]",
+      "[data-yunari-asset-replace-input]",
     )!;
     const importButton = host.querySelector<HTMLElement>(
-      "[data-vigilia-asset-import]",
+      "[data-yunari-asset-import]",
     )!;
     const replaceButton = host.querySelector<HTMLElement>(
-      "[data-vigilia-asset-replace]",
+      "[data-yunari-asset-replace]",
     )!;
 
     expect(importButton.textContent).toBe(uiCopy.panels.importFile);
@@ -719,7 +719,7 @@ describe("the Add pane's file section", () => {
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
     const afterImport = saveState.mock.calls.length;
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
 
     expect(alert(host).textContent).toBe(sentence);
     expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
@@ -744,7 +744,7 @@ describe("the Add pane's file section", () => {
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
     const afterImport = saveState.mock.calls.length;
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
 
     // Held, not applied: the master still carries the file the author imported.
     expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
@@ -755,7 +755,7 @@ describe("the Add pane's file section", () => {
     );
     expect(saveState.mock.calls.length).toBe(afterImport);
 
-    await press(host, "[data-vigilia-asset-use-normalized]");
+    await press(host, "[data-yunari-asset-use-normalized]");
 
     // The second press is the one that writes, and it keeps the declaration.
     expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
@@ -776,11 +776,11 @@ describe("the Add pane's file section", () => {
 
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
 
     // Spec rule 4: the author inspects the normalized asset, not the master.
     const preview = host.querySelector<HTMLVideoElement>(
-      "[data-vigilia-asset-normalized-preview]",
+      "[data-yunari-asset-normalized-preview]",
     );
     expect(preview).not.toBeNull();
     expect(preview?.getAttribute("src")).toMatch(/^blob:/);
@@ -810,11 +810,11 @@ describe("the Add pane's file section", () => {
 
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
     expect(useControl(host)).not.toBeNull();
     const afterImport = saveState.mock.calls.length;
 
-    await press(host, "[data-vigilia-asset-fill]");
+    await press(host, "[data-yunari-asset-fill]");
 
     expect(alert(host).textContent).toBe(sentence);
     expect(useControl(host)).toBeNull();
@@ -837,11 +837,11 @@ describe("the Add pane's file section", () => {
 
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
     expect(useControl(host)).not.toBeNull();
 
     vi.spyOn(manager, "assets", "get").mockReturnValue({});
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
 
     expect(useControl(host)).toBeNull();
   });
@@ -857,7 +857,7 @@ describe("the Add pane's file section", () => {
 
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
 
     // The write is held open, which is the window a removal would splice a
     // stale index through (`replaceBytes` splices after an await).
@@ -894,11 +894,11 @@ describe("the Add pane's file section", () => {
 
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
-    await press(host, "[data-vigilia-asset-normalize]");
+    await press(host, "[data-yunari-asset-normalize]");
     const afterImport = saveState.mock.calls.length;
     vi.spyOn(manager, "replaceBytes").mockRejectedValue(new Error("disk full"));
 
-    await press(host, "[data-vigilia-asset-use-normalized]");
+    await press(host, "[data-yunari-asset-use-normalized]");
 
     expect(alert(host).textContent).toBe(uiCopy.panels.useNormalizedFailed);
     expect(error).toHaveBeenCalledWith(
@@ -922,7 +922,7 @@ describe("the Add pane's file section", () => {
 
     await importFile(host, VIDEO_FILE);
     await selectAsset(host, "clip");
-    await press(host, "[data-vigilia-asset-fill]");
+    await press(host, "[data-yunari-asset-fill]");
 
     expect(postedBody(fetchStub)).toMatchObject({
       fit: "cover",
@@ -1001,11 +1001,11 @@ function postedBody(fetchStub: ReturnType<typeof vi.fn>): unknown {
 }
 
 const normalizeControl = (host: HTMLElement): HTMLButtonElement | null =>
-  host.querySelector<HTMLButtonElement>("[data-vigilia-asset-normalize]");
+  host.querySelector<HTMLButtonElement>("[data-yunari-asset-normalize]");
 const fillControl = (host: HTMLElement): HTMLButtonElement | null =>
-  host.querySelector<HTMLButtonElement>("[data-vigilia-asset-fill]");
+  host.querySelector<HTMLButtonElement>("[data-yunari-asset-fill]");
 const useControl = (host: HTMLElement): HTMLButtonElement | null =>
-  host.querySelector<HTMLButtonElement>("[data-vigilia-asset-use-normalized]");
+  host.querySelector<HTMLButtonElement>("[data-yunari-asset-use-normalized]");
 
 /** Presses a control and waits out the submission it starts. */
 async function press(host: HTMLElement, selector: string): Promise<void> {

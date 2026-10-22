@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { validateCatalogueItem, validateItemCommand } from "./validate-item.js";
 
@@ -28,7 +28,7 @@ function itemFor(id: string): Record<string, unknown> {
     updatedAt: "2026-10-02T00:00:00Z",
     downloads: 0,
     favorites: 0,
-    packageUrl: `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${id}/${id}.zip`,
+    packageUrl: `https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/${id}/${id}.zip`,
     thumbnail: `catalogue/${id}/thumbnail.png`,
   };
 }
@@ -70,7 +70,7 @@ async function itemDirectory(input: {
   readonly packageBytes?: Uint8Array | null;
   readonly thumbnail?: Uint8Array | null;
 }): Promise<string> {
-  const root = await mkdtemp(path.join(os.tmpdir(), "vigilia-catalogue-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "yunari-catalogue-"));
   temporary.push(root);
   const directory = path.join(root, input.id);
   await mkdir(directory, { recursive: true });
@@ -216,7 +216,7 @@ describe("validateCatalogueItem", () => {
   it("refuses a non-UUID name before reading anything", async () => {
     // The directory does not exist: without the id gate the refusal would be
     // the missing `item.json`, so this pins the gate above every read.
-    const root = await mkdtemp(path.join(os.tmpdir(), "vigilia-catalogue-"));
+    const root = await mkdtemp(path.join(os.tmpdir(), "yunari-catalogue-"));
     temporary.push(root);
 
     expect(await validateCatalogueItem(path.join(root, "aurora"))).toEqual({
@@ -287,7 +287,7 @@ describe("validateCatalogueItem", () => {
 
     expect(checked).toMatchObject({
       ok: false,
-      reason: `packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${ID}/${ID}.zip, not "https://example.test/aurora.zip".`,
+      reason: `packageUrl must be https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/${ID}/${ID}.zip, not "https://example.test/aurora.zip".`,
     });
   });
 
@@ -305,7 +305,7 @@ describe("validateCatalogueItem", () => {
     expect(checked).toMatchObject({
       ok: false,
       reason: expect.stringContaining(
-        `packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${ID}/${ID}.zip`,
+        `packageUrl must be https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/${ID}/${ID}.zip`,
       ),
     });
   });

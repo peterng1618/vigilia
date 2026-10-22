@@ -15,7 +15,7 @@ export const uiCopy = {
    *  screen is empty, because it is (§97's instinct, same shape). */
   loadFailure: {
     title: "This display has nothing to show",
-    lede: "Vigilia could not load the theme this display was pointed at.",
+    lede: "Yunari could not load the theme this display was pointed at.",
     /** Labels the host's own words as the diagnostic they are, so the sentence
      *  above is what a reader takes and this is what an owner is given. */
     reasonLabel: "Reason",
@@ -24,7 +24,7 @@ export const uiCopy = {
      *  way the one place a reader can change what this display shows. */
     host: "Go to the host",
     /** A tab is how a reader with several displays open tells which one broke. */
-    documentTitle: "Vigilia — nothing to display",
+    documentTitle: "Yunari — nothing to display",
     /**
      * The reason line, one sentence per cause the load boundary can name.
      *

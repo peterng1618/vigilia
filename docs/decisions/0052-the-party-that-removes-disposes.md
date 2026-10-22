@@ -9,7 +9,7 @@
 ## The problem
 
 `canvas.remove()` in Fabric 7.4.0 does not dispose: it releases the render list
-and the canvas's own selection/hover references, nothing more. A `VigiliaChart`
+and the canvas's own selection/hover references, nothing more. A `YunariChart`
 therefore holds its ECharts instance and its 196×-heap backing store until
 somebody calls `dispose()` — which is why the scene adapter grew a listener:
 
@@ -41,7 +41,7 @@ know, at removal time, what every other owner is about to do with the object.
 Deleting the listener and disposing only in the adapter leaves every foreign
 removal — the deletion manager's, the crop manager's — leaking.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** `scene-fabric/src/adapter.ts` (the listener, `clear`, `reusable`,
 `removeStale`, `dispose`); every `canvas.remove(`, `.remove(` and `removeAll(`
@@ -83,10 +83,10 @@ note format.
 ## Rung 2 — dependencies
 
 **Searched:** `packages/scene-fabric/package.json` and the installed
-`echarts` / `zrender` for what a chart holds; `VigiliaChart.dispose`
+`echarts` / `zrender` for what a chart holds; `YunariChart.dispose`
 (`chart-object.ts`).
 
-**Found:** `VigiliaChart.dispose` "Release ECharts and backing pixels.
+**Found:** `YunariChart.dispose` "Release ECharts and backing pixels.
 `canvas.remove()` does not call this" — the only dependency-held resource in the
 scene, and the reason the listener existed at all. `echarts`' own API is the
 same shape: `echartsInstance.dispose()`, "Disposes instance. Once disposed, the
@@ -155,7 +155,7 @@ and Fabric's own source under rung 3.
 
 Measured at `f33a77c7`, before the change, in
 `grouping-manager/index.dom.test.ts` (jsdom, a real `Canvas` with
-`createSceneAdapter` installed, two real `VigiliaChart`s):
+`createSceneAdapter` installed, two real `YunariChart`s):
 
 - `grouping.group()` over two selected charts:
   `expected { grouped: true, disposed: true } to deeply equal { grouped: true, disposed: false }`

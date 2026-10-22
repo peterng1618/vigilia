@@ -2,7 +2,7 @@ import {
   DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
   facetRecordOf,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type { ThemeLibraryEntry } from "../theme-library-client.js";
 import type { CatalogueFacts, StoreItem } from "./local-source.js";
 

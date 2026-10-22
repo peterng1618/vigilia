@@ -1,12 +1,12 @@
 {
-  "name": "@vigilia/host",
+  "name": "@yunari/host",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "license": "MIT",
   "description": "PC host: CLI launcher, static serving, sample transport and hardware providers.",
   "bin": {
-    "vigilia-dashboard": "./bin/vigilia.js"
+    "yunari-dashboard": "./bin/yunari.js"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -19,9 +19,9 @@
     "vendor:lhm": "node ./scripts/vendor-lhm.mjs"
   },
   "dependencies": {
-    "@vigilia/renderer-core": "*",
-    "@vigilia/scene-fabric": "*",
-    "@vigilia/theme-package": "*",
+    "@yunari/renderer-core": "*",
+    "@yunari/scene-fabric": "*",
+    "@yunari/theme-package": "*",
     "ffmpeg-static": "5.3.0",
     "node-forge": "1.4.0",
     "systeminformation": "^5.33.13"

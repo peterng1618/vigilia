@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let a Vigilia author pick a theme they already own in Wallpaper Engine as a background: a still scene exports as a PNG, an animated scene as an MP4, image and video items import directly, and every scene is unpacked and opened in Wallpaper Engine's own editor for them.
+**Goal:** Let a Yunari author pick a theme they already own in Wallpaper Engine as a background: a still scene exports as a PNG, an animated scene as an MP4, image and video items import directly, and every scene is unpacked and opened in Wallpaper Engine's own editor for them.
 
-**Architecture:** The host reads the Steam library and the `.pkg` container, classifies a scene, unpacks it, and launches the editor — every filesystem decision stays there (spec R7). The editor only renders a list and a guidance sheet. Nothing is re-rendered by Vigilia, and nothing in Wallpaper Engine is driven (R1).
+**Architecture:** The host reads the Steam library and the `.pkg` container, classifies a scene, unpacks it, and launches the editor — every filesystem decision stays there (spec R7). The editor only renders a list and a guidance sheet. Nothing is re-rendered by Yunari, and nothing in Wallpaper Engine is driven (R1).
 
 **Tech Stack:** TypeScript, Node 22.12+, React 19, Vitest, Playwright, Biome. **No new dependency** — the container reader and the VDF read are tens of lines against a format decoded in the spec.
 
@@ -18,7 +18,7 @@
 
 - **No new dependency.** No VDF parser, no `.pkg` library, no image or video library, no archive package.
 - **The host owns every filesystem decision.** The browser addresses an item by `workshopId` and never by a path.
-- **Vigilia never drives Wallpaper Engine** (R1): it reads the library, creates one directory of its own, launches the editor, and sends nothing after the launch.
+- **Yunari never drives Wallpaper Engine** (R1): it reads the library, creates one directory of its own, launches the editor, and sends nothing after the launch.
 - **The one write is the unpack.** No `config.json` write, no edit inside the Steam library, no second directory.
 - **A failure is never guessed away.** An unreadable `scene.pkg` stays unclassified and exports as video; it is never assumed still (`§11`).
 - **Persist no Wallpaper Engine state.** `stillAtRest`, `hasText` and the export listing are derived on read; no cache file records them.
@@ -49,7 +49,7 @@ The failure modes the spec implies but no happy path exercises, most likely to b
 **Files:**
 - Create: `docs/decisions/0089-the-wallpaper-engine-library-is-read-by-the-host.md`
 
-- [ ] **Step 1: Write the note** in `docs/decisions/README.md`'s template: the problem (a downloaded scene cannot be opened, and Vigilia will not re-render one), and all seven rungs with **the searches that were run**, copying §10 of the spec and citing the evidence each rung stood on: the CLI flag enumeration, the CEF binding table, `ui_en-us.json`'s two keys, the container layout, `ispreset`, and the censuses in §16.
+- [ ] **Step 1: Write the note** in `docs/decisions/README.md`'s template: the problem (a downloaded scene cannot be opened, and Yunari will not re-render one), and all seven rungs with **the searches that were run**, copying §10 of the spec and citing the evidence each rung stood on: the CLI flag enumeration, the CEF binding table, `ui_en-us.json`'s two keys, the container layout, `ispreset`, and the censuses in §16.
 - [ ] **Step 2: Rung 4 must name the queries**, not just the libraries: "automate Wallpaper Engine export", "wallpaper engine scene renderer linux", "rePKG scene.json", "Wallpaper Engine mobile video export". Record that no project renders a WE scene headlessly, and that the only offerings are UI automation, which the vendor blocks.
 - [ ] **Step 3: Status `accepted`, Date `2026-10-21`**, and a `Paths:` line naming `src/web/packages/host/src/server.ts` and `src/web/packages/host/src/wallpaper-engine/`.
 - [ ] **Step 4: Commit** `docs(decisions): the Wallpaper Engine library is read by the host`.
@@ -148,7 +148,7 @@ export function resolvePayload(item: LibraryItem): ItemPayload | undefined;
 ```
 
 - [ ] **Step 1: Write the failing `locate.test.ts`** against a temp tree built with `os.tmpdir()`: a fake Steam root with `steamapps/libraryfolders.vdf` naming two libraries, one holding `workshop/content/431960`, and a fake install with `bin/wallpaperui.exe` and `projects/myprojects/`. Assert the returned `libraries` has the one real content directory, and that a tree with no install returns `undefined`. A second case: `platform: "linux"` returns `undefined` without touching `reg`.
-- [ ] **Step 2: Implement `locateInstall`** — candidates in order: `env.VIGILIA_WALLPAPER_ENGINE` (a path to the install root, the test hook), `reg query HKCU\Software\Valve\Steam /v SteamPath` through `execFile` (the pattern `themes/trash.ts` already uses), `C:\Program Files (x86)\Steam`, `C:\Program Files\Steam`. Read `steamapps/libraryfolders.vdf` with a line reader for `"path"` values — no dependency, no full VDF grammar. A library counts when `steamapps/workshop/content/431960` exists; the install counts when `bin/wallpaperui.exe` does.
+- [ ] **Step 2: Implement `locateInstall`** — candidates in order: `env.YUNARI_WALLPAPER_ENGINE` (a path to the install root, the test hook), `reg query HKCU\Software\Valve\Steam /v SteamPath` through `execFile` (the pattern `themes/trash.ts` already uses), `C:\Program Files (x86)\Steam`, `C:\Program Files\Steam`. Read `steamapps/libraryfolders.vdf` with a line reader for `"path"` values — no dependency, no full VDF grammar. A library counts when `steamapps/workshop/content/431960` exists; the install counts when `bin/wallpaperui.exe` does.
 - [ ] **Step 3: Write the failing `library.test.ts`** against a fixture library of four directories plus a `workshopcache.json`: a scene (untyped cache row), a video typed `Video`, a web typed `web`, a preset whose `project.json` has a `preset` object and no `type`, and one directory with a malformed `project.json`. Assert three items, `skipped === 2` (the preset and the malformed), the video's `type === "video"` despite the cache's capital V, and the scene's attribution fields filled from the cache row.
 - [ ] **Step 4: Implement `scanLibrary`** — read directories, `JSON.parse` each `project.json`, lowercase `type`, drop an entry with a `preset` object and no `type`, drop `package.workshopId`-less directories with no cache row **only when the directory name is not numeric**. Join `workshopcache.json` by `workshopid` for `title`, `filesize`, `tags`, `authorsteamid` and `workshopurl`; a missing row leaves those absent, never invented. Skip and count every refusal.
 - [ ] **Step 5: Write the failing `resolve.test.ts`** — each outcome in spec §4's order, including a `scene` item whose payload is missing (returns `undefined`, which the caller drops) and a video typed `video` whose payload is `.wmv`.
@@ -283,7 +283,7 @@ export async function fetchItemPreview(workshopId: string): Promise<Blob | undef
 - [ ] **Step 1: Write the failing `client.test.ts`** with an injected `fetch`: a 200 listing parses; a 200 whose body is not the shape answers `available: false` rather than throwing; a rejected fetch answers `available: false`; `fetchItemAsset` names the file by the item's `title` plus the payload extension so the asset manager sees a real filename.
 - [ ] **Step 2: Implement `client.ts`** — read through `Object.hasOwn`, no `any`, and never fabricate an item from a malformed row (skip it).
 - [ ] **Step 3: Write the failing DOM test** for the section: with no listing it renders nothing (`container.innerHTML === ""`); with four items it renders four rows with a kind label and a size; clicking an image row calls the injected `importAsset` with the fetched `File`; a `web` row renders its refusal and has no import button. **A `scene` row renders the "Open in Wallpaper Engine" action** and no import button — Task 7 wires what that action does.
-- [ ] **Step 4: Implement the section** — `ControlSelect`-free; a plain list with `data-vigilia-wallpaper-engine-item`, `-import`, `-open` attributes, and every string from `uiCopy.panels`. Reuse `manager.import(file)` through the prop the Add pane already passes down, so the caps and reference model are the asset manager's, not a second copy.
+- [ ] **Step 4: Implement the section** — `ControlSelect`-free; a plain list with `data-yunari-wallpaper-engine-item`, `-import`, `-open` attributes, and every string from `uiCopy.panels`. Reuse `manager.import(file)` through the prop the Add pane already passes down, so the caps and reference model are the asset manager's, not a second copy.
 - [ ] **Step 5: Mount it in `file-section.tsx`**, above the declared-asset list, fetching once on mount and staying silent when unavailable. The existing DOM test must pass unchanged — that is Review Focus 5's proof.
 - [ ] **Step 6: Green, `npx tsc --noEmit`, commit** `feat(editor): list the Wallpaper Engine library in the Add pane`.
 
@@ -340,7 +340,7 @@ export interface ThemeCreditsEntry {
   readonly source?: { readonly workshopId: string; readonly url: string };
   readonly license: string; readonly changes: string;
 }
-export interface ThemeCredits { readonly format: "vigilia-theme-credits"; readonly version: 1; readonly entries: readonly ThemeCreditsEntry[] }
+export interface ThemeCredits { readonly format: "yunari-theme-credits"; readonly version: 1; readonly entries: readonly ThemeCreditsEntry[] }
 export function readThemeCredits(bytes: Uint8Array): ThemeCredits | undefined;
 ```
 
@@ -362,7 +362,7 @@ export function readThemeCredits(bytes: Uint8Array): ThemeCredits | undefined;
 - [ ] **Step 1: Register three captures** in the registry's table: the Add pane's Wallpaper Engine list, the still sheet with the text step, and the animated sheet. A capture that is not registered may not be taken.
 - [ ] **Step 2: Write the e2e spec** with `page.route("**/api/wallpaper-engine", …)` and the item routes, over a fixture listing of image, video, web, still-scene-with-text, animated-scene and scene-without-text. Assert a rendered claim per kind, including that a still item's sheet prints `PNG` and no duration, and the animated one prints `5 s`.
 - [ ] **Step 3: Red-proof three things** — break the text step's condition to `!== false` and watch the no-text case fail; break `readSceneFacts` to ignore keyframes and watch the keyframe fixture class itself as still; break `unpackScene`'s `file` rewrite and watch the descriptor assertion fail. Restore each from a copy kept **outside** the repo and verify with **`cmp`**, never `git checkout`.
-- [ ] **Step 4: Run the host integration path once against a real install** with `VIGILIA_WALLPAPER_ENGINE` pointing at this machine's Wallpaper Engine, asserting the listing's count and that a scene's unpack writes `file: "scene.json"`. Do **not** launch the editor in the test; assert the launch by spying on `spawn`.
+- [ ] **Step 4: Run the host integration path once against a real install** with `YUNARI_WALLPAPER_ENGINE` pointing at this machine's Wallpaper Engine, asserting the listing's count and that a scene's unpack writes `file: "scene.json"`. Do **not** launch the editor in the test; assert the launch by spying on `spawn`.
 - [ ] **Step 5: Run the gates** from `src/web/`: `npm run build`, `npx playwright test tests/e2e/wallpaper-engine.spec.ts --workers=1`, `npm run typecheck`, `./node_modules/.bin/biome check ..` — each to a file, each exit code read directly, never through a pipe.
 - [ ] **Step 6: Report** what was seen in each capture, the red proofs with their failure text and `cmp` results, and what a routed fixture cannot prove (the real export dialog, the real launch without a device attached).
 

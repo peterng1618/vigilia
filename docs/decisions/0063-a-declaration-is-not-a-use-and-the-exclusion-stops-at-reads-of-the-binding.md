@@ -31,7 +31,7 @@ without a parse**, and the two shapes are declaration-shaped rather than
 read-shaped. The plan's bias — *"a survivor costs a ticket and a deleted live
 symbol costs the product"* — fixes which way the errors may fall.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scripts/dead-code-sweep.mjs` for existing declaration handling
 (`usesIn`, `usesOutsideDeclaration`, `declaredExports`, the tier that emits

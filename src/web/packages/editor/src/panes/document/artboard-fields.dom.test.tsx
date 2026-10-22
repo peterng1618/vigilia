@@ -24,8 +24,8 @@ import {
   type AssetReference,
   BACKGROUND_MEDIA_FITS,
   type ThemeMetadata,
-} from "@vigilia/renderer-core";
-import { outsideCount, type SceneBox } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { outsideCount, type SceneBox } from "@yunari/scene-fabric";
 import { act } from "react";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import {
@@ -69,7 +69,7 @@ afterEach(async () => {
 });
 
 /**
- * Step 1's checklist, verbatim: every `data-vigilia-*` hook the imperative panel
+ * Step 1's checklist, verbatim: every `data-yunari-*` hook the imperative panel
  * rendered, in the order it rendered them. A field the rewrite dropped is a
  * missing hook, and this list is the only thing that catches it.
  *
@@ -188,7 +188,7 @@ async function chooseIn(control: string, id: string): Promise<void> {
   await click(trigger);
   await flush();
   const option = Array.from(document.querySelectorAll('[role="option"]')).find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+    (candidate) => candidate.getAttribute("data-yunari-option") === id,
   );
   if (option === undefined) throw new Error(`no option ${id} in ${control}`);
   await pointerDown(option);
@@ -228,7 +228,7 @@ function noteFor(boxes: readonly SceneBox[]): string {
 }
 
 function note(host: HTMLElement): string {
-  return host.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
+  return host.querySelector("[data-yunari-artboard-note]")?.textContent ?? "";
 }
 
 it("renders every field the panel rendered, including the branch that needs a background asset", async () => {
@@ -236,18 +236,18 @@ it("renders every field the panel rendered, including the branch that needs a ba
   await draw({ width: 1280, height: 720 }, { name: "Living Room" });
 
   for (const hook of enumeratedHooks) {
-    expect(host.querySelector(`[data-vigilia-${hook}]`), hook).not.toBeNull();
+    expect(host.querySelector(`[data-yunari-${hook}]`), hook).not.toBeNull();
   }
 
   // The branch a single render hides: with no asset declared the media control
   // offers nothing but the blank reading, so the state that has one is driven
   // rather than assumed. The fit control is asserted in **this** state, and the
   // commit that follows is one only an asset can produce.
-  await chooseIn("[data-vigilia-background-asset]", "clip");
+  await chooseIn("[data-yunari-background-asset]", "clip");
   expect(
-    host.querySelector("[data-vigilia-background-media-fit]"),
+    host.querySelector("[data-yunari-background-media-fit]"),
   ).not.toBeNull();
-  await chooseIn("[data-vigilia-background-media-fit]", "display");
+  await chooseIn("[data-yunari-background-media-fit]", "display");
 
   expect(change).toHaveBeenLastCalledWith(
     expect.objectContaining({
@@ -268,15 +268,15 @@ it("offers exactly the fits the model publishes", async () => {
   // No asset is chosen, so this control is the only popup the document holds and
   // the options read below are its own.
   const trigger = host.querySelector<HTMLElement>(
-    "[data-vigilia-background-media-fit]",
+    "[data-yunari-background-media-fit]",
   );
   if (trigger === null) throw new Error("the fit control is missing");
   await click(trigger);
   await flush();
 
   const offered = Array.from(
-    document.querySelectorAll('[role="option"][data-vigilia-option]'),
-  ).map((option) => option.getAttribute("data-vigilia-option"));
+    document.querySelectorAll('[role="option"][data-yunari-option]'),
+  ).map((option) => option.getAttribute("data-yunari-option"));
 
   expect(offered).toEqual([...BACKGROUND_MEDIA_FITS]);
 });
@@ -307,7 +307,7 @@ it("states the note's role and describes the controls it is about with it", asyn
   const { host } = await mount();
   await draw({ width: 1280, height: 720 });
 
-  const noteElement = host.querySelector("[data-vigilia-artboard-note]");
+  const noteElement = host.querySelector("[data-yunari-artboard-note]");
   expect(noteElement?.getAttribute("role")).toBe("note");
   const id = noteElement?.id ?? "";
   expect(id).not.toBe("");
@@ -320,7 +320,7 @@ it("states the note's role and describes the controls it is about with it", asyn
   ]) {
     expect(
       host
-        .querySelector(`[data-vigilia-${hook}]`)
+        .querySelector(`[data-yunari-${hook}]`)
         ?.getAttribute("aria-describedby"),
       hook,
     ).toBe(id);

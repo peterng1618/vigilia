@@ -15,7 +15,7 @@
  * What this is NOT: a verdict. Every hit is a candidate, printed with the search
  * that found it, and a human or an agent has to say whether the code is dead.
  * The false-positive engine in this repo is *string-resolved vocabulary* —
- * `data-vigilia-*` attributes, `--vigilia-*`/`--shell-*` custom properties,
+ * `data-yunari-*` attributes, `--yunari-*`/`--shell-*` custom properties,
  * `KIND_*` registries, Fabric JSON keys and classes composed by template
  * literal — all of which are live with no importer anywhere. None of it is
  * visible to this graph, and a literal search that comes back empty is not
@@ -364,7 +364,7 @@ function entryPoints(files) {
   const points = new Set([
     "src/web/packages/player/src/main.ts",
     "src/web/packages/host/src/main.ts",
-    "src/web/packages/host/bin/vigilia.js",
+    "src/web/packages/host/bin/yunari.js",
   ]);
   const packagesDir = join(WEB, "packages");
   let names = [];
@@ -495,9 +495,9 @@ function resolveSpecifier(from, spec, files) {
   if (spec.startsWith(".")) {
     base = posix(join(dirname(from), spec));
   } else {
-    const vigilia = /^@vigilia\/([^/]+)(\/.*)?$/.exec(spec);
-    if (vigilia !== null) {
-      base = `src/web/packages/${vigilia[1]}/src${vigilia[2] ?? ""}`;
+    const yunari = /^@yunari\/([^/]+)(\/.*)?$/.exec(spec);
+    if (yunari !== null) {
+      base = `src/web/packages/${yunari[1]}/src${yunari[2] ?? ""}`;
     } else if (spec.startsWith("@/")) {
       base = `src/web/packages/editor/src/${spec.slice(2)}`;
     } else {
@@ -539,7 +539,7 @@ const source = new Map(
 /**
  * A second view of each file, with quoted strings blanked, used only to decide
  * whether a module *uses* one of its own exports. A name inside a string is
- * vocabulary, not a call — `data-vigilia-*` and the `KIND_*` registries are
+ * vocabulary, not a call — `data-yunari-*` and the `KIND_*` registries are
  * exactly the trap this repository sets — so it must not count as a use.
  *
  * Not handled: backticks and regex literals — a symbol named only as static text
@@ -716,7 +716,7 @@ for (const file of all) {
 // Classify
 // ---------------------------------------------------------------------------
 
-const IMPORTERS = "importer graph over every .ts/.tsx/.mjs under src/web/packages/*/src, src/web/tests, src/web/scripts and scripts/ (dist/ and node_modules/ excluded), resolving relative, @vigilia/* and @/* specifiers";
+const IMPORTERS = "importer graph over every .ts/.tsx/.mjs under src/web/packages/*/src, src/web/tests, src/web/scripts and scripts/ (dist/ and node_modules/ excluded), resolving relative, @yunari/* and @/* specifiers";
 
 const candidates = [];
 const list = (paths) => (paths.length === 0 ? "none" : paths.join(", "));
@@ -894,8 +894,8 @@ const report = {
   /** Set false only here; the start-of-run marker writes true to the same path. */
   incomplete: false,
   note:
-    "Candidates, not verdicts, and nothing here is deleted. `data-vigilia-*` attributes, " +
-    "`--vigilia-*`/`--shell-*` custom properties, `KIND_*` registries, Fabric JSON keys, " +
+    "Candidates, not verdicts, and nothing here is deleted. `data-yunari-*` attributes, " +
+    "`--yunari-*`/`--shell-*` custom properties, `KIND_*` registries, Fabric JSON keys, " +
     "classes composed by template literal, and any file a gate reads as data are all live " +
     "with no importer — none of that is visible to this graph, and a name with an empty " +
     "search is not a name that is dead.",

@@ -38,7 +38,7 @@ const CELL_ACTIONS = [
  *  `useControlIds` derives a control's — so the reason node beside a disabled
  *  button is found from the button that describes itself by it. */
 const cellActionId = (itemId: string, action: CellAction): string =>
-  `vigilia-store-cell-${itemId}-${action}`;
+  `yunari-store-cell-${itemId}-${action}`;
 
 /** One glyph per action, as a **total** lookup: an action added to `CellAction`
  *  without a mark fails to compile here rather than drawing a nameless square. */
@@ -81,7 +81,7 @@ export function Gallery(props: {
 }): React.JSX.Element {
   return (
     <ul
-      data-vigilia-store-gallery=""
+      data-yunari-store-gallery=""
       className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-[var(--space-12)]"
     >
       {props.items.map((item) => (
@@ -123,7 +123,7 @@ function Cell(props: {
 
   return (
     <li
-      data-vigilia-store-cell={item.id}
+      data-yunari-store-cell={item.id}
       className="flex flex-col overflow-hidden rounded-lg border border-edge bg-panel-2"
     >
       {/* **The cell's own surface is a control** (spec, "The item's own
@@ -146,20 +146,20 @@ function Cell(props: {
           they sat inside one padded column. */}
       <button
         type="button"
-        data-vigilia-store-cell-surface=""
+        data-yunari-store-cell-surface=""
         onClick={() => onOpenItem(item.id)}
         className="flex w-full flex-col text-left"
       >
         <Picture item={item} />
         <span
-          data-vigilia-store-cell-name=""
+          data-yunari-store-cell-name=""
           className="truncate p-[var(--space-10)] pb-[var(--space-6)] text-sm text-text"
         >
           {item.name}
         </span>
       </button>
       <span
-        data-vigilia-store-cell-byline=""
+        data-yunari-store-cell-byline=""
         className="truncate px-[var(--space-10)] pb-[var(--space-6)] font-mono text-xs text-muted"
       >
         {byline(item)}
@@ -170,7 +170,7 @@ function Cell(props: {
             only asked whether the badge exists would stay green through a move
             that changed the grid (`store-themes.html`). */}
         <span
-          data-vigilia-store-cell-band=""
+          data-yunari-store-cell-band=""
           className="flex h-[26px] items-center gap-[var(--space-6)]"
         >
           {/* **The left slot has one occupant per half** — the online cell's
@@ -183,7 +183,7 @@ function Cell(props: {
           {catalogue === undefined ? (
             item.origin === undefined ? null : (
               <span
-                data-vigilia-store-cell-origin=""
+                data-yunari-store-cell-origin=""
                 className="flex-none rounded-full border border-edge bg-panel px-[var(--space-8)] py-[var(--space-4)] text-2xs font-medium text-muted"
               >
                 {uiCopy.store.fromStore}
@@ -192,7 +192,7 @@ function Cell(props: {
           ) : (
             <>
               <span
-                data-vigilia-store-cell-kind=""
+                data-yunari-store-cell-kind=""
                 className="flex-none rounded-full border border-edge px-[var(--space-8)] py-[var(--space-4)] text-2xs font-medium text-muted"
               >
                 {/* A kind this build does not know prints its identifier, which
@@ -200,7 +200,7 @@ function Cell(props: {
                 {uiCopy.store.cell.kinds[item.kind] ?? item.kind}
               </span>
               <span
-                data-vigilia-store-cell-downloads=""
+                data-yunari-store-cell-downloads=""
                 className="flex flex-none items-center gap-[var(--space-4)] font-mono text-xs text-muted"
               >
                 {/* The drawing's download mark, the same glyph the export
@@ -241,7 +241,7 @@ function Cell(props: {
                       ? {}
                       : { describedById: `${controlId}-reason` })}
                     destructive={action === "delete"}
-                    data={{ "data-vigilia-store-cell-action": action }}
+                    data={{ "data-yunari-store-cell-action": action }}
                     onClick={() => onAction(action, item.id)}
                   >
                     <Glyph icon={CELL_ACTION_GLYPHS[action]} size={14} />
@@ -267,7 +267,7 @@ function Cell(props: {
             announcement is the region's one live region, not this span's. */}
         {installState === "none" || refusal === undefined ? null : (
           <span
-            data-vigilia-store-cell-install-refusal=""
+            data-yunari-store-cell-install-refusal=""
             className="block pt-[var(--space-6)] text-2xs text-warn"
           >
             {refusal}
@@ -298,7 +298,7 @@ function InstallAction(props: {
   if (state === "installed") {
     return (
       <span
-        data-vigilia-store-cell-install={state}
+        data-yunari-store-cell-install={state}
         className="flex flex-none items-center gap-[var(--space-6)] text-xs text-muted"
       >
         {/* The word is muted like every other reading in the band; only the
@@ -315,8 +315,8 @@ function InstallAction(props: {
   return (
     <button
       type="button"
-      id={`vigilia-store-cell-${item.id}-install`}
-      data-vigilia-store-cell-install={state}
+      id={`yunari-store-cell-${item.id}-install`}
+      data-yunari-store-cell-install={state}
       disabled={busy}
       aria-busy={busy}
       onClick={() => install.onInstall(item)}
@@ -368,7 +368,7 @@ function Picture(props: { readonly item: StoreItem }): React.JSX.Element {
 
   return (
     <span
-      data-vigilia-store-picture=""
+      data-yunari-store-picture=""
       aria-hidden
       className="aspect-[2/1] w-full"
       style={

@@ -118,7 +118,7 @@ is written because the rule requires it, not because a hook was going to stop th
 
 **What the note must establish, at the rungs `docs/decisions/README.md` sets out:**
 
-- Rung 1 — Vigilia: the table is `renderer-core/src/charts/settings-fields.ts`, its header
+- Rung 1 — Yunari: the table is `renderer-core/src/charts/settings-fields.ts`, its header
   records the range duplication, and `NON_SCALAR_SETTINGS` is the allowlist that let two
   holes through. Cite `vg-121`, `vg-122` and `ownership.md`'s *Chart setting descriptors*
   row.
@@ -350,7 +350,7 @@ per-kind plan that decides which of them a given selection sees.
   options carry `{ id, title, body: readonly HTMLElement[], defaultOpen: boolean }` and the
   handle carries `{ root: HTMLElement, isOpen(): boolean, open(): void, setBody(next): void }`.
   **There is no `count` option** — see the correction below.
-- Produces: a stable hook for tests and specs — `data-vigilia-section="<id>"` on the
+- Produces: a stable hook for tests and specs — `data-yunari-section="<id>"` on the
   `<section>`, and the disclosure's own `open` state readable from the DOM.
 
 **Corrections from the independent review of `a4028d55`/`29fa4e4c`** — three, all measured:
@@ -407,8 +407,8 @@ that renders empty and still shows a header with a count of zero.
 - Produces: `settingsField(descriptor, options): HTMLElement`, where the options carry
   `{ value: unknown, onChange(next: unknown): void, disabledReason?: string }`.
 - Produces: the same id and dataset the chart panel uses today —
-  `id = vigilia-chart-setting-${descriptor.property}`,
-  `dataset["vigiliaChartSetting"] = descriptor.property` — so existing specs and
+  `id = yunari-chart-setting-${descriptor.property}`,
+  `dataset["yunariChartSetting"] = descriptor.property` — so existing specs and
   screenshots address the same controls they address now.
 - **Consumes, in the caller rather than the control:** `readSetting`/`writeSetting` from
   Task 3, and an exported `isSettingVisible(descriptor, settings)` for `visibleWhen`. An
@@ -633,7 +633,7 @@ them.
 `author-journey-rebuild.spec.ts:516` red and filed it rather than fixed it, correctly: *which
 side is wrong is a design decision*, and the decision is this task's because the spec is
 already in this task's file list. The chain, each link measured: the journey fills
-`[data-vigilia-chart-setting="endAngle"]` with **405** for `ram-gauge` and asserts the object
+`[data-yunari-chart-setting="endAngle"]` with **405** for `ram-gauge` and asserts the object
 carries it; `settings-fields.ts:279-280` bounds gauge `endAngle` at ±360; `numberField`'s own
 doc comment says it "lands an out-of-range value on the **bound** it crossed instead of
 reverting it"; and `f254259b` (Task 6) moved the Data tab's loop onto `settingsField`, where
@@ -706,13 +706,13 @@ undo round-trip in the browser, because that is the surface where it is visible.
   `tests/e2e/rebuild-driver.ts` and a local one in `tests/e2e/editor.spec.ts`; a new helper
   only if two specs need the same interaction.
 - **`activeGeometry` is not one of them, and this plan said it was.** Task 7 measured it: it
-  reads through `window.vigiliaEditorBridge` and never touches a DOM geometry input, so
+  reads through `window.yunariEditorBridge` and never touches a DOM geometry input, so
   collapsing Position cannot break it and it needed no change. Only `geometryPairBoxes`, the
   Size-pair spec and the polygon spec reach a geometry input and needed opening first. The
   correction is recorded because the wrong version sends a later reader to edit a helper that
   is already correct.
 
-**Constraints:** capture requires `VIGILIA_CAPTURE=1` and `--workers=1`, and an action not
+**Constraints:** capture requires `YUNARI_CAPTURE=1` and `--workers=1`, and an action not
 registered in `docs/evidence/screenshots/README.md` is not captured. Screenshots are
 evidence, not cross-platform golden files — the assertions are numeric or textual and the
 image is for a human. One sample of a flaky spec is not a measurement.

@@ -327,7 +327,7 @@ describe("glass composition", () => {
     // this case exists to vary: a fit camera is not 1:1.
     const s = stage({ artboard: { width: 200, height: 200 } });
     s.canvas.setViewportTransform([0.5, 0, 0, 0.5, 40, 20]);
-    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.add(panel({ yunariGlass: { blurRadius: 8 } }));
     s.canvas.renderAll();
 
     expect(s.paints).toHaveLength(1);
@@ -353,7 +353,7 @@ describe("glass composition", () => {
       backdropRect: { left: -5, top: -10, width: 600, height: 250 },
     });
     s.canvas.setViewportTransform([2, 0, 0, 2, 40, 60]);
-    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.add(panel({ yunariGlass: { blurRadius: 8 } }));
     s.canvas.renderAll();
 
     // The same plane the artboard goes through: 40 + (-5 * 2) = 30, 60 + (-10 *
@@ -392,7 +392,7 @@ describe("glass composition", () => {
       display: { left: 0, top: 0, width: 1200, height: 500 },
     });
     const layer = host.querySelector<HTMLElement>(
-      "[data-vigilia-background-media]",
+      "[data-yunari-background-media]",
     );
 
     expect([
@@ -416,7 +416,7 @@ describe("glass composition", () => {
     // the layer's own box.
     const s = stage({ size: 400, backdrop: () => backdrop });
     s.canvas.setViewportTransform([2, 0, 0, 2, 40, 60]);
-    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.add(panel({ yunariGlass: { blurRadius: 8 } }));
     s.canvas.renderAll();
 
     expect(s.paints[0]?.device).toEqual({
@@ -436,7 +436,7 @@ describe("glass composition", () => {
     // agree with the correct answer and only diverges from here.
     const s = stage({ artboard: { width: 200, height: 200 } });
     s.canvas.setViewportTransform([2, 0, 0, 2, 0, 0]);
-    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.add(panel({ yunariGlass: { blurRadius: 8 } }));
     s.canvas.renderAll();
     s.paints.length = 0;
     s.canvas.toCanvasElement(3);
@@ -465,7 +465,7 @@ describe("glass composition", () => {
       radius = 24,
     ): string => {
       const s = stage({});
-      s.canvas.add(panel({ vigiliaGlass: { blurRadius: radius } }));
+      s.canvas.add(panel({ yunariGlass: { blurRadius: radius } }));
       configure(s.canvas);
       s.canvas.renderAll();
       return s.draws[0]?.filter ?? "none";
@@ -515,7 +515,7 @@ describe("glass composition", () => {
     expect(dense.draws[0]?.filter).toBe("blur(48px) saturate(1.6)");
     // Zero is a valid treatment and must not be filtered away silently.
     const zero = stage({});
-    zero.canvas.add(panel({ vigiliaGlass: { blurRadius: 0 } }));
+    zero.canvas.add(panel({ yunariGlass: { blurRadius: 0 } }));
     zero.canvas.renderAll();
     expect(zero.draws[0]?.filter).toBe("none");
   });
@@ -546,7 +546,7 @@ describe("glass composition", () => {
 
   it("reads the authored radius again after a control changes it in place", () => {
     const s = stage({});
-    const glassed = panel({ vigiliaGlass: { blurRadius: 8 } });
+    const glassed = panel({ yunariGlass: { blurRadius: 8 } });
     s.canvas.add(glassed);
     s.canvas.renderAll();
     // The attach's own composite, so the assertion below cannot be satisfied by
@@ -555,7 +555,7 @@ describe("glass composition", () => {
 
     // What the inspector's blur field does: the property changes on an object
     // that is already attached, and no add or remove follows it.
-    glassed.set("vigiliaGlass", { blurRadius: 40 });
+    glassed.set("yunariGlass", { blurRadius: 40 });
     s.canvas.renderAll();
 
     const filters = s.draws.map((draw) => draw.filter);
@@ -596,7 +596,7 @@ describe("glass composition", () => {
       height: 1500,
       originX: "left",
       originY: "top",
-      vigiliaGlass: { blurRadius: 48 },
+      yunariGlass: { blurRadius: 48 },
     });
     big.canvas.add(wide);
     big.canvas.renderAll();
@@ -693,7 +693,7 @@ describe("glass composition", () => {
             fill: "rgba(255, 255, 255, 0.5)",
           }),
         ],
-        { left: 100, top: 100, vigiliaGlass: { blurRadius: 24 } } as Record<
+        { left: 100, top: 100, yunariGlass: { blurRadius: 24 } } as Record<
           string,
           unknown
         >,
@@ -721,7 +721,7 @@ describe("glass composition", () => {
           width: 40,
           height: 40,
           fill: "rgba(255, 255, 255, 0.5)",
-          vigiliaGlass: { blurRadius: 24 },
+          yunariGlass: { blurRadius: 24 },
         },
       ],
     });

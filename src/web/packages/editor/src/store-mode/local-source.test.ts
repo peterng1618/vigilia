@@ -2,7 +2,7 @@ import {
   DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
   facetRecordOf,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ThemeLibraryClient,
@@ -194,7 +194,7 @@ describe("the local half's items", () => {
     // absence `author` carries for a document that declares none. An origin
     // invented to fill the field would make every theme read as installed.
     const origin: ThemeOrigin = {
-      catalogueId: "vigilia/office-wall",
+      catalogueId: "yunari/office-wall",
       version: "1.3.0",
       installedAt: "2026-10-14T00:00:00.000Z",
     };

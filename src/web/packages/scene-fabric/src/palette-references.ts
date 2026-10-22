@@ -1,10 +1,7 @@
-import { objectName } from "@vigilia/renderer-core";
+import { objectName } from "@yunari/renderer-core";
 import { type FabricObject, Group, type StaticCanvas } from "fabric/es";
-import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
-import {
-  type FabricPaintRefs,
-  VIGILIA_PAINT_PROPERTY,
-} from "./object-paint.js";
+import { YUNARI_TEXT_PROPERTY } from "./fabric-text.js";
+import { type FabricPaintRefs, YUNARI_PAINT_PROPERTY } from "./object-paint.js";
 
 /** One object that names a palette token, and where. */
 export interface PaletteReference {
@@ -54,7 +51,7 @@ export function reassignObjectPaletteReferences(
   let changes = 0;
   const visit = (objects: readonly Paintable[]): void => {
     for (const object of objects) {
-      const paints = object.get(VIGILIA_PAINT_PROPERTY);
+      const paints = object.get(YUNARI_PAINT_PROPERTY);
       if (isPaintRefs(paints)) {
         const next = Object.fromEntries(
           Object.entries(paints).map(([property, ref]) => {
@@ -65,9 +62,9 @@ export function reassignObjectPaletteReferences(
             return [property, ref];
           }),
         );
-        object.set(VIGILIA_PAINT_PROPERTY, next);
+        object.set(YUNARI_PAINT_PROPERTY, next);
       }
-      const text = object.get(VIGILIA_TEXT_PROPERTY);
+      const text = object.get(YUNARI_TEXT_PROPERTY);
       if (isText(text)) {
         const runs = text.runs.map((run) => {
           const color = run.style?.color;
@@ -75,7 +72,7 @@ export function reassignObjectPaletteReferences(
           changes += 1;
           return { ...run, style: { ...run.style, color: { ref: to } } };
         });
-        object.set(VIGILIA_TEXT_PROPERTY, { ...text, runs });
+        object.set(YUNARI_TEXT_PROPERTY, { ...text, runs });
       }
       if (object instanceof Group) visit(object.getObjects());
     }
@@ -97,16 +94,16 @@ function referenceOn(
   ref: `palette.${string}`,
 ): PaletteReference | undefined {
   const runs: number[] = [];
-  const text = object.get(VIGILIA_TEXT_PROPERTY);
+  const text = object.get(YUNARI_TEXT_PROPERTY);
   if (isText(text))
     text.runs.forEach((run, index) => {
       if (run.style?.color?.ref === ref) runs.push(index);
     });
-  const paints = object.get(VIGILIA_PAINT_PROPERTY);
+  const paints = object.get(YUNARI_PAINT_PROPERTY);
   const painted = isPaintRefs(paints) && Object.values(paints).includes(ref);
   // A chart is a canvas object like any other, and names its tokens in
   // `settings` rather than in paint — a gauge is a canvas object and carries no
-  // `vigiliaPaint` at all. Reading it here is what stops the panel calling a
+  // `yunariPaint` at all. Reading it here is what stops the panel calling a
   // token dead while a chart is visibly painted with it. The *rewrite* stays in
   // `ChartManager`, which owns the chart and has to re-apply the engine option
   // afterwards; reading is not that decision.

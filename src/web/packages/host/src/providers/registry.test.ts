@@ -1,4 +1,4 @@
-import type { Sample, SampleEntry } from "@vigilia/renderer-core";
+import type { Sample, SampleEntry } from "@yunari/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import type { DeviceAssignment } from "./lhm-mapping.js";
 import type {

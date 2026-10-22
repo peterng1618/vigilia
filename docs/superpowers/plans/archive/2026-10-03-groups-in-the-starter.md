@@ -81,7 +81,7 @@ exercises. Each is pinned by a test in the task named.
 **Constraints:** the child objects are **not** re-authored. Their ids (`cpu-card-value`,
 `cpu-card-load`, …), their bindings, their `left`/`top` and their paint all stay exactly as
 they are, so every binding in `new-fabric-theme.ts` keeps resolving and no e2e fixture's
-`data-vigilia-*` selector changes meaning.
+`data-yunari-*` selector changes meaning.
 
 The decision that matters: **group-local or artboard coordinates.** §57 says groups compose
 transforms, and Fabric's own group semantics put children in group-local space. Converting

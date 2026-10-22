@@ -9,7 +9,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
-import { readThemePackage } from "@vigilia/theme-package";
+import { readThemePackage } from "@yunari/theme-package";
 import {
   buildComposition,
   importBackdrop,
@@ -57,7 +57,7 @@ const HOST_PORT = 4224;
 const APP_DIR = path.join(here, "..", "..", ".e2e-display-app");
 const THEMES_DIR = path.join(APP_DIR, "themes");
 /** Where the exported package is kept, so the import below can reopen it. */
-const EXPORTED = path.join(APP_DIR, "exported.vigilia-theme");
+const EXPORTED = path.join(APP_DIR, "exported.yunari-theme");
 /** The folder this spec seeds the exported document under. The document mints
     its own UUID, so the library folder name is the spec's choice, not the id. */
 const THEME_ID = "e2e-author-journey";
@@ -98,7 +98,7 @@ async function startHost(): Promise<ChildProcess> {
   const child = spawn(
     "node",
     [
-      "packages/host/bin/vigilia.js",
+      "packages/host/bin/yunari.js",
       "--no-browser",
       "--port",
       String(HOST_PORT),
@@ -137,7 +137,7 @@ async function shootDisplay(
   // The chart families draw from a rolling window, so a frame caught before
   // the first sample would be an empty card rather than the composition.
   await page.waitForFunction(
-    () => !document.querySelector("[data-vigilia-load-failure]"),
+    () => !document.querySelector("[data-yunari-load-failure]"),
     undefined,
     { timeout: 30_000 },
   );
@@ -246,16 +246,16 @@ test.describe("the rebuilt composition, on a display", () => {
     // photograph in the glass proof rather than here.
     const cpuCard = await readObject(page, "cpu-card");
     expect(
-      (cpuCard?.["vigiliaPaint"] as { fill?: string } | undefined)?.fill,
+      (cpuCard?.["yunariPaint"] as { fill?: string } | undefined)?.fill,
       "a card the author frosted carries the frosted material",
     ).toBe("palette.frost");
 
     // The other half of the rule: a fill the author chose is theirs, and a
     // treatment is layered over it rather than overwriting it.
     await selectLayer(page, "cpu-card");
-    await chooseToken(page, "[data-vigilia-panel-fill]", "Panel");
+    await chooseToken(page, "[data-yunari-panel-fill]", "Panel");
     expect(
-      (await readObject(page, "cpu-card"))?.["vigiliaPaint"],
+      (await readObject(page, "cpu-card"))?.["yunariPaint"],
       "a fill the author picked is left alone",
     ).toEqual({ fill: "palette.panel", stroke: "palette.panelStroke" });
 

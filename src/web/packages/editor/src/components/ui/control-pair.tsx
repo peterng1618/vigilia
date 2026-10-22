@@ -21,7 +21,7 @@ import {
  * shows a rounded number in the field it did not edit, so writing the sibling
  * would quantise the dimension behind the author's back.
  *
- * The row carries `data-vigilia-pair` so a suite can read which two fields share
+ * The row carries `data-yunari-pair` so a suite can read which two fields share
  * a line; the halves' own hooks stay on their inputs.
  */
 export function ControlPair(props: {
@@ -46,7 +46,7 @@ export function ControlPair(props: {
   const ids = useControlIds(undefined);
 
   return (
-    <div data-vigilia-pair="">
+    <div data-yunari-pair="">
       <ControlRow ids={ids} label={label} density={density}>
         {halves.map((half) => (
           <ControlNumber

@@ -1,13 +1,13 @@
-# AGENTS.md — Vigilia
+# AGENTS.md — Yunari
 
 Project-specific facts and guardrails for coding agents. **Superpowers is the
 sole development-process owner**: use its brainstorming, design/spec, planning,
 execution, review and verification workflows rather than creating a parallel
-Vigilia process.
+Yunari process.
 
 ## Project
 
-- Repo: `peterng1618/vigilia`; default branch `main`; integration branch
+- Repo: `peterng1618/yunari`; default branch `main`; integration branch
   `develop`; remote `origin`.
 - TypeScript/npm workspace at `src/web/`. No .NET or Python toolchain.
 - Node 22.12+, 24 or 26+. Vitest + Playwright; Biome formats and lints.
@@ -28,7 +28,7 @@ Vigilia process.
   enable, disable, copy, edit or remove plugins, skills, hooks, MCP servers,
   Claude/Codex settings or `AGENTS.md` unless the user explicitly requests that
   exact change. Superpowers owns the workflow and its artifacts: never build a
-  parallel Vigilia process, a project workflow skill, an alternate spec/plan
+  parallel Yunari process, a project workflow skill, an alternate spec/plan
   directory, or a duplicate of its instructions elsewhere in the repo.
   Designs/specs live in `docs/superpowers/specs/`; executable plans in
   `docs/superpowers/plans/`; completed or superseded plans move to
@@ -170,7 +170,7 @@ Vigilia process.
 
 ## Reuse before build
 
-**Vigilia is a product, not a framework to rebuild the platform under.** The
+**Yunari is a product, not a framework to rebuild the platform under.** The
 default failure is not a hard bug — it is judging a problem "simple", writing it
 from scratch, and discovering three tasks later that it was a rabbit hole that
 someone else had already mapped. That is the expensive kind of wrong: it looks
@@ -230,7 +230,7 @@ that nobody solved this shape, is worth nothing.
 
 Superpowers owns the whole change lifecycle — brainstorm, spec, plan, execute
 through subagents, track progress in its `.superpowers/sdd/` ledger, test, and
-close the plan and spec out when it is done. These are Vigilia-specific
+close the plan and spec out when it is done. These are Yunari-specific
 evidence rules inside that lifecycle:
 
 - Unit-test pure decisions and contracts; browser-test wiring and visible
@@ -250,15 +250,15 @@ evidence rules inside that lifecycle:
 
 Run from `src/web/`; the scripts are `package.json`'s, so read them there rather
 than trusting a copy. The one command that is not a script is the host:
-`node packages/host/bin/vigilia.js --no-browser`, after building it. See
+`node packages/host/bin/yunari.js --no-browser`, after building it. See
 *Important traps*.
 
 ## Important traps
 
-- Host binary is `vigilia-dashboard`; plain `vigilia` is unrelated on npm. Build
-  the host before running `bin/vigilia.js`.
+- Host binary is `yunari-dashboard`; plain `yunari` is unrelated on npm. Build
+  the host before running `bin/yunari.js`.
 - Install Chromium with `npx playwright install chromium` if needed.
-- Screenshot capture requires `VIGILIA_CAPTURE=1` and `--workers=1`; capture
+- Screenshot capture requires `YUNARI_CAPTURE=1` and `--workers=1`; capture
   only affected actions registered in `docs/evidence/screenshots/README.md`.
 - Vite 8 uses Rolldown; `manualChunks` must be a function.
 - Use `fileURLToPath` for file URLs on Windows.

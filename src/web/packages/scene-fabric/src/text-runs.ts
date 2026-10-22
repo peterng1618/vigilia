@@ -2,7 +2,7 @@ import {
   type PlanTextSegment,
   type ResolvedStyle,
   STYLE_PROPERTIES,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { paintFor } from "./paint.js";
 
 /**

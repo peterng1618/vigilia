@@ -4,7 +4,7 @@
 
 **Goal:** Complete spec 0011 by adding semantic creation commands for the four supported chart families.
 
-**Architecture:** `new-object-defaults.ts` derives token-safe chart settings from the open envelope. `ChartManager` constructs, adds, selects, hydrates and records a `VigiliaChart`; `new-object-panel.ts` renders commands and delegates. The fork retains generic construction, ordering and history ownership.
+**Architecture:** `new-object-defaults.ts` derives token-safe chart settings from the open envelope. `ChartManager` constructs, adds, selects, hydrates and records a `YunariChart`; `new-object-panel.ts` renders commands and delegates. The fork retains generic construction, ordering and history ownership.
 
 **Tech Stack:** TypeScript, Fabric 7.4.0, adopted `fabricjs-image-editor`, Vitest, Playwright.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Reuse the fork for generic editor mechanics; do not add an editor abstraction.
-- Persist typed Vigilia chart settings only; raw ECharts options and runtime samples never enter a theme.
+- Persist typed Yunari chart settings only; raw ECharts options and runtime samples never enter a theme.
 - Every chart paint uses an existing `palette.<id>` reference; unavailable globals reject creation.
 - Use the existing `ChartManager` as the chart lifecycle/renderer owner.
 - No dependency, compatibility layer, or mutable document default state.
@@ -35,7 +35,7 @@
 - Test: `src/web/packages/editor/src/new-object-defaults.test.ts`
 
 **Interfaces:**
-- Consumes: `FabricGlobals`, `ChartFamily`, and family defaults from `@vigilia/renderer-core`.
+- Consumes: `FabricGlobals`, `ChartFamily`, and family defaults from `@yunari/renderer-core`.
 - Produces: `createNewChartDefaults(globals: FabricGlobals | undefined, family: ChartFamily): ChartContent["settings"]`.
 
 - [ ] **Step 1: Write failing tests**
@@ -70,7 +70,7 @@ export function createNewChartDefaults(
   globals: FabricGlobals | undefined,
   family: ChartFamily,
 ): ChartContent["settings"] {
-  const { [VIGILIA_PAINT_PROPERTY]: paints } = createNewPaintDefaults(globals);
+  const { [YUNARI_PAINT_PROPERTY]: paints } = createNewPaintDefaults(globals);
   return settingsFor(family, paints.fill!);
 }
 ```
@@ -85,7 +85,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Verify editor types**
 
-Run: `npm run typecheck -w @vigilia/editor`
+Run: `npm run typecheck -w @yunari/editor`
 
 Expected: PASS.
 
@@ -115,7 +115,7 @@ it("adds, selects and records a palette-backed gauge", () => {
   expect(canvas.add).toHaveBeenCalledWith(
     expect.objectContaining({ family: "gauge", width: expect.any(Number) }),
   );
-  expect(canvas.setActiveObject).toHaveBeenCalledWith(expect.any(VigiliaChart));
+  expect(canvas.setActiveObject).toHaveBeenCalledWith(expect.any(YunariChart));
   expect(historyManager.saveState).toHaveBeenCalledTimes(1);
 });
 ```
@@ -132,7 +132,7 @@ Expected: FAIL because `addChart` does not exist.
 
 ```typescript
 addChart(family: ChartFamily): void {
-  const chart = new VigiliaChart({
+  const chart = new YunariChart({
     family,
     settings: createNewChartDefaults(this.#globals, family),
     width: 240,
@@ -159,7 +159,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Verify editor types**
 
-Run: `npm run typecheck -w @vigilia/editor`
+Run: `npm run typecheck -w @yunari/editor`
 
 Expected: PASS.
 
@@ -242,20 +242,20 @@ Expected: PASS.
 ```typescript
 test("adds a chart family with authored settings that survive package reopen", async ({ page }) => {
   await page.getByRole("button", { name: "Gauge" }).click();
-  await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-chart-setting="thickness"]')).toBeVisible();
   const saved = await savePackage(page);
-  await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
-    name: "created-chart.vigilia-theme",
+  await page.locator('input[accept=".yunari-theme"]').setInputFiles({
+    name: "created-chart.yunari-theme",
     mimeType: "application/octet-stream",
     buffer: saved.bytes,
   });
-  await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-chart-setting="thickness"]')).toBeVisible();
 });
 ```
 
 - [ ] **Step 6: Build and run browser proof**
 
-Run: `npm run build -w @vigilia/editor; npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'chart family.*package reopen'`
+Run: `npm run build -w @yunari/editor; npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'chart family.*package reopen'`
 
 Expected: PASS.
 
@@ -267,12 +267,12 @@ Add this browser case, then run it:
 test("captures chart creation commands for visual review", async ({ page }, testInfo) => {
   await page.goto(EDITOR);
   await page.getByRole("button", { name: "Gauge" }).click();
-  await expect(page.locator('[data-vigilia-chart-setting="thickness"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-chart-setting="thickness"]')).toBeVisible();
   await captureVisualReview(page, testInfo, "editor-fork-chart-creation");
 });
 ```
 
-Run: `$env:VIGILIA_CAPTURE='1'; npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'captures chart creation commands' --workers=1`
+Run: `$env:YUNARI_CAPTURE='1'; npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'captures chart creation commands' --workers=1`
 
 Expected: PASS; inspect the generated PNG and stage it only if it proves the changed UI.
 
@@ -292,9 +292,9 @@ git commit -m "feat(editor): complete chart creation commands"
 Run from `src/web/`:
 
 ```powershell
-npm run typecheck -w @vigilia/editor
+npm run typecheck -w @yunari/editor
 npm test -- --run packages/editor/src/new-object-defaults.test.ts packages/editor/src/chart-manager/index.dom.test.ts packages/editor/src/new-object-panel.dom.test.ts
-npm run build -w @vigilia/editor
+npm run build -w @yunari/editor
 npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'chart family.*package reopen'
 ```
 

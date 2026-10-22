@@ -5,7 +5,7 @@ import { PaintList, type PaintListProps } from "./paint-list.js";
  * The Tokens pane's body: the paint library, under the pane's own chrome.
  *
  * **The pane's identity is not written here.** `Pane` is the one owner of
- * `data-vigilia-panel` (`editor-shell/pane.tsx:43`), and this renders inside it;
+ * `data-yunari-panel` (`editor-shell/pane.tsx:43`), and this renders inside it;
  * a second element under that name is a strict-mode failure for every locator
  * that browses by it.
  *

@@ -39,7 +39,7 @@ Non-obvious failure modes worth checking before repeating expensive investigatio
 ## Editor architecture
 
 - **Do not build generic editor mechanics when a foundation can own them.**
-  Selection, controls, grouping, clipboard and object tools are not Vigilia's
+  Selection, controls, grouping, clipboard and object tools are not Yunari's
   product.
 - **Evaluate a candidate against the true blocker first.** The earlier Fabric
   rejection was about two renderers; once Fabric became the one renderer, that
@@ -67,7 +67,7 @@ Non-obvious failure modes worth checking before repeating expensive investigatio
 
 - Signing in uses GitHub's **device flow**, which needs a registered OAuth App
   with **Device Flow enabled** — an account-holder action, not an agent's.
-- The app's client id is read from `VIGILIA_GITHUB_CLIENT_ID`. With it unset,
+- The app's client id is read from `YUNARI_GITHUB_CLIENT_ID`. With it unset,
   `POST /api/github/device` answers `503` naming registration rather than
   failing obscurely; nothing else in the store is affected.
 - Requested scope is `public_repo` only: the flow forks a public repo and opens

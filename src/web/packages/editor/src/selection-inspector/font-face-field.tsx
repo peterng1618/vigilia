@@ -60,7 +60,7 @@ export function FontFaceField(props: {
 
   return (
     <div
-      data-vigilia-font-face-field=""
+      data-yunari-font-face-field=""
       className="flex flex-col gap-[var(--space-6)]"
     >
       <h3 className="m-0 text-xs font-semibold text-muted">

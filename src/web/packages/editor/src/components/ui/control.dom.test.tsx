@@ -1219,7 +1219,7 @@ it("states the stored value its own track cannot reach, rather than drawing a di
   expect(well.value).toBe("100");
 
   const note = document.querySelector<HTMLElement>(
-    "[data-vigilia-slider-out-of-range]",
+    "[data-yunari-slider-out-of-range]",
   );
   expect(
     note,
@@ -1246,7 +1246,7 @@ it("states the stored value its own track cannot reach, rather than drawing a di
     />,
   );
   const under = document.querySelector<HTMLElement>(
-    "[data-vigilia-slider-out-of-range]",
+    "[data-yunari-slider-out-of-range]",
   );
   expect(under?.textContent).toContain("-500");
   expect(under?.textContent).toContain("-360");
@@ -1263,7 +1263,7 @@ it("states the stored value its own track cannot reach, rather than drawing a di
     />,
   );
   expect(
-    document.querySelector("[data-vigilia-slider-out-of-range]"),
+    document.querySelector("[data-yunari-slider-out-of-range]"),
     "an in-range slider carries the out-of-range note",
   ).toBeNull();
 });
@@ -1321,18 +1321,18 @@ it("toggles an inspector section from its header", async () => {
   );
 });
 
-it("names a section with data-vigilia-section from its own id", async () => {
+it("names a section with data-yunari-section from its own id", async () => {
   await mount(
     <InspectorSection id="content" title="Content">
       <span>Position</span>
     </InspectorSection>,
   );
-  // Plan 3's locators read `[data-vigilia-section="…"]`; the attribute has to
+  // Plan 3's locators read `[data-yunari-section="…"]`; the attribute has to
   // be on the section element itself, not only on the header and the panel.
-  const section = document.querySelector('[data-vigilia-section="content"]');
+  const section = document.querySelector('[data-yunari-section="content"]');
   expect(
     section,
-    "the data-vigilia-section hook the later plans read did not render",
+    "the data-yunari-section hook the later plans read did not render",
   ).toBeTruthy();
   expect(section?.tagName).toBe("SECTION");
 });

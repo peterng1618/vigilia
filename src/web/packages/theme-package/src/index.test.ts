@@ -28,7 +28,7 @@ const archive = (
   zipSync({
     "manifest.json": strToU8(
       JSON.stringify({
-        format: "vigilia-theme-package",
+        format: "yunari-theme-package",
         version: 1,
         theme: "theme.json",
         ...manifest,
@@ -66,7 +66,7 @@ describe("theme package", () => {
     const bytes = zipSync({
       "manifest.json": strToU8(
         JSON.stringify({
-          format: "vigilia-theme-package",
+          format: "yunari-theme-package",
           version: 1,
           theme: "theme.json",
         }),
@@ -82,7 +82,7 @@ describe("theme package", () => {
     const bytes = zipSync({
       "manifest.json": strToU8(
         JSON.stringify({
-          format: "vigilia-theme-package",
+          format: "yunari-theme-package",
           version: 1,
           theme: "theme.json",
         }),
@@ -103,7 +103,7 @@ describe("theme package", () => {
           {
             type: "Rect",
             id: "panel",
-            vigiliaGlass: { blurRadius: 18 },
+            yunariGlass: { blurRadius: 18 },
           },
         ],
       },
@@ -119,7 +119,7 @@ describe("theme package", () => {
     expect(read.ok).toBe(true);
     if (!read.ok) return;
     expect(read.envelope.scene["objects"]).toEqual([
-      { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 18 } },
+      { type: "Rect", id: "panel", yunariGlass: { blurRadius: 18 } },
     ]);
   });
 
@@ -131,7 +131,7 @@ describe("theme package", () => {
       scene: {
         version: "7.4.0",
         objects: [
-          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 900 } },
+          { type: "Rect", id: "panel", yunariGlass: { blurRadius: 900 } },
         ],
       },
     };
@@ -146,7 +146,7 @@ describe("theme package", () => {
     const bytes = zipSync({
       "manifest.json": strToU8(
         JSON.stringify({
-          format: "vigilia-theme-package",
+          format: "yunari-theme-package",
           version: 1,
           theme: "theme.json",
         }),
@@ -195,7 +195,7 @@ describe("a package's thumbnail", () => {
       new TextDecoder().decode(unzipSync(written.bytes)["manifest.json"]!),
     ) as Record<string, unknown>;
     expect(manifest).toMatchObject({
-      format: "vigilia-theme-package",
+      format: "yunari-theme-package",
       version: 1,
       thumbnail: "thumbnail.png",
     });
@@ -277,7 +277,7 @@ describe("a package's thumbnail", () => {
     const bytes = zipSync({
       "manifest.json": strToU8(
         JSON.stringify({
-          format: "vigilia-theme-package",
+          format: "yunari-theme-package",
           version: 1,
           theme: "theme.json",
           thumbnail: "preview.png",

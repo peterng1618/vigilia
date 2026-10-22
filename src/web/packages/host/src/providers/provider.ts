@@ -1,4 +1,4 @@
-import type { SampleEntry, SensorTier } from "@vigilia/renderer-core";
+import type { SampleEntry, SensorTier } from "@yunari/renderer-core";
 import type { DeviceAssignment } from "./lhm-mapping.js";
 
 /** Provider boundary: providers acquire; the host schedules and owns history. */

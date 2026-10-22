@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
-import { readVideoFacts, videoRefusals } from "@vigilia/theme-package";
+import { readVideoFacts, videoRefusals } from "@yunari/theme-package";
 import { describe, expect, it, vi } from "vitest";
 import { ffmpegArgs, normalizeVideo } from "./normalize-video.js";
 

@@ -18,7 +18,7 @@
 
 These are decisions the spec does not make; each is settled here so a task does not have to guess.
 
-1. **The Fonts tab is the existing `FontPicker`, not a generic grid.** Spec §6 forbids rebuilding the catalogue browser, and §3's `curated-fonts` host source would be a second search over data already in the editor bundle. So the registry distinguishes a category that is **searched** (a grid) from one that has a **body** the editor already owns (`font-picker`) or another plan owns (`wallpaper-engine`). Consequence: there is no `@vigilia/font-catalog` package move and no host-side curated adapter; the generated table stays where it is.
+1. **The Fonts tab is the existing `FontPicker`, not a generic grid.** Spec §6 forbids rebuilding the catalogue browser, and §3's `curated-fonts` host source would be a second search over data already in the editor bundle. So the registry distinguishes a category that is **searched** (a grid) from one that has a **body** the editor already owns (`font-picker`) or another plan owns (`wallpaper-engine`). Consequence: there is no `@yunari/font-catalog` package move and no host-side curated adapter; the generated table stays where it is.
 2. **Wire types live in `renderer-core`**, beside the catalogue index's, because host and editor both speak them and the repo has already refused a duplicated wire type (`vg-689`).
 3. **Lucide's icon data is generated into the host at build time** (`scripts/generate-lucide-icons.mjs`). The host must not import `lucide-react`: every icon module reaches `createLucideIcon`, which imports React, and React is not the host's dependency.
 4. **Font Awesome is pinned to one jsDelivr version**, and its preview is the CDN's own SVG URL. This is the store's existing treatment for thumbnails, and it is why the search answer carries a `preview` URL rather than only an id.
@@ -59,7 +59,7 @@ The failure modes the spec implies but no happy path exercises, most likely to b
 - Create: `docs/decisions/<next free number>-the-asset-finder-is-host-searched.md`
 
 - [ ] **Step 1: Write the note** in `docs/decisions/README.md`'s template: the problem (an author has no one place to find outside material, and a key has no owner), and all seven rungs with **the searches that were run**, copying spec §10 and citing the evidence each rung stood on: the eight host settings stores, `lucide-react`'s presence at `docs/engineering/dependencies.md`, Base UI's `Dialog`, and the ecosystem comparison.
-- [ ] **Step 2: Rung 4 names the queries**, not just the libraries: "editor asset search provider registry", "VS Code tree view data provider", "Figma plugin asset panel", "Penpot asset library". Record that no editor solves attribution for a published artifact, which is why `credits.json` is Vigilia's own.
+- [ ] **Step 2: Rung 4 names the queries**, not just the libraries: "editor asset search provider registry", "VS Code tree view data provider", "Figma plugin asset panel", "Penpot asset library". Record that no editor solves attribution for a published artifact, which is why `credits.json` is Yunari's own.
 - [ ] **Step 3: Record the departure in the note** — spec §3's `curated-fonts` host source is not built, because the Fonts tab reuses `FontPicker` (spec §6). One paragraph, naming both sections.
 - [ ] **Step 4: Status `accepted`, Date `2026-10-21`**, and a `Paths:` line naming `src/web/packages/host/src/server.ts`, `src/web/packages/host/src/assets/`, `src/web/packages/host/src/settings/credentials.ts`, `src/web/packages/renderer-core/src/assets/` and `src/web/packages/editor/src/asset-finder/`.
 - [ ] **Step 5: Commit** `docs(decisions): the asset finder is searched by the host`.
@@ -300,7 +300,7 @@ export async function searchSources(
 GET  /api/assets/sources                       → { sources: AssetSourceListing[] }
 POST /api/assets/search   AssetSearchRequest   → AssetSearchAnswer
 GET  /api/assets/bytes?source=<id>&id=<rid>    → bytes, Content-Type from the source,
-                                                 X-Vigilia-Filename: <filename>
+                                                 X-Yunari-Filename: <filename>
 ```
 
 - [ ] **Step 1: Write the failing route tests.** Sources lists Lucide with `body: "grid"` and `requires: null`; search with `enabled: ["lucide"]` answers one page whose ids are `lucide:`-prefixed; an unknown source id in `enabled` is ignored; a malformed body is 400; bytes answers the SVG and its filename header; an unknown source is 404 and an id the source does not know is 404; a non-GET method is 405; every route is loopback-only where it is not read-only — search and bytes also refuse non-loopback, because a search is an outbound request the paired display did not ask for.
@@ -327,7 +327,7 @@ export function assetBytes(source: string, id: string, options?: ClientOptions):
   Promise<{ bytes: Uint8Array; filename: string } | undefined>;
 ```
 
-- [ ] **Step 1: Write the failing client test.** Each call names its route; `assetBytes` reads `X-Vigilia-Filename` and answers `undefined` on 404; a network throw becomes an empty listing / a `failed` page rather than an exception the modal must catch.
+- [ ] **Step 1: Write the failing client test.** Each call names its route; `assetBytes` reads `X-Yunari-Filename` and answers `undefined` on 404; a network throw becomes an empty listing / a `failed` page rather than an exception the modal must catch.
 - [ ] **Step 2: Write the failing dialog test.** A `className` reaches the popup; the stylesheet read from disk (the way `settings.dom.test.tsx` reads `editor-shell.css`) contains `.editor-shell-dialog--finder` with `width: min(1132px, calc(100vw - 48px))` and `height: min(852px, calc(100vh - 48px))`, and the popup scrolls inside its own body rather than the page.
 - [ ] **Step 3: Implement** the three calls and the class. The client is fetch-only, as `theme-import.ts` is.
 - [ ] **Step 4: Green, commit** `feat(editor): reach the finder's routes and give it a full window`.
@@ -506,7 +506,7 @@ export async function importFinderResult(input: {
 - [ ] **Step 1: Register four captures** — the finder on Fonts, on Icons with two sources, the failure/empty state, and Connections. A capture that is not registered may not be taken.
 - [ ] **Step 2: Assert the spec §12 claims** against routed fixtures: one search with both icon sources answers rows from both with no shared id; disabling a source removes its rows and issues no request for it; a failing source leaves the other's rows and names itself; Load more appends; the font picker no longer renders in the inspector and the field opens the modal on Fonts; Add → File's existing DOM test passes unchanged.
 - [ ] **Step 3: Red-prove at least three** — the source badge, the disabled-source saving and the stale-response discard — each by breaking the code, watching its case fail, and restoring from a copy kept outside the repo, verified with `cmp`, never `git checkout`.
-- [ ] **Step 4: Run the boundary** — `npm run build`, then `VIGILIA_CAPTURE=1 npx playwright test tests/e2e/asset-finder.spec.ts --workers=1` to a file, read its exit code directly; then the same without capture; `npm run typecheck`; `npx biome check ..`.
+- [ ] **Step 4: Run the boundary** — `npm run build`, then `YUNARI_CAPTURE=1 npx playwright test tests/e2e/asset-finder.spec.ts --workers=1` to a file, read its exit code directly; then the same without capture; `npm run typecheck`; `npx biome check ..`.
 - [ ] **Step 5: Report what the fixtures cannot prove** — no live Font Awesome request, no keyed source, and no Wallpaper Engine install in CI.
 
 ---

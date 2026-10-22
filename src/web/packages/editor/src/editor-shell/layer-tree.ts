@@ -3,8 +3,8 @@ import {
   CHART_FAMILIES,
   type ChartFamily,
   objectName,
-} from "@vigilia/renderer-core";
-import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { isLocked, YunariChart } from "@yunari/scene-fabric";
 import { type FabricObject, Group } from "fabric/es";
 import type { ShapeKind } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
@@ -124,9 +124,9 @@ function layerIds(): (object: FabricObject) => string {
   };
 }
 
-/** Fabric type tags are lowercase class names; the envelope keeps "VigiliaChart". */
+/** Fabric type tags are lowercase class names; the envelope keeps "YunariChart". */
 function kindOf(object: FabricObject): LayerKind {
-  if (object instanceof VigiliaChart) return "chart";
+  if (object instanceof YunariChart) return "chart";
   if (object instanceof Group) return "group";
   const type = (object as { type?: string }).type;
   if (type === "textbox" || type === "i-text" || type === "text") return "text";

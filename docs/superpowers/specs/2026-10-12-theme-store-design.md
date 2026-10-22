@@ -1,4 +1,4 @@
-# A theme store for Vigilia
+# A theme store for Yunari
 
 - **Status:** revised 2026-10-21 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **the pre-planning probes are answered**, and two open questions (3, freshness, and 8, the facet's buckets and tolerance) are settled by measurement rather than left as drafts — see § "Measured 2026-10-21" and § "Open questions"; **ACCEPTED 2026-10-21**, so B–G may be planned; open questions 1, 2 and 8 were decided the same day, and the four still open (4, 5, 6 and 7) are rows rather than gates
 - **Date:** 2026-10-12, **revised 2026-10-16** after the `hydralauncher/hydra-themes`
@@ -173,7 +173,7 @@ is that browsing and downloading touch no API at all.
 
 ## What already exists, and must not be rebuilt
 
-- `ADR-0004` — `@vigilia/theme-package` owns the ZIP layout and validation. A
+- `ADR-0004` — `@yunari/theme-package` owns the ZIP layout and validation. A
   validated package is the immutable portable artifact; a local folder may be an
   authoring workspace but never a competing published format.
 - `0017` — a theme is a **folder**; a ZIP is **only** what an author exports.
@@ -878,7 +878,7 @@ The envelope, each item earning its place:
   arrives.
 - **H.264 High, `yuv420p`** — 4:2:4 silently fails to decode in some browsers.
 - **Even width and height** — H.264 requires it; odd dimensions fail silently.
-- **Constant frame rate, ≤ 30fps** — and this one is Vigilia-specific:
+- **Constant frame rate, ≤ 30fps** — and this one is Yunari-specific:
   `scene-fabric/src/background-media.ts` repaints the scene once per decoded
   frame via `requestVideoFrameCallback`, so a variable cadence becomes a variable
   repaint rate. **Measured 2026-10-20** rather than assumed, on a real screen
@@ -969,7 +969,7 @@ whole-branch review and one fix round, closed with rulings R167–R171 in
 the cell's and the modal's catalogue facts, the listing with its join and its
 refusal line, and five rendered claims against a routed index. **C is live
 end to end**: the Action's first run generated `index.json` from the pinned
-generator, and `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json`
+generator, and `https://raw.githubusercontent.com/peterng1618/yunari-store/main/index.json`
 answers `200` with zero entries — the honest empty catalogue, since items arrive
 with E. **E and F landed 2026-10-22.** The acceptance
 below still decides whether A is accepted: landing is not acceptance.

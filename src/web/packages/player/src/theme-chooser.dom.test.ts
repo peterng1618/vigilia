@@ -22,15 +22,15 @@ import { uiCopy } from "./ui-copy.js";
  * refuse. Browser geometry is the e2e proof's, not this file's.
  */
 
-const CHOOSER = "[data-vigilia-theme-chooser]";
-const SELECT = "[data-vigilia-theme-select]";
+const CHOOSER = "[data-yunari-theme-chooser]";
+const SELECT = "[data-yunari-theme-select]";
 
 function skeleton(): void {
   document.body.replaceChildren();
   for (const side of ["top", "bottom"] as const) {
     const band = document.createElement("div");
-    band.id = `vigilia-chrome-${side}`;
-    band.dataset["vigiliaChrome"] = side;
+    band.id = `yunari-chrome-${side}`;
+    band.dataset["yunariChrome"] = side;
     document.body.append(band);
   }
 }
@@ -49,13 +49,13 @@ type Fetcher = (
 
 function paired(fetcher: Fetcher, token = "paired-token"): DisplaySessionToken {
   return displaySession(
-    `http://vigilia.invalid/?session=${token}`,
+    `http://yunari.invalid/?session=${token}`,
     fetcher as typeof fetch,
   );
 }
 
 function unpaired(fetcher: Fetcher): DisplaySessionToken {
-  return displaySession("http://vigilia.invalid/", fetcher as typeof fetch);
+  return displaySession("http://yunari.invalid/", fetcher as typeof fetch);
 }
 
 const THEMES: readonly ThemeChoice[] = [
@@ -90,7 +90,7 @@ describe("choosing a theme for this display", () => {
 
     const headers = new Headers(init?.headers);
     expect(headers.get("content-type")).toBe("application/json");
-    expect(headers.get("x-vigilia-session")).toBe("paired-token");
+    expect(headers.get("x-yunari-session")).toBe("paired-token");
   });
 
   it("does not offer a chooser to a session-less reader", async () => {
@@ -151,7 +151,7 @@ describe("choosing a theme for this display", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0]?.[0]).toBe("/api/themes");
     expect(
-      new Headers(fetcher.mock.calls[0]?.[1]?.headers).get("x-vigilia-session"),
+      new Headers(fetcher.mock.calls[0]?.[1]?.headers).get("x-yunari-session"),
     ).toBe("paired-token");
   });
 
@@ -203,7 +203,7 @@ describe("choosing a theme for this display", () => {
 
     const reference = putStrip({
       side: "bottom",
-      id: "vigilia-reference-strip",
+      id: "yunari-reference-strip",
       text: "x",
       background: "#14161c",
       color: "#e8ecf3",
@@ -217,7 +217,7 @@ describe("choosing a theme for this display", () => {
     // bottom slot.
     expect(strip.style.padding).toContain("env(safe-area-inset-bottom)");
     expect(strip.style.font).toBe(reference.style.font);
-    expect(strip.dataset["vigiliaChromeStrip"]).toBeDefined();
+    expect(strip.dataset["yunariChromeStrip"]).toBeDefined();
   });
 
   it("takes itself away when the library cannot be read", async () => {

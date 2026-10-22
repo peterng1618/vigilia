@@ -64,7 +64,7 @@ describe("object action registry", () => {
       .map((action) => action.id);
     expect(destructive).toEqual(["delete"]);
     expect(destructiveMarker(objectAction("delete"))).toEqual({
-      "data-vigilia-destructive": "",
+      "data-yunari-destructive": "",
     });
     expect(destructiveMarker(objectAction("copy"))).toEqual({});
   });

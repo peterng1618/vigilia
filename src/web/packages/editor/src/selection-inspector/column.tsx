@@ -195,7 +195,7 @@ function fieldControl(
  * apply or abandon it. The session is `crop-manager`'s and React holds only its
  * state, so the buttons drive `CropEdits` and the drag stays Fabric's.
  *
- * The buttons carry the same `data-vigilia-crop*` hooks the imperative row did,
+ * The buttons carry the same `data-yunari-crop*` hooks the imperative row did,
  * because the suites read them by hook rather than by their visible word.
  */
 function CropRow(props: {
@@ -210,7 +210,7 @@ function CropRow(props: {
           <button
             key={label}
             type="button"
-            data-vigilia-crop-aspect={label}
+            data-yunari-crop-aspect={label}
             className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
             onClick={() => edits.setAspect(ratio)}
           >
@@ -219,7 +219,7 @@ function CropRow(props: {
         ))}
         <button
           type="button"
-          data-vigilia-crop-apply=""
+          data-yunari-crop-apply=""
           className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
           onClick={() => edits.apply()}
         >
@@ -227,7 +227,7 @@ function CropRow(props: {
         </button>
         <button
           type="button"
-          data-vigilia-crop-cancel=""
+          data-yunari-crop-cancel=""
           className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
           onClick={() => edits.cancel()}
         >
@@ -242,7 +242,7 @@ function CropRow(props: {
     <div className="flex items-center gap-[var(--space-6)]">
       <button
         type="button"
-        data-vigilia-crop=""
+        data-yunari-crop=""
         className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
         onClick={() => edits.begin()}
       >

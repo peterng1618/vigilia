@@ -15,7 +15,7 @@ host, a theme library or a browser produce findings about *each other*.
 
 ```bash
 # 1. host, on a port and themes dir of your own
-node packages/host/bin/vigilia.js --no-browser --port 5311 \
+node packages/host/bin/yunari.js --no-browser --port 5311 \
   --app-dir <scratch> --themes-dir <scratch>/themes
 
 # 2. chromium with a debugging port of your own

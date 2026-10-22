@@ -32,7 +32,7 @@ the widened reading is disabled"*, and a case implies something runnable with a
 fixture. The shape of the problem: **a check whose virtue is that it has no file
 to drift, now owing a runnable case that a pasted command cannot carry.**
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every `scripts/*.mjs` for a selector instrument
 (`grep -ci 'selector\|className\|classList\|class=' scripts/dead-code-sweep.mjs`
@@ -146,7 +146,7 @@ Measured 2026-10-17 at `caa7ee86`, by the instrument itself
 
 | Measurement | Value | How |
 |---|---|---|
-| Stylesheet tokens | `editor-shell.css` **80** classes + **31** `data-*`; `vigilia-page.css` **17** + **2**; **130** total | the script's first line |
+| Stylesheet tokens | `editor-shell.css` **80** classes + **31** `data-*`; `yunari-page.css` **17** + **2**; **130** total | the script's first line |
 | The document's §3 table, at `a7ef0c3a` | 84 + 32 + 17 + 2 = **135** | the document — **stale**, `editor-shell.css` moved under Phase 20's token work |
 | Classes production source writes (whole literals) | **331** | the script |
 | Of those, defined by one of the two stylesheets | **97** | the script |
@@ -169,15 +169,15 @@ and every one is a real DOM class write:
 | `editor-shell-publish-live` | `publish-control.tsx` | an unstyled hook inside `.editor-shell-publish-popup`'s column |
 | `editor-shell-publish-reason` | `publish-control.tsx` | the same |
 | `editor-shell-rail-slot` | `rail.tsx` | an unstyled hook; `shell-layout.dom.test.tsx` queries it |
-| `vigilia-angle-indicator` | `indicator-manager/index.ts` → `cursor-indicator.ts` | every property is set inline from `CURSOR_INDICATOR_STYLES` |
-| `vigilia-field-hint` | `controls/settings-field.ts` | **the row's instance** — hidden by the inline `cssText` beside it |
-| `vigilia-run-label` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
-| `vigilia-run-note` | `runs.tsx` ×3, `chart-manager/chart-fields.tsx` | utilities on three of its four sites |
-| `vigilia-run-preview` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
-| `vigilia-size-indicator` | `indicator-manager/index.ts` | the same as the angle indicator |
+| `yunari-angle-indicator` | `indicator-manager/index.ts` → `cursor-indicator.ts` | every property is set inline from `CURSOR_INDICATOR_STYLES` |
+| `yunari-field-hint` | `controls/settings-field.ts` | **the row's instance** — hidden by the inline `cssText` beside it |
+| `yunari-run-label` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
+| `yunari-run-note` | `runs.tsx` ×3, `chart-manager/chart-fields.tsx` | utilities on three of its four sites |
+| `yunari-run-preview` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
+| `yunari-size-indicator` | `indicator-manager/index.ts` | the same as the angle indicator |
 
 The row's instance is one of eleven, and the row's own "occurs exactly ONCE in
-the entire checkout" is a statement about the *string* `vigilia-field-hint`, not
+the entire checkout" is a statement about the *string* `yunari-field-hint`, not
 about the direction. **The direction had ten other instances nobody had counted**,
 which is the argument for the widening rather than against it.
 
@@ -224,7 +224,7 @@ says where the write is.
 
 **4. The reverse direction is narrowed to the stylesheets' own namespaces.** A
 namespace is a leading hyphen-separated segment the two stylesheets use on more
-than one class — `editor-`, `vigilia-`, `theme-`. The reason is Rung 4's: a
+than one class — `editor-`, `yunari-`, `theme-`. The reason is Rung 4's: a
 Tailwind utility is not a missing stylesheet rule, it is generated, and
 `cssguard`'s own table shows every other tool in this space needing a hand-kept
 list to say so. **A class outside every namespace is counted and not named** —
@@ -235,7 +235,7 @@ of them Tailwind's vocabulary or a third party's.
 **The `data-*` half keeps the spelling reading, deliberately.** The ruling names
 `className`, `classList` and `class=`, which are classes. An attribute has no
 single write form: it is written through `dataset`'s camelCase form
-(`screen.dataset["vigiliaDisplayScreen"]`), through `setAttribute`, through JSX
+(`screen.dataset["yunariDisplayScreen"]`), through `setAttribute`, through JSX
 `data-x={…}` and through a spread object, and §4 of the document clears five of
 them by hand for exactly that reason. Covering it is a separate design, and this
 note records it as an open asymmetry rather than pretending the halves are
@@ -256,7 +256,7 @@ symmetric.
 - **`editor-shell.css` is in no gate** (`vg-274`), so this instrument is one of
   the few things reading it at all. It reports; nothing blocks on it.
 - **The namespace rule is inference, and inference can be wrong in both
-  directions**: a Tailwind utility beginning `editor-`, `vigilia-` or `theme-`
+  directions**: a Tailwind utility beginning `editor-`, `yunari-` or `theme-`
   would be named as a finding, and a stylesheet-namespaced class written by a
   third party would be named as one too. Both are visible in the report's own
   output rather than silent.

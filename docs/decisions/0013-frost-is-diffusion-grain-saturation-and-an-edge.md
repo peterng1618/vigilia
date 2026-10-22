@@ -101,7 +101,7 @@ sparklines take a new light ink, because a mid-luma blue is 37 away from a
 mid-luma field and reads as a soft grey line. The gauges keep their own colours
 — 76 and 131 away, and thick enough to read.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched `packages/*/src` for `noise|grain|dither|createPattern|saturate`.
 

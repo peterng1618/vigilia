@@ -1,4 +1,4 @@
-import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
+import { DASHBOARD_THEME_KIND } from "@yunari/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import {
   CATALOGUE_CDN_BASE,
@@ -27,7 +27,7 @@ const FACETS = {
 };
 
 const ENTRY = {
-  id: "vigilia/office-wall",
+  id: "yunari/office-wall",
   kind: DASHBOARD_THEME_KIND,
   name: "Office wall",
   version: "1.3.0",
@@ -36,7 +36,7 @@ const ENTRY = {
   downloads: 42,
   favorites: 7,
   packageUrl:
-    "https://github.com/peterng1618/vigilia-store/releases/download/office-wall-1.3.0.zip",
+    "https://github.com/peterng1618/yunari-store/releases/download/office-wall-1.3.0.zip",
   thumbnail: "office-wall/thumbnail.png",
   facets: FACETS,
 };
@@ -127,7 +127,7 @@ describe("the catalogue's source", () => {
       fetch: answering(
         indexWith([
           ENTRY,
-          { ...ENTRY, id: "vigilia/widget", kind: "widget-theme" },
+          { ...ENTRY, id: "yunari/widget", kind: "widget-theme" },
         ]),
       ),
     });
@@ -147,7 +147,7 @@ describe("the catalogue's source", () => {
         new Response(
           indexWith([
             ENTRY,
-            { ...ENTRY, id: "vigilia/widget", kind: "widget-theme" },
+            { ...ENTRY, id: "yunari/widget", kind: "widget-theme" },
           ]),
         ),
       )
@@ -173,7 +173,7 @@ describe("the catalogue's source", () => {
         new Response(
           indexWith([
             ENTRY,
-            { ...ENTRY, id: "vigilia/widget", kind: "widget-theme" },
+            { ...ENTRY, id: "yunari/widget", kind: "widget-theme" },
           ]),
         ),
       )

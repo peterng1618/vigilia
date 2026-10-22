@@ -24,7 +24,7 @@ throws if a licence is wrong either: the URL 200s, the font loads, and
 Both are invisible until someone audits the notices or a specimen disagrees with
 the canvas.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scripts/` (seven `.mjs`), `src/web/packages/host/scripts/`,
 `src/web/packages/player/scripts/`, `*.generated.*` across `src/` (none),
@@ -164,7 +164,7 @@ off-the-shelf answer.
 |---|---|---|---|---|
 | Hand-write 261 faces and 379 trios | none of the per-family facts are hand-authorable | unbounded | licence and weight errors are invisible; a Fontsource version bump silently strands 261 URLs | rejected |
 | Depend on `@fontsource/*` | registry half solved; **pairing half unsolved** | 174–261 packages, licence review each | no pairing metadata exists to import; dependency surface for a catalogue that changes twice a year | rejected |
-| `next/font/google` at build time | solves fetch-and-self-host for one framework | Next coupling | inapplicable outside Next; pins nothing and emits nothing Vigilia can read | rejected |
+| `next/font/google` at build time | solves fetch-and-self-host for one framework | Next coupling | inapplicable outside Next; pins nothing and emits nothing Yunari can read | rejected |
 | **Generate a committed module from a pinned revision** | whole shape, and the join/clamp/licence steps are ours either way | one 261-line script, run by hand | the generated file is 261+379 records and must be regenerated on any upstream change — the point of the pin | **chosen** |
 
 ## Rung 6 — probe

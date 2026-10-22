@@ -137,9 +137,9 @@ export function spokenIn(element: Element): string[] {
     // reading in a shape this does not know is pushed whole and goes red, so a
     // change to the readout cannot quietly take the concept out of the net.
     out.push(
-      named.hasAttribute("data-vigilia-zoom")
+      named.hasAttribute("data-yunari-zoom")
         ? name.replace(/: \d+(?:\.\d+)?%$/, "")
-        : named.hasAttribute("data-vigilia-qr")
+        : named.hasAttribute("data-yunari-qr")
           ? // The code's label is the concept and then the address it encodes,
             // which is a reading: the address is dropped by its own shape, and
             // what is left is compared against the sentence the table composes
@@ -150,18 +150,17 @@ export function spokenIn(element: Element): string[] {
     );
   }
   for (const button of element.querySelectorAll("button")) {
-    if (button.getAttribute("data-vigilia-palette-token-row") !== null)
-      continue;
+    if (button.getAttribute("data-yunari-palette-token-row") !== null) continue;
     // A font picker's face and trio rows print the catalogue's own words — a
     // family, a weight, a trio's name — which is data of the same kind as a
     // token's name, and `ui-copy-panels.test.ts` carves the same two rows out
     // of its own button net for the same reason.
     if (
-      button.hasAttribute("data-vigilia-font-face-row") ||
-      button.hasAttribute("data-vigilia-font-trio-row")
+      button.hasAttribute("data-yunari-font-face-row") ||
+      button.hasAttribute("data-yunari-font-trio-row")
     )
       continue;
-    if (button.querySelector("[data-vigilia-value]") !== null) continue;
+    if (button.querySelector("[data-yunari-value]") !== null) continue;
     if (button.hasAttribute("aria-controls")) continue;
     // A facet option's row prints a value beside the count of themes behind it:
     // the value is the record's own reading for most facets — an author's name,
@@ -170,10 +169,10 @@ export function spokenIn(element: Element): string[] {
     // per facet shape and would make a ratio or a size an ownerless word. What
     // the facet *says* is read: its name from the trigger, and its sentence and
     // its group headings from the popup.
-    if (button.hasAttribute("data-vigilia-facet-option")) continue;
+    if (button.hasAttribute("data-yunari-facet-option")) continue;
     // The readout's trigger prints the reading alone, so the button half has no
     // words of its own; the concept above is where its name is read.
-    if (button.hasAttribute("data-vigilia-zoom")) continue;
+    if (button.hasAttribute("data-yunari-zoom")) continue;
     out.push(spokenText(button).trim());
   }
   // A heading and a definition term carry a surface's own words the way a

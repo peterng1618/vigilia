@@ -5,7 +5,7 @@
 
 ## Why
 
-Vigilia's engine is sound: real telemetry through two providers, a Fabric
+Yunari's engine is sound: real telemetry through two providers, a Fabric
 renderer, a persisted envelope, LAN pairing and device assignment. What is
 missing is the part a theme **author** and a **consumer** actually touch.
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { type Artboard, type ScenePlan } from "@vigilia/renderer-core";
+import { type Artboard, type ScenePlan } from "@yunari/renderer-core";
 import { Group, Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { type FabricSceneHandle, mountFabricScene } from "./scene.js";
@@ -48,7 +48,7 @@ describe("mountFabricScene updateArtboard", () => {
     });
 
     const media = element.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     expect(media?.src).toBe("blob:b");
     scene.dispose();
@@ -70,7 +70,7 @@ describe("mountFabricScene updateArtboard", () => {
       resolveAsset: (assetId) => ({ url: `blob:${assetId}` }),
     });
     const layer = element.querySelector<HTMLElement>(
-      "[data-vigilia-background-media]",
+      "[data-yunari-background-media]",
     );
 
     scene.updateArtboard({
@@ -101,7 +101,7 @@ describe("mountFabricScene updateArtboard", () => {
         backgroundMedia: { assetId: "b", fit: "theme" },
       }),
     ).not.toThrow();
-    expect(element.querySelector("[data-vigilia-background-media]")).toBeNull();
+    expect(element.querySelector("[data-yunari-background-media]")).toBeNull();
 
     scene.dispose();
     element.remove();
@@ -217,7 +217,7 @@ describe("mountFabricScene's video repaint", () => {
           originX: "left",
           originY: "top",
           fill: "rgba(255, 255, 255, 0.2)",
-          vigiliaGlass: { blurRadius: 8 },
+          yunariGlass: { blurRadius: 8 },
         }),
       );
       // The panel's scratch surface is allocated during a render, which is why
@@ -314,7 +314,7 @@ describe("mountFabricScene disposal", () => {
       scene.updateArtboard(artboard);
 
       expect(
-        element.querySelector("[data-vigilia-background-media] video"),
+        element.querySelector("[data-yunari-background-media] video"),
         "the media layer is mounted",
       ).not.toBeNull();
       expect(scheduled, "the video is being followed").toHaveLength(1);
@@ -322,7 +322,7 @@ describe("mountFabricScene disposal", () => {
       scene.dispose();
 
       expect(
-        element.querySelector("[data-vigilia-background-media]"),
+        element.querySelector("[data-yunari-background-media]"),
         "the media layer is gone",
       ).toBeNull();
       expect(element.textContent, "the host is empty").toBe("");
@@ -389,12 +389,12 @@ describe("mountFabricScene disposal", () => {
         originX: "left",
         originY: "top",
         fill: "rgba(255, 255, 255, 0.2)",
-        vigiliaGlass: { blurRadius: 8 },
+        yunariGlass: { blurRadius: 8 },
       }),
     );
     scene.canvas.renderAll();
     const image = element.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     expect(image, "the media layer is mounted").not.toBeNull();
     let repaints = 0;
@@ -451,7 +451,7 @@ describe("mountFabricScene disposal", () => {
             originX: "left",
             originY: "top",
             fill: "rgba(255, 255, 255, 0.2)",
-            vigiliaGlass: { blurRadius: 8 },
+            yunariGlass: { blurRadius: 8 },
           }),
         );
         scene.canvas.renderAll();
@@ -519,13 +519,13 @@ describe("mountFabricScene disposal", () => {
       backgroundMedia: { assetId: "hero", fit: "theme" },
     });
     expect(
-      element.querySelector("[data-vigilia-background-media] img"),
+      element.querySelector("[data-yunari-background-media] img"),
       "the media layer is live before teardown",
     ).not.toBeNull();
 
     scene.dispose();
     expect(
-      element.querySelector("[data-vigilia-background-media] img"),
+      element.querySelector("[data-yunari-background-media] img"),
       "and gone after it",
     ).toBeNull();
 
@@ -608,7 +608,7 @@ describe("mountFabricScene disposal", () => {
         originX: "left",
         originY: "top",
         fill: "rgba(255, 255, 255, 0.2)",
-        vigiliaGlass: { blurRadius: 8 },
+        yunariGlass: { blurRadius: 8 },
       }),
     );
     scene.canvas.renderAll();

@@ -1,4 +1,4 @@
-import type { BackdropMedia } from "@vigilia/scene-fabric";
+import type { BackdropMedia } from "@yunari/scene-fabric";
 import type { Canvas } from "fabric/es";
 
 /**

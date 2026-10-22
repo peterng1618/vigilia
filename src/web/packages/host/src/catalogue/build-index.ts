@@ -8,15 +8,15 @@ import {
   parseCatalogueIndex,
   parseCatalogueItemFile,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
-import { readThemePackage } from "@vigilia/theme-package";
+} from "@yunari/renderer-core";
+import { readThemePackage } from "@yunari/theme-package";
 
 /**
  * The catalogue listing's generator, run as a host command.
  *
  * It lives here rather than in `scripts/` because the reader's parser and the
  * facet record are `renderer-core` source, which only the built host can import
- * (`bin/vigilia.js`). The output is the one file the editor fetches.
+ * (`bin/yunari.js`). The output is the one file the editor fetches.
  */
 
 /** One item's documents, as the walk read them — the header not yet validated. */
@@ -32,7 +32,7 @@ const ISO_INSTANT =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 const USAGE =
-  "usage: vigilia-dashboard --build-catalogue-index <catalogueDir> --out <file> --generated-at <ISO>";
+  "usage: yunari-dashboard --build-catalogue-index <catalogueDir> --out <file> --generated-at <ISO>";
 
 /**
  * The pure half: both documents validated, unreadable items excluded, entries

@@ -221,7 +221,7 @@ a rule is silent and the product had to choose.
 
 | id | the choice | what changes |
 |---|---|---|
-| `vg-201` | what `--shell-warm` becomes on ember/moss/plum so warnings reach 4.5:1 | a hue, then one value per palette; it aliases `--vigilia-accent`, so the canvas accent moves too |
+| `vg-201` | what `--shell-warm` becomes on ember/moss/plum so warnings reach 4.5:1 | a hue, then one value per palette; it aliases `--yunari-accent`, so the canvas accent moves too |
 | `vg-202` | a well's horizontal padding: the bible's 4, the mockup's 8, or 6 | one number, then every well; the control set owns it |
 | `vg-222` | which cluster treatment is the product's, and what editorial does about elevation when it is deliberately flat | one ladder entry plus the flat-palette clause; the dock/view cluster and the identity chip reconcile |
 | `vg-223` | when the name is gone and a fixed marker still overflows: drop, shorten, wrap, or accept the clip | the identity chip's last line of defence, then the rule |
@@ -557,7 +557,7 @@ the surface moved or the locator went stale**, and **none of the four is a missi
 
 - **`vg-359` — neither.** The frosted CPU card and its 17 part rows render, and the card's own row still
   selects it. What moved is the click point: the row spans x 58–279 and its centre is x=168.5, while the
-  entered, selected row's four-control `.vigilia-layer-state` slot begins at x=155 — so the click lands on
+  entered, selected row's four-control `.yunari-layer-state` slot begins at x=155 — so the click lands on
   the row's own **Leave** control and the tree collapses before the assertion. Clicking x=88 keeps the
   context. The capture cannot be regenerated until the click is re-aimed, so
   `editor-starter-cpu-card-desktop-chromium.png` is still the 2026-10-05 frame. The row's text misdescribes
@@ -675,7 +675,7 @@ not mount. It was deliberately left unfiled, because a row filed mid-pass would 
 
 **The boundary decision, stated:** the copy rule's scope is **the product bundle**, and this fixture is not
 in it. It is built by its own `vite` invocation — `vite build --config vite.config.fixture.ts` (`npm run
-build:fixture -w @vigilia/editor`), a second invocation with `emptyOutDir: false` — and is served at
+build:fixture -w @yunari/editor`), a second invocation with `emptyOutDir: false` — and is served at
 `control-fixture.html` for the design-language evidence run; the product build (`vite build`) emits exactly
 the bundle graph it emitted before the fixture existed, so the fixture is **exempt by name** and the
 exemption is recorded here rather than left as a hole.

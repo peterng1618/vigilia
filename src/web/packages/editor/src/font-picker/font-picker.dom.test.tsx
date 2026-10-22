@@ -86,10 +86,10 @@ async function setup(
 }
 
 const rows = (host: HTMLElement): HTMLElement[] => [
-  ...host.querySelectorAll<HTMLElement>("[data-vigilia-font-face-row]"),
+  ...host.querySelectorAll<HTMLElement>("[data-yunari-font-face-row]"),
 ];
 const families = (host: HTMLElement): string[] =>
-  rows(host).map((row) => row.getAttribute("data-vigilia-font-family") ?? "");
+  rows(host).map((row) => row.getAttribute("data-yunari-font-family") ?? "");
 
 /** React and floating-ui schedule outside `act`, so an opened popup is flushed
  *  with macrotasks rather than one. */
@@ -141,7 +141,7 @@ async function chooseIn(
   const scope =
     (list === null ? null : document.getElementById(list)) ?? document;
   const option = Array.from(scope.querySelectorAll('[role="option"]')).find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+    (candidate) => candidate.getAttribute("data-yunari-option") === id,
   );
   if (option === undefined) throw new Error(`no option ${id} in ${control}`);
   await pointerDown(option);
@@ -166,7 +166,7 @@ async function offeredOptions(
     (list === null ? null : document.getElementById(list)) ?? document;
   const offered = Array.from(scope.querySelectorAll('[role="option"]')).map(
     (option) => ({
-      id: option.getAttribute("data-vigilia-option") ?? "",
+      id: option.getAttribute("data-yunari-option") ?? "",
       label: (option.textContent ?? "").trim(),
     }),
   );
@@ -181,8 +181,8 @@ async function offeredOptions(
 function chosenId(host: HTMLElement, control: string): string {
   return (
     host
-      .querySelector(`${control} [data-vigilia-value]`)
-      ?.getAttribute("data-vigilia-value") ?? ""
+      .querySelector(`${control} [data-yunari-value]`)
+      ?.getAttribute("data-yunari-value") ?? ""
   );
 }
 
@@ -225,7 +225,7 @@ it("mounts a window of rows, each naming a face the query returned", async () =>
 it("renders a specimen row in its own family once the face is resident", async () => {
   const { host, unmount } = await setup();
   const first = rows(host)[0]!;
-  const family = first.getAttribute("data-vigilia-font-family")!;
+  const family = first.getAttribute("data-yunari-font-family")!;
   // `inherit` before the load settles; the family itself after. Asserting the
   // family alone would pass whether or not the cache was ever consulted.
   expect(family).not.toBe("");
@@ -296,8 +296,8 @@ it("says so when a search matches no face", async () => {
  */
 it("clears the other two facets when one is chosen, and says the rule", async () => {
   const { host, unmount } = await setup();
-  const mood = '[data-vigilia-font-facet="mood"]';
-  const useCase = '[data-vigilia-font-facet="useCase"]';
+  const mood = '[data-yunari-font-facet="mood"]';
+  const useCase = '[data-yunari-font-facet="useCase"]';
 
   await chooseIn(host, mood, "versatile");
   expect(families(host)).toEqual(
@@ -350,7 +350,7 @@ it("clears the other two facets when one is chosen, and says the rule", async ()
  *  unfiltered rather than only the control saying so. */
 it("offers any as a real option on the facet it belongs to, and clears with it", async () => {
   const { host, unmount } = await setup();
-  const mood = '[data-vigilia-font-facet="mood"]';
+  const mood = '[data-yunari-font-facet="mood"]';
   const offered = await offeredOptions(host, mood);
   expect(offered[0]).toEqual({
     id: "",
@@ -394,14 +394,14 @@ it("offers any as a real option on the facet it belongs to, and clears with it",
 it("names each facet control after what it filters on", async () => {
   const { host, unmount } = await setup();
   const triggers = host.querySelectorAll<HTMLElement>(
-    "[data-vigilia-font-facet]",
+    "[data-yunari-font-facet]",
   );
   // One control per kind the query offers, so a kind added to `FACET_FIELDS`
   // without a word for it is a red run here rather than an unnamed control.
   expect(triggers).toHaveLength(3);
   for (const trigger of triggers) {
     const field = trigger.getAttribute(
-      "data-vigilia-font-facet",
+      "data-yunari-font-facet",
     ) as keyof typeof uiCopy.panels.fontFacetKinds;
     const name = uiCopy.panels.fontFacetKinds[field];
     // The label the row points at is the table's own value, read rather than
@@ -424,8 +424,8 @@ it("marks a clamped face with the weight that will apply", async () => {
     cache: missingCache(),
   });
   const row = rows(host)[0]!;
-  expect(row.getAttribute("data-vigilia-font-family")).toBe(clamped.family);
-  expect(row.getAttribute("data-vigilia-font-clamped")).toBe("true");
+  expect(row.getAttribute("data-yunari-font-family")).toBe(clamped.family);
+  expect(row.getAttribute("data-yunari-font-clamped")).toBe("true");
   expect(row.textContent).toContain(uiCopy.panels.fontClamped);
   unmount();
 });
@@ -447,7 +447,7 @@ it("keeps a row selectable when its face will never load", async () => {
     onApplyFace,
   });
   const row = rows(host)[0]!;
-  expect(row.getAttribute("data-vigilia-font-family")).toBe(face.family);
+  expect(row.getAttribute("data-yunari-font-family")).toBe(face.family);
   // Falls back to the shell's face, and says it is still coming rather than
   // naming a family it does not have.
   expect(row.style.fontFamily).toBe("inherit");
@@ -502,10 +502,10 @@ it("reports a trio apply without applying it itself", async () => {
   const onApplyTrio = vi.fn();
   const { host, unmount } = await setup({ onApplyTrio });
   const target = fontTrios()[7]!;
-  await chooseIn(host, "[data-vigilia-font-trio]", target.id);
+  await chooseIn(host, "[data-yunari-font-trio]", target.id);
   await act(async () => {
     host
-      .querySelector<HTMLButtonElement>("[data-vigilia-font-trio-apply]")!
+      .querySelector<HTMLButtonElement>("[data-yunari-font-trio-apply]")!
       .click();
   });
   expect(onApplyTrio).toHaveBeenCalledTimes(1);
@@ -515,22 +515,22 @@ it("reports a trio apply without applying it itself", async () => {
 
 /** The two selectors the archived plan's browser tests read, on the elements
  *  that now do those jobs. A row that carries only its own marker would leave
- *  `selectOption("[data-vigilia-font-face]")` resolving to nothing. */
+ *  `selectOption("[data-yunari-font-face]")` resolving to nothing. */
 it("carries the three legacy selectors on the elements that do the work", async () => {
   const { host, unmount } = await setup();
   // The face control is a row now, so it carries both names.
-  const faceRow = host.querySelector("[data-vigilia-font-face-row]")!;
-  expect(faceRow.hasAttribute("data-vigilia-font-face")).toBe(true);
+  const faceRow = host.querySelector("[data-yunari-font-face-row]")!;
+  expect(faceRow.hasAttribute("data-yunari-font-face")).toBe(true);
   expect(faceRow.tagName).toBe("BUTTON");
   // Each legacy selector resolves to exactly one element, so a test reaching
   // for it cannot land on an unrelated control.
   // The chooser is a `ControlSelect` now, and the trigger is what carries the
   // hook — one element, so a test reaching for it cannot land on a wrapper.
-  expect(host.querySelectorAll("[data-vigilia-font-trio]")).toHaveLength(1);
+  expect(host.querySelectorAll("[data-yunari-font-trio]")).toHaveLength(1);
   const apply = host.querySelector<HTMLButtonElement>(
-    "[data-vigilia-font-trio-apply]",
+    "[data-yunari-font-trio-apply]",
   )!;
-  expect(apply.hasAttribute("data-vigilia-font-apply")).toBe(true);
+  expect(apply.hasAttribute("data-yunari-font-apply")).toBe(true);
   unmount();
 });
 
@@ -592,7 +592,7 @@ it("names the favourite toggle for the action it takes, in both states", async (
     favorites: [trio.id],
   });
   const toggle = host.querySelector<HTMLButtonElement>(
-    "[data-vigilia-font-favorite]",
+    "[data-yunari-font-favorite]",
   )!;
   expect(toggle.getAttribute("aria-pressed")).toBe("true");
   expect(toggle.getAttribute("aria-label")).toBe(uiCopy.panels.fontUnfavorite);
@@ -602,7 +602,7 @@ it("names the favourite toggle for the action it takes, in both states", async (
 
   const off = await setup({ onToggleFavorite, favorites: [] });
   const unfilled = off.host.querySelector<HTMLButtonElement>(
-    "[data-vigilia-font-favorite]",
+    "[data-yunari-font-favorite]",
   )!;
   expect(unfilled.getAttribute("aria-pressed")).toBe("false");
   expect(unfilled.getAttribute("aria-label")).toBe(uiCopy.panels.fontFavorite);
@@ -620,13 +620,13 @@ it("names the favourite toggle for the action it takes, in both states", async (
 it("draws the favourite state as a filled or outline icon, not a glyph", async () => {
   const trio = fontTrios()[0]!;
   const on = await setup({ favorites: [trio.id] });
-  const filled = on.host.querySelector("[data-vigilia-font-favorite] svg")!;
+  const filled = on.host.querySelector("[data-yunari-font-favorite] svg")!;
   expect(filled.getAttribute("aria-hidden")).toBeTruthy();
   expect(filled.getAttribute("fill")).toBe("currentColor");
   on.unmount();
 
   const off = await setup({ favorites: [] });
-  const outline = off.host.querySelector("[data-vigilia-font-favorite] svg")!;
+  const outline = off.host.querySelector("[data-yunari-font-favorite] svg")!;
   // `fill="none"` is Lucide's own default, so its absence is what says
   // "outline" — the same contract the layer row's lock uses.
   expect(outline.getAttribute("fill")).toBe("none");
@@ -639,13 +639,13 @@ it("draws the favourite state as a filled or outline icon, not a glyph", async (
  *  key that matches no row rather than a chip with no target. */
 it("renders no dead chip for a favourite the catalogue dropped", async () => {
   const { host, unmount } = await setup({ favorites: ["no-such-trio"] });
-  const listed = host.querySelectorAll("[data-vigilia-font-trio-row]");
+  const listed = host.querySelectorAll("[data-yunari-font-trio-row]");
   expect(listed.length).toBeGreaterThan(0);
   for (const row of listed) {
     expect(row.textContent).not.toBe("no-such-trio");
   }
   expect(
-    [...host.querySelectorAll("[data-vigilia-font-favorite]")].every(
+    [...host.querySelectorAll("[data-yunari-font-favorite]")].every(
       (toggle) => toggle.getAttribute("aria-pressed") === "false",
     ),
   ).toBe(true);
@@ -663,7 +663,7 @@ it("renders no dead chip for a favourite the catalogue dropped", async () => {
 it("moves the window when the list is scrolled", async () => {
   const { host, props, unmount } = await setup();
   const scroll = host.querySelector<HTMLDivElement>(
-    "[data-vigilia-font-face-row]",
+    "[data-yunari-font-face-row]",
   )!.parentElement!.parentElement!;
   const every = queryFaces(
     { search: "", facet: undefined, favoritesFirst: false, sort: "name" },
@@ -702,7 +702,7 @@ it("browses only the trios and faces it was handed", async () => {
   const { host, unmount } = await setup({ trios: [trio], faces: [one] });
   expect(families(host)).toEqual(["Yellowtail"]);
   expect(
-    [...host.querySelectorAll("[data-vigilia-font-trio-row]")].map(
+    [...host.querySelectorAll("[data-yunari-font-trio-row]")].map(
       (row) => row.textContent,
     ),
   ).toEqual([trio.name]);
@@ -753,9 +753,9 @@ it("holds no pictograph in the controls it authors", async () => {
   // `aria-hidden` and not this component's copy.
   const buttons = [...host.querySelectorAll("button")].filter(
     (button) =>
-      !button.hasAttribute("data-vigilia-font-trio-row") &&
-      !button.hasAttribute("data-vigilia-font-face-row") &&
-      button.querySelector("[data-vigilia-value]") === null,
+      !button.hasAttribute("data-yunari-font-trio-row") &&
+      !button.hasAttribute("data-yunari-font-face-row") &&
+      button.querySelector("[data-yunari-value]") === null,
   );
   expect(
     buttons
@@ -814,7 +814,7 @@ it("offers no style control, because no curated face is italic", async () => {
   expect(new Set(catalogFaces().map((face) => face.style))).toEqual(
     new Set(["normal"]),
   );
-  expect(host.querySelector("[data-vigilia-font-style]")).toBeNull();
+  expect(host.querySelector("[data-yunari-font-style]")).toBeNull();
   unmount();
 });
 
@@ -822,13 +822,13 @@ it("offers no style control, because no curated face is italic", async () => {
 it("sorts the trio list by what the sort control says", async () => {
   const { host, unmount } = await setup();
   const names = (): (string | null)[] =>
-    [...host.querySelectorAll("[data-vigilia-font-trio-row]")].map(
+    [...host.querySelectorAll("[data-yunari-font-trio-row]")].map(
       (row) => row.textContent,
     );
   const byName = names();
   expect(byName.length).toBeGreaterThan(1);
 
-  await chooseIn(host, "[data-vigilia-font-sort]", "family");
+  await chooseIn(host, "[data-yunari-font-sort]", "family");
   const byFamily = names();
   expect(byFamily).not.toEqual(byName);
   expect(byFamily).toHaveLength(byName.length);
@@ -850,9 +850,9 @@ it("distinguishes a clamped row from an unclamped one in the same list", async (
     cache: missingCache(),
   });
   const [first, second] = rows(host);
-  expect(first!.getAttribute("data-vigilia-font-clamped")).toBe("true");
+  expect(first!.getAttribute("data-yunari-font-clamped")).toBe("true");
   expect(first!.textContent).toContain(uiCopy.panels.fontClamped);
-  expect(second!.getAttribute("data-vigilia-font-clamped")).toBe("false");
+  expect(second!.getAttribute("data-yunari-font-clamped")).toBe("false");
   expect(second!.textContent).not.toContain(uiCopy.panels.fontClamped);
   unmount();
 });
@@ -886,7 +886,7 @@ it("keys a row by face id so a re-query does not rebuild it", async () => {
     search.dispatchEvent(new Event("input", { bubbles: true }));
   });
   const ids = rows(host).map(
-    (row) => row.getAttribute("data-vigilia-font-family") ?? "",
+    (row) => row.getAttribute("data-yunari-font-family") ?? "",
   );
   expect(new Set(ids).size).toBe(ids.length);
   unmount();
@@ -956,7 +956,7 @@ it("names the two lists it renders", async () => {
   const { host, unmount } = await setup();
   expect(
     host
-      .querySelector("[data-vigilia-font-trio-list]")!
+      .querySelector("[data-yunari-font-trio-list]")!
       .getAttribute("aria-label"),
   ).toBe(uiCopy.panels.fontTrios);
   unmount();

@@ -27,8 +27,8 @@ export const DEFAULT_PORT = 5227;
 /** Loopback by default; LAN exposure must be explicit. */
 export const DEFAULT_HOST = "127.0.0.1";
 
-/** Stable Vigilia data location across platforms; the app folder. */
-const DEFAULT_APP_DIR = path.join(os.homedir(), ".vigilia");
+/** Stable Yunari data location across platforms; the app folder. */
+const DEFAULT_APP_DIR = path.join(os.homedir(), ".yunari");
 
 /** One directory per theme, read and written in place (ADR-0017). */
 export const DEFAULT_THEMES_DIR = path.join(DEFAULT_APP_DIR, "themes");
@@ -44,7 +44,7 @@ export type ArgsResult =
   | { readonly kind: "message"; readonly text: string }
   | { readonly kind: "error"; readonly message: string };
 
-export const HELP_TEXT = `Usage: vigilia-dashboard [options]
+export const HELP_TEXT = `Usage: yunari-dashboard [options]
 
 Options:
   -p, --port <port>       Port to listen on (default: ${DEFAULT_PORT})
@@ -60,7 +60,7 @@ Options:
   -h, --help              Print this help
 
 Extended sensors (temperatures, fans, power) come from LibreHardwareMonitor
-when it is running; Vigilia reads its web server and never controls its
+when it is running; Yunari reads its web server and never controls its
 hardware support. Everything else is read through systeminformation.
 
 The host serves https beside http on the same port, from a certificate it

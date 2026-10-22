@@ -1,7 +1,7 @@
 import {
   type FabricThemeEnvelope,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
 export * from "./version-ladder";
@@ -81,7 +81,7 @@ export function writeThemePackage(input: {
       {
         [MANIFEST]: strToU8(
           JSON.stringify({
-            format: "vigilia-theme-package",
+            format: "yunari-theme-package",
             // Still 1: the thumbnail is an additive member the manifest names
             // when it is used, so a package without one opens unchanged and one
             // with one is refused cleanly by a reader that has no slot for it.
@@ -141,7 +141,7 @@ export function readThemePackage(bytes: Uint8Array): ThemePackageResult {
     >;
     const declaredThumbnail = parsedManifest["thumbnail"];
     if (
-      parsedManifest["format"] !== "vigilia-theme-package" ||
+      parsedManifest["format"] !== "yunari-theme-package" ||
       parsedManifest["version"] !== 1 ||
       parsedManifest["theme"] !== THEME ||
       (declaredThumbnail !== undefined && declaredThumbnail !== THUMBNAIL)

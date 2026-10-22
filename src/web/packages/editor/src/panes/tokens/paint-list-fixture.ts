@@ -8,7 +8,7 @@
  * source list; the values a case asserts back are named here so the assertion
  * and the fixture cannot drift apart.
  */
-import type { FabricPalette } from "@vigilia/renderer-core";
+import type { FabricPalette } from "@yunari/renderer-core";
 
 /** The background token's paint. */
 export const BACKGROUND_PAINT = "#102030";

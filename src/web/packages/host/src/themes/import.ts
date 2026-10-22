@@ -1,11 +1,11 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { readThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { readThemePackage } from "@yunari/theme-package";
 import { isValidThemeId, ThemeIdTakenError, type ThemeStore } from "./store.js";
 import type { ThumbnailStore } from "./thumbnails.js";
 
 /**
  * A package an author brought in lands in the library as a **host write**, so
- * the theme survives the editor closing. The reader is `@vigilia/theme-package`'s
+ * the theme survives the editor closing. The reader is `@yunari/theme-package`'s
  * — the host owns the folder the bytes land in and §141 is its contract — so the
  * browser never parses a package and this is the only place one is read.
  *

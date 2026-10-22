@@ -3,9 +3,9 @@ import {
   glassTreatment,
   MAX_GLASS_BLUR_RADIUS,
   supportsGlass,
-  VIGILIA_GLASS_PROPERTY,
-} from "@vigilia/renderer-core";
-import { applyObjectPalettePaints } from "@vigilia/scene-fabric";
+  YUNARI_GLASS_PROPERTY,
+} from "@yunari/renderer-core";
+import { applyObjectPalettePaints } from "@yunari/scene-fabric";
 import { type FabricObject, Group } from "fabric/es";
 import { frostedShapeFill } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
@@ -15,7 +15,7 @@ import type { FieldView } from "./view.js";
 
 /**
  * The authored frosted-glass treatment: an enable and a blur radius, both on
- * the existing `vigiliaGlass` property. Nothing here invents a scene model —
+ * the existing `yunariGlass` property. Nothing here invents a scene model —
  * the property is `renderer-core`'s, the lifecycle is `scene-fabric`'s, and this
  * is the control that writes one and tells the other.
  */
@@ -100,7 +100,7 @@ function treatmentOf(object: FabricObject): GlassTreatment | undefined {
 
 /** Removes the property outright: an ordinary panel carries no treatment at all. */
 function clearTreatment(object: FabricObject): void {
-  delete (object as unknown as Record<string, unknown>)[VIGILIA_GLASS_PROPERTY];
+  delete (object as unknown as Record<string, unknown>)[YUNARI_GLASS_PROPERTY];
 }
 
 /**
@@ -114,15 +114,15 @@ function writeTreatment(
   object: FabricObject,
   next: number | undefined,
 ): boolean {
-  const before = object.get(VIGILIA_GLASS_PROPERTY);
+  const before = object.get(YUNARI_GLASS_PROPERTY);
   if (next === undefined) {
     clearTreatment(object);
     return true;
   }
-  object.set(VIGILIA_GLASS_PROPERTY, { blurRadius: next });
+  object.set(YUNARI_GLASS_PROPERTY, { blurRadius: next });
   if (treatmentOf(object) !== undefined) return true;
   if (before === undefined) clearTreatment(object);
-  else object.set(VIGILIA_GLASS_PROPERTY, before);
+  else object.set(YUNARI_GLASS_PROPERTY, before);
   return false;
 }
 
@@ -179,7 +179,7 @@ export function glassFields(object: FabricObject): readonly FieldView[] {
       control: "toggle",
       label: uiCopy.inspectorFields.glassEnabled,
       checked: treatmentOf(object) !== undefined,
-      data: { "data-vigilia-glass-enabled": "" },
+      data: { "data-yunari-glass-enabled": "" },
     },
   ];
 
@@ -199,7 +199,7 @@ export function glassFields(object: FabricObject): readonly FieldView[] {
       min: 0,
       max: MAX_GLASS_BLUR_RADIUS,
       integer: true,
-      data: { "data-vigilia-glass-blur": "" },
+      data: { "data-yunari-glass-blur": "" },
     });
   }
 

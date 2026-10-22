@@ -122,7 +122,7 @@ it("leaves the three panels with no copy of their own", async () => {
     // The token list is React now, so the branch is opened by choosing the row
     // rather than by setting a native `<select>`'s value.
     const glow = root.querySelector<HTMLElement>(
-      '[data-vigilia-palette-token-row="glow"]',
+      '[data-yunari-palette-token-row="glow"]',
     );
     if (glow === null) throw new Error("the Tokens pane listed no glow token");
     glow.click();
@@ -147,7 +147,7 @@ it("leaves the three panels with no copy of their own", async () => {
   // an asset's, a preset's — and are deliberately not covered.
   const paintKinds = await openUnitDisplayOptions(
     root,
-    "[data-vigilia-palette-kind]",
+    "[data-yunari-palette-kind]",
   );
   // Non-vacuous, and said with a number. `openUnitDisplayOptions` returns an
   // empty list when its selector matches nothing, so without this the read above
@@ -167,8 +167,8 @@ it("leaves the three panels with no copy of their own", async () => {
     ...Array.from(root.querySelectorAll("button"))
       .filter(
         (button) =>
-          button.getAttribute("data-vigilia-palette-token-row") === null &&
-          button.querySelector("[data-vigilia-value]") === null,
+          button.getAttribute("data-yunari-palette-token-row") === null &&
+          button.querySelector("[data-yunari-value]") === null,
       )
       .map((button) => spokenText(button)),
     ...paintKinds,
@@ -243,9 +243,9 @@ it("leaves the font picker with no copy of its own", async () => {
     ...Array.from(root.querySelectorAll("button"))
       .filter(
         (button) =>
-          !button.hasAttribute("data-vigilia-font-face-row") &&
-          !button.hasAttribute("data-vigilia-font-trio-row") &&
-          button.querySelector("[data-vigilia-value]") === null,
+          !button.hasAttribute("data-yunari-font-face-row") &&
+          !button.hasAttribute("data-yunari-font-trio-row") &&
+          button.querySelector("[data-yunari-value]") === null,
       )
       .map((button) => button.textContent),
   ]
@@ -372,7 +372,7 @@ async function chartUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
 
   const offered = await openUnitDisplayOptions(
     host,
-    "[data-vigilia-binding-field$='.unitDisplay']",
+    "[data-yunari-binding-field$='.unitDisplay']",
   );
   await act(async () => {
     chartRoot.unmount();
@@ -390,7 +390,7 @@ async function chartUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
 async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });
-  object.set("vigiliaText", {
+  object.set("yunariText", {
     align: "left",
     runs: [{ kind: "value", bindingId: "clock-time" }],
   });
@@ -414,5 +414,5 @@ async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
       runRoot.render(createElement(RunEditor, { runs, edits: runEdits() })),
     );
   }
-  return openUnitDisplayOptions(host, "[data-vigilia-run-unit-display]");
+  return openUnitDisplayOptions(host, "[data-yunari-run-unit-display]");
 }

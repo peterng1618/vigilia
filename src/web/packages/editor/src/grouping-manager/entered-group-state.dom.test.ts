@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { serialiseScene } from "@vigilia/scene-fabric";
+import { serialiseScene } from "@yunari/scene-fabric";
 import {
   Canvas,
   FabricImage,
@@ -220,7 +220,7 @@ describe("entering a group", () => {
 
     grouping.enterGroup({ object: group });
 
-    // 0.45 is `.vigilia-layer-row[data-context="false"]`'s opacity, so the two
+    // 0.45 is `.yunari-layer-row[data-context="false"]`'s opacity, so the two
     // surfaces say the same thing about what the author can currently reach.
     expect(paintedAt(outsider)).toBeCloseTo(0.45, 5);
     expect(paintedAt(text)).toBeCloseTo(0.45, 5);

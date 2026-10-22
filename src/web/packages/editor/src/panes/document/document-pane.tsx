@@ -3,8 +3,8 @@ import type {
   AssetReference,
   Globals,
   ThemeMetadata,
-} from "@vigilia/renderer-core";
-import type { SceneBox } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import type { SceneBox } from "@yunari/scene-fabric";
 import { InspectorSection } from "../../components/ui/inspector-section.js";
 import { uiCopy } from "../../ui-copy.js";
 import { ArtboardFields } from "./artboard-fields.js";
@@ -15,7 +15,7 @@ import { MetadataFields } from "./metadata-fields.js";
  * drawn on.
  *
  * **The pane's identity is not written here.** `Pane` is the one owner of
- * `data-vigilia-panel` (`editor-shell/pane.tsx:43`), and this renders inside it;
+ * `data-yunari-panel` (`editor-shell/pane.tsx:43`), and this renders inside it;
  * a second element under that name is a strict-mode failure for every locator
  * that browses by it. This tree is the pane's whole body: the References
  * sub-panel that used to be appended to the same host as a sibling of these

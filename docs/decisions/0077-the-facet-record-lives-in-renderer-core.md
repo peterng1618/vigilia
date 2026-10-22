@@ -24,7 +24,7 @@ describes. A facet that guesses there is a facet that lies about the thing it
 exists to filter, and the lie is invisible — the theme simply appears under a
 filter it does not belong to.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `luminance`, `relativeLuminance`, `0.2126`, `contrastRatio`,
 `colourMode`, `colorMode`, `aspectBucket`, `orientationOf`, `resolveStyleValue`,
@@ -54,7 +54,7 @@ and are the right owners.
 
 ## Rung 2 — dependencies
 
-Searched: `@vigilia/renderer-core`'s own `package.json` (`echarts` is its only
+Searched: `@yunari/renderer-core`'s own `package.json` (`echarts` is its only
 dependency), the installed tree for `chroma-js`, `colord`, `culori`, `color2k`,
 `color-convert`, `wcag-contrast`, and the workspace's direct dependencies for
 anything colour- or ratio-shaped (`node -e` over `dependencies` +

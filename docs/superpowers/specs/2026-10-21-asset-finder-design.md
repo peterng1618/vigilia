@@ -334,7 +334,7 @@ port.
 
 ## 10. Reuse gate — the seven rungs
 
-**Rung 1 — Vigilia.** Searched for an existing source registry, credential store
+**Rung 1 — Yunari.** Searched for an existing source registry, credential store
 and asset search. Found: the asset manager (bytes, caps), the font catalogue and
 its query/facet/specimen machinery (browse), Settings' dialog and tab model
 (modal), and eight host settings stores (none holding a secret). No registry, no
@@ -354,7 +354,7 @@ needs a native API the host does not already use.
 extension-provided sources, Figma's plugin-run asset panels, Penpot's asset
 libraries). The shape that recurs is a **provider port plus a registry**; none
 of them solves attribution for a published artifact, which is why `credits.json`
-is Vigilia's own and the port carries `creditsOf`.
+is Yunari's own and the port carries `creditsOf`.
 
 **Rung 5 — comparison.**
 

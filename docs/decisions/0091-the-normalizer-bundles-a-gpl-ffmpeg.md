@@ -20,7 +20,7 @@ only practical encoder and it is GPL. The question is therefore not "which
 library is permissively licensed" but "which one states its licence honestly and
 survives being shipped".
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `ffmpeg`, `ffprobe`, `video`, `MAX_ASSET_BYTES`, `MAX_ARCHIVE_BYTES`,
 `boundedImportSize`, every `package.json`.
@@ -121,6 +121,6 @@ it receives, so they land first and stand alone; the normalizer is the author's
 convenience on top.
 
 **What this costs if wrong:** the GPL binary raises distribution obligations the
-moment Vigilia ships a packaged build, and a permissively-licensed encoder is not
+moment Yunari ships a packaged build, and a permissively-licensed encoder is not
 available to swap in — the escape is a native per-platform encoder, which is the
 rejected row above, not a smaller dependency.

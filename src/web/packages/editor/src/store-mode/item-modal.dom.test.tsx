@@ -17,7 +17,7 @@
  * A.4's review made for the facet predicate, which the plan had put in the
  * gallery's file.
  */
-import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
+import { DASHBOARD_THEME_KIND } from "@yunari/renderer-core";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
@@ -184,7 +184,7 @@ const NO_SUBMIT: SubmitControl = {
 /** Where a theme came from, as the host records it: the catalogue item and the
  *  version this copy was installed from. */
 const ORIGIN: ThemeOrigin = {
-  catalogueId: "vigilia/office-wall",
+  catalogueId: "yunari/office-wall",
   version: "1.3.0",
   installedAt: "2026-10-14T00:00:00.000Z",
 };
@@ -215,7 +215,7 @@ function onlineItem(overrides: Partial<CatalogueFacts> = {}): StoreItem {
 /** The stage and the picture inside it, from the portalled popup. */
 function stage(): HTMLElement {
   return must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-item-stage]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-item-stage]"),
     "stage",
   );
 }
@@ -223,7 +223,7 @@ function stage(): HTMLElement {
 function picture(): HTMLElement {
   return must(
     document.body.querySelector<HTMLElement>(
-      "[data-vigilia-store-item-picture]",
+      "[data-yunari-store-item-picture]",
     ),
     "picture",
   );
@@ -232,7 +232,7 @@ function picture(): HTMLElement {
 /** The modal's own box, which is the width `DESIGN.md` fixes at 960. */
 function box(): HTMLElement {
   return must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-item]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-item]"),
     "modal box",
   );
 }
@@ -254,7 +254,7 @@ function spokenText(node: Element): string {
  *  counts where the item has them. */
 function caption(): HTMLElement {
   return must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-item-date]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-item-date]"),
     "caption date line",
   );
 }
@@ -270,16 +270,16 @@ function group(id: string): {
 } {
   const found = must(
     document.body.querySelector<HTMLElement>(
-      `[data-vigilia-store-item-group="${id}"]`,
+      `[data-yunari-store-item-group="${id}"]`,
     ),
     `${id} group`,
   );
   return {
     name: found
-      .querySelector("[data-vigilia-store-item-group-name]")
+      .querySelector("[data-yunari-store-item-group-name]")
       ?.textContent?.trim(),
     pills: Array.from(
-      found.querySelectorAll("[data-vigilia-store-item-pill]"),
+      found.querySelectorAll("[data-yunari-store-item-pill]"),
     ).map((pill) => pill.textContent?.trim()),
   };
 }
@@ -374,7 +374,7 @@ it("draws the facts as pills in their groups rather than a row per fact", async 
 function pillClass(id: string): string {
   return must(
     document.body.querySelector<HTMLElement>(
-      `[data-vigilia-store-item-pill="${id}"]`,
+      `[data-yunari-store-item-pill="${id}"]`,
     ),
     `the ${id} pill`,
   ).className;
@@ -438,7 +438,7 @@ it("draws no Style group for a theme that declares no tags", async () => {
   await mount(modal(LANDSCAPE));
 
   expect(
-    document.body.querySelector('[data-vigilia-store-item-group="style"]'),
+    document.body.querySelector('[data-yunari-store-item-group="style"]'),
     "a theme with no tags draws a Style heading over nothing",
   ).toBeNull();
 });
@@ -458,26 +458,26 @@ it("names the item on one caption line and writes its actions in words", async (
 
   expect(
     document.body
-      .querySelector("[data-vigilia-store-item-name]")
+      .querySelector("[data-yunari-store-item-name]")
       ?.textContent?.trim(),
     "the caption does not name the item",
   ).toBe("Kitchen strip");
   expect(
     document.body
-      .querySelector("[data-vigilia-store-item-kind]")
+      .querySelector("[data-yunari-store-item-kind]")
       ?.textContent?.trim(),
     "the caption does not say what kind of thing this is",
   ).toBe(uiCopy.store.cell.kinds[DASHBOARD_THEME_KIND]);
   expect(
     document.body
-      .querySelector("[data-vigilia-store-item-date]")
+      .querySelector("[data-yunari-store-item-date]")
       ?.textContent?.trim(),
     "the caption does not pair the version with the date",
   ).toBe(`1.4.0${uiCopy.store.readingSeparator}2026-10-14`);
 
   const actions = Array.from(
     document.body.querySelectorAll<HTMLElement>(
-      "[data-vigilia-store-item-action]",
+      "[data-yunari-store-item-action]",
     ),
   );
   expect(
@@ -519,7 +519,7 @@ it("runs the footer's two actions and disables the two it has not", async () => 
   function actionButton(action: string): HTMLButtonElement {
     return must(
       document.body.querySelector<HTMLButtonElement>(
-        `[data-vigilia-store-item-action="${action}"]`,
+        `[data-yunari-store-item-action="${action}"]`,
       ),
       `${action} footer action`,
     );
@@ -562,7 +562,7 @@ it("draws no version and no separator for a theme that declares none", async () 
 
   expect(
     document.body
-      .querySelector("[data-vigilia-store-item-date]")
+      .querySelector("[data-yunari-store-item-date]")
       ?.textContent?.trim(),
     "a versionless theme draws a separator or an invented version",
   ).toBe("2026-10-14");
@@ -583,9 +583,7 @@ it("names the catalogue item and the installed version on one line, and draws no
   await mount(modalFor({ ...fixtureItem(LANDSCAPE), origin: ORIGIN }));
 
   const line = must(
-    document.body.querySelector<HTMLElement>(
-      "[data-vigilia-store-item-origin]",
-    ),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-item-origin]"),
     "provenance line",
   );
   expect(
@@ -599,7 +597,7 @@ it("names the catalogue item and the installed version on one line, and draws no
 
   await mount(modal(LANDSCAPE));
   expect(
-    document.body.querySelector("[data-vigilia-store-item-origin]"),
+    document.body.querySelector("[data-yunari-store-item-origin]"),
     "the modal drew a provenance line for a theme with no origin",
   ).toBeNull();
 });
@@ -622,7 +620,7 @@ it("reports its own close rather than closing itself", async () => {
   await act(async () =>
     must(
       document.body.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-item-close]",
+        "[data-yunari-store-item-close]",
       ),
       "close control",
     ).click(),
@@ -702,13 +700,13 @@ it("carries the cell's install reading in the footer instead of the library's fo
     const word = uiCopy.store.cell.installStates[sample.state];
 
     expect(
-      document.body.querySelector("[data-vigilia-store-item-action]"),
+      document.body.querySelector("[data-yunari-store-item-action]"),
       `${sample.state}: the library's four actions are drawn beside the catalogue's reading`,
     ).toBeNull();
 
     const reading = must(
       document.body.querySelector<HTMLElement>(
-        `[data-vigilia-store-item-install="${sample.state}"]`,
+        `[data-yunari-store-item-install="${sample.state}"]`,
       ),
       `${sample.state} reading`,
     );
@@ -741,7 +739,7 @@ it("carries the cell's install reading in the footer instead of the library's fo
 
     const button = must(
       document.body.querySelector<HTMLButtonElement>(
-        `[data-vigilia-store-item-install="${sample.state}"]`,
+        `[data-yunari-store-item-install="${sample.state}"]`,
       ),
       `${sample.state} action`,
     );
@@ -773,7 +771,7 @@ it("disables the footer's install in flight and states the host's refusal", asyn
   expect(
     must(
       document.body.querySelector<HTMLButtonElement>(
-        '[data-vigilia-store-item-install="install"]',
+        '[data-yunari-store-item-install="install"]',
       ),
       "install action",
     ).disabled,
@@ -789,7 +787,7 @@ it("disables the footer's install in flight and states the host's refusal", asyn
   expect(
     must(
       document.body.querySelector<HTMLElement>(
-        "[data-vigilia-store-item-install-refusal]",
+        "[data-yunari-store-item-install-refusal]",
       ),
       "install refusal",
     ).textContent,
@@ -798,7 +796,7 @@ it("disables the footer's install in flight and states the host's refusal", asyn
   expect(
     must(
       document.body.querySelector<HTMLButtonElement>(
-        '[data-vigilia-store-item-install="install"]',
+        '[data-yunari-store-item-install="install"]',
       ),
       "install action after a refusal",
     ).disabled,
@@ -813,11 +811,11 @@ it("draws no catalogue reading for a library item", async () => {
   await mount(modalFor(fixtureItem(LANDSCAPE)));
 
   expect(
-    document.body.querySelector("[data-vigilia-store-item-install]"),
+    document.body.querySelector("[data-yunari-store-item-install]"),
     "a library item drew a catalogue install reading",
   ).toBeNull();
   expect(
-    document.body.querySelectorAll("[data-vigilia-store-item-action]"),
+    document.body.querySelectorAll("[data-yunari-store-item-action]"),
     "a library item lost the footer's four actions",
   ).toHaveLength(4);
 });
@@ -834,7 +832,7 @@ const REMIX = {
 /** The credit's own node, whichever of the two shapes it is drawn as. */
 function remixCredit(): HTMLElement {
   return must(
-    document.body.querySelector<HTMLElement>("[data-vigilia-store-item-remix]"),
+    document.body.querySelector<HTMLElement>("[data-yunari-store-item-remix]"),
     "remix credit",
   );
 }
@@ -928,20 +926,20 @@ it("states the version a submission published under the pull request link", asyn
       ...NO_SUBMIT,
       itemId: item.id,
       state: "submitted",
-      url: "https://github.com/peterng1618/vigilia-store/pull/7",
+      url: "https://github.com/peterng1618/yunari-store/pull/7",
       version: { from: "1.4.0", to: "1.5.0", level: "minor" },
     }),
   );
 
   const link = must(
     document.body.querySelector<HTMLAnchorElement>(
-      "[data-vigilia-store-item-submit-url]",
+      "[data-yunari-store-item-submit-url]",
     ),
     "pull request link",
   );
   const sentence = must(
     document.body.querySelector<HTMLElement>(
-      "[data-vigilia-store-item-submit-version]",
+      "[data-yunari-store-item-submit-version]",
     ),
     "version sentence",
   );

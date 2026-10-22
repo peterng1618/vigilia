@@ -1,4 +1,4 @@
-# Vigilia architecture
+# Yunari architecture
 
 Current system shape and hard boundaries. Product intent lives in
 [`../product/requirements.md`](../product/requirements.md); detailed concept
@@ -26,10 +26,10 @@ code from leaking into the Node host.
 
 ## Current editor boundary
 
-`@vigilia/editor` mounts `fabric/es` directly; there is no adopted
+`@yunari/editor` mounts `fabric/es` directly; there is no adopted
 image-editor package. Generic canvas mechanics are split by concern, the same
 separation the retired fork used (canvas/text/image/layer/lock/history
-managers), sized to what Vigilia's panels actually exercise rather than the
+managers), sized to what Yunari's panels actually exercise rather than the
 fork's full feature surface. `editor-shell.ts` owns canvas mount/disposal,
 viewport fitting and artboard paint, and composes the other managers behind
 the `EditorInteraction` contract consumed by product panels. `editor-session.ts`
@@ -103,7 +103,7 @@ Theme envelope
 ```
 
 Fabric owns geometry, transforms, grouping, stacking, visibility, lock and
-custom-object state. Vigilia owns semantic/versioned envelope data. Do not add a
+custom-object state. Yunari owns semantic/versioned envelope data. Do not add a
 parallel simplified scene tree.
 
 `scene-fabric/src/persist.ts` is the canonical serializer/revival path. A Fabric
@@ -121,7 +121,7 @@ external compatibility promise exists before the first release.
 | Host ↔ browser | `renderer-core` stays Fabric/DOM-free |
 | Player ↔ editor | player may use `scene-fabric`, never editor UI/managers or interactive `Canvas` |
 | Domain ↔ renderer | `renderer-core` decides; `scene-fabric` applies |
-| Charts ↔ ECharts | typed Vigilia settings cross one adapter; raw ECharts options never enter theme files |
+| Charts ↔ ECharts | typed Yunari settings cross one adapter; raw ECharts options never enter theme files |
 
 `player/src/boundaries.test.ts` guards the player import boundary and `fabric/es`
 usage.

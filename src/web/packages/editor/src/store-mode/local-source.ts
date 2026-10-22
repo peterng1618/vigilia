@@ -4,7 +4,7 @@ import {
   type FacetRecord,
   type Orientation,
   type ThemeRemix,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type {
   ThemeLibraryClient,
   ThemeOrigin,

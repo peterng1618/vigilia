@@ -1,4 +1,4 @@
-import type { PlanBox } from "@vigilia/renderer-core";
+import type { PlanBox } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { placementFor, withinGroup } from "./placement.js";
 

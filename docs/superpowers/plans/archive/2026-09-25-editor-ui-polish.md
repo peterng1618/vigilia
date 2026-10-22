@@ -501,15 +501,15 @@ Port `entriesFor`, `effectiveState` and `objectId` from `layer-panel.ts:96-116, 
 ```ts
 // src/web/packages/editor/src/editor-shell/layer-tree.ts
 import { type FabricObject, Group } from "fabric/es";
-import { VigiliaChart } from "@vigilia/scene-fabric";
+import { YunariChart } from "@yunari/scene-fabric";
 
 export type LayerKind = "text" | "shape" | "chart" | "group" | "image";
 
 export interface LayerRow { /* as in Interfaces above */ }
 
-/** Fabric type tags are lowercase class names; the envelope keeps "VigiliaChart". */
+/** Fabric type tags are lowercase class names; the envelope keeps "YunariChart". */
 function kindOf(object: FabricObject): LayerKind {
-  if (object instanceof VigiliaChart) return "chart";
+  if (object instanceof YunariChart) return "chart";
   if (object instanceof Group) return "group";
   const type = (object as { type?: string }).type;
   if (type === "textbox" || type === "i-text" || type === "text") return "text";
@@ -700,7 +700,7 @@ Expected: PASS.
 
 Add to `tests/e2e/editor.spec.ts` a test that renames a layer, saves the package, reopens it and asserts the renamed row is still there. Run it:
 
-Run: `VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "keeps a layer's display name across save and reopen" --workers=1`
+Run: `YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "keeps a layer's display name across save and reopen" --workers=1`
 Expected: PASS. This is the evidence that `editorMetadata` actually round-trips; a unit test cannot show it.
 
 - [ ] **Step 7: Commit**
@@ -777,7 +777,7 @@ it("indents a group child and shows only its state icons", async () => {
       hasChildren: false, visible: true, locked: true, selected: true },
   ])} />));
 
-  const rows = host.querySelectorAll<HTMLElement>("[data-vigilia-layer]");
+  const rows = host.querySelectorAll<HTMLElement>("[data-yunari-layer]");
   expect(rows).toHaveLength(2);
   // One dense line, plus lock and visibility indicators — not six text buttons.
   expect(rows[1]?.style.getPropertyValue("--layer-depth")).toBe("1");
@@ -886,12 +886,12 @@ In `bridge.ts`:
 In `editor-shell.css`, replace the forcing rules at lines ~307-339 (`display: block` on labels/sections and `display: block; width: 100%` on inputs/selects) with the opt-in primitives:
 
 ```css
-.vigilia-field     { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 6px; }
-.vigilia-field-row { display: flex; gap: 6px; align-items: center; }
-.vigilia-numeric   { font-variant-numeric: tabular-nums; }
-.vigilia-layer-row { display: flex; align-items: center; gap: 4px;
+.yunari-field     { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 6px; }
+.yunari-field-row { display: flex; gap: 6px; align-items: center; }
+.yunari-numeric   { font-variant-numeric: tabular-nums; }
+.yunari-layer-row { display: flex; align-items: center; gap: 4px;
                      padding-left: calc(6px + var(--layer-depth, 0) * 13px); }
-.vigilia-layer-row[data-selected="true"] { background: var(--shell-selected, rgba(255,255,255,0.08)); }
+.yunari-layer-row[data-selected="true"] { background: var(--shell-selected, rgba(255,255,255,0.08)); }
 ```
 
 Remove `max-width: 100%` from controls only if nothing depends on it; check the inspector panels after the change.
@@ -905,7 +905,7 @@ Then verify in the browser — object counts are not evidence:
 
 ```bash
 cd src/web && npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium \
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium \
   --grep "captures the mounted editor for visual review" --workers=1
 ```
 
@@ -956,9 +956,9 @@ it("renders object actions in a bottom row, not on the selected row", async () =
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(<LayerPanel bridge={bridge(rows)} />));
-  const row = host.querySelector('[data-vigilia-layer="child"]');
+  const row = host.querySelector('[data-yunari-layer="child"]');
   expect(row?.querySelector('[aria-label="Duplicate"]')).toBeNull();
-  expect(host.querySelector('[data-vigilia-layer-actions] [aria-label="Duplicate"]')).not.toBeNull();
+  expect(host.querySelector('[data-yunari-layer-actions] [aria-label="Duplicate"]')).not.toBeNull();
 });
 
 it("renders the bottom row from the registry, so eligibility matches the dock", async () => {
@@ -969,7 +969,7 @@ it("renders the bottom row from the registry, so eligibility matches the dock", 
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(<LayerPanel bridge={bridge(rows, { target: none })} />));
-  const empty = host.querySelector("[data-vigilia-layer-actions]");
+  const empty = host.querySelector("[data-yunari-layer-actions]");
   expect(empty?.querySelectorAll("button")).toHaveLength(0);
 
   // With the helper's default single unlocked object the row is the registry's
@@ -982,7 +982,7 @@ it("renders the bottom row from the registry, so eligibility matches the dock", 
   const expected = OBJECT_ACTIONS
     .filter((action) => actionEnabled(gate, action.id))
     .map((action) => action.label);
-  const rendered = [...(host2.querySelector("[data-vigilia-layer-actions]")
+  const rendered = [...(host2.querySelector("[data-yunari-layer-actions]")
     ?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label"));
   expect(rendered.sort()).toEqual([...expected].sort());
   expect(expected.length).toBeGreaterThan(1);
@@ -1111,14 +1111,14 @@ Report both exact assertions. A teeth check that passes on the correct code *and
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `npx vitest run packages/editor/src/editor-shell/layer-panel.dom.test.tsx`
-Expected: FAIL — no `[data-vigilia-layer-actions]` element.
+Expected: FAIL — no `[data-yunari-layer-actions]` element.
 
 - [ ] **Step 3: Implement the bottom row**
 
 Below the tree, render one row of icon buttons, filtered by the **one** shared predicate:
 
 ```tsx
-<footer data-vigilia-layer-actions="">
+<footer data-yunari-layer-actions="">
   {OBJECT_ACTIONS
     .filter((action) => bridge !== undefined && actionEnabled(bridge, action.id))
     .map(({ id, icon: Icon, label }) => (
@@ -1183,7 +1183,7 @@ In `bridge.ts`:
 
 Wire HTML5 drag events on rows (`draggable`, `onDragStart`, `onDragOver` to show the drop line, `onDrop` → `reorderLayer`). A refused drop shows no line and changes nothing.
 
-**Ruled: the drop line's row pitch is named once on each side, and the row is fixed-height.** The panel positions the line with `index * 24` while the CSS gave the row `min-height: 24px` — two independent 24s, and `min-height` let a row grow taller than the line assumed, which would put the marker in the wrong slot with no test noticing. Change the CSS rule to `height: 24px` (with `overflow: hidden`, so a long name truncates instead of wrapping past it) and hoist the panel's literal to a module constant — `const ROW_HEIGHT = 24;` — with a comment naming `.vigilia-layer-row`'s height as the pair. `min-height` was the defect, not the duplication: a fixed row height is what makes `index * pitch` true. `layer-panel.dom.test.tsx:274-275` already pins both numbers, so it is the check.
+**Ruled: the drop line's row pitch is named once on each side, and the row is fixed-height.** The panel positions the line with `index * 24` while the CSS gave the row `min-height: 24px` — two independent 24s, and `min-height` let a row grow taller than the line assumed, which would put the marker in the wrong slot with no test noticing. Change the CSS rule to `height: 24px` (with `overflow: hidden`, so a long name truncates instead of wrapping past it) and hoist the panel's literal to a module constant — `const ROW_HEIGHT = 24;` — with a comment naming `.yunari-layer-row`'s height as the pair. `min-height` was the defect, not the duplication: a fixed row height is what makes `index * pitch` true. `layer-panel.dom.test.tsx:274-275` already pins both numbers, so it is the check.
 
 - [ ] **Step 5: Run the tests**
 
@@ -1199,10 +1199,10 @@ test("reorders a layer and refuses a cross-group drop", async ({ page }, testInf
   await page.goto(EDITOR);
   // A fixture with both shapes the rule distinguishes: two plain siblings, and a
   // group whose child must not be movable across the boundary.
-  // `vigiliaPaint` and `globals.palette` are not decoration: a literal `fill`
+  // `yunariPaint` and `globals.palette` are not decoration: a literal `fill`
   // with no paint ref is `unresolved-global-ref` and `setThemePackage` asserts
   // `writeThemePackage` returned ok, so a fixture without them fails before the
-  // editor opens. Copied from the `movable.vigilia-theme` fixture at `:1322`.
+  // editor opens. Copied from the `movable.yunari-theme` fixture at `:1322`.
   const paint = {
     palette: {
       none: { name: "None", value: { kind: "solid", color: "transparent" } },
@@ -1217,11 +1217,11 @@ test("reorders a layer and refuses a cross-group drop", async ({ page }, testInf
     width: 40,
     height: 40,
     fill: "#00b8d9",
-    vigiliaPaint: { fill: "palette.accent" },
+    yunariPaint: { fill: "palette.accent" },
     originX: "left",
     originY: "top",
   });
-  await setThemePackage(page, "reorder.vigilia-theme", {
+  await setThemePackage(page, "reorder.yunari-theme", {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "reorder",
@@ -1242,11 +1242,11 @@ test("reorders a layer and refuses a cross-group drop", async ({ page }, testInf
       ],
     },
   });
-  await expect(page.locator("#status")).toHaveText("Opened reorder.vigilia-theme");
+  await expect(page.locator("#status")).toHaveText("Opened reorder.yunari-theme");
 
   const panelOrder = (): Promise<(string | null)[]> =>
-    page.locator("[data-vigilia-layer]").evaluateAll((rows) =>
-      rows.map((row) => row.getAttribute("data-vigilia-layer")),
+    page.locator("[data-yunari-layer]").evaluateAll((rows) =>
+      rows.map((row) => row.getAttribute("data-yunari-layer")),
     );
   // The panel paints topmost-first, so its row order is the reverse of the
   // serialized paint order. Compare the pair's *relative* order, never an
@@ -1264,8 +1264,8 @@ test("reorders a layer and refuses a cross-group drop", async ({ page }, testInf
 
   // Same parent: drop alpha on beta's row.
   await page
-    .locator('[data-vigilia-layer="alpha"]')
-    .dragTo(page.locator('[data-vigilia-layer="beta"]'));
+    .locator('[data-yunari-layer="alpha"]')
+    .dragTo(page.locator('[data-yunari-layer="beta"]'));
   const afterPanel = await panelOrder();
   expect(afterPanel).not.toEqual(beforePanel);
 
@@ -1277,8 +1277,8 @@ test("reorders a layer and refuses a cross-group drop", async ({ page }, testInf
   // Cross-group: a child dropped on a top-level sibling changes membership,
   // which this operation must refuse outright.
   await page
-    .locator('[data-vigilia-layer="child"]')
-    .dragTo(page.locator('[data-vigilia-layer="alpha"]'));
+    .locator('[data-yunari-layer="child"]')
+    .dragTo(page.locator('[data-yunari-layer="alpha"]'));
   expect(await panelOrder()).toEqual(afterPanel);
   expect(idsIn(await saveEnvelope(page))).toEqual(afterIds);
 });
@@ -1326,7 +1326,7 @@ Task 5 replaced `layer-panel.tsx` entirely, so the old 6-buttons-per-row panel t
 it("puts arrange on the canvas toolbar, disabled without a multi-selection", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
-  const toolbar = root.querySelector("[data-vigilia-arrange-toolbar]");
+  const toolbar = root.querySelector("[data-yunari-arrange-toolbar]");
   expect(toolbar).not.toBeNull();
   // Derived, not a literal: `ARRANGE_ICONS` holds eight today, and a ninth
   // added to the registry must fail here rather than be silently dropped by
@@ -1344,7 +1344,7 @@ Expected: FAIL — no toolbar element.
 
 - [ ] **Step 3: Implement the toolbar**
 
-Add a `<div className="editor-shell-arrange" data-vigilia-arrange-toolbar="">` inside `.editor-shell-stage`, above the dock. Render every `arrangeActions()` entry, each an icon button with `aria-label` and `title`.
+Add a `<div className="editor-shell-arrange" data-yunari-arrange-toolbar="">` inside `.editor-shell-stage`, above the dock. Render every `arrangeActions()` entry, each an icon button with `aria-label` and `title`.
 
 **`disabled` comes from the snapshot's `memberCount`, not from `actionEnabled`.** This is the one place this task's original text was wrong, and it is wrong in a way that fails the test above.
 
@@ -1439,7 +1439,7 @@ it("rejects an out-of-range number instead of coercing it to zero", () => {
   const onCommit = vi.fn();
   const field = numberField({
     label: "Width", value: 100, min: 1, max: 4096,
-    data: "vigiliaArtboardWidth", onCommit,
+    data: "yunariArtboardWidth", onCommit,
   });
   document.body.append(field.row);
   const input = field.row.querySelector("input")!;
@@ -1483,8 +1483,8 @@ it("commits each half independently, leaving the untouched one alone", () => {
   const second = vi.fn();
   const pair = linkedPair({
     rowLabel: "Size",
-    first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
-    second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
+    first: { label: "W", value: 100, data: "yunariArtboardWidth" },
+    second: { label: "H", value: 200, data: "yunariArtboardHeight" },
     min: 1, max: 4096, onCommitFirst: first, onCommitSecond: second,
   });
   document.body.append(pair.row);
@@ -1516,9 +1516,9 @@ Expected: FAIL — imports do not resolve.
 
 `ColorSwatch` is cut for the same reason read the other way: it has **no consumer in this plan**. Nothing in Tasks 8–10 renders it, and the one surface that would — the selection inspector's colour fields — is imperatively built too (`selection-inspector/index.ts`). A dependency-free swatch earns its place when a panel consumes it.
 
-Both factories use the `.vigilia-field` / `.vigilia-field-row` / `.vigilia-numeric` classes from Task 5 and never a full-width control.
+Both factories use the `.yunari-field` / `.yunari-field-row` / `.yunari-numeric` classes from Task 5 and never a full-width control.
 
-**The `data` option is the camelCase dataset KEY, not the kebab attribute name** — an implementer who passes `"data-vigilia-artboard-width"` gets `data-data-vigilia-artboard-width` and every existing selector silently stops matching. The factories do `input.dataset[options.data] = ""`, exactly as `artboard-panel.ts:197` does today, so pass `"vigiliaArtboardWidth"`. The keys, and the attributes they produce: `vigiliaArtboardWidth` → `data-vigilia-artboard-width`, `vigiliaArtboardHeight` → `data-vigilia-artboard-height`, `vigiliaArtboardFitMode` → `data-vigilia-artboard-fit-mode`, `vigiliaArtboardBackground` → `data-vigilia-artboard-background`, `vigiliaArtboardBarColor` → `data-vigilia-artboard-bar-color`, `vigiliaBackgroundAsset` → `data-vigilia-background-asset`, `vigiliaBackgroundMediaFit` → `data-vigilia-background-media-fit`, `vigiliaThemeName` → `data-vigilia-theme-name`, `vigiliaThemeAuthor` → `data-vigilia-theme-author`, `vigiliaThemeDescription` → `data-vigilia-theme-description`. The browser tests at `editor.spec.ts:277-278` and `:642-643` and the three `artboard-panel.dom.test.ts` lookups are what break if this is wrong, and they break loudly — but only after the panel has been rewritten, so get it right the first time.
+**The `data` option is the camelCase dataset KEY, not the kebab attribute name** — an implementer who passes `"data-yunari-artboard-width"` gets `data-data-yunari-artboard-width` and every existing selector silently stops matching. The factories do `input.dataset[options.data] = ""`, exactly as `artboard-panel.ts:197` does today, so pass `"yunariArtboardWidth"`. The keys, and the attributes they produce: `yunariArtboardWidth` → `data-yunari-artboard-width`, `yunariArtboardHeight` → `data-yunari-artboard-height`, `yunariArtboardFitMode` → `data-yunari-artboard-fit-mode`, `yunariArtboardBackground` → `data-yunari-artboard-background`, `yunariArtboardBarColor` → `data-yunari-artboard-bar-color`, `yunariBackgroundAsset` → `data-yunari-background-asset`, `yunariBackgroundMediaFit` → `data-yunari-background-media-fit`, `yunariThemeName` → `data-yunari-theme-name`, `yunariThemeAuthor` → `data-yunari-theme-author`, `yunariThemeDescription` → `data-yunari-theme-description`. The browser tests at `editor.spec.ts:277-278` and `:642-643` and the three `artboard-panel.dom.test.ts` lookups are what break if this is wrong, and they break loudly — but only after the panel has been rewritten, so get it right the first time.
 
 Commit on `change`, as the panel does today — not on every keystroke. A half-typed `1` of `1000` must not be committed as a resize.
 
@@ -1538,7 +1538,7 @@ width, height, preview fit, background, bar colour), two of which are built inli
 `Object.assign(document.createElement("label"), …)`, plus `version`'s `output`, `select`,
 `background.select`, `bars.select`, `media` and `mediaFit`. The exact number is not load-bearing and has
 been written as 22 and 24 in earlier revisions; what matters is the shape: **group the label/control pairs
-into field rows.** If you need the count, derive it — do not trust any figure in this paragraph. Width and height become one `linkedPair`; name, author and description keep their existing `textField`-built inputs and move onto a `.vigilia-field` row each; the four selects (preview fit, background, bar colour, media fit) get a `.vigilia-field` row each, with their existing inline `Object.assign` label replaced by the row's own label element. The version label and its `output` stay as they are — a read-only readout is not a field.
+into field rows.** If you need the count, derive it — do not trust any figure in this paragraph. Width and height become one `linkedPair`; name, author and description keep their existing `textField`-built inputs and move onto a `.yunari-field` row each; the four selects (preview fit, background, bar colour, media fit) get a `.yunari-field` row each, with their existing inline `Object.assign` label replaced by the row's own label element. The version label and its `output` stay as they are — a read-only readout is not a field.
 
 **There is no new text-field factory in this plan, and that is deliberate.** `numberField` parses and range-checks a number and owns a rejected-edit rollback; the metadata fields already come from `textField` (`artboard-panel.ts:193-199`), which builds a label and an input and needs no parse step at all. Its one real fault is that the label is a separate `root.append` argument rather than part of a row — so pass `textField`'s `label` into the new row alongside its `input` and leave the helper alone. Do not generalise `numberField` into a union-typed control to cover both: the two have different failure modes and only one of them can fail.
 
@@ -1559,7 +1559,7 @@ Then rebuild and capture, and inspect the image:
 
 ```bash
 cd src/web && npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium \
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium \
   --grep "captures changed artboard controls" --workers=1
 ```
 
@@ -1618,8 +1618,8 @@ git commit -m "feat(editor): dense field controls for document panels"
 }
 /* Panel reveal: a short slide/fade on mount only — no list stagger. */
 .editor-shell-panel,
-.editor-shell-inspector { animation: vigilia-panel-in 160ms ease-out; }
-@keyframes vigilia-panel-in {
+.editor-shell-inspector { animation: yunari-panel-in 160ms ease-out; }
+@keyframes yunari-panel-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }
@@ -1651,7 +1651,7 @@ Only `background-color`, `border-color`, `color`, `transform` and `opacity` are 
 
 - [ ] **Step 2: Verify in the browser**
 
-Run: `cd src/web && npm run build && VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "captures the mounted editor for visual review" --workers=1`
+Run: `cd src/web && npm run build && YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "captures the mounted editor for visual review" --workers=1`
 Expected: PASS, and the capture still renders (motion must not leave a panel invisible).
 
 **Check the grep matched something before trusting the PASS.** A `--grep` that matches no test exits successfully having run nothing — a green result for having run nothing, which is the failure shape the sibling snapping plan's Task 9 exists to remove. The string above is the real title (`editor.spec.ts:145`, and `docs/evidence/screenshots/README.md:23` registers the shorter `captures the mounted editor`); confirm the reported count is non-zero rather than reading the exit code. Then open the capture and confirm the panels are visible, not mid-animation at zero opacity.
@@ -1664,7 +1664,7 @@ Expected: PASS, and the capture still renders (motion must not leave a panel inv
 |---|---|---|
 | the whole `prefers-reduced-motion` block | FAILS | correct, the one case the short form catches |
 | `transition: none !important;` only | **passes** | the test never reads a transition |
-| `@keyframes vigilia-panel-in { … }`, shorthand kept | **passes** | `animationDuration` stays `0.16s` off the shorthand alone |
+| `@keyframes yunari-panel-in { … }`, shorthand kept | **passes** | `animationDuration` stays `0.16s` off the shorthand alone |
 | the `transition:` shorthand block | **passes** | `transition: none !important` sets the duration regardless |
 | all six portalled-class selectors from the media block | **passes** | nothing reads a portalled element |
 
@@ -1817,7 +1817,7 @@ The selectors are real. The two `<aside>` elements in `shell-layout.tsx` carry `
 
 1. the whole `prefers-reduced-motion` block → fails at `expect(duration).toBe("0s")`
 2. `transition: none !important;` only → `Expected: "0s"` / `Received: "0.14s, 0.14s, 0.14s, 0.14s, 0.14s"` at the control read
-3. `@keyframes vigilia-panel-in { … }` only, shorthand kept → `Expected: >= 2` / `Received: 0`, and note `reveal.duration` still reads non-zero — that is what makes the keyframes probe the assertion that carries this case
+3. `@keyframes yunari-panel-in { … }` only, shorthand kept → `Expected: >= 2` / `Received: 0`, and note `reveal.duration` still reads non-zero — that is what makes the keyframes probe the assertion that carries this case
 4. **both** `.editor-shell-positioner` selectors → must fail on the **positioner** assertion — the `injectedTransition(positioner)` poll that expects `"0s"`, the last of the three positioner lines. **Not the popup assertion** — the popup element still matches its own `.editor-shell-menu-popup` selector, so that one passes. Deleting the popup's pair on its own is green (the popup is covered through its parent); deleting both pairs fails one block earlier, on the popup assertion. An earlier revision of this check named the popup assertion, from a time before the positioner assertion existed.
 5. the two `.editor-shell-tooltip` selectors → must fail on the tooltip assertion, the same way
 6. `transform 140ms ease,` from the shorthand → `Expected: "background-color, border-color, color, transform, opacity"` / `Received: "background-color, border-color, color, opacity"`
@@ -1946,13 +1946,13 @@ Rebuild, then re-capture and open:
 
 ```bash
 cd src/web && npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1 \
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1 \
   --grep "captures the mounted editor for visual review"
 ```
 
-`captureVisualReview` returns immediately unless `VIGILIA_CAPTURE` is set, so a plain run writes no file and this step becomes "open an image that is not there". Confirm the run reported a non-zero test count — a `--grep` matching nothing exits successfully having run nothing.
+`captureVisualReview` returns immediately unless `YUNARI_CAPTURE` is set, so a plain run writes no file and this step becomes "open an image that is not there". Confirm the run reported a non-zero test count — a `--grep` matching nothing exits successfully having run nothing.
 
-In the image, check each spec acceptance item by eye: indentation and collapse, two state icons per row, actions in the bottom row only, arrange on the toolbar, paired geometry fields, focus rings. The capture is the whole editor at default zoom; if a specific control is too small to judge there, open the host (`node packages/host/bin/vigilia.js`, built first) and look at it directly rather than zooming a PNG.
+In the image, check each spec acceptance item by eye: indentation and collapse, two state icons per row, actions in the bottom row only, arrange on the toolbar, paired geometry fields, focus rings. The capture is the whole editor at default zoom; if a specific control is too small to judge there, open the host (`node packages/host/bin/yunari.js`, built first) and look at it directly rather than zooming a PNG.
 
 - [ ] **Step 4: Update STATUS.md**
 

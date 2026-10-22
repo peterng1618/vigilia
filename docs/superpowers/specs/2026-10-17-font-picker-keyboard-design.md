@@ -21,7 +21,7 @@ Counted on disk at `5034e7cb`, not inherited:
   first + WINDOW)` with `WINDOW = 15`, `first` moved by `onScroll`. The trio list is not:
   `visibleTrios.map(...)` renders **every** matching trio.
 - Each trio row is an `<li>` holding **two buttons** — the favourite toggle
-  (`data-vigilia-font-favorite`) and the row itself (`data-vigilia-font-trio-row`) — so the trio list
+  (`data-yunari-font-favorite`) and the row itself (`data-yunari-font-trio-row`) — so the trio list
   contributes **379 × 2 = 758 tab stops**. The face list contributes 15.
 - The trio list is already a scroll container (`max-h-40 overflow-y-auto`); only its rows are
   unconstrained.

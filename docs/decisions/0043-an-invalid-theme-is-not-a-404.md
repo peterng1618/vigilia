@@ -15,7 +15,7 @@ it, and `boot-theme.ts`'s `openQuietly` catches everything and returns `undefine
 The shape worth solving: **a stored document that is present and unreadable, whose diagnosis is already
 computed and thrown away one layer below the answer.**
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `readStored`, `readEnvelope`, `checked`, `themeStore.read` call sites in `server.ts`,
 `boot-theme.ts`'s `openQuietly`, and every existing typed refusal in the store.
@@ -30,7 +30,7 @@ is the only one that should distinguish the two answers.
 
 Searched: `src/web/packages/host/package.json`'s direct dependencies and `server.ts`'s imports.
 
-Found: `@vigilia/renderer-core`, `@vigilia/theme-package` and `systeminformation`; HTTP is `node:http` with
+Found: `@yunari/renderer-core`, `@yunari/theme-package` and `systeminformation`; HTTP is `node:http` with
 no framework, no router and no error-mapping middleware. There is nothing installed whose opinion this could
 defer to, and nothing to add: the store and the route are both ours.
 
@@ -66,7 +66,7 @@ this decision follows: a refusal that is not a malformed request does not get dr
 ## Rung 6 — probe
 
 Measured 2026-10-13 against the built host in `packages/host/dist`, started with a private app folder
-(`--app-dir C:/tmp/vigilia-drain/probe-app --no-browser`) holding one theme whose `theme.json` carries a
+(`--app-dir C:/tmp/yunari-drain/probe-app --no-browser`) holding one theme whose `theme.json` carries a
 locale key the validator refuses:
 
 | Request | Response |

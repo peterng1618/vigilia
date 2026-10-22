@@ -1,4 +1,4 @@
-import { isLocked } from "@vigilia/scene-fabric";
+import { isLocked } from "@yunari/scene-fabric";
 import { ActiveSelection, type Canvas, type FabricObject } from "fabric/es";
 
 /** Fired when a lock is applied. `apply` writes the Fabric flags and fires no

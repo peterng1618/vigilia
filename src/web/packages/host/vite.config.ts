@@ -5,10 +5,10 @@ import { defineConfig } from "vite";
 export default defineConfig({
   resolve: {
     alias: {
-      "@vigilia/renderer-core": fileURLToPath(
+      "@yunari/renderer-core": fileURLToPath(
         new URL("../renderer-core/src/index.ts", import.meta.url),
       ),
-      "@vigilia/theme-package": fileURLToPath(
+      "@yunari/theme-package": fileURLToPath(
         new URL("../theme-package/src/index.ts", import.meta.url),
       ),
     },

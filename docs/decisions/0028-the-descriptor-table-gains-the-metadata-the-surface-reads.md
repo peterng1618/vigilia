@@ -44,7 +44,7 @@ The non-obvious part is not the missing fields. It is **where the metadata that 
 new surface reads belongs** — added to the one owner, or built beside it — and
 how much mechanism two nested settings justify.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `renderer-core/src/charts/settings-fields.ts` in full (its header,
 `SettingsFieldDescriptor`/`ChartPaintFieldDescriptor`, `CHART_SETTINGS_FIELDS`,
@@ -136,7 +136,7 @@ has one disclosure; it has no concept of "this section is not the question this
 kind asks", so a kind that has no applicable field must render no `<details>` at
 all rather than an empty one. And it does not connect a field to its hint:
 `aria-describedby` points at an element we must create and give an id, which is
-the same id-uniqueness problem the flat `vigilia-chart-setting-${property}` scheme
+the same id-uniqueness problem the flat `yunari-chart-setting-${property}` scheme
 already has once a nested property can collide with a top-level one.
 
 ## Rung 4 — ecosystem

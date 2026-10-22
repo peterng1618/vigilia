@@ -1,6 +1,6 @@
 import type { Canvas } from "fabric/es";
 
-/** Named for Vigilia's own managers, not the retired fork's subsystems. */
+/** Named for Yunari's own managers, not the retired fork's subsystems. */
 type EditorErrorCategory =
   | "clipboard"
   | "deletion"
@@ -29,7 +29,7 @@ export interface ErrorManager {
   warn(category: EditorErrorCategory, message: string, cause?: unknown): void;
 }
 
-/** Fabric's typed event map does not declare Vigilia's own event names. */
+/** Fabric's typed event map does not declare Yunari's own event names. */
 function emit(
   canvas: Canvas,
   event: "editor:error" | "editor:warning",
@@ -51,11 +51,11 @@ export function createErrorManager(canvas: Canvas): ErrorManager {
 
   return {
     error(category, message, cause) {
-      console.error(`[vigilia:${category}] ${message}`, cause);
+      console.error(`[yunari:${category}] ${message}`, cause);
       emit(canvas, "editor:error", build(category, message, cause));
     },
     warn(category, message, cause) {
-      console.warn(`[vigilia:${category}] ${message}`, cause);
+      console.warn(`[yunari:${category}] ${message}`, cause);
       emit(canvas, "editor:warning", build(category, message, cause));
     },
   };

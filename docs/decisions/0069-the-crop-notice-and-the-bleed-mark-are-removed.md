@@ -11,7 +11,7 @@
 
 Decision [0027](0027-a-deliberate-bleed-is-marked-not-warned-about.md) made a
 deliberate overhang a marked object: a persisted Fabric property
-(`vigiliaBleeds`), a `SceneBox.bleeds` field, a term in `countable`, a validator
+(`yunariBleeds`), a `SceneBox.bleeds` field, a term in `countable`, a validator
 check, a schema entry, an inspector toggle, and a player strip that said
 nothing about a marked object. The user ruled on 2026-10-18, asked directly to
 settle the scope: **"BOTH, EVERYWHERE"** — a display raises no crop notice at
@@ -29,12 +29,12 @@ The consequence, recorded rather than left to be discovered: with the mark gone
 the count cannot exclude a deliberate bleed, so an object that runs off the edge
 on purpose reads as a fault for as long as it stands.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
-Searched: every tracked file for the two subjects — `git grep -n "vigiliaBleeds"`
-and `git grep -n` over `VIGILIA_BLEEDS_PROPERTY`, `objectBleeds`, `isBleedMark`,
+Searched: every tracked file for the two subjects — `git grep -n "yunariBleeds"`
+and `git grep -n` over `YUNARI_BLEEDS_PROPERTY`, `objectBleeds`, `isBleedMark`,
 `writeMark`, `bleedField`, `SceneBox`, `countable`, `cropNoticeText`,
-`showCropNotice`, `vigilia-crop`; `renderer-core/src/theme/` for the flag's
+`showCropNotice`, `yunari-crop`; `renderer-core/src/theme/` for the flag's
 readers; `scene-fabric/src/artboard-crop.ts` for the traversal; the editor's
 `selection-inspector/` for the control; `player/src/` for the strip.
 
@@ -53,10 +53,10 @@ row's own blast radius, both found here:
   sentence in the plan's Step 3 is quoting 0041's own history rather than the
   current tree. The hand-maintained surface that actually moved is the published
   schema plus `fabric-envelope-validate.ts`'s named check.
-- **`[data-vigilia-crop]` is two different things.** The player's notice strip
+- **`[data-yunari-crop]` is two different things.** The player's notice strip
   and the editor's image-crop button both carry that attribute, on different
   surfaces. Only the player's is removed; the editor's crop session
-  (`crop-manager`, `data-vigilia-crop`/`-aspect`/`-apply`/`-cancel`) is untouched.
+  (`crop-manager`, `data-yunari-crop`/`-aspect`/`-apply`/`-cancel`) is untouched.
 
 ## Rung 2 — dependencies
 
@@ -77,11 +77,11 @@ anything native express 'this child overflows on purpose'?") was answered there
 and no longer has a consumer.
 
 Found: **nothing to ask.** The removal needs no platform feature; the notice it
-deletes was Vigilia's own sentence about Fabric's own clip.
+deletes was Yunari's own sentence about Fabric's own clip.
 
 ## Rung 4 — ecosystem
 
-Searched: nothing new, and deliberately. The behaviour removed is a Vigilia-only
+Searched: nothing new, and deliberately. The behaviour removed is a Yunari-only
 signal — a display telling a reader that the artboard does not contain the
 scene. 0027's rung 4 is the survey of record for the *mark* (Figma's frame-scoped
 `Clip content`, the standing per-object request, the print-bleed naming trap) and
@@ -104,11 +104,11 @@ contract for an outside tool is what goes with it.
 ## Rung 6 — probe
 
 **The persisted-key search, re-run by this task rather than quoted from the row.**
-`git grep -n vigiliaBleeds` over tracked files finds it in the published schema
+`git grep -n yunariBleeds` over tracked files finds it in the published schema
 (`schema/theme-document.schema.json:156`), in `renderer-core`'s source, in
 decision 0027, in the tests, and in **no theme file**. `git ls-files "*.json"`
 over the tree shows no other theme document. The author's own app folder
-(`~/.vigilia/themes/`) holds five theme folders and **zero** occurrences of the
+(`~/.yunari/themes/`) holds five theme folders and **zero** occurrences of the
 key; the two generated themes that did carry it
 (`src/web/.e2e-host-app/themes/e2e-bleed/` and `e2e-bleed-all/`) are gitignored
 (`.gitignore:16`) and written by the specs that exercise the notice, so they
@@ -127,11 +127,11 @@ task's browser pass and reported to the controller rather than decided here.
 ## Decision
 
 **The mark, the toggle and the notice are deleted, and the published key is
-removed from the schema.** `VIGILIA_BLEEDS_PROPERTY`, `objectBleeds` and
+removed from the schema.** `YUNARI_BLEEDS_PROPERTY`, `objectBleeds` and
 `isBleedMark` leave `renderer-core`; `SceneBox` loses `bleeds` and `countable`
 loses the term; the inspector loses `bleedField`, `writeMark` and its
 `bleeds` branch; the player loses `cropNoticeText`, `showCropNotice` and the
-`vigilia-crop` strip. The artboard panel's figure stays, and now excludes
+`yunari-crop` strip. The artboard panel's figure stays, and now excludes
 nothing.
 
 The specific reason: the user ruled both halves, and the evidence in rung 6 shows

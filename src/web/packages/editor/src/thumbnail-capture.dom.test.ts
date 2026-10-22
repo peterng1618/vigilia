@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { BackdropMedia } from "@vigilia/scene-fabric";
+import type { BackdropMedia } from "@yunari/scene-fabric";
 import type { Canvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { captureCanvas } from "./thumbnail-capture.js";

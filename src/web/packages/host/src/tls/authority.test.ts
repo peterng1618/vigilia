@@ -16,7 +16,7 @@ import { createSecureOrigin, serialNumber } from "./authority.js";
 let directory: string;
 
 beforeEach(async () => {
-  directory = await mkdtemp(path.join(os.tmpdir(), "vigilia-tls-"));
+  directory = await mkdtemp(path.join(os.tmpdir(), "yunari-tls-"));
 });
 
 afterEach(async () => {

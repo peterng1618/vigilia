@@ -1,4 +1,4 @@
-import { reassignObjectTypePresetReferences } from "@vigilia/scene-fabric";
+import { reassignObjectTypePresetReferences } from "@yunari/scene-fabric";
 import type { Canvas } from "fabric/es";
 import type { TypePresets } from "./panel.js";
 

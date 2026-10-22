@@ -1,6 +1,6 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import {
   COMPOSITION_ACCENT,
   COMPOSITION_WARN,
@@ -28,8 +28,8 @@ import { isDesktopSurface } from "./surface.js";
  *
  * This file is the composition panel's, not the rail's: `editor-rail.spec.ts`
  * owns the shared `openPane` helper, and every case here addresses the
- * panel's own markers — `data-vigilia-layer`, `data-vigilia-layer-mark`,
- * `data-vigilia-layer-role` and `.vigilia-layer-name`.
+ * panel's own markers — `data-yunari-layer`, `data-yunari-layer-mark`,
+ * `data-yunari-layer-role` and `.yunari-layer-name`.
  *
  * Which task owns which case:
  * - **Task 3** owns the first two cases below: what the row's role costs the row's width,
@@ -60,7 +60,7 @@ const EDITOR = "http://127.0.0.1:4174/";
  *  row that can match it, filed rather than deleted because the register's own
  *  recordings cite it. */
 const THREE_CONTROL_ARM =
-  ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3))";
+  ".yunari-layer-row:has(.yunari-layer-state button:nth-child(3))";
 
 /** The row's own padding, which the arm's reservation includes and the slot's
  *  own footprint does not. The in-page measurement subtracts the same value. */
@@ -74,8 +74,8 @@ const LAYER_ROW_PADDING_PX = 4;
 const THREE_CONTROL_SLOT_PX =
   rulePx(THREE_CONTROL_ARM, "padding-right") - LAYER_ROW_PADDING_PX;
 
-/** The mark column's slot, sized on `.vigilia-layer-mark` itself. */
-const MARK_SLOT_PX = rulePx(".vigilia-layer-mark", "flex");
+/** The mark column's slot, sized on `.yunari-layer-mark` itself. */
+const MARK_SLOT_PX = rulePx(".yunari-layer-mark", "flex");
 
 /**
  * The column this plan supersedes: plan 2 shipped a 360px pane, and the design
@@ -104,7 +104,7 @@ async function clippedNames(page: Page): Promise<{
   // that traded the kind slot's width against it (`vg-260`). A glyph cannot
   // clip, so that half is gone with the specimens it measured: the mark column
   // pays for the narrowing and no longer pays with legibility.
-  return page.locator(".vigilia-layer-name").evaluateAll((all) => ({
+  return page.locator(".yunari-layer-name").evaluateAll((all) => ({
     clipped: all.filter((name) => name.scrollWidth > name.clientWidth).length,
     total: all.length,
   }));
@@ -134,9 +134,9 @@ async function openStarterEditor(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
-  await expect(page.locator("[data-vigilia-layer]").first()).toBeVisible();
+  await expect(page.locator("[data-yunari-layer]").first()).toBeVisible();
   await openEveryGroup(page);
 }
 
@@ -147,14 +147,14 @@ test("every row carries a role and a mark, and the role adds no height", async (
 
   await openStarterEditor(page);
 
-  const rows = page.locator("[data-vigilia-layer]");
+  const rows = page.locator("[data-yunari-layer]");
   const rowCount = await rows.count();
   expect(rowCount, "the starter's tree, every group open").toBeGreaterThan(1);
 
   // One role per row, and never the empty string: a row whose role said nothing
   // would be a row whose kind is unstated on four kinds in five (the mark beside
   // the name is `aria-hidden` or absent).
-  const roles = page.locator(".vigilia-layer-role");
+  const roles = page.locator(".yunari-layer-role");
   await expect(roles).toHaveCount(rowCount);
   for (const text of await roles.allTextContents()) {
     expect(text.trim().length, "a role that says nothing").toBeGreaterThan(0);
@@ -162,20 +162,20 @@ test("every row carries a role and a mark, and the role adds no height", async (
 
   // A mark *slot* on every row, even where the treatment inside it is nothing —
   // that slot is what lines the names up.
-  await expect(page.locator(".vigilia-layer-mark")).toHaveCount(rowCount);
+  await expect(page.locator(".yunari-layer-mark")).toHaveCount(rowCount);
 
   // The role is `flex: none`, so it is never the element that gives up width.
   // What it must not do instead is leave the row's box: the row clips its
   // overflow, so a role pushed past the edge is a role the author cannot read.
   const overflowing = await page
-    .locator("[data-vigilia-layer]")
+    .locator("[data-yunari-layer]")
     .evaluateAll((elements) =>
       elements
         .map((row) => ({
-          name: row.querySelector(".vigilia-layer-name")?.textContent ?? "",
+          name: row.querySelector(".yunari-layer-name")?.textContent ?? "",
           slack:
             row.getBoundingClientRect().right -
-            (row.querySelector(".vigilia-layer-role")?.getBoundingClientRect()
+            (row.querySelector(".yunari-layer-role")?.getBoundingClientRect()
               .right ?? Number.NEGATIVE_INFINITY),
         }))
         .filter((row) => row.slack < 0)
@@ -225,7 +225,7 @@ test("the state slot does not cover the role, at rest or with the row attended",
   // nothing hovered. This is the state `vg-265` measured — the slot painted its
   // own surface whether or not it held a control, so every row's role lost its
   // last glyphs to a six-pixel block that drew nothing.
-  const rows = page.locator("[data-vigilia-layer]");
+  const rows = page.locator("[data-yunari-layer]");
   const overlaps = (): Promise<
     readonly { readonly name: string; readonly overlap: number }[]
   > =>
@@ -233,14 +233,14 @@ test("the state slot does not cover the role, at rest or with the row attended",
       elements
         .map((row) => {
           const role = row
-            .querySelector(".vigilia-layer-role")
+            .querySelector(".yunari-layer-role")
             ?.getBoundingClientRect();
           const slot = row
-            .querySelector(".vigilia-layer-state")
+            .querySelector(".yunari-layer-state")
             ?.getBoundingClientRect();
           if (role === undefined || slot === undefined) return undefined;
           return {
-            name: row.querySelector(".vigilia-layer-name")?.textContent ?? "",
+            name: row.querySelector(".yunari-layer-name")?.textContent ?? "",
             // A slot drawing no control paints nothing whatever its box says,
             // so the threshold is for fractional layout rather than for
             // coverage: the half-pixel a zero-width box can land on is not a
@@ -273,10 +273,10 @@ test("the state slot does not cover the role, at rest or with the row attended",
   // returns the row just hovered: every other row is at rest, and a slot
   // drawing no control paints nothing.
   const ids = await rows.evaluateAll((elements) =>
-    elements.map((row) => row.getAttribute("data-vigilia-layer") ?? ""),
+    elements.map((row) => row.getAttribute("data-yunari-layer") ?? ""),
   );
   for (const id of ids) {
-    const row = page.locator(`[data-vigilia-layer="${id}"]`);
+    const row = page.locator(`[data-yunari-layer="${id}"]`);
     // The leading edge rather than the centre: a centred hover lands on the
     // slot once a wide strip is reserved, and the twisty's own tooltip would
     // sit over the row it is being measured on.
@@ -293,9 +293,9 @@ test("the state slot does not cover the role, at rest or with the row attended",
     // order would be gone. Read on the row just hovered, because that is the
     // only row the strip's weight is charged to.
     const yielded = await row.evaluate((element) => {
-      const role = element.querySelector(".vigilia-layer-role") as HTMLElement;
-      const name = element.querySelector(".vigilia-layer-name") as HTMLElement;
-      const key = element.querySelector(".vigilia-layer-bound");
+      const role = element.querySelector(".yunari-layer-role") as HTMLElement;
+      const name = element.querySelector(".yunari-layer-name") as HTMLElement;
+      const key = element.querySelector(".yunari-layer-bound");
       return {
         roleClipped: role.scrollWidth > role.clientWidth,
         nameLeft: Math.round(name.getBoundingClientRect().width),
@@ -318,13 +318,13 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
 
   const shipped = await clippedNames(page);
   expect(shipped.total, "the names measured are the rows the DOM has").toBe(
-    await page.locator("[data-vigilia-layer]").count(),
+    await page.locator("[data-yunari-layer]").count(),
   );
 
   // The same width with the role taken out of the row: the role is paid for out
   // of the name, so this is the delta the case is really about, re-taken on this
   // machine and this font stack rather than restated.
-  await instrument(page, "no-role", ".vigilia-layer-role { display: none; }");
+  await instrument(page, "no-role", ".yunari-layer-role { display: none; }");
   const withoutRole = await clippedNames(page);
   await instrument(page, "no-role", "");
 
@@ -351,7 +351,7 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
   // the 28px the ruling's own measurement held (`vg-260`), which is why the
   // *instrument* is the narrow side here. What the mark pays is now only room: a
   // glyph does not clip, so this run prices the names' half of the trade.
-  await instrument(page, "mark-20", ".vigilia-layer-mark { flex: 0 0 20px; }");
+  await instrument(page, "mark-20", ".yunari-layer-mark { flex: 0 0 20px; }");
   const narrowMark = await clippedNames(page);
   await instrument(page, "mark-20", "");
 
@@ -393,8 +393,8 @@ test("keeps the document's own controls reachable while a card is selected", asy
 
   // The state the old Design tab showed the theme's own panel under the
   // selection column in: a card selected, its fields in the right column.
-  await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
-  await expect(page.locator('[data-vigilia-panel="selection"]')).toBeVisible();
+  await page.locator('[data-yunari-layer="group-cpu-card"]').click();
+  await expect(page.locator('[data-yunari-panel="selection"]')).toBeVisible();
 
   await openPane(page, "Document");
 
@@ -402,10 +402,10 @@ test("keeps the document's own controls reachable while a card is selected", asy
   // they are not behind the selection's surface, so they cannot be hidden by
   // making a selection — the property the `keepMounted` Design tab used to carry.
   // The document's own resolved references were the other half of this case, and
-  // both they and their `data-vigilia-globals` hook went with item 17 (`vg-474`):
+  // both they and their `data-yunari-globals` hook went with item 17 (`vg-474`):
   // the artboard's controls are what is left to read, in the same pane.
-  await expect(page.locator('[data-vigilia-panel="document"]')).toBeVisible();
-  await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="document"]')).toBeVisible();
+  await expect(page.locator("[data-yunari-artboard-width]")).toBeVisible();
 
   await captureVisualReview(page, testInfo, "composition-panel-document");
 });
@@ -427,7 +427,7 @@ async function activeId(page: Page): Promise<string | undefined> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: {
+        yunariEditorBridge?: {
           editor: {
             canvas: {
               getActiveObject(): { get(name: string): unknown } | undefined;
@@ -435,7 +435,7 @@ async function activeId(page: Page): Promise<string | undefined> {
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     const id = bridge?.editor.canvas.getActiveObject()?.get("id");
     return typeof id === "string" ? id : undefined;
   });
@@ -447,9 +447,9 @@ async function activeKind(page: Page): Promise<string | undefined> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: { snapshot(): { readonly activeKind: string } };
+        yunariEditorBridge?: { snapshot(): { readonly activeKind: string } };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     return bridge?.snapshot().activeKind;
   });
 }
@@ -459,9 +459,9 @@ async function enteredGroups(page: Page): Promise<readonly string[]> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: { groupContext(): readonly string[] };
+        yunariEditorBridge?: { groupContext(): readonly string[] };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     return bridge?.groupContext() ?? [];
   });
 }
@@ -479,7 +479,7 @@ async function emptyStagePoint(page: Page): Promise<{ x: number; y: number }> {
   const rect = await page.evaluate(() =>
     (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             viewport: {
               artboardScreenRect(): {
@@ -492,10 +492,10 @@ async function emptyStagePoint(page: Page): Promise<{ x: number; y: number }> {
           };
         };
       }
-    ).vigiliaEditorBridge.editor.viewport.artboardScreenRect(),
+    ).yunariEditorBridge.editor.viewport.artboardScreenRect(),
   );
   const box = (await page
-    .locator("#vigilia-fabric-editor canvas.upper-canvas")
+    .locator("#yunari-fabric-editor canvas.upper-canvas")
     .boundingBox())!;
   const below = box.height - (rect.top + rect.height);
   const above = rect.top;
@@ -533,11 +533,11 @@ async function authoredBox(
     };
     const objects = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): readonly Obj[] } };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    ).yunariEditorBridge.editor.canvas.getObjects();
     const find = (list: readonly Obj[]): Obj | undefined => {
       for (const candidate of list) {
         if (candidate.id === wanted) return candidate;
@@ -572,7 +572,7 @@ async function rowInScroller(page: Page, id: string): Promise<boolean> {
     ({ selector, rowId }) => {
       const scroller = document.querySelector<HTMLElement>(selector);
       const row = document.querySelector<HTMLElement>(
-        `[data-vigilia-layer="${rowId}"]`,
+        `[data-yunari-layer="${rowId}"]`,
       );
       if (scroller === null || row === null) return false;
       const outer = scroller.getBoundingClientRect();
@@ -595,7 +595,7 @@ function round1(value: number): number {
 
 /**
  * One rectangle of the loose documents, painted through a declared token: a
- * literal `fill` with no `vigiliaPaint` reference is `unresolved-global-ref`,
+ * literal `fill` with no `yunariPaint` reference is `unresolved-global-ref`,
  * and `writeThemePackage` refuses the package before the editor ever opens it.
  */
 function looseRect(
@@ -611,7 +611,7 @@ function looseRect(
     width: 44,
     height: 44,
     fill: COMPOSITION_ACCENT,
-    vigiliaPaint: { fill: "palette.accent" },
+    yunariPaint: { fill: "palette.accent" },
     originX: "left",
     originY: "top",
   };
@@ -661,7 +661,7 @@ function partGroup(
   };
 }
 
-/** A valid `.vigilia-theme` package around one scene. */
+/** A valid `.yunari-theme` package around one scene. */
 function packageBytes(
   id: string,
   objects: readonly Record<string, unknown>[],
@@ -729,9 +729,9 @@ async function openPackageWithTiming(
 async function openBareEditor(page: Page): Promise<void> {
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
-  await expect(page.locator("[data-vigilia-layer]").first()).toBeVisible();
+  await expect(page.locator("[data-yunari-layer]").first()).toBeVisible();
 }
 
 /** The viewport a measurement was taken at, which every number below needs. */
@@ -751,16 +751,16 @@ test("carries the document's binding, and selecting a card and entering it are s
   // eight rows would go on passing while the starter gained or lost cards; the
   // three columns are compared against the row count read here, at assertion
   // time, rather than against a figure written into this file.
-  const rows = page.locator("[data-vigilia-layer]");
+  const rows = page.locator("[data-yunari-layer]");
   const rowCount = await rows.count();
   expect(rowCount, "the starter's tree, every group open").toBeGreaterThan(1);
-  await expect(page.locator(".vigilia-layer-mark")).toHaveCount(rowCount);
-  await expect(page.locator("[data-vigilia-layer-role]")).toHaveCount(rowCount);
+  await expect(page.locator(".yunari-layer-mark")).toHaveCount(rowCount);
+  await expect(page.locator("[data-yunari-layer-role]")).toHaveCount(rowCount);
 
   // **The bound column, where the document declares a binding.** The panel
   // prints nothing at all on a row that reads nothing, so this is a count
   // *less than* the rows — never a word repeated down the column.
-  const boundCells = page.locator(".vigilia-layer-bound");
+  const boundCells = page.locator(".yunari-layer-bound");
   const boundCount = await boundCells.count();
   expect(boundCount, "rows that read something").toBeGreaterThan(0);
   expect(boundCount, "rows that read nothing carry no cell").toBeLessThan(
@@ -774,7 +774,7 @@ test("carries the document's binding, and selecting a card and entering it are s
   // the row the panel draws for that object has to say so.
   await expect(
     page.locator(
-      '[data-vigilia-layer="cpu-card-sparkline"] .vigilia-layer-bound',
+      '[data-yunari-layer="cpu-card-sparkline"] .yunari-layer-bound',
     ),
   ).toHaveText("cpu.load");
 
@@ -808,9 +808,9 @@ test("the right column names where to choose from, and empties when nothing is s
 
   await openStarterEditor(page);
 
-  const column = page.locator('[data-vigilia-panel="selection"]');
-  const emptyLine = page.locator("[data-vigilia-nothing-selected]");
-  const nameField = page.locator("[data-vigilia-name]");
+  const column = page.locator('[data-yunari-panel="selection"]');
+  const emptyLine = page.locator("[data-yunari-nothing-selected]");
+  const nameField = page.locator("[data-yunari-name]");
 
   // Nothing selected on open: the line that says where to choose from, and no
   // field at all. Both halves matter — a line over a live form says two things.
@@ -824,7 +824,7 @@ test("the right column names where to choose from, and empties when nothing is s
   await expect.poll(() => activeId(page)).toBe("cpu-card");
   await expect(column).toBeVisible();
   await expect(nameField).toBeVisible();
-  await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
+  await expect(page.locator("[data-yunari-panel-fill]")).toBeVisible();
   await expect(emptyLine).toHaveCount(0);
 
   // **Clearing the selection empties the column.** A stray click leaves the
@@ -835,7 +835,7 @@ test("the right column names where to choose from, and empties when nothing is s
   //
   // The one case that does *not* empty is a history restore, which drops
   // Fabric's selection as a side effect of rebuilding the scene; the fields
-  // re-bind by Vigilia id so an undo does not throw away the panel the author
+  // re-bind by Yunari id so an undo does not throw away the panel the author
   // was working in. That path is pinned in `index.dom.test.ts` — Undo is only
   // offered while something is selected, so it cannot be reached from here.
   await deselect(page);
@@ -857,7 +857,7 @@ test("the right column names where to choose from, and empties when nothing is s
   await selectLayer(page, "wordmark");
   await expect.poll(() => activeId(page)).toBe("wordmark");
   await page
-    .locator('[data-vigilia-layer-actions] [aria-label="Delete"]')
+    .locator('[data-yunari-layer-actions] [aria-label="Delete"]')
     .click();
   await expect.poll(() => activeId(page)).toBeUndefined();
   await expect(emptyLine).toBeVisible();
@@ -878,11 +878,11 @@ async function documentHolds(page: Page, id: string): Promise<boolean> {
     type Obj = { id?: string; getObjects?(): readonly Obj[] };
     const objects = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): readonly Obj[] } };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    ).yunariEditorBridge.editor.canvas.getObjects();
     const holds = (list: readonly Obj[]): boolean =>
       list.some(
         (candidate) =>
@@ -895,9 +895,9 @@ async function documentHolds(page: Page, id: string): Promise<boolean> {
 /** Every layer row's id, in the panel's own order. */
 async function layerIds(page: Page): Promise<readonly string[]> {
   return page
-    .locator("[data-vigilia-layer]")
+    .locator("[data-yunari-layer]")
     .evaluateAll((rows) =>
-      rows.map((row) => row.getAttribute("data-vigilia-layer") ?? ""),
+      rows.map((row) => row.getAttribute("data-yunari-layer") ?? ""),
     );
 }
 
@@ -918,8 +918,8 @@ test("deleting a part inside a group empties the right column too", async ({
   // other side: rows and objects disagreeing about what the document holds.
   await openStarterEditor(page);
 
-  const emptyLine = page.locator("[data-vigilia-nothing-selected]");
-  const nameField = page.locator("[data-vigilia-name]");
+  const emptyLine = page.locator("[data-yunari-nothing-selected]");
+  const nameField = page.locator("[data-yunari-name]");
 
   // Reached the way the case above reaches a part: entering the group is what
   // puts its parts on their own rows.
@@ -933,7 +933,7 @@ test("deleting a part inside a group empties the right column too", async ({
   ).toBe(true);
 
   await page
-    .locator('[data-vigilia-layer-actions] [aria-label="Delete"]')
+    .locator('[data-yunari-layer-actions] [aria-label="Delete"]')
     .click();
 
   // The document first, because it is the reading the row could not take: a row
@@ -969,7 +969,7 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
     packageBytes("two-hundred-loose-shapes", looseGrid(200)),
   );
 
-  const rows = page.locator("[data-vigilia-layer]");
+  const rows = page.locator("[data-yunari-layer]");
   const rowsStarted = Date.now();
   await expect.poll(() => rows.count(), { timeout: 30_000 }).toBe(200);
   const msToRows = msSince(rowsStarted);
@@ -977,7 +977,7 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
   // 200 root objects, 200 unique ids, and the order plan 1 recorded: the
   // projection reverses the root array, so the last object is the first row.
   const ids = await rows.evaluateAll((elements) =>
-    elements.map((element) => element.getAttribute("data-vigilia-layer") ?? ""),
+    elements.map((element) => element.getAttribute("data-yunari-layer") ?? ""),
   );
   expect(ids).toHaveLength(200);
   expect(new Set(ids).size, "every row a distinct id").toBe(200);
@@ -992,7 +992,7 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
   const hoverStarted = Date.now();
   for (let index = 0; index < 200; index += 20) {
     const id = `shape-${index}`;
-    await page.locator(`[data-vigilia-layer="${id}"]`).hover();
+    await page.locator(`[data-yunari-layer="${id}"]`).hover();
     hovered.push(id);
   }
   const hoverMs = msSince(hoverStarted);
@@ -1009,7 +1009,7 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
     "shape-160",
   ]) {
     const started = Date.now();
-    await page.locator(`[data-vigilia-layer="${id}"]`).click();
+    await page.locator(`[data-yunari-layer="${id}"]`).click();
     await expect.poll(() => activeId(page)).toBe(id);
     selectSamples.push({ id, ms: msSince(started) });
   }
@@ -1100,7 +1100,7 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
   const rolesOutside = await rows.evaluateAll(
     (elements) =>
       elements.filter((row) => {
-        const role = row.querySelector(".vigilia-layer-role");
+        const role = row.querySelector(".yunari-layer-role");
         return (
           role !== null &&
           role.getBoundingClientRect().right >
@@ -1154,7 +1154,7 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     ),
   );
 
-  const rows = page.locator("[data-vigilia-layer]");
+  const rows = page.locator("[data-yunari-layer]");
   await expect.poll(() => rows.count(), { timeout: 30_000 }).toBe(200);
 
   // Entering the group is the whole act: it re-projects the tree around the
@@ -1169,15 +1169,15 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   // group and its descendants are the reachable ones, and everything else is
   // marked as outside the context.
   await expect(
-    page.locator('[data-vigilia-layer="group-large"]'),
+    page.locator('[data-yunari-layer="group-large"]'),
     "the entered group is inside the context",
   ).toHaveAttribute("data-context", "true");
   await expect(
-    page.locator('[data-vigilia-layer="inside-2"]'),
+    page.locator('[data-yunari-layer="inside-2"]'),
     "a part of the entered group is inside it",
   ).toHaveAttribute("data-context", "true");
   await expect(
-    page.locator('[data-vigilia-layer="shape-0"]'),
+    page.locator('[data-yunari-layer="shape-0"]'),
     "a loose row outside the group is not",
   ).toHaveAttribute("data-context", "false");
 
@@ -1195,17 +1195,17 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   // of the *bound* column, one `:has` arm per control count.
   await selectLayer(page, "group-large");
   await expect.poll(() => activeId(page)).toBe("group-large");
-  const groupRow = page.locator('[data-vigilia-layer="group-large"]');
+  const groupRow = page.locator('[data-yunari-layer="group-large"]');
   await expect(
-    groupRow.locator(".vigilia-layer-state button"),
+    groupRow.locator(".yunari-layer-state button"),
     "entry, visibility and lock, all three on one row",
   ).toHaveCount(3);
   const slot = await groupRow.evaluate((row) => {
-    const state = row.querySelector(".vigilia-layer-state") as HTMLElement;
-    const role = row.querySelector(".vigilia-layer-role") as HTMLElement;
-    const bound = row.querySelector(".vigilia-layer-bound") as HTMLElement;
-    const name = row.querySelector(".vigilia-layer-name") as HTMLElement;
-    const mark = row.querySelector(".vigilia-layer-mark") as HTMLElement;
+    const state = row.querySelector(".yunari-layer-state") as HTMLElement;
+    const role = row.querySelector(".yunari-layer-role") as HTMLElement;
+    const bound = row.querySelector(".yunari-layer-bound") as HTMLElement;
+    const name = row.querySelector(".yunari-layer-name") as HTMLElement;
+    const mark = row.querySelector(".yunari-layer-mark") as HTMLElement;
     return {
       // The slot the narrowing rules, read off the row the worst case is on: a
       // value this column's own `:has`-free `flex-basis` sets, so a re-widening
@@ -1318,16 +1318,16 @@ async function rowsNamed(
   label: string,
 ): Promise<readonly string[]> {
   return page
-    .locator("[data-vigilia-layer]")
+    .locator("[data-yunari-layer]")
     .evaluateAll(
       (rows, wanted) =>
         rows
           .filter(
             (row) =>
-              row.querySelector(".vigilia-layer-role")?.textContent?.trim() ===
+              row.querySelector(".yunari-layer-role")?.textContent?.trim() ===
               wanted,
           )
-          .map((row) => row.getAttribute("data-vigilia-layer") ?? ""),
+          .map((row) => row.getAttribute("data-yunari-layer") ?? ""),
       label,
     );
 }
@@ -1344,10 +1344,10 @@ test("the starter's own card rows name the unit the document says they are", asy
   // reads. The name column beside it still says the id, which is the starter's
   // names-equals-ids convention and not this change's.
   await expect(
-    page.locator('[data-vigilia-layer="group-cpu-card"] .vigilia-layer-role'),
+    page.locator('[data-yunari-layer="group-cpu-card"] .yunari-layer-role'),
   ).toHaveText("CPU");
   await expect(
-    page.locator('[data-vigilia-layer="group-cpu-card"] .vigilia-layer-name'),
+    page.locator('[data-yunari-layer="group-cpu-card"] .yunari-layer-name'),
   ).toHaveText("group-cpu-card");
 });
 
@@ -1369,11 +1369,11 @@ async function activeIds(page: Page): Promise<readonly string[]> {
     type Obj = { get(name: string): unknown; getObjects?(): readonly Obj[] };
     const active = (
       window as unknown as {
-        vigiliaEditorBridge?: {
+        yunariEditorBridge?: {
           editor: { canvas: { getActiveObject(): Obj | undefined } };
         };
       }
-    ).vigiliaEditorBridge?.editor.canvas.getActiveObject();
+    ).yunariEditorBridge?.editor.canvas.getActiveObject();
     if (active === undefined) return [];
     const own = active.get("id");
     if (typeof own === "string") return [own];
@@ -1389,9 +1389,9 @@ async function arrangeAllowed(page: Page, action: string): Promise<boolean> {
     (wanted) =>
       (
         window as unknown as {
-          vigiliaEditorBridge: { canArrange(action: string): boolean };
+          yunariEditorBridge: { canArrange(action: string): boolean };
         }
-      ).vigiliaEditorBridge.canArrange(wanted),
+      ).yunariEditorBridge.canArrange(wanted),
     action,
   );
 }
@@ -1411,7 +1411,7 @@ async function clickRow(
   modifiers: readonly ("Control" | "Meta" | "Shift")[] = [],
 ): Promise<void> {
   await page
-    .locator(`[data-vigilia-layer="${id}"] .vigilia-layer-name`)
+    .locator(`[data-yunari-layer="${id}"] .yunari-layer-name`)
     .click({ position: { x: 6, y: 6 }, modifiers: [...modifiers] });
 }
 
@@ -1466,7 +1466,7 @@ test("shift extends a range and ctrl toggles one, and the list's own selection r
   // five.
   await clickRow(page, first);
   await expect.poll(() => activeIds(page)).toEqual([first]);
-  await page.locator(`[data-vigilia-layer="${fourth}"]`).focus();
+  await page.locator(`[data-yunari-layer="${fourth}"]`).focus();
   await page.keyboard.press("Space");
   await expect.poll(() => activeIds(page)).toEqual([fourth]);
   await clickRow(page, ids[7]!, ["Shift"]);
@@ -1487,7 +1487,7 @@ test("shift extends a range and ctrl toggles one, and the list's own selection r
     })
     .toBe(true);
   await expect(
-    page.locator('[data-vigilia-panel="selection"] [data-vigilia-arrange-row]'),
+    page.locator('[data-yunari-panel="selection"] [data-yunari-arrange-row]'),
     "and the control it gates is on screen",
   ).toBeVisible();
 
@@ -1497,7 +1497,7 @@ test("shift extends a range and ctrl toggles one, and the list's own selection r
   await clickRow(page, first);
   await expect.poll(() => activeIds(page)).toEqual([first]);
   await expect(
-    page.locator('[data-vigilia-panel="selection"] [data-vigilia-arrange-row]'),
+    page.locator('[data-yunari-panel="selection"] [data-yunari-arrange-row]'),
     "one object is not a multi-selection",
   ).toHaveCount(0);
 });
@@ -1513,7 +1513,7 @@ test("a copy inserted beside the starter names its unit without costing the star
   // The Add pane is the insert surface now: the `+` chooser left with the pane
   // bar, and the pane renders the same `insertGroups()` list it drew.
   await page
-    .locator('[data-vigilia-panel="add"]')
+    .locator('[data-yunari-panel="add"]')
     .getByRole("button", { name: "Clock", exact: true })
     .click();
 

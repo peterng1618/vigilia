@@ -15,7 +15,7 @@ import { HOST_PORT } from "./host-theme.js";
  * is the evidence, and what it shows decides whether there is anything to fix.
  *
  * **The overscan gutter is why the pixels are read and not just the times.** The
- * visible window is not `xAxis.min..max`: `VigiliaChart._render` blits only the
+ * visible window is not `xAxis.min..max`: `YunariChart._render` blits only the
  * left `_visibleBackingWidth()` px of an ECharts canvas that is `overscan` px
  * wider, so the axis's right end is off the visible surface by design. A reading
  * of `xAxis.max` alone would report the window's right edge as the newest
@@ -26,14 +26,14 @@ import { HOST_PORT } from "./host-theme.js";
  * **Opt-in, because it is a measurement and not a check.** It costs about
  * 100 seconds, it asserts nothing about the defect it reads, and nothing in the
  * repository consumes what it writes — so a regression at either edge would
- * leave it green. It is collected only when `VIGILIA_EDGE_PROBE` is set (the
+ * leave it green. It is collected only when `YUNARI_EDGE_PROBE` is set (the
  * `phone-host` project in `playwright.config.ts` states the gate), and it writes
- * its readings to `<os temp>/vigilia-live-edge/<VIGILIA_PROBE_TAG>.json` —
+ * its readings to `<os temp>/yunari-live-edge/<YUNARI_PROBE_TAG>.json` —
  * `reading.json` when the tag is unset, and the absolute path is named in the
  * run's own output. One run:
  *
  * ```
- * VIGILIA_EDGE_PROBE=1 VIGILIA_PROBE_TAG=my-run \
+ * YUNARI_EDGE_PROBE=1 YUNARI_PROBE_TAG=my-run \
  *   npx playwright test --project=phone-host tests/e2e/live-chart-edge.spec.ts
  * ```
  */
@@ -51,13 +51,13 @@ const RUN_MS = 80_000;
     does not overwrite the first — before and after are two files. */
 const OUT = path.join(
   tmpdir(),
-  "vigilia-live-edge",
-  `${process.env["VIGILIA_PROBE_TAG"] ?? "reading"}.json`,
+  "yunari-live-edge",
+  `${process.env["YUNARI_PROBE_TAG"] ?? "reading"}.json`,
 );
 
 test.skip(
-  process.env["VIGILIA_EDGE_PROBE"] === undefined,
-  "a measurement, not a check: set VIGILIA_EDGE_PROBE to collect it",
+  process.env["YUNARI_EDGE_PROBE"] === undefined,
+  "a measurement, not a check: set YUNARI_EDGE_PROBE to collect it",
 );
 
 /**
@@ -70,7 +70,7 @@ test.skip(
 async function saveStarterThroughTheHost(page: Page): Promise<string> {
   await page.goto(`${HOST}/editor/`);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "New from starter" }).click();
@@ -97,9 +97,9 @@ test.describe("the live line chart's edge", () => {
     test.setTimeout(240_000);
     await page.addInitScript(() => {
       const frames: unknown[] = [];
-      Reflect.set(window, "__vigiliaEdge", frames);
+      Reflect.set(window, "__yunariEdge", frames);
       const globals = window as unknown as {
-        vigilia?: {
+        yunari?: {
           handle?: { canvas?: { getObjects(): unknown[] } };
           live?: { batchCount?: number };
         };
@@ -162,7 +162,7 @@ test.describe("the live line chart's edge", () => {
 
         frames.push({
           at: Date.now(),
-          batches: globals.vigilia?.live?.batchCount ?? null,
+          batches: globals.yunari?.live?.batchCount ?? null,
           axisMin: axis.min,
           axisMax: axis.max,
           overscan: (option?.["renderOverscanRightMs"] as number) ?? 0,
@@ -204,7 +204,7 @@ test.describe("the live line chart's edge", () => {
 
       const tick = (): void => {
         try {
-          const canvas = globals.vigilia?.handle?.canvas;
+          const canvas = globals.yunari?.handle?.canvas;
           if (canvas !== undefined) walk(canvas.getObjects());
         } catch {
           /* the scene is not mounted yet */
@@ -224,9 +224,9 @@ test.describe("the live line chart's edge", () => {
             () =>
               (
                 window as unknown as {
-                  vigilia?: { live?: { batchCount?: number } };
+                  yunari?: { live?: { batchCount?: number } };
                 }
-              ).vigilia?.live?.batchCount ?? 0,
+              ).yunari?.live?.batchCount ?? 0,
           ),
         { timeout: 30_000 },
       )
@@ -236,7 +236,7 @@ test.describe("the live line chart's edge", () => {
 
     const frames = await page.evaluate(() =>
       (
-        (window as unknown as { __vigiliaEdge?: unknown[] }).__vigiliaEdge ?? []
+        (window as unknown as { __yunariEdge?: unknown[] }).__yunariEdge ?? []
       ).slice(),
     );
 

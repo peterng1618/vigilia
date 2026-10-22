@@ -26,7 +26,7 @@ export type FabricGlobals = Pick<Globals, "typePresets"> & {
   readonly palette?: FabricPalette;
 };
 
-/** Versioned Vigilia metadata around the opaque Fabric-authored scene. */
+/** Versioned Yunari metadata around the opaque Fabric-authored scene. */
 export interface FabricThemeEnvelope {
   readonly schemaVersion: typeof SUPPORTED_SCHEMA_VERSION;
   readonly fabricVersion: string;
@@ -36,7 +36,7 @@ export interface FabricThemeEnvelope {
   readonly metadata?: ThemeMetadata;
   readonly globals?: FabricGlobals;
   readonly assets?: readonly AssetReference[];
-  /** Semantic bindings remain Vigilia data, keyed by Fabric object id. */
+  /** Semantic bindings remain Yunari data, keyed by Fabric object id. */
   readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
   readonly editorMetadata?: Readonly<Record<string, unknown>>;
 }

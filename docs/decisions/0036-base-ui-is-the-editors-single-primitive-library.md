@@ -30,7 +30,7 @@ The question this note answers is not "how do we finish Phase 1" but **"which of
 is the right one to standardise on"**, because §8's ruling was made on a premise that the
 measurement above falsifies.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every primitive import in `packages/*/src`; `ownership.md`; the three `components/ui`
 wrappers; who consumes them.

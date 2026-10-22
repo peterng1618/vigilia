@@ -101,7 +101,7 @@ const MODE_ORDER = [
 /** The switch's id, and the stem of each segment's. §5 rule 5 wants every
  *  control to carry an id; the segment's is derived from the mode the way
  *  `useControlIds` derives one from the control it names. */
-const MODE_SWITCH_ID = "vigilia-shell-modes";
+const MODE_SWITCH_ID = "yunari-shell-modes";
 
 const modeSegmentId = (mode: ShellMode): string => `${MODE_SWITCH_ID}-${mode}`;
 
@@ -243,10 +243,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
   const hosts: ShellHosts = {
     canvas: element(),
-    add: element("vigiliaPanelHostAdd"),
-    tokens: element("vigiliaPanelHostTokens"),
-    document: element("vigiliaPanelHostDocument"),
-    selection: element("vigiliaPanelHostSelection"),
+    add: element("yunariPanelHostAdd"),
+    tokens: element("yunariPanelHostTokens"),
+    document: element("yunariPanelHostDocument"),
+    selection: element("yunariPanelHostSelection"),
     status: document.createElement("span"),
     dock: document.createElement("div"),
   };
@@ -459,7 +459,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 because the persistent hosts below live inside them and React
                 re-parents those nodes; a pane taken off the tree would take its
                 host's content with it. The pane is the one owner of the
-                `data-vigilia-panel` name, so the Composition pane's is
+                `data-yunari-panel` name, so the Composition pane's is
                 `layers` — the name the specs and the panel CSS already browse
                 by — and the other three are named for their rail slot. The
                 visible title is the slot's own word, as the other three are;
@@ -618,10 +618,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             surface yet renders an empty section rather than a placeholder
             standing in for one (§9). */}
         {mode === "editor" ? null : (
-          <section
-            className="editor-shell-mode"
-            data-vigilia-mode-region={mode}
-          >
+          <section className="editor-shell-mode" data-yunari-mode-region={mode}>
             {/* **The session is read at the moment the action fires, not at
                 this render**: the region is mounted for the whole life of the
                 shell and a later document mount replaces the bridge, so a
@@ -661,13 +658,13 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
         <footer id="status" className="editor-shell-status">
           {mode === "this-pc" ? (
             <>
-              <span data-vigilia-host-display-count="">
+              <span data-yunari-host-display-count="">
                 {hostStatus?.displays ?? null}
               </span>
               <p
                 className="editor-shell-status-host"
                 role="status"
-                data-vigilia-host-status=""
+                data-yunari-host-status=""
               >
                 {hostStatus?.status ?? null}
               </p>

@@ -7,7 +7,7 @@ import { createHostingSettingsStore } from "./hosting.js";
 let directory: string;
 
 beforeEach(async () => {
-  directory = await mkdtemp(path.join(os.tmpdir(), "vigilia-hosting-"));
+  directory = await mkdtemp(path.join(os.tmpdir(), "yunari-hosting-"));
 });
 
 afterEach(async () => {

@@ -13,7 +13,7 @@ describe("device settings", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-devices-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-devices-"));
   });
 
   afterEach(async () => {

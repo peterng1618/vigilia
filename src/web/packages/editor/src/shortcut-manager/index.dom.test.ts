@@ -10,7 +10,7 @@ afterEach(() => {
 });
 
 describe("ShortcutManager", () => {
-  it("claims registered Vigilia actions and leaves all other canvas keys alone", () => {
+  it("claims registered Yunari actions and leaves all other canvas keys alone", () => {
     const manager = new ShortcutManager();
     const save = vi.fn();
     manager.register("file.save", save);

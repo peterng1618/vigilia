@@ -40,7 +40,7 @@ section it became: read-only, "about a different question from 'what can I set'"
 question was never "should it be editable" — it is settled that it is not. The
 open question is how many *read-only* doors one answer may have.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `style.ts` in full (the `createStylePanel` factory, `StylePanelOptions`,
 the `documentGlobals` renderer, the `render` closure, the four Fabric events it
@@ -55,8 +55,8 @@ Found: **one owner already renders the same lines, and the panel is a second
 reader of it.** `per-kind-column.ts`'s `spendsBody` (`:551-614`) and
 `childrenResolution` (`:513-547`) call the identical six helpers; `style.ts`'s
 `render` (`:101-119`) calls them too. `createResolutionLine` is a single function
-(`appearance.ts:206`) — both surfaces produce the same `<p class="vigilia-resolution"
-data-vigilia-resolution="…">` element, so the duplication is literal, not
+(`appearance.ts:206`) — both surfaces produce the same `<p class="yunari-resolution"
+data-yunari-resolution="…">` element, so the duplication is literal, not
 stylistic. The call sites, exactly:
 
 - `createResolutionLine` — 4 in `style.ts` (`:61, :70, :103, :114`), 6 in
@@ -73,7 +73,7 @@ stylistic. The call sites, exactly:
 undefined` (`StylePanelOptions`, `style.ts:31`) — a thunk, not a value, and the
 header says why: the panel is mounted for the session and never writes, so
 pulling the current `FabricGlobals` on each render cannot show a stale copy
-(`style.ts:26-31`). `FabricGlobals` is the `@vigilia/renderer-core` theme
+(`style.ts:26-31`). `FabricGlobals` is the `@yunari/renderer-core` theme
 envelope; the panel reads `.palette` (as `FabricPalette`) and `.typePresets`
 directly in `documentGlobals` (`style.ts:54-76`), skipping the `"none"` palette
 id (`style.ts:56`) because it is the absence of a token, not one. The helpers
@@ -94,7 +94,7 @@ which is `true` for `group` and `activeSelection` (`KIND_QUESTIONS`,
 `childrenResolution` (`:520-529`) so a card whose five labels share one token
 resolves to that one token once. `style.ts` has no such branch: it calls
 `paintReferencesOf(active)` (`:101`) and `typePresetOf(active)` (`:111`) on the
-container object itself, and a group carries no `vigiliaPaint` and no text run,
+container object itself, and a group carries no `yunariPaint` and no text run,
 so both return nothing and the panel renders an empty `<section>`. The column
 answers the group; the tab answers nothing. **For a group or a multi-selection
 the column renders more, not less** — which is why the fix is to delete the
@@ -114,7 +114,7 @@ Searched: `src/web/package.json`, `packages/editor/package.json`,
 Found: **nothing, and nothing is proposed.** The editor's installed set is
 `@base-ui/react`, `@radix-ui/react-popover`, Tailwind + `@tailwindcss/vite`,
 `clsx`, `class-variance-authority`, `tailwind-merge`, `react`/`react-dom` 19,
-`fabric`, `echarts`, `lucide-react`, and the three `@vigilia/*` workspace
+`fabric`, `echarts`, `lucide-react`, and the three `@yunari/*` workspace
 packages; the workspace root adds `@biomejs/biome`, `vite`, `typescript`,
 `vitest`, `@playwright/test`, `jsdom`, `canvas`, `@types/node`. There is no
 design-token graph library, no theme-resolution package, no schema/inspector
@@ -261,7 +261,7 @@ second surface that can be taught to.
 
 | Option | Fit | Cost | Risk | Verdict |
 |---|---|---|---|---|
-| **One surface per question** — the selection's resolved references live only in the column's Spends; the document's globals live only in the left column's Document pane | the column already renders them, already owns the group case (`childrenResolution`), and already shares `ownership.md:98`'s row; the document answer belongs to the column the document sits in | delete the panel's selection branch and its `style` host; move `documentGlobals` unchanged, keeping `data-vigilia-globals` so the existing assertion (`editor.spec.ts:2149`) still reads | none of substance: the value owner (`appearance.ts`) is untouched, and the group case stops being blank because it was never blank in the surviving surface | **chosen** |
+| **One surface per question** — the selection's resolved references live only in the column's Spends; the document's globals live only in the left column's Document pane | the column already renders them, already owns the group case (`childrenResolution`), and already shares `ownership.md:98`'s row; the document answer belongs to the column the document sits in | delete the panel's selection branch and its `style` host; move `documentGlobals` unchanged, keeping `data-yunari-globals` so the existing assertion (`editor.spec.ts:2149`) still reads | none of substance: the value owner (`appearance.ts`) is untouched, and the group case stops being blank because it was never blank in the surviving surface | **chosen** |
 | **Two surfaces for the selection's answer, kept in sync** — keep the Style tab's selection mode and make it agree with Spends | nothing moves; the tab's own test stays green | a sync path between two renderers of one fact, in two files, for two call sites | **the trap that produced `vg-146`.** Every duplicated fact "is a promise that two pieces of code will stay in step" (rung 4); the tab has no children walk, so teaching it to agree means duplicating `childrenResolution` too — a second owner of the container answer, which `ownership.md:10-13` forbids and which drifts the moment a kind is added | rejected |
 | **One surface with two modes** — today's Style panel: one component that branches on `active === undefined` between document and selection | it is what shipped; cheapest to keep; one factory, one host | none added | **the trap, named.** The mode is keyed on transient selection state, not on which question is asked, so the surface's *identity* changes when a group is selected and the group lands in the selection branch, which has nothing to render — `vg-146` exactly. It also puts two different questions (what the document offers / what this selection resolves to) behind one surface, the conflation the design spec's section table exists to prevent ("a tab [that] hides a property"; `2026-10-02-frontend-redesign-design.md:226-232`). | rejected |
 
@@ -277,14 +277,14 @@ What could be measured by reading, and what was not run.
   for each `paintReferencesOf(target)`. The type-preset lines are the same pair
   (`style.ts:112-119` vs `per-kind-column.ts:594-607`). `createResolutionLine`
   is one function (`appearance.ts:206`), so both emit an identical
-  `data-vigilia-resolution` element.
+  `data-yunari-resolution` element.
 - **The call-site count is a measurement, not an assertion.** `createResolutionLine`
   has 4 call sites in `style.ts` and 6 in `per-kind-column.ts`; the six helpers
   are called from exactly those two modules plus the one non-display `resolveToken`
   in `panel.ts:343`.
 - **The divergence is recorded, with numbers.** `vg-146` measured, driving the
   built editor in Chromium: with `group-cpu-card` selected, the element
-  `[data-vigilia-panel="style"]` holds **no** `[data-vigilia-resolution]` at all,
+  `[data-yunari-panel="style"]` holds **no** `[data-yunari-resolution]` at all,
   while the column lists three lines — `Paint: Frosted panel → #0815234d`,
   `Paint: CPU → #4da3ff`, `Type preset: Card title → Segoe UI 400 24px`. **That
   count is the row's, not one I reproduced** — I read the source and the register,
@@ -301,7 +301,7 @@ What could be measured by reading, and what was not run.
 - **Cannot be probed here:** a live rendered line count for an `activeSelection`
   (multi-selection) on the starter — the register measured a `group`, and I did
   not drive the editor to add the multi-selection number; and whether anything
-  other than `editor.spec.ts:2149` reads the `data-vigilia-globals` marker, which
+  other than `editor.spec.ts:2149` reads the `data-yunari-globals` marker, which
   only the document mode keeps. Both would be browser tasks in the change that
   makes the move, not facts this note can assert.
 
@@ -310,7 +310,7 @@ What could be measured by reading, and what was not run.
 **The selection's resolved references keep exactly one read-only surface — the
 right column's Spends section — and the Style panel's selection mode is deleted.
 Its document mode moves to the editor's left column as a Document pane, keeping
-`documentGlobals`'s `data-vigilia-globals` marker and its `createResolutionLine`
+`documentGlobals`'s `data-yunari-globals` marker and its `createResolutionLine`
 lines so the existing browser assertion still reads it. The tab that held both
 modes has nothing left to switch between and goes with the selection mode.**
 

@@ -11,7 +11,7 @@ describe("font favourites", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-favorites-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-favorites-"));
   });
 
   afterEach(async () => {

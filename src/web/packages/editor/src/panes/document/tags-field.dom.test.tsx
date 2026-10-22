@@ -15,7 +15,7 @@ import {
   MAX_TAGS,
   TAG_PATTERN,
   type ThemeMetadata,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -80,14 +80,14 @@ afterEach(async () => {
 /** Every pill, in the order the field draws them. */
 function pills(): HTMLButtonElement[] {
   return Array.from(
-    document.querySelectorAll<HTMLButtonElement>("button[data-vigilia-tag]"),
+    document.querySelectorAll<HTMLButtonElement>("button[data-yunari-tag]"),
   );
 }
 
 /** The pill for one tag, which is the only handle a person has on it. */
 function pill(tag: string): HTMLButtonElement {
   const found = pills().find(
-    (candidate) => candidate.getAttribute("data-vigilia-tag") === tag,
+    (candidate) => candidate.getAttribute("data-yunari-tag") === tag,
   );
   if (found === undefined) throw new Error(`no "${tag}" pill`);
   return found;
@@ -96,7 +96,7 @@ function pill(tag: string): HTMLButtonElement {
 /** The propose field: the one input this control renders. */
 function proposal(): HTMLInputElement {
   const found = document.querySelector<HTMLInputElement>(
-    "[data-vigilia-tag-proposal]",
+    "[data-yunari-tag-proposal]",
   );
   if (found === null) throw new Error("the field renders no proposal input");
   return found;
@@ -175,9 +175,9 @@ async function propose(tag: string): Promise<void> {
 it("offers the vocabulary as choices", async () => {
   await mount();
 
-  expect(
-    pills().map((entry) => entry.getAttribute("data-vigilia-tag")),
-  ).toEqual([...VOCABULARY]);
+  expect(pills().map((entry) => entry.getAttribute("data-yunari-tag"))).toEqual(
+    [...VOCABULARY],
+  );
   // None is held, so none is pressed: the list is the offer, not the value.
   expect(pills().map((entry) => entry.getAttribute("aria-pressed"))).toEqual(
     VOCABULARY.map(() => "false"),
@@ -271,17 +271,17 @@ it("keeps the committed order the author's, not the vocabulary's", async () => {
 
   // The value's own order first — `cityscape` is in no vocabulary this field was
   // given — and the vocabulary's remaining entries after it, in its own order.
-  expect(
-    pills().map((entry) => entry.getAttribute("data-vigilia-tag")),
-  ).toEqual([
-    "cityscape",
-    "modern",
-    "futuristic",
-    "retro",
-    "elegant",
-    "classic",
-    "nature",
-  ]);
+  expect(pills().map((entry) => entry.getAttribute("data-yunari-tag"))).toEqual(
+    [
+      "cityscape",
+      "modern",
+      "futuristic",
+      "retro",
+      "elegant",
+      "classic",
+      "nature",
+    ],
+  );
 });
 
 it("draws a proposed tag as a proposal rather than as a picked one", async () => {

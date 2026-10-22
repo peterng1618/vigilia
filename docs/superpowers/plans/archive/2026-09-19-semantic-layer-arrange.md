@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
-**Goal:** Add a Vigilia semantic layer projection and selection-relative align/distribute controls without a second scene model.
+**Goal:** Add a Yunari semantic layer projection and selection-relative align/distribute controls without a second scene model.
 
 **Architecture:** `layer-panel.ts` projects the Fabric canvas/group graph and delegates generic order/lock/history to the adopted fork. `arrange.ts` moves an `ActiveSelection` from rendered Fabric bounds, then saves exactly one fork history state. `ForkExtensions` composes both panels.
 
@@ -78,7 +78,7 @@ readonly historyManager: { saveState(): void };
 - [ ] **Step 4: Run focused proof**
 
 ```text
-cmd.exe /d /s /c "npm run typecheck -w @vigilia/editor && npm test -- --run packages/editor/src/fork-shell.dom.test.ts"
+cmd.exe /d /s /c "npm run typecheck -w @yunari/editor && npm test -- --run packages/editor/src/fork-shell.dom.test.ts"
 ```
 
 Expected: editor typecheck and focused test pass.
@@ -107,7 +107,7 @@ git push origin feat/fabric-editor-migration
 Build a jsdom canvas fake with roots `[background, group, foreground]` and `group.getObjects()` returning `[child]`. Assert reverse paint order and labels:
 
 ```ts
-expect(panel.root.querySelectorAll('[data-vigilia-layer]')).toHaveLength(4);
+expect(panel.root.querySelectorAll('[data-yunari-layer]')).toHaveLength(4);
 expect(panel.root.textContent).toContain('Rect foreground');
 expect(panel.root.textContent).toContain('Group group');
 expect(panel.root.textContent).toContain('Textbox child');
@@ -132,7 +132,7 @@ export interface LayerPanel { readonly root: HTMLElement; destroy(): void }
 export function createLayerPanel(host: HTMLElement, editor: ImageEditor): LayerPanel
 ```
 
-Use `canvas.getObjects().slice().reverse()` and `Group#getObjects().slice().reverse()`. Read custom `id` and `locked` using a local structural type. Render `data-vigilia-layer=id`, a derived `${object.type} ${id}` label, effective ancestor visibility/lock, and labelled Show/Hide, Lock/Unlock, Front/Forward/Backward/Back buttons. A child click selects its owning group. Show sets every hidden ancestor visible, calls `setCoords()`, requests render, and saves exactly once. Lock/order delegate to Task 1’s fork managers. Subscribe/unsubscribe `selection:created`, `selection:updated`, `selection:cleared`, `object:added`, `object:removed`, and `object:modified`.
+Use `canvas.getObjects().slice().reverse()` and `Group#getObjects().slice().reverse()`. Read custom `id` and `locked` using a local structural type. Render `data-yunari-layer=id`, a derived `${object.type} ${id}` label, effective ancestor visibility/lock, and labelled Show/Hide, Lock/Unlock, Front/Forward/Backward/Back buttons. A child click selects its owning group. Show sets every hidden ancestor visible, calls `setCoords()`, requests render, and saves exactly once. Lock/order delegate to Task 1’s fork managers. Subscribe/unsubscribe `selection:created`, `selection:updated`, `selection:cleared`, `object:added`, `object:removed`, and `object:modified`.
 
 - [ ] **Step 4: Compose it in `ForkExtensions`**
 
@@ -141,7 +141,7 @@ Construct one panel after `#newObjects`, retain it as `#layers`, and call `#laye
 - [ ] **Step 5: Run focused proof**
 
 ```text
-cmd.exe /d /s /c "npm run typecheck -w @vigilia/editor && npm test -- --run packages/editor/src/layer-panel.dom.test.ts"
+cmd.exe /d /s /c "npm run typecheck -w @yunari/editor && npm test -- --run packages/editor/src/layer-panel.dom.test.ts"
 ```
 
 Expected: typecheck, reverse-order, inherited-state, action forwarding, refresh, and teardown tests pass.
@@ -208,7 +208,7 @@ Append an `Arrange` section to `layer-panel.ts` with all eight labelled actions.
 - [ ] **Step 5: Run focused proof**
 
 ```text
-cmd.exe /d /s /c "npm run typecheck -w @vigilia/editor && npm test -- --run packages/editor/src/arrange.dom.test.ts packages/editor/src/layer-panel.dom.test.ts"
+cmd.exe /d /s /c "npm run typecheck -w @yunari/editor && npm test -- --run packages/editor/src/arrange.dom.test.ts packages/editor/src/layer-panel.dom.test.ts"
 ```
 
 Expected: geometry, rotation, rejection, history, selection preservation, and button eligibility tests pass.
@@ -233,12 +233,12 @@ git push origin feat/fabric-editor-migration
 
 - [ ] **Step 1: Write the failing active-fork assertion**
 
-Extend `editor-fork.spec.ts` to load `/editor`, wait for `[data-vigilia-layer]`, select a visible row, invoke an enabled arrange action after fixture multi-selection, and assert selected ids remain active. Capture the sidebar with `VIGILIA_CAPTURE=1`.
+Extend `editor-fork.spec.ts` to load `/editor`, wait for `[data-yunari-layer]`, select a visible row, invoke an enabled arrange action after fixture multi-selection, and assert selected ids remain active. Capture the sidebar with `YUNARI_CAPTURE=1`.
 
 - [ ] **Step 2: Run it before wiring**
 
 ```text
-VIGILIA_CAPTURE=1 npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --workers=1
+YUNARI_CAPTURE=1 npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --workers=1
 ```
 
 Expected: the new hooks are absent until Tasks 2–3 complete.
@@ -249,7 +249,7 @@ Expected: the new hooks are absent until Tasks 2–3 complete.
 npm run typecheck
 npm test
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test -g "visual review" --workers=1
+YUNARI_CAPTURE=1 npx playwright test -g "visual review" --workers=1
 npm run size
 npm run test:e2e
 ```

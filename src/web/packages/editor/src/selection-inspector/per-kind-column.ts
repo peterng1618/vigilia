@@ -3,9 +3,9 @@ import type {
   FabricGlobals,
   SampleSource,
   SettingsSection,
-} from "@vigilia/renderer-core";
-import { SETTINGS_SECTIONS } from "@vigilia/renderer-core";
-import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { SETTINGS_SECTIONS } from "@yunari/renderer-core";
+import { isLocked, YunariChart } from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   FabricImage,
@@ -137,7 +137,7 @@ function isTextKind(object: FabricObject): boolean {
  */
 export function selectionKindOf(target: FabricObject): SelectionKind {
   if (target instanceof ActiveSelection) return "activeSelection";
-  if (target instanceof VigiliaChart) return "chart";
+  if (target instanceof YunariChart) return "chart";
   if (target instanceof Group) return "group";
   if (isTextKind(target)) return "text";
   if (target instanceof FabricImage) return "image";
@@ -173,8 +173,8 @@ export interface GeometryPort {
  * the extra is what the section's count counts, so an absent answer emits none.
  */
 export interface ChartFieldsPort {
-  content(chart: VigiliaChart): ChartContentFieldsView | undefined;
-  paint(chart: VigiliaChart): ChartPaintFieldsView | undefined;
+  content(chart: YunariChart): ChartContentFieldsView | undefined;
+  paint(chart: YunariChart): ChartPaintFieldsView | undefined;
 }
 
 export interface ColumnContext {
@@ -275,7 +275,7 @@ function geometryPair(
     label: GEOMETRY_LABELS[key],
     value: Math.round(context.geometry.read(object, key)),
     integer: true,
-    data: { "data-vigilia-geometry": key },
+    data: { "data-yunari-geometry": key },
   });
   return {
     id: `${first}-${second}`,
@@ -312,7 +312,7 @@ function rotationField(
     // The control refuses a fraction inline; `editRefusal` refuses it again at
     // the write boundary, which is the copy that must hold.
     integer: true,
-    data: { "data-vigilia-geometry": "angle" },
+    data: { "data-yunari-geometry": "angle" },
   };
 }
 
@@ -369,7 +369,7 @@ function contentBody(
   // locked chart like every other writing field.
   if (
     !locked &&
-    target instanceof VigiliaChart &&
+    target instanceof YunariChart &&
     context.chartFields !== undefined
   ) {
     const chart = context.chartFields.content(target);
@@ -459,7 +459,7 @@ function paintBody(
 
   // What a chart paints its data with, from the owner that writes it. A chart's
   // paint is its own question, asked of the same owner that answered Content.
-  if (target instanceof VigiliaChart && context.chartFields !== undefined) {
+  if (target instanceof YunariChart && context.chartFields !== undefined) {
     const chart = context.chartFields.paint(target);
     if (chart !== undefined) extras.push({ kind: "chartPaint", paint: chart });
   }

@@ -1,5 +1,5 @@
-import { isObjectName } from "@vigilia/renderer-core";
-import { isLocked } from "@vigilia/scene-fabric";
+import { isObjectName } from "@yunari/renderer-core";
+import { isLocked } from "@yunari/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type {
   ChartContentFieldsView,
@@ -77,8 +77,8 @@ export interface ColumnSectionView {
 /**
  * The `data-*` hooks a row's own focus target carries.
  *
- * The hook is not the field identity: `data-vigilia-geometry` names five values,
- * so a suite reads `[data-vigilia-geometry="width"]` and then reads `.value` off
+ * The hook is not the field identity: `data-yunari-geometry` names five values,
+ * so a suite reads `[data-yunari-geometry="width"]` and then reads `.value` off
  * the element the hook is on. Fields carry the attribute names, and the renderer
  * spreads them onto the control itself, never a wrapper — a hook on a wrapper is
  * a broken locator wearing a passing test.
@@ -213,11 +213,11 @@ export interface RunRowView {
   readonly typePreset: string;
   readonly colour: string;
   /**
-   * The binding this run names, for the note's `data-vigilia-run-binding` — the
+   * The binding this run names, for the note's `data-yunari-run-binding` — the
    * key `run.bindingId` carried before the column was React, and what a spec
    * reads to learn *which* binding a value run failed to resolve. `""` for
    * prose, which names no binding. It is not the row's ordinal: that is
-   * `index`, and it rides the row's own `data-vigilia-run` hook.
+   * `index`, and it rides the row's own `data-yunari-run` hook.
    */
   readonly bindingId: string;
   /** The semantic key a value run reads, or `""` for prose. */
@@ -532,7 +532,7 @@ export function editRefusal(
 
 /** Whether the object is a text object, whose size is a box and not a scale. */
 export function isTextObject(object: FabricObject): boolean {
-  const authored = object.get("vigiliaText");
+  const authored = object.get("yunariText");
   return typeof authored === "object" && authored !== null;
 }
 
@@ -543,7 +543,7 @@ export function isTextObject(object: FabricObject): boolean {
  * context, so the numbers an author types match what they placed.
  *
  * A size is the object's own measured edge, scale included: the number the
- * canvas has. It used to prefer `vigiliaText.box` for a text object, and where
+ * canvas has. It used to prefer `yunariText.box` for a text object, and where
  * that object carried a scale the two disagreed — a 140 × 27 box at scale 2
  * read **27** in H while the canvas drew 54 — so the readout was a probe that
  * could be wrong about the surface it describes, and two findings had to be

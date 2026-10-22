@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 
 /**
  * The unsaved document, as the browser kept it (`vg-040`).
@@ -17,10 +17,10 @@ export interface Draft {
   readonly content: FabricThemeEnvelope;
 }
 
-/** Beside the shell's own two browser-local keys — `vigilia.editor.shell-palette`
- *  and `vigilia.editor.shortcut-overrides` — and browser-local for the same
+/** Beside the shell's own two browser-local keys — `yunari.editor.shell-palette`
+ *  and `yunari.editor.shortcut-overrides` — and browser-local for the same
  *  reason: it is this machine's memory of an unfinished edit, not theme data. */
-export const DRAFT_STORAGE_KEY = "vigilia.editor.draft";
+export const DRAFT_STORAGE_KEY = "yunari.editor.draft";
 
 /** How often a dirty document is copied, and so the most a crash can cost. */
 const DRAFT_INTERVAL_MS = 30_000;

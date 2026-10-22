@@ -21,7 +21,7 @@
  * existing mount instead of reloading.
  */
 
-import type { ChartRefreshRate } from "@vigilia/scene-fabric";
+import type { ChartRefreshRate } from "@yunari/scene-fabric";
 
 interface PublishFollowerSession {
   readonly pageUrl: string;
@@ -52,7 +52,7 @@ interface PublishFollowerOptions {
 
 const DEFAULT_INTERVAL_MS = 2_000;
 /** Only the page's query is read, and `new URL` needs a base to read one from. */
-const PAGE_BASE = "http://vigilia.invalid";
+const PAGE_BASE = "http://yunari.invalid";
 
 /**
  * The page's own URL, with the resolution made to run again (R51).

@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 
@@ -51,7 +51,7 @@ import { openPane } from "./editor-rail.js";
 /** A port no other agent and no Playwright runner owns. */
 const PORT = 4229;
 /** Outside the repository tree: the host writes theme folders here. */
-const APP_DIR = path.join(os.tmpdir(), "vigilia-publish-loop-app");
+const APP_DIR = path.join(os.tmpdir(), "yunari-publish-loop-app");
 const THEMES_DIR = path.join(APP_DIR, "themes");
 const HOST = `http://127.0.0.1:${PORT}`;
 
@@ -113,7 +113,7 @@ async function startHost(): Promise<ChildProcess> {
   const child = spawn(
     "node",
     [
-      "packages/host/bin/vigilia.js",
+      "packages/host/bin/yunari.js",
       "--no-browser",
       "--port",
       String(PORT),
@@ -154,9 +154,9 @@ async function startHost(): Promise<ChildProcess> {
  * the canvas rather than this popover.
  */
 async function startPublishing(page: Page): Promise<void> {
-  const publish = page.locator("[data-vigilia-publish]");
+  const publish = page.locator("[data-yunari-publish]");
   const facts = page.locator(".editor-shell-publish-popup");
-  const host = facts.locator("[data-vigilia-host-switch]");
+  const host = facts.locator("[data-yunari-host-switch]");
   await expect(publish).toBeVisible({ timeout: 30_000 });
 
   await publish.click();
@@ -166,12 +166,12 @@ async function startPublishing(page: Page): Promise<void> {
   await expect(host).toHaveAttribute("aria-pressed", "true", {
     timeout: 30_000,
   });
-  await expect(facts.locator("[data-vigilia-qr]")).toBeVisible({
+  await expect(facts.locator("[data-yunari-qr]")).toBeVisible({
     timeout: 30_000,
   });
 
   await publish.click();
-  await expect(facts.locator("[data-vigilia-qr]")).toBeHidden({
+  await expect(facts.locator("[data-yunari-qr]")).toBeHidden({
     timeout: 10_000,
   });
 }
@@ -307,21 +307,21 @@ test.describe("the publish loop", () => {
     // final size, so the display reloads once and every read below is
     // unambiguous.
     await openPane(page, "Document");
-    await page.locator("[data-vigilia-artboard-width]").fill("320");
-    await page.locator("[data-vigilia-artboard-width]").blur();
-    await page.locator("[data-vigilia-artboard-height]").fill("240");
-    await page.locator("[data-vigilia-artboard-height]").blur();
+    await page.locator("[data-yunari-artboard-width]").fill("320");
+    await page.locator("[data-yunari-artboard-width]").blur();
+    await page.locator("[data-yunari-artboard-height]").fill("240");
+    await page.locator("[data-yunari-artboard-height]").blur();
     // **The surface's own readout of what a display is showing**, which is the
     // claim that the *document* goes out rather than merely that a host is
     // serving. It is read where it lives — behind the press: the bar's control
     // says `Publish to a phone` whatever the host is doing, so an assertion on
     // its label would pass for a reason that has nothing to do with this.
     const facts = page.locator(".editor-shell-publish-popup");
-    await page.locator("[data-vigilia-publish]").click();
+    await page.locator("[data-yunari-publish]").click();
     await expect(facts).toContainText(/Showing E2E publish loop/, {
       timeout: 15_000,
     });
-    await page.locator("[data-vigilia-publish]").click();
+    await page.locator("[data-yunari-publish]").click();
 
     await expect
       .poll(() => markStillSet(display, "__beforePublish"), { timeout: 15_000 })

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { serialiseScene } from "@vigilia/scene-fabric";
+import { serialiseScene } from "@yunari/scene-fabric";
 import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createLayerManager } from "./index.js";

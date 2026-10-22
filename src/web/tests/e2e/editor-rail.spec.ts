@@ -1,9 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import {
-  type FabricThemeEnvelope,
-  facetRecordOf,
-} from "@vigilia/renderer-core";
-import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
+import { type FabricThemeEnvelope, facetRecordOf } from "@yunari/renderer-core";
+import { readThemePackage, writeThemePackage } from "@yunari/theme-package";
 import { DARK_GROUND } from "../../packages/editor/src/store-mode/item-fixture.js";
 import type { ThemeOrigin } from "../../packages/editor/src/theme-library-client.js";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
@@ -74,18 +71,18 @@ test("asking for the pane already showing leaves it showing", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   await openPane(page, "Add");
-  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="add"]')).toBeVisible();
 
   // The second ask is the whole test. An unconditional click closes the pane
   // the first one opened, and the caller is left waiting for a control that has
   // left the accessibility tree.
   await openPane(page, "Add");
 
-  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="add"]')).toBeVisible();
   await expect(page.locator(".editor-shell-panel")).toBeVisible();
 });
 
@@ -96,7 +93,7 @@ test("asking for a shut pane opens it, and asking again does not close it", asyn
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   // Shut first, by the product's own route: clicking the slot for the pane
@@ -106,14 +103,14 @@ test("asking for a shut pane opens it, and asking again does not close it", asyn
     .locator(".editor-shell-rail")
     .getByRole("button", { name: "Composition", exact: true })
     .click();
-  await expect(page.locator('[data-vigilia-panel="layers"]')).toBeHidden();
+  await expect(page.locator('[data-yunari-panel="layers"]')).toBeHidden();
 
   await openPane(page, "Add");
-  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="add"]')).toBeVisible();
   await expect(page.locator(".editor-shell-panel")).toBeVisible();
 
   await openPane(page, "Add");
-  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="add"]')).toBeVisible();
   await expect(page.locator(".editor-shell-panel")).toBeVisible();
 });
 
@@ -124,7 +121,7 @@ test("shows the theme's own panel in the left column, and swaps away from it", a
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   // The artboard panel's width field stands for the document host: the artboard
@@ -132,16 +129,16 @@ test("shows the theme's own panel in the left column, and swaps away from it", a
   // of either being reachable is the host having moved into the pane rather
   // than into the inspector's tab.
   await openPane(page, "Document");
-  await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
+  await expect(page.locator("[data-yunari-artboard-width]")).toBeVisible();
 
   // Swapping the slot hides the whole host rather than unmounting it, and
   // coming back must not have left it behind — the pane is the slot's, not a
   // tab's.
   await openPane(page, "Add");
-  await expect(page.locator("[data-vigilia-artboard-width]")).toBeHidden();
+  await expect(page.locator("[data-yunari-artboard-width]")).toBeHidden();
 
   await openPane(page, "Document");
-  await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
+  await expect(page.locator("[data-yunari-artboard-width]")).toBeVisible();
 });
 
 /** §7.7's "Chrome stays still", and the ruling `vg-208` carries, on a real box.
@@ -166,7 +163,7 @@ test("a pane's title bar and footer stay put while its body scrolls", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await openEveryGroup(page);
 
@@ -265,7 +262,7 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
   // list that is not scrollable fails here instead of passing vacuously.
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   // **The premise, not the guard, is what grouping invalidated.** The guard —
@@ -298,9 +295,9 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
   await expect(list).toBeHidden();
 
   await openPane(page, "Add");
-  await expect(page.locator("[data-vigilia-asset-import]")).toBeVisible();
+  await expect(page.locator("[data-yunari-asset-import]")).toBeVisible();
   await openPane(page, "Composition");
-  await expect(page.locator('[data-vigilia-panel="layers"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="layers"]')).toBeVisible();
 
   await expect.poll(() => list.evaluate((node) => node.scrollTop)).toBe(offset);
 });
@@ -337,7 +334,7 @@ test("each pane comes back to the offset it was left at", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await openEveryGroup(page);
 
@@ -410,14 +407,14 @@ test("every dock control stays reachable with the rail's column in place", async
     await page.setViewportSize({ width: view.width, height: view.height });
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     // A group rather than a card: the object half of the dock is a filtered
     // registry, and a group carries the most actions, so this is the widest the
     // row gets.
     await selectLayer(page, "group-cpu-card");
-    const dock = page.locator("[data-vigilia-canvas-toolbar]");
+    const dock = page.locator("[data-yunari-canvas-toolbar]");
     await expect(dock).toBeVisible();
 
     const unreachable = await dock.evaluate((node) =>
@@ -466,7 +463,7 @@ test("every dock control stays reachable with the rail's column in place", async
  *
  * `editor-shell.css` drops a 12px `margin-top` on the sections inside a pane,
  * and a pane is excluded from that rule. When the exclusion was keyed on the
- * *absence* of `data-vigilia-panel` and the attribute was written conditionally,
+ * *absence* of `data-yunari-panel` and the attribute was written conditionally,
  * three of the four panes were not excluded: their title bar, body and footer
  * sat 12px lower than the Composition pane's. No gate can see it — jsdom has no
  * layout, so the defect exists only in a rendered box — which is why this is a
@@ -482,7 +479,7 @@ test("every pane's title bar sits at the same top offset", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const tops: [string, number][] = [];
@@ -528,7 +525,7 @@ test("no pane's column scrolls sideways", async ({ page }, testInfo) => {
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const overflow: [string, number][] = [];
@@ -573,7 +570,7 @@ test("the status bar is the window's full-width bottom edge", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const box = await page.locator("#status").evaluate((node) => {
@@ -648,12 +645,12 @@ test("the status bar reads the scene's counts, and still carries its message", a
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
-  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+  await page.waitForFunction(() => "yunariEditorBridge" in window);
 
-  const objects = page.locator("[data-vigilia-status-objects]");
-  const selected = page.locator("[data-vigilia-status-selected]");
+  const objects = page.locator("[data-yunari-status-objects]");
+  const selected = page.locator("[data-yunari-status-selected]");
   await expect(
     objects,
     "the object count is on the left at rest",
@@ -674,8 +671,8 @@ test("the status bar reads the scene's counts, and still carries its message", a
     return {
       footer: footer.getBoundingClientRect().left,
       padding: Number.parseFloat(getComputedStyle(footer).paddingLeft),
-      objects: at("[data-vigilia-status-objects]"),
-      selected: at("[data-vigilia-status-selected]"),
+      objects: at("[data-yunari-status-objects]"),
+      selected: at("[data-yunari-status-selected]"),
       message: at("#status-message"),
     };
   });
@@ -698,11 +695,11 @@ test("the status bar reads the scene's counts, and still carries its message", a
     () =>
       (
         window as unknown as {
-          readonly vigiliaEditorBridge: {
+          readonly yunariEditorBridge: {
             snapshot(): { readonly objectCount: number };
           };
         }
-      ).vigiliaEditorBridge.snapshot().objectCount,
+      ).yunariEditorBridge.snapshot().objectCount,
   );
   expect(total, "the booted document holds objects").toBeGreaterThan(0);
   await expect(objects).toHaveText(`${total} objects`);
@@ -738,28 +735,28 @@ test("every pane's title bar carries the count of its own list, and Document car
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
-  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+  await page.waitForFunction(() => "yunariEditorBridge" in window);
 
   const titleCount = (pane: string) =>
-    page.locator(`[data-vigilia-panel="${pane}"] .editor-shell-pane-count`);
+    page.locator(`[data-yunari-panel="${pane}"] .editor-shell-pane-count`);
 
   // Composition is the slot the shell opens on.
   const objects = await page.evaluate(
     () =>
       (
         window as unknown as {
-          readonly vigiliaEditorBridge: {
+          readonly yunariEditorBridge: {
             snapshot(): { readonly objectCount: number };
           };
         }
-      ).vigiliaEditorBridge.snapshot().objectCount,
+      ).yunariEditorBridge.snapshot().objectCount,
   );
   expect(objects, "the booted document holds objects").toBeGreaterThan(0);
   await expect(titleCount("layers")).toHaveText(`${objects} objects`);
   // The strip and the pane print one number. Two chrome surfaces, one fact.
-  await expect(page.locator("[data-vigilia-status-objects]")).toHaveText(
+  await expect(page.locator("[data-yunari-status-objects]")).toHaveText(
     `${objects} objects`,
   );
 
@@ -768,7 +765,7 @@ test("every pane's title bar carries the count of its own list, and Document car
   // the library.
   await openPane(page, "Add");
   const cards = await page
-    .locator('[data-vigilia-panel="add"] [data-vigilia-panel-card]')
+    .locator('[data-yunari-panel="add"] [data-yunari-panel-card]')
     .count();
   expect(cards, "the booted library holds units").toBeGreaterThan(0);
   await expect(titleCount("add")).toHaveText(`${cards} units`);
@@ -776,16 +773,16 @@ test("every pane's title bar carries the count of its own list, and Document car
   // Tokens: the theme's paints, which is the rows the pane draws.
   await openPane(page, "Tokens");
   const tokens = await page
-    .locator('[data-vigilia-panel="tokens"] [data-vigilia-palette-token-row]')
+    .locator('[data-yunari-panel="tokens"] [data-yunari-palette-token-row]')
     .count();
   expect(tokens, "the booted theme declares tokens").toBeGreaterThan(0);
   await expect(titleCount("tokens")).toHaveText(`${tokens} tokens`);
 
   // Document: no list, so no count.
   await openPane(page, "Document");
-  await expect(page.locator('[data-vigilia-panel="document"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="document"]')).toBeVisible();
   await expect(
-    page.locator('[data-vigilia-panel="document"] .editor-shell-pane-count'),
+    page.locator('[data-yunari-panel="document"] .editor-shell-pane-count'),
     "the Document pane holds no list, so its title bar prints no count",
   ).toHaveCount(0);
 });
@@ -814,7 +811,7 @@ test("the selected slot's accent bar sits on the rail's inner edge", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const measured = await page.evaluate(() => {
@@ -896,7 +893,7 @@ test("the settings gear paints a lighter ink than a closed slot", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const ink = await page.evaluate(() => {
@@ -944,7 +941,7 @@ test("Tab and Shift+Tab stay inside the settings modal, and Escape returns focus
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   // Open with the keyboard, not a click: the gear is reachable and Enter
@@ -1074,7 +1071,7 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   const header = page.locator(".editor-shell-header");
@@ -1175,7 +1172,7 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
   await expect(identity).toHaveAttribute("data-dirty", "false");
   await selectLayer(page, "group-cpu-card");
   await page
-    .locator("[data-vigilia-canvas-toolbar] [aria-label='Duplicate']")
+    .locator("[data-yunari-canvas-toolbar] [aria-label='Duplicate']")
     .click();
   await expect(
     identity,
@@ -1191,7 +1188,7 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
   const coverage = async (): Promise<number> =>
     page.evaluate(() => {
       const canvas = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.lower-canvas",
+        "#yunari-fabric-editor canvas.lower-canvas",
       );
       const pixels = canvas
         ?.getContext("2d")
@@ -1249,9 +1246,9 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     "the editor's body was unmounted rather than hidden",
   ).toBeHidden();
   await expect(
-    page.locator("[data-vigilia-mode-region]"),
+    page.locator("[data-yunari-mode-region]"),
     "the themes mode renders no region",
-  ).toHaveAttribute("data-vigilia-mode-region", "themes");
+  ).toHaveAttribute("data-yunari-mode-region", "themes");
   await expect(group, "the switch left the header").toBeVisible();
   await expect(
     header.locator(".editor-shell-menubar"),
@@ -1260,9 +1257,9 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
 
   await segment(uiCopy.modes.thisPc).click();
   await expect(
-    page.locator("[data-vigilia-mode-region]"),
+    page.locator("[data-yunari-mode-region]"),
     "the host mode renders no region",
-  ).toHaveAttribute("data-vigilia-mode-region", "this-pc");
+  ).toHaveAttribute("data-yunari-mode-region", "this-pc");
   await expect(
     header.locator(".editor-shell-menubar"),
     "host mode still draws the editor's menus",
@@ -1276,7 +1273,7 @@ test("the header's mode switch moves the shell, and asks before it leaves a dirt
     "true",
   );
   await expect(page.locator(".editor-shell-body")).toBeVisible();
-  await expect(page.locator("[data-vigilia-mode-region]")).toHaveCount(0);
+  await expect(page.locator("[data-yunari-mode-region]")).toHaveCount(0);
   await expect(
     header.locator(".editor-shell-menubar"),
     "the editor's menus did not come back",
@@ -1329,41 +1326,41 @@ test("the themes mode draws the store's own header row, and no width drops a fac
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await page
     .locator(".editor-shell-mode-switch")
     .getByRole("button", { name: uiCopy.modes.themes, exact: true })
     .click();
 
-  const region = page.locator("[data-vigilia-mode-region='themes']");
+  const region = page.locator("[data-yunari-mode-region='themes']");
   await expect(region, "the themes mode renders no region").toBeVisible();
   await expect(
     page.locator(".editor-shell-body"),
     "the editor's body was not hidden",
   ).toBeHidden();
 
-  const header = region.locator("[data-vigilia-store-header]");
+  const header = region.locator("[data-yunari-store-header]");
   await expect(header, "the region draws no header row").toBeVisible();
 
   // The two halves, named and opening on Local — §5's Segmented, which is what
   // the region's own header row carries rather than a second mode switch.
-  const halves = header.locator("[data-vigilia-store-halves] button");
+  const halves = header.locator("[data-yunari-store-halves] button");
   await expect(halves).toHaveCount(2);
   await expect(halves.nth(0)).toHaveText(uiCopy.store.halves.local);
   await expect(halves.nth(1)).toHaveText(uiCopy.store.halves.online);
   await expect(halves.nth(0)).toHaveAttribute("aria-pressed", "true");
 
   await expect(
-    header.locator("[data-vigilia-store-search]"),
+    header.locator("[data-yunari-store-search]"),
     "the region draws no search well",
   ).toBeVisible();
-  const facets = header.locator("[data-vigilia-facet]");
+  const facets = header.locator("[data-yunari-facet]");
   await expect(facets, "the region does not draw the five facets").toHaveCount(
     5,
   );
   await expect(
-    header.locator("[data-vigilia-store-sort]"),
+    header.locator("[data-yunari-store-sort]"),
     "the region draws no sort well",
   ).toBeVisible();
 
@@ -1483,8 +1480,8 @@ const STORE_LIBRARY = Array.from({ length: 30 }, (_unused, at) => {
 
 /** The item's own surface, reached from the portalled popup rather than the
  *  region: Base UI portals it to `body`. */
-const STORE_ITEM_STAGE = "[data-vigilia-store-item-stage]";
-const STORE_ITEM_PICTURE = "[data-vigilia-store-item-picture]";
+const STORE_ITEM_STAGE = "[data-yunari-store-item-stage]";
+const STORE_ITEM_PICTURE = "[data-yunari-store-item-picture]";
 
 /**
  * The store's body, as a rendered surface: the gallery, the pager and an item's
@@ -1516,29 +1513,29 @@ test("the store lists a library, opens an item, and comes back to the same page"
   );
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   // A page size another case left behind would make this case read that case's
   // pages rather than the shell's own default.
   await page.evaluate(() =>
-    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+    window.localStorage.removeItem("yunari.editor.store-page-size"),
   );
   await page
     .locator(".editor-shell-mode-switch")
     .getByRole("button", { name: uiCopy.modes.themes, exact: true })
     .click();
 
-  const region = page.locator("[data-vigilia-mode-region='themes']");
+  const region = page.locator("[data-yunari-mode-region='themes']");
   await expect(region, "the themes mode renders no region").toBeVisible();
 
-  const cells = region.locator("[data-vigilia-store-cell]");
-  const pager = region.locator("[data-vigilia-store-pager]");
-  const search = region.locator("[data-vigilia-store-search]");
+  const cells = region.locator("[data-yunari-store-cell]");
+  const pager = region.locator("[data-yunari-store-pager]");
+  const search = region.locator("[data-yunari-store-search]");
   /** The page in force, read off the numeral the pager marks as current. */
   const currentPage = async (): Promise<string | null> =>
     region
-      .locator("[data-vigilia-store-page][aria-current='page']")
-      .getAttribute("data-vigilia-store-page");
+      .locator("[data-yunari-store-page][aria-current='page']")
+      .getAttribute("data-yunari-store-page");
 
   // **The gallery, which nothing mounted before A.6**: one page of a thirty-item
   // library, and the pager says which page.
@@ -1570,18 +1567,17 @@ test("the store lists a library, opens an item, and comes back to the same page"
     // library operation its label prints and loads a document, and the cell is
     // what opens the item's own surface (A.7b).
     await region
-      .locator(`[data-vigilia-store-cell='${id}']`)
-      .locator("[data-vigilia-store-cell-surface]")
+      .locator(`[data-yunari-store-cell='${id}']`)
+      .locator("[data-yunari-store-cell-surface]")
       .click();
     const stage = page.locator(STORE_ITEM_STAGE);
     await expect(stage, "a cell opens no item surface").toBeVisible();
     const box = await stage.boundingBox();
-    const modal = await page.locator("[data-vigilia-store-item]").boundingBox();
+    const modal = await page.locator("[data-yunari-store-item]").boundingBox();
     const picture = await page.locator(STORE_ITEM_PICTURE).boundingBox();
     const stamp =
-      (await page.locator("[data-vigilia-store-item-date]").textContent()) ??
-      "";
-    await page.locator("[data-vigilia-store-item-close]").click();
+      (await page.locator("[data-yunari-store-item-date]").textContent()) ?? "";
+    await page.locator("[data-yunari-store-item-close]").click();
     await expect(stage, "the item's surface does not close").toBeHidden();
     if (box === null || picture === null || modal === null) {
       throw new Error(`the item's surface drew no box for ${id}`);
@@ -1634,7 +1630,7 @@ test("the store lists a library, opens an item, and comes back to the same page"
 
   // **A page that is neither the first nor the last**, and an item opened from
   // it: closing the surface comes back to the page it was opened from.
-  await region.locator("[data-vigilia-store-page='3']").click();
+  await region.locator("[data-yunari-store-page='3']").click();
   await expect(
     cells,
     "the last page is not the six items left over",
@@ -1659,7 +1655,7 @@ test("the store lists a library, opens an item, and comes back to the same page"
   await search.fill("no theme is called this");
   await expect(cells, "an empty result still draws cells").toHaveCount(0);
   await expect(
-    region.locator("[data-vigilia-store-empty]"),
+    region.locator("[data-yunari-store-empty]"),
     "an empty result says nothing at all",
   ).toHaveText(uiCopy.store.empty.filter);
   await search.fill("");
@@ -1672,10 +1668,10 @@ test("the store lists a library, opens an item, and comes back to the same page"
   const bar = await pager.evaluate((node) => {
     const label = node.querySelector("label")?.getBoundingClientRect();
     const well = node
-      .querySelector("[data-vigilia-store-page-size]")
+      .querySelector("[data-yunari-store-page-size]")
       ?.getBoundingClientRect();
     const row = node
-      .querySelector("[data-vigilia-store-page-row]")
+      .querySelector("[data-yunari-store-page-row]")
       ?.getBoundingClientRect();
     return {
       barHeight: node.getBoundingClientRect().height,
@@ -1736,13 +1732,13 @@ test("the store lists a library, opens an item, and comes back to the same page"
   // rows are read as boxes because the regression was a zero between them, and
   // the gap is asserted non-zero rather than equal to a number so a token
   // change is not this case's business.
-  await region.locator("[data-vigilia-facet='author']").click();
+  await region.locator("[data-yunari-facet='author']").click();
   const authorPopup = page.locator(
     `[aria-label='${uiCopy.store.facets.author}']`,
   );
   await expect(authorPopup, "the Author facet opens no popover").toBeVisible();
   const rows = await authorPopup
-    .locator("[data-vigilia-facet-option]")
+    .locator("[data-yunari-facet-option]")
     .evaluateAll((nodes) =>
       nodes.map((node) => {
         const box = node.getBoundingClientRect();
@@ -1783,16 +1779,16 @@ test("the store lists a library, opens an item, and comes back to the same page"
   // headings are the drawing's, the sentence above them is the one that says why
   // they matter, and the values are the items' own readings — none of which a
   // flat list would show.
-  await region.locator("[data-vigilia-facet='shape']").click();
+  await region.locator("[data-yunari-facet='shape']").click();
   const popup = page.locator(`[aria-label='${uiCopy.store.facets.shape}']`);
   await expect(popup, "the Shape facet opens no popover").toBeVisible();
   const groups = await popup.evaluate((node) => ({
-    hint: node.querySelector("[data-vigilia-facet-hint]")?.textContent?.trim(),
+    hint: node.querySelector("[data-yunari-facet-hint]")?.textContent?.trim(),
     headings: Array.from(
-      node.querySelectorAll("[data-vigilia-facet-group]"),
-    ).map((group) => group.getAttribute("data-vigilia-facet-group")),
+      node.querySelectorAll("[data-yunari-facet-group]"),
+    ).map((group) => group.getAttribute("data-yunari-facet-group")),
     values: Array.from(
-      node.querySelectorAll("[data-vigilia-facet-option-name]"),
+      node.querySelectorAll("[data-yunari-facet-option-name]"),
     ).map((value) => value.textContent?.trim()),
   }));
   const groupReading = `store-facets hint "${groups.hint}" headings ${JSON.stringify(groups.headings)} values ${JSON.stringify(groups.values)}`;
@@ -1969,30 +1965,30 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   );
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   // A page size another case left behind would page this listing differently.
   await page.evaluate(() =>
-    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+    window.localStorage.removeItem("yunari.editor.store-page-size"),
   );
   await page
     .locator(".editor-shell-mode-switch")
     .getByRole("button", { name: uiCopy.modes.themes, exact: true })
     .click();
 
-  const region = page.locator("[data-vigilia-mode-region='themes']");
+  const region = page.locator("[data-yunari-mode-region='themes']");
   await expect(region, "the themes mode renders no region").toBeVisible();
 
-  const cells = region.locator("[data-vigilia-store-cell]");
+  const cells = region.locator("[data-yunari-store-cell]");
   await expect(
     cells,
     "the store does not list the whole boundary library",
   ).toHaveCount(4);
 
   const cellOf = (id: string) =>
-    region.locator(`[data-vigilia-store-cell='${id}']`);
+    region.locator(`[data-yunari-store-cell='${id}']`);
   const badgeOf = (id: string) =>
-    cellOf(id).locator("[data-vigilia-store-cell-origin]");
+    cellOf(id).locator("[data-yunari-store-cell-origin]");
   /** A reading worth keeping in the run's output, as the other store cases do. */
   const record = (type: string, reading: string): void => {
     console.log(`${type} ${reading}`);
@@ -2015,7 +2011,7 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   expect(
     await badgeOf("boundary-origin").evaluate(
       (node) =>
-        node.parentElement?.hasAttribute("data-vigilia-store-cell-band") ===
+        node.parentElement?.hasAttribute("data-yunari-store-cell-band") ===
         true,
     ),
     "the origin badge is not drawn in the cell's own facts band",
@@ -2032,23 +2028,23 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   // Opened from the region's own cell, which is what joins the two halves: the
   // vocabulary this pill is read against is the region's, not the modal's.
   await cellOf("boundary-proposed")
-    .locator("[data-vigilia-store-cell-surface]")
+    .locator("[data-yunari-store-cell-surface]")
     .click();
-  const modal = page.locator("[data-vigilia-store-item]");
+  const modal = page.locator("[data-yunari-store-item]");
   await expect(modal, "a cell opens no item's surface").toBeVisible();
 
-  const styleGroup = modal.locator("[data-vigilia-store-item-group='style']");
+  const styleGroup = modal.locator("[data-yunari-store-item-group='style']");
   await expect(
     styleGroup,
     "the item's own surface draws no Style group",
   ).toBeVisible();
   await expect(
-    styleGroup.locator("[data-vigilia-store-item-group-name]"),
+    styleGroup.locator("[data-yunari-store-item-group-name]"),
     "the Style group sits under no eyebrow",
   ).toHaveText(uiCopy.store.pillGroups.style);
 
   const pillOf = (tag: string) =>
-    styleGroup.locator(`[data-vigilia-store-item-pill='${tag}']`);
+    styleGroup.locator(`[data-yunari-store-item-pill='${tag}']`);
   // The drawing's own words for a word the vocabulary does not hold yet, as a
   // literal for the reason the badge's word is one (`store-detail.html`).
   await expect(
@@ -2067,7 +2063,7 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   const pills = await styleGroup.evaluate((group) => {
     const read = (tag: string) => {
       const node = group.querySelector(
-        `[data-vigilia-store-item-pill='${tag}']`,
+        `[data-yunari-store-item-pill='${tag}']`,
       );
       if (node === null) return null;
       const style = getComputedStyle(node);
@@ -2097,11 +2093,11 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
     `a proposed pill and a settled one are the same ink (${pillReading})`,
   ).not.toBe(pills.settled.ink);
 
-  await page.locator("[data-vigilia-store-item-close]").click();
+  await page.locator("[data-yunari-store-item-close]").click();
   await expect(modal, "the item's surface does not close").toBeHidden();
 
   // ── The Style facet narrows the grid ───────────────────────────────────────
-  const styleFacet = region.locator("[data-vigilia-facet='style']");
+  const styleFacet = region.locator("[data-yunari-facet='style']");
   await expect(styleFacet, "the region draws no Style facet").toBeVisible();
   await styleFacet.click();
   const stylePopup = page.locator(
@@ -2113,15 +2109,13 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   // hold one** — the opposite of the size facet's rule, and the reason
   // `warm-lantern` is here at all: a tag one theme declares is still a value,
   // where a size one theme declares is not.
-  const styleOptions = stylePopup.locator("[data-vigilia-facet-option-name]");
+  const styleOptions = stylePopup.locator("[data-yunari-facet-option-name]");
   await expect(
     styleOptions,
     "the Style facet does not offer the listing's own tags",
   ).toHaveText(["dusk-cafe", "futuristic", "warm-lantern"]);
 
-  await stylePopup
-    .locator("[data-vigilia-facet-option='warm-lantern']")
-    .click();
+  await stylePopup.locator("[data-yunari-facet-option='warm-lantern']").click();
   const narrowed = await cells.count();
   await expect(
     cells,
@@ -2130,16 +2124,14 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   await expect(
     cells.first(),
     "the style filter kept a theme that does not carry the tag",
-  ).toHaveAttribute("data-vigilia-store-cell", "boundary-proposed");
+  ).toHaveAttribute("data-yunari-store-cell", "boundary-proposed");
   record("store-style-filter", `warm-lantern kept ${narrowed} of 4 cells`);
   await page.keyboard.press("Escape");
 
   // Back to the whole library, so the shape facet below is read on its own.
   await styleFacet.click();
   await expect(stylePopup, "the Style facet reopens no popover").toBeVisible();
-  await stylePopup
-    .locator("[data-vigilia-facet-option='warm-lantern']")
-    .click();
+  await stylePopup.locator("[data-yunari-facet-option='warm-lantern']").click();
   await expect(
     cells,
     "unchoosing a style tag does not restore the listing",
@@ -2150,12 +2142,12 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   // Task 1 proved the bucket at record and matcher level; this is the rendered
   // half — a 2340×1080 artboard, the bucket offered by the popover, and the
   // grid narrowing to the one theme that is that shape.
-  await region.locator("[data-vigilia-facet='shape']").click();
+  await region.locator("[data-yunari-facet='shape']").click();
   const shapePopup = page.locator(
     `[aria-label='${uiCopy.store.facets.shape}']`,
   );
   await expect(shapePopup, "the Shape facet opens no popover").toBeVisible();
-  const shapeValues = shapePopup.locator("[data-vigilia-facet-option-name]");
+  const shapeValues = shapePopup.locator("[data-yunari-facet-option-name]");
   await expect(
     shapeValues,
     "the Shape popover does not offer the 19.5:9 bucket the library holds",
@@ -2168,7 +2160,7 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
     uiCopy.store.size(1920, 1080),
   ]);
 
-  await shapePopup.locator("[data-vigilia-facet-option='19.5:9']").click();
+  await shapePopup.locator("[data-yunari-facet-option='19.5:9']").click();
   const shaped = await cells.count();
   await expect(
     cells,
@@ -2177,7 +2169,7 @@ test("the store draws the origin badge, narrows by style and shape, and marks a 
   await expect(
     cells.first(),
     "the shape filter kept a theme that is not that shape",
-  ).toHaveAttribute("data-vigilia-store-cell", "boundary-wide");
+  ).toHaveAttribute("data-yunari-store-cell", "boundary-wide");
   record("store-shape-filter", `19.5:9 kept ${shaped} of 4 cells`);
   await page.keyboard.press("Escape");
 });
@@ -2477,20 +2469,20 @@ async function showOnlineStore(
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   // A page size another case left behind would page this listing differently.
   await page.evaluate(() =>
-    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+    window.localStorage.removeItem("yunari.editor.store-page-size"),
   );
   await page
     .locator(".editor-shell-mode-switch")
     .getByRole("button", { name: uiCopy.modes.themes, exact: true })
     .click();
 
-  const region = page.locator("[data-vigilia-mode-region='themes']");
+  const region = page.locator("[data-yunari-mode-region='themes']");
   await expect(region, "the themes mode renders no region").toBeVisible();
-  const halves = region.locator("[data-vigilia-store-halves] button");
+  const halves = region.locator("[data-yunari-store-halves] button");
   await expect(halves, "the region draws no halves").toHaveCount(2);
   await halves.nth(1).click();
   await expect(
@@ -2498,7 +2490,7 @@ async function showOnlineStore(
     "the Store half is not the one chosen",
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    region.locator("[data-vigilia-store-cell]"),
+    region.locator("[data-yunari-store-cell]"),
     "the online half does not list the catalogue's readable items",
   ).toHaveCount(3);
   return region;
@@ -2511,22 +2503,22 @@ test("the online half lists the catalogue, its kind badge and a thousands-separa
 
   const region = await showOnlineStore(page);
   await expect(
-    region.locator("[data-vigilia-store-cell-name]"),
+    region.locator("[data-yunari-store-cell-name]"),
     "the online half does not list the catalogue's items",
   ).toHaveText(["Skyline", "Tide", "Ember"]);
 
-  const cell = region.locator("[data-vigilia-store-cell='cat-skyline']");
+  const cell = region.locator("[data-yunari-store-cell='cat-skyline']");
   // **The literal, not `uiCopy.store.cell.kinds`**: the badge's whole value is
   // that a renamed word fails here, the rule the origin badge's case states for
   // its own word.
   await expect(
-    cell.locator("[data-vigilia-store-cell-kind]"),
+    cell.locator("[data-yunari-store-cell-kind]"),
     "the catalogue cell's kind badge does not read Theme",
   ).toHaveText("Theme");
   // `1,204` and not `1204`: the separator is the claim, and `Intl` is what
   // draws it.
   await expect(
-    cell.locator("[data-vigilia-store-cell-downloads]"),
+    cell.locator("[data-yunari-store-cell-downloads]"),
     "the download count is not drawn with a thousands separator",
   ).toHaveText("1,204 downloads");
 
@@ -2539,7 +2531,7 @@ test("the Style facet narrows the online grid, and the tag one item holds is sti
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   const region = await showOnlineStore(page);
-  const styleFacet = region.locator("[data-vigilia-facet='style']");
+  const styleFacet = region.locator("[data-yunari-facet='style']");
   await styleFacet.click();
   const popup = page.locator(`[aria-label='${uiCopy.store.facets.style}']`);
   await expect(popup, "the Style facet opens no popover").toBeVisible();
@@ -2548,12 +2540,12 @@ test("the Style facet narrows the online grid, and the tag one item holds is sti
   // The values are most-carried first, then by name, so `dashboard` heads the
   // row and the single-holder tag sits among the rest.
   await expect(
-    popup.locator("[data-vigilia-facet-option-name]"),
+    popup.locator("[data-yunari-facet-option-name]"),
     "the Style facet does not offer every tag the listing carries",
   ).toHaveText(["dashboard", "ambient", "minimal"]);
 
-  await popup.locator("[data-vigilia-facet-option='ambient']").click();
-  const cells = region.locator("[data-vigilia-store-cell]");
+  await popup.locator("[data-yunari-facet-option='ambient']").click();
+  const cells = region.locator("[data-yunari-store-cell]");
   await expect(
     cells,
     "choosing a tag does not narrow the online grid",
@@ -2561,7 +2553,7 @@ test("the Style facet narrows the online grid, and the tag one item holds is sti
   await expect(
     cells.first(),
     "the tag filter kept a theme that does not hold it",
-  ).toHaveAttribute("data-vigilia-store-cell", "cat-skyline");
+  ).toHaveAttribute("data-yunari-store-cell", "cat-skyline");
 
   // The popover stays open for the frame, so the image reads both halves of the
   // claim: the tags offered, and the grid they narrowed.
@@ -2577,7 +2569,7 @@ test("the online half draws Installed, Update and Install for the library's thre
   const region = await showOnlineStore(page);
   const actionOf = (id: string, state: string): Locator =>
     region.locator(
-      `[data-vigilia-store-cell='${id}'] [data-vigilia-store-cell-install='${state}']`,
+      `[data-yunari-store-cell='${id}'] [data-yunari-store-cell-install='${state}']`,
     );
 
   // Held at the catalogue's own version: a mark, because there is nothing to do.
@@ -2635,8 +2627,8 @@ test("pressing Install on an online cell draws the item as Installed once the ho
     },
   });
 
-  const cell = region.locator("[data-vigilia-store-cell='cat-ember']");
-  const install = cell.locator("[data-vigilia-store-cell-install='install']");
+  const cell = region.locator("[data-yunari-store-cell='cat-ember']");
+  const install = cell.locator("[data-yunari-store-cell-install='install']");
   await expect(
     install,
     "an item the library does not hold does not offer Install",
@@ -2647,7 +2639,7 @@ test("pressing Install on an online cell draws the item as Installed once the ho
   // the library back, and the join drew what the host wrote. A word set on the
   // press would still read Installed if the re-list never happened.
   const installed = cell.locator(
-    "[data-vigilia-store-cell-install='installed']",
+    "[data-yunari-store-cell-install='installed']",
   );
   await expect(
     installed,
@@ -2676,9 +2668,9 @@ test("an item the library holds at an older version reads Update before the pres
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   const region = await showOnlineStore(page);
-  const cell = region.locator("[data-vigilia-store-cell='cat-tide']");
+  const cell = region.locator("[data-yunari-store-cell='cat-tide']");
   // The origin says `1.3.0` was installed and the catalogue holds `1.4.0`.
-  const update = cell.locator("[data-vigilia-store-cell-install='update']");
+  const update = cell.locator("[data-yunari-store-cell-install='update']");
   await expect(
     update,
     "an item held at an older version does not read Update",
@@ -2697,7 +2689,7 @@ test("an item the library holds at an older version reads Update before the pres
   await update.click();
 
   const installed = cell.locator(
-    "[data-vigilia-store-cell-install='installed']",
+    "[data-yunari-store-cell-install='installed']",
   );
   await expect(
     installed,
@@ -2728,8 +2720,8 @@ test("a refused install leaves the cell as it was and states the host's reason",
     refusal: reason,
   });
 
-  const cell = region.locator("[data-vigilia-store-cell='cat-ember']");
-  const install = cell.locator("[data-vigilia-store-cell-install='install']");
+  const cell = region.locator("[data-yunari-store-cell='cat-ember']");
+  const install = cell.locator("[data-yunari-store-cell-install='install']");
   await expect(
     install,
     "the cell before the press does not read Install",
@@ -2739,10 +2731,10 @@ test("a refused install leaves the cell as it was and states the host's reason",
   // **The host's sentence, verbatim** — a reason composed on this side would
   // hide which part of the install the host refused.
   await expect(
-    cell.locator("[data-vigilia-store-cell-install-refusal]"),
+    cell.locator("[data-yunari-store-cell-install-refusal]"),
     "the refused install is not stated beside its cell",
   ).toHaveText(reason);
-  const after = cell.locator("[data-vigilia-store-cell-install='install']");
+  const after = cell.locator("[data-yunari-store-cell-install='install']");
   await expect(after, "a refused install moved the cell's state").toHaveText(
     "Install",
   );
@@ -2762,7 +2754,7 @@ test("the line for a skipped kind names the identifier the catalogue declared", 
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   const region = await showOnlineStore(page);
-  const line = region.locator("[data-vigilia-store-refusal]");
+  const line = region.locator("[data-yunari-store-refusal]");
   await expect(
     line,
     "what the catalogue read left out is not named",
@@ -2775,7 +2767,7 @@ test("the line for a skipped kind names the identifier the catalogue declared", 
     "the skipped-kind line does not name the wire identifier",
   ).toHaveText("1 entry of kind widget-preset could not be read.");
   await expect(
-    region.locator("[data-vigilia-store-cell]"),
+    region.locator("[data-yunari-store-cell]"),
     "a skipped entry is drawn or a readable one is missing",
   ).toHaveCount(3);
 
@@ -2790,17 +2782,17 @@ test("the online item's own surface shows its counts and its install action", as
   const region = await showOnlineStore(page);
   await region
     .locator(
-      "[data-vigilia-store-cell='cat-ember'] [data-vigilia-store-cell-surface]",
+      "[data-yunari-store-cell='cat-ember'] [data-yunari-store-cell-surface]",
     )
     .click();
-  const modal = page.locator("[data-vigilia-store-item]");
+  const modal = page.locator("[data-yunari-store-item]");
   await expect(modal, "a cell opens no item's surface").toBeVisible();
-  await expect(modal.locator("[data-vigilia-store-item-name]")).toHaveText(
+  await expect(modal.locator("[data-yunari-store-item-name]")).toHaveText(
     "Ember",
   );
 
   // Both counts, each with the noun it is counted with, on the caption line.
-  const stamp = modal.locator("[data-vigilia-store-item-date]");
+  const stamp = modal.locator("[data-yunari-store-item-date]");
   await expect(
     stamp,
     "the item's surface does not print its download count",
@@ -2810,7 +2802,7 @@ test("the online item's own surface shows its counts and its install action", as
     "the item's surface does not print its favourite count",
   ).toContainText("3 favorites");
 
-  const install = modal.locator("[data-vigilia-store-item-install='install']");
+  const install = modal.locator("[data-yunari-store-item-install='install']");
   await expect(
     install,
     "the item's surface draws no install action",
@@ -2847,25 +2839,25 @@ async function openLibraryItem(page: Page, id: string): Promise<Locator> {
   );
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   // A page size another case left behind would page this listing differently.
   await page.evaluate(() =>
-    window.localStorage.removeItem("vigilia.editor.store-page-size"),
+    window.localStorage.removeItem("yunari.editor.store-page-size"),
   );
   await page
     .locator(".editor-shell-mode-switch")
     .getByRole("button", { name: uiCopy.modes.themes, exact: true })
     .click();
 
-  const region = page.locator("[data-vigilia-mode-region='themes']");
+  const region = page.locator("[data-yunari-mode-region='themes']");
   await expect(region, "the themes mode renders no region").toBeVisible();
   await region
     .locator(
-      `[data-vigilia-store-cell='${id}'] [data-vigilia-store-cell-surface]`,
+      `[data-yunari-store-cell='${id}'] [data-yunari-store-cell-surface]`,
     )
     .click();
-  const modal = page.locator("[data-vigilia-store-item]");
+  const modal = page.locator("[data-yunari-store-item]");
   await expect(modal, "a library cell opens no item's surface").toBeVisible();
   return modal;
 }
@@ -2879,7 +2871,7 @@ const DEVICE_FLOW = {
 };
 
 /** The pull request the host's second answer names. */
-const SUBMITTED_PR = "https://github.com/peterng1618/vigilia-store/pull/42";
+const SUBMITTED_PR = "https://github.com/peterng1618/yunari-store/pull/42";
 
 test("signing in shows the host's one-time code and its verification link", async ({
   page,
@@ -2899,7 +2891,7 @@ test("signing in shows the host's one-time code and its verification link", asyn
     route.fulfill({ json: { state: "pending" } }),
   );
 
-  const submit = modal.locator("[data-vigilia-store-item-submit]");
+  const submit = modal.locator("[data-yunari-store-item-submit]");
   await expect(
     submit,
     "the library item's surface offers no submission",
@@ -2909,7 +2901,7 @@ test("signing in shows the host's one-time code and its verification link", asyn
   await expect(
     submit,
     "the control does not enter the sign-in state",
-  ).toHaveAttribute("data-vigilia-store-item-submit", "authorising");
+  ).toHaveAttribute("data-yunari-store-item-submit", "authorising");
   await expect(
     submit,
     "the control is live while the flow waits",
@@ -2917,14 +2909,14 @@ test("signing in shows the host's one-time code and its verification link", asyn
 
   // **The host's own code and link, drawn as the sentence `uiCopy` owns**, so a
   // renamed or reordered sentence fails here rather than reading as correct.
-  const code = modal.locator("[data-vigilia-store-item-submit-code]");
+  const code = modal.locator("[data-yunari-store-item-submit-code]");
   await expect(
     code,
     "the sign-in does not state the one-time code and where to type it",
   ).toHaveText(
     "Enter ABCD-1234 at github.com to approve this submission. Open github.com to approve",
   );
-  const open = modal.locator("[data-vigilia-store-item-submit-open]");
+  const open = modal.locator("[data-yunari-store-item-submit-open]");
   await expect(open, "the code is not accompanied by a link").toHaveAttribute(
     "href",
     DEVICE_FLOW.verificationUri,
@@ -2968,11 +2960,11 @@ test("a submitted theme shows its pull request link and the control no longer of
     });
   });
 
-  const submit = modal.locator("[data-vigilia-store-item-submit]");
+  const submit = modal.locator("[data-yunari-store-item-submit]");
   await submit.click();
 
   const submitted = modal.locator(
-    "[data-vigilia-store-item-submit='submitted']",
+    "[data-yunari-store-item-submit='submitted']",
   );
   await expect(
     submitted,
@@ -2986,7 +2978,7 @@ test("a submitted theme shows its pull request link and the control no longer of
     modal,
     "the surface does not state the pull request",
   ).toContainText("Pull request opened.");
-  const url = modal.locator("[data-vigilia-store-item-submit-url]");
+  const url = modal.locator("[data-yunari-store-item-submit-url]");
   await expect(url, "the pull request is not linked").toHaveAttribute(
     "href",
     SUBMITTED_PR,
@@ -3016,14 +3008,14 @@ test("a refused submission states the host's own sentence", async ({
     return route.fulfill({ json: DEVICE_FLOW });
   });
 
-  const submit = modal.locator("[data-vigilia-store-item-submit]");
+  const submit = modal.locator("[data-yunari-store-item-submit]");
   await submit.click();
 
   await expect(
-    modal.locator("[data-vigilia-store-item-submit-refusal]"),
+    modal.locator("[data-yunari-store-item-submit-refusal]"),
     "the refused submission is not stated beside the control",
   ).toHaveText(reason);
-  const after = modal.locator("[data-vigilia-store-item-submit='refused']");
+  const after = modal.locator("[data-yunari-store-item-submit='refused']");
   await expect(
     after,
     "a refused submission left the control in another state",
@@ -3066,9 +3058,9 @@ test("a submitted theme states the version it published, and the caption reads i
     }),
   );
 
-  await modal.locator("[data-vigilia-store-item-submit]").click();
+  await modal.locator("[data-yunari-store-item-submit]").click();
   const submitted = modal.locator(
-    "[data-vigilia-store-item-submit='submitted']",
+    "[data-yunari-store-item-submit='submitted']",
   );
   await expect(
     submitted,
@@ -3077,13 +3069,13 @@ test("a submitted theme states the version it published, and the caption reads i
   // The literal sentence, not `uiCopy.store.submit.version`: the claim is what
   // the author reads, and a rewritten copy fails here.
   await expect(
-    modal.locator("[data-vigilia-store-item-submit-version]"),
+    modal.locator("[data-yunari-store-item-submit-version]"),
     "the submitted surface does not state the version it published",
   ).toHaveText("1.4.0 → 1.5.0 · minor");
   // The re-list is the host's write read back, not the answer echoed: the
   // caption prints the version the listing now carries.
   await expect(
-    modal.locator("[data-vigilia-store-item-date]"),
+    modal.locator("[data-yunari-store-item-date]"),
     "the caption does not read the version the submission wrote",
   ).toContainText("1.5.0");
 
@@ -3099,16 +3091,16 @@ test("a remix credits its parent, linking it when listed and naming it when not"
   const open = async (id: string): Promise<Locator> => {
     await region
       .locator(
-        `[data-vigilia-store-cell='${id}'] [data-vigilia-store-cell-surface]`,
+        `[data-yunari-store-cell='${id}'] [data-yunari-store-cell-surface]`,
       )
       .click();
-    const modal = page.locator("[data-vigilia-store-item]");
+    const modal = page.locator("[data-yunari-store-item]");
     await expect(modal, "a cell opens no item's surface").toBeVisible();
     return modal;
   };
 
   const modal = await open(REMIX_CHILD);
-  const credit = modal.locator("[data-vigilia-store-item-remix]");
+  const credit = modal.locator("[data-yunari-store-item-remix]");
   await expect(credit, "the remix does not credit its parent").toHaveText(
     "Remixed from System dashboard",
   );
@@ -3121,15 +3113,15 @@ test("a remix credits its parent, linking it when listed and naming it when not"
 
   await credit.click();
   await expect(
-    modal.locator("[data-vigilia-store-item-name]"),
+    modal.locator("[data-yunari-store-item-name]"),
     "the credit does not open the parent item",
   ).toHaveText("System dashboard");
 
-  await modal.locator("[data-vigilia-store-item-close]").click();
+  await modal.locator("[data-yunari-store-item-close]").click();
   await expect(modal, "the parent's surface does not close").toBeHidden();
 
   const orphan = await open(REMIX_ORPHAN);
-  const text = orphan.locator("[data-vigilia-store-item-remix]");
+  const text = orphan.locator("[data-yunari-store-item-remix]");
   await expect(
     text,
     "a remix whose parent the index lacks does not name it as text",
@@ -3162,7 +3154,7 @@ async function boardOnCanvas(page: Page): Promise<{
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             viewport: {
               artboardScreenRect(): {
@@ -3176,9 +3168,9 @@ async function boardOnCanvas(page: Page): Promise<{
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     const canvas = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.upper-canvas",
+      "#yunari-fabric-editor canvas.upper-canvas",
     );
     const box = canvas?.getBoundingClientRect();
     return {
@@ -3291,7 +3283,7 @@ test("the store opens a library theme as the document, from the cell and its foo
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
   /** The open document's own name, read off the bridge the editor publishes:
@@ -3302,11 +3294,11 @@ test("the store opens a library theme as the document, from the cell and its foo
       () =>
         (
           window as unknown as {
-            vigiliaEditorBridge?: {
+            yunariEditorBridge?: {
               snapshot(): { readonly documentName: string | undefined };
             };
           }
-        ).vigiliaEditorBridge?.snapshot().documentName,
+        ).yunariEditorBridge?.snapshot().documentName,
     );
   /** The id a display would fetch this document's assets from, or `undefined`
    *  where the document descends from nothing the library holds. */
@@ -3315,13 +3307,13 @@ test("the store opens a library theme as the document, from the cell and its foo
       () =>
         (
           window as unknown as {
-            vigiliaEditorBridge?: {
+            yunariEditorBridge?: {
               session: {
                 publishableDocument(): { readonly id: string } | undefined;
               };
             };
           }
-        ).vigiliaEditorBridge?.session.publishableDocument()?.id,
+        ).yunariEditorBridge?.session.publishableDocument()?.id,
     );
 
   // The template the editor boots with descends from nothing: this is the
@@ -3343,18 +3335,18 @@ test("the store opens a library theme as the document, from the cell and its foo
     .locator(".editor-shell-mode-switch")
     .getByRole("button", { name: uiCopy.modes.themes, exact: true })
     .click();
-  const region = page.locator("[data-vigilia-mode-region='themes']");
+  const region = page.locator("[data-yunari-mode-region='themes']");
   await expect(region, "the themes mode renders no region").toBeVisible();
   await expect(
-    region.locator("[data-vigilia-store-cell]"),
+    region.locator("[data-yunari-store-cell]"),
     "the store does not list the stubbed library",
   ).toHaveCount(2);
 
-  const modal = page.locator("[data-vigilia-store-item]");
+  const modal = page.locator("[data-yunari-store-item]");
   const cellOf = (id: string) =>
-    region.locator(`[data-vigilia-store-cell='${id}']`);
+    region.locator(`[data-yunari-store-cell='${id}']`);
   const surfaceOf = (id: string) =>
-    cellOf(id).locator("[data-vigilia-store-cell-surface]");
+    cellOf(id).locator("[data-yunari-store-cell-surface]");
 
   // **The cell's own bands are where the drawing puts them, and this is the
   // reading that says so** (A.7b). The surface, the byline and the facts band
@@ -3392,19 +3384,19 @@ test("the store opens a library theme as the document, from the cell and its foo
       };
     };
     const name = contentBox(
-      cell.querySelector("[data-vigilia-store-cell-name]"),
+      cell.querySelector("[data-yunari-store-cell-name]"),
     );
     const byline = contentBox(
-      cell.querySelector("[data-vigilia-store-cell-byline]"),
+      cell.querySelector("[data-yunari-store-cell-byline]"),
     );
     // The 26px band itself, not the wrapper that pads it and not one action
     // inside it: the four controls are centred in the band, so a shorter one
     // would read as a band that is shorter than the 26px the drawing fixes.
     const band = cell
-      .querySelector("[data-vigilia-store-cell-action]")
+      .querySelector("[data-yunari-store-cell-action]")
       ?.parentElement?.getBoundingClientRect();
     const picture = cell
-      .querySelector("[data-vigilia-store-picture]")
+      .querySelector("[data-yunari-store-picture]")
       ?.getBoundingClientRect();
     const cellRect = cell.getBoundingClientRect();
     return {
@@ -3464,10 +3456,10 @@ test("the store opens a library theme as the document, from the cell and its foo
     "the cell's own surface opens no item's surface",
   ).toBeVisible();
   await expect(
-    page.locator("[data-vigilia-store-item-action='open']"),
+    page.locator("[data-yunari-store-item-action='open']"),
     "the item's own surface does not print the open action's own word",
   ).toHaveText(uiCopy.store.cell.actions.open);
-  await page.locator("[data-vigilia-store-item-close]").click();
+  await page.locator("[data-yunari-store-item-close]").click();
   await expect(modal, "the item's own surface does not close").toBeHidden();
   expect(
     await documentName(),
@@ -3476,7 +3468,7 @@ test("the store opens a library theme as the document, from the cell and its foo
 
   // From the cell's own action.
   await cellOf(fromCell.id)
-    .locator("[data-vigilia-store-cell-action='open']")
+    .locator("[data-yunari-store-cell-action='open']")
     .click();
   await expect(
     page.locator("#status"),
@@ -3504,7 +3496,7 @@ test("the store opens a library theme as the document, from the cell and its foo
     "Open in editor left the shell showing the store",
   ).toBeVisible();
   await expect(
-    page.locator("[data-vigilia-mode-region='themes']"),
+    page.locator("[data-yunari-mode-region='themes']"),
     "the store's own region is still the surface showing",
   ).toBeHidden();
   await settled(page);
@@ -3534,7 +3526,7 @@ test("the store opens a library theme as the document, from the cell and its foo
   ).toBeVisible();
   await surfaceOf(fromFooter.id).click();
   await expect(modal, "the second cell opens no item's surface").toBeVisible();
-  await page.locator("[data-vigilia-store-item-action='open']").click();
+  await page.locator("[data-yunari-store-item-action='open']").click();
   await expect(
     page.locator("#status"),
     "the item's own open action did not report the document it opened",
@@ -3584,7 +3576,7 @@ test("opening a library theme fits it to the phone's own canvas", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     "the editor did not mount",
   ).toBeVisible();
 
@@ -3638,14 +3630,14 @@ test("normalizes a declared video without replacing its master", async ({
 
   // The artboard's background media is the one surface that renders a video.
   await openPane(page, "Document");
-  await chooseIn(page, "[data-vigilia-background-asset]", "clip");
+  await chooseIn(page, "[data-yunari-background-asset]", "clip");
   await openPane(page, "Add");
-  await chooseIn(page, "[data-vigilia-asset-select]", "clip");
+  await chooseIn(page, "[data-yunari-asset-select]", "clip");
 
-  const normalize = page.locator("[data-vigilia-asset-normalize]");
-  const fill = page.locator("[data-vigilia-asset-fill]");
-  const useCopy = page.locator("[data-vigilia-asset-use-normalized]");
-  const alert = page.locator('[data-vigilia-panel="add"] [role="alert"]');
+  const normalize = page.locator("[data-yunari-asset-normalize]");
+  const fill = page.locator("[data-yunari-asset-fill]");
+  const useCopy = page.locator("[data-yunari-asset-use-normalized]");
+  const alert = page.locator('[data-yunari-panel="add"] [role="alert"]');
   // Both modes are offered; one standing for the other would hide a capability.
   await expect(normalize).toBeVisible();
   await expect(fill).toBeVisible();
@@ -3678,10 +3670,10 @@ test("normalizes a declared video without replacing its master", async ({
     page,
     testInfo,
     "editor-video-normalize",
-    page.locator('[data-vigilia-panel="add"]'),
+    page.locator('[data-yunari-panel="add"]'),
   );
 
-  const background = page.locator("[data-vigilia-background-media] video");
+  const background = page.locator("[data-yunari-background-media] video");
   await expect(background).toHaveCount(1);
   const before = await background.getAttribute("src");
   expect(before, "the bound clip has no rendered source").toMatch(/^blob:/);
@@ -3703,7 +3695,7 @@ test("normalizes a declared video without replacing its master", async ({
   // The artboard's media is remounted from the manager's new bytes.
   await expect
     .poll(() =>
-      page.locator("[data-vigilia-background-media] video").getAttribute("src"),
+      page.locator("[data-yunari-background-media] video").getAttribute("src"),
     )
     .not.toBe(before);
 

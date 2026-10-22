@@ -1,4 +1,4 @@
-import type { FabricGlobals, TypePreset } from "@vigilia/renderer-core";
+import type { FabricGlobals, TypePreset } from "@yunari/renderer-core";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { ControlNumber } from "../../components/ui/control-number.js";
 import { ControlSelect } from "../../components/ui/control-select.js";
@@ -122,7 +122,7 @@ function Binding(props: {
   // A plain line, not a live region: the pane is rerendered on every selection,
   // and an announcement per canvas click is noise rather than information.
   return (
-    <p data-vigilia-type-preset-binding="" className="text-xs text-muted">
+    <p data-yunari-type-preset-binding="" className="text-xs text-muted">
       {sentence}
     </p>
   );
@@ -164,7 +164,7 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
 
   return (
     <div
-      data-vigilia-type-presets=""
+      data-yunari-type-presets=""
       className="flex flex-col gap-[var(--space-8)]"
     >
       <h2 className="text-xs font-semibold tracking-[0.11em] text-muted uppercase">
@@ -181,7 +181,7 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
       />
       <ControlSelect
         label={uiCopy.panels.typePreset}
-        data={{ "data-vigilia-type-preset": "" }}
+        data={{ "data-yunari-type-preset": "" }}
         value={selected ?? ""}
         options={ids.map((id) => ({ id, name: presets[id]?.name ?? id }))}
         onChange={(id) => setPicked(id)}
@@ -193,14 +193,14 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
         {ids.map((id) => (
           <li key={id}>
             <div
-              data-vigilia-type-preset-row={id}
+              data-yunari-type-preset-row={id}
               className="flex items-baseline gap-[var(--space-8)]"
             >
               <span className="text-xs text-muted">
                 {presets[id]?.name ?? id}
               </span>
               <span
-                data-vigilia-type-preset-resolution=""
+                data-yunari-type-preset-resolution=""
                 className="ml-auto font-mono text-xs text-muted"
               >
                 {resolveTypePreset(globals, `typePresets.${id}`) ?? ""}
@@ -211,7 +211,7 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
       </ul>
       <button
         type="button"
-        data-vigilia-type-preset-add=""
+        data-yunari-type-preset-add=""
         onClick={add}
         className={plainButtonClasses}
       >
@@ -256,12 +256,12 @@ function PresetFields(props: {
 
   return (
     <div
-      data-vigilia-type-preset-fields=""
+      data-yunari-type-preset-fields=""
       className="flex flex-col gap-[var(--space-8)]"
     >
       <ControlText
         label={uiCopy.panels.name}
-        data={{ "data-vigilia-type-name": "" }}
+        data={{ "data-yunari-type-name": "" }}
         value={entry.name}
         onCommit={(next) => {
           const trimmed = next.trim();
@@ -271,7 +271,7 @@ function PresetFields(props: {
       />
       <ControlText
         label={uiCopy.panels.family}
-        data={{ "data-vigilia-type-family": "" }}
+        data={{ "data-yunari-type-family": "" }}
         value={value.family}
         onCommit={(next) => {
           const trimmed = next.trim();
@@ -281,7 +281,7 @@ function PresetFields(props: {
       />
       <ControlNumber
         label={uiCopy.panels.size}
-        data={{ "data-vigilia-type-size": "" }}
+        data={{ "data-yunari-type-size": "" }}
         value={value.size}
         onCommit={(size) => {
           // A preset's size cannot be zero or negative. `ControlNumber` already
@@ -293,7 +293,7 @@ function PresetFields(props: {
       />
       <ControlText
         label={uiCopy.panels.weight}
-        data={{ "data-vigilia-type-weight": "" }}
+        data={{ "data-yunari-type-weight": "" }}
         value={String(value.weight ?? "")}
         onCommit={(next) => {
           // An emptied optional field **removes its key** — it does not write
@@ -305,7 +305,7 @@ function PresetFields(props: {
       />
       <ControlNumber
         label={uiCopy.panels.lineHeight}
-        data={{ "data-vigilia-type-line-height": "" }}
+        data={{ "data-yunari-type-line-height": "" }}
         value={value.lineHeight}
         onClear={() => {
           const { lineHeight: _lineHeight, ...rest } = value;
@@ -318,7 +318,7 @@ function PresetFields(props: {
       />
       <ControlNumber
         label={uiCopy.panels.letterSpacing}
-        data={{ "data-vigilia-type-letter-spacing": "" }}
+        data={{ "data-yunari-type-letter-spacing": "" }}
         value={value.letterSpacing}
         onClear={() => {
           const { letterSpacing: _letterSpacing, ...rest } = value;
@@ -359,7 +359,7 @@ function FontControls(props: {
     <>
       <ControlSelect
         label={uiCopy.panels.fontFace}
-        data={{ "data-vigilia-font-face": "" }}
+        data={{ "data-yunari-font-face": "" }}
         value={faceId}
         options={faces.map((candidate) => ({
           id: candidate.id,
@@ -370,7 +370,7 @@ function FontControls(props: {
       <div className="flex items-center gap-[var(--space-6)]">
         <button
           type="button"
-          data-vigilia-font-preview=""
+          data-yunari-font-preview=""
           onClick={() => {
             if (face !== undefined) void fontActions.preview(face);
           }}
@@ -380,7 +380,7 @@ function FontControls(props: {
         </button>
         <button
           type="button"
-          data-vigilia-font-apply=""
+          data-yunari-font-apply=""
           onClick={() => {
             if (face !== undefined) void fontActions.applyFace(selected, face);
           }}
@@ -391,7 +391,7 @@ function FontControls(props: {
       </div>
       <ControlSelect
         label={uiCopy.panels.fontTrioAdopt}
-        data={{ "data-vigilia-font-trio": "" }}
+        data={{ "data-yunari-font-trio": "" }}
         value={trioId}
         options={trios.map((candidate) => ({
           id: candidate.id,
@@ -401,7 +401,7 @@ function FontControls(props: {
       />
       <button
         type="button"
-        data-vigilia-font-trio-apply=""
+        data-yunari-font-trio-apply=""
         onClick={() => {
           void fontActions.applyTrio(trioId);
         }}
@@ -435,14 +435,14 @@ function DeletionControls(props: {
     <>
       <ControlSelect
         label={uiCopy.panels.reassign}
-        data={{ "data-vigilia-type-replacement": "" }}
+        data={{ "data-yunari-type-replacement": "" }}
         value={replacement ?? ""}
         options={options}
         onChange={setPicked}
       />
       <button
         type="button"
-        data-vigilia-type-delete=""
+        data-yunari-type-delete=""
         disabled={replacement === undefined}
         onClick={() => {
           if (replacement !== undefined) onDelete(selected, replacement);

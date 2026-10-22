@@ -59,7 +59,7 @@ export function InspectorSection(props: {
 
   return (
     <section
-      data-vigilia-section={id}
+      data-yunari-section={id}
       className={`${first ? "" : "border-t border-edge "}py-[var(--space-12)]`}
     >
       <h2 className="m-0">
@@ -76,7 +76,7 @@ export function InspectorSection(props: {
           </span>
           {count === undefined ? null : (
             <span
-              data-vigilia-section-count=""
+              data-yunari-section-count=""
               className="text-2xs font-mono text-faint tabular-nums"
             >
               {count}
@@ -89,7 +89,7 @@ export function InspectorSection(props: {
           <span
             aria-hidden
             className="h-px flex-1 bg-edge-2"
-            data-vigilia-section-rule=""
+            data-yunari-section-rule=""
           />
           <span aria-hidden className="ml-auto text-faint">
             {open ? "▾" : "▸"}

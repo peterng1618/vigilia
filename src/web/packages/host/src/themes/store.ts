@@ -12,8 +12,8 @@ import {
   type ThemeRemix,
   type ValidationIssue,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
-import { cssArtboardPaint } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { cssArtboardPaint } from "@yunari/scene-fabric";
 import { moveToTrash } from "./trash.js";
 
 /**

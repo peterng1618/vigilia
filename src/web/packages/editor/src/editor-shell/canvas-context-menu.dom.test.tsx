@@ -203,7 +203,7 @@ it("marks the registry's destructive entry, and only it", async () => {
   // asserting: a failed case must not leave an open menu for the file's other
   // cases — the portal is in `document.body`, and a leak cascades.
   const marked = opened.items
-    .filter((item) => item.hasAttribute("data-vigilia-destructive"))
+    .filter((item) => item.hasAttribute("data-yunari-destructive"))
     .map((item) => item.getAttribute("aria-label"));
   await opened.close();
   expect(marked).toEqual([uiCopy.actions.delete]);

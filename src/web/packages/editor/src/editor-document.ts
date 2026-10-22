@@ -5,7 +5,7 @@ import {
   type FabricPalette,
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type { ArtboardPanel } from "./artboard-panel.js";
 import type { AssetManager } from "./asset-manager/index.js";
 import { insertCard } from "./card-library.js";

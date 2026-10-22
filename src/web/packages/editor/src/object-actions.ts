@@ -160,7 +160,7 @@ export function objectActionsFor(gate: ActionGate): readonly ObjectAction[] {
 
 /**
  * §4's destructive mark, as the attributes a surface spreads onto the control
- * it draws for an action: `data-vigilia-destructive` when the registry says the
+ * it draws for an action: `data-yunari-destructive` when the registry says the
  * action destroys, and nothing otherwise. One owner for the attribute name and
  * the decision, so a surface that renders the registry cannot re-decide which
  * actions destroy — the mark reads the same on every one of them.
@@ -168,7 +168,7 @@ export function objectActionsFor(gate: ActionGate): readonly ObjectAction[] {
 export function destructiveMarker(action: {
   readonly destructive?: true;
 }): Readonly<Record<`data-${string}`, string>> {
-  return action.destructive === true ? { "data-vigilia-destructive": "" } : {};
+  return action.destructive === true ? { "data-yunari-destructive": "" } : {};
 }
 
 /** One owner for object actions: what each is, when it applies, how it runs. */

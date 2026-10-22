@@ -1,4 +1,4 @@
-import type { Binding, PlanTextSegment, TextRun } from "@vigilia/renderer-core";
+import type { Binding, PlanTextSegment, TextRun } from "@yunari/renderer-core";
 
 /**
  * What a value run shows while an author is working, instead of a sample.

@@ -283,7 +283,7 @@ function statusLine(
 /** One display row, by the display it names. */
 function displayRow(container: HTMLElement, id: string): HTMLElement {
   return must(
-    container.querySelector<HTMLElement>(`[data-vigilia-host-display="${id}"]`),
+    container.querySelector<HTMLElement>(`[data-yunari-host-display="${id}"]`),
     `the row for ${id}`,
   );
 }
@@ -292,7 +292,7 @@ function displayRow(container: HTMLElement, id: string): HTMLElement {
 function shownOn(row: HTMLElement): string {
   return (
     must(
-      row.querySelector<HTMLElement>("[data-vigilia-host-display-theme]"),
+      row.querySelector<HTMLElement>("[data-yunari-host-display-theme]"),
       "the theme a display shows",
     ).textContent ?? ""
   );
@@ -300,14 +300,14 @@ function shownOn(row: HTMLElement): string {
 
 /** Whether a row says the display follows this PC rather than holding its own. */
 function follows(row: HTMLElement): boolean {
-  return row.querySelector("[data-vigilia-host-display-follows]") !== null;
+  return row.querySelector("[data-yunari-host-display-follows]") !== null;
 }
 
 /** One device's name field. */
 function nameField(container: HTMLElement, id: string): HTMLInputElement {
   return must(
     container.querySelector<HTMLInputElement>(
-      `[data-vigilia-host-name="${id}"]`,
+      `[data-yunari-host-name="${id}"]`,
     ),
     `the name row for ${id}`,
   );
@@ -316,8 +316,8 @@ function nameField(container: HTMLElement, id: string): HTMLInputElement {
 /** The answer rows the questions section draws, by the slot each asks about. */
 function answerRows(container: HTMLElement): readonly string[] {
   return Array.from(
-    container.querySelectorAll<HTMLElement>("[data-vigilia-host-answer]"),
-  ).map((row) => row.getAttribute("data-vigilia-host-answer") ?? "");
+    container.querySelectorAll<HTMLElement>("[data-yunari-host-answer]"),
+  ).map((row) => row.getAttribute("data-yunari-host-answer") ?? "");
 }
 
 /** What a §5 select's well prints as its value — the hook the control itself
@@ -326,9 +326,9 @@ function selectValue(container: HTMLElement, hook: string): string {
   const trigger = must(container.querySelector<HTMLElement>(hook), hook);
   return (
     must(
-      trigger.querySelector<HTMLElement>("[data-vigilia-value]"),
+      trigger.querySelector<HTMLElement>("[data-yunari-value]"),
       `${hook}'s value`,
-    ).getAttribute("data-vigilia-value") ?? ""
+    ).getAttribute("data-yunari-value") ?? ""
   );
 }
 
@@ -336,8 +336,8 @@ function selectValue(container: HTMLElement, hook: string): string {
 async function offered(trigger: HTMLElement): Promise<readonly string[]> {
   await act(async () => trigger.click());
   return Array.from(
-    document.body.querySelectorAll<HTMLElement>("[data-vigilia-option]"),
-  ).map((option) => option.getAttribute("data-vigilia-option") ?? "");
+    document.body.querySelectorAll<HTMLElement>("[data-yunari-option]"),
+  ).map((option) => option.getAttribute("data-yunari-option") ?? "");
 }
 
 /** Presses one value inside the select that is open. **Base UI commits a list
@@ -345,9 +345,7 @@ async function offered(trigger: HTMLElement): Promise<readonly string[]> {
  *  press is part of the interaction rather than a detail of the driver. */
 async function choose(value: string): Promise<void> {
   const option = must(
-    document.body.querySelector<HTMLElement>(
-      `[data-vigilia-option="${value}"]`,
-    ),
+    document.body.querySelector<HTMLElement>(`[data-yunari-option="${value}"]`),
     `the ${value} option`,
   );
   await act(async () =>
@@ -389,12 +387,12 @@ async function leave(field: HTMLInputElement): Promise<void> {
 }
 
 /** The region is the Host mode's surface and no other's. The shell renders one
- *  `[data-vigilia-mode-region]` section for every non-editor mode and mounts
+ *  `[data-yunari-mode-region]` section for every non-editor mode and mounts
  *  both regions in it, so a region that drew itself in a mode it does not own
  *  would be the second surface in one section. */
 it("renders no region for a mode that is not Host", async () => {
   const container = await mount(<HostSettingsRegion mode="themes" />);
-  expect(container.querySelector("[data-vigilia-host-region]")).toBeNull();
+  expect(container.querySelector("[data-yunari-host-region]")).toBeNull();
   expect(container.textContent).toBe("");
 });
 
@@ -411,7 +409,7 @@ it("names each display, and the default for the ones with none", async () => {
   const { container, published } = await mountHost(TWO_DISPLAYS);
 
   const rows = Array.from(
-    container.querySelectorAll<HTMLElement>("[data-vigilia-host-display]"),
+    container.querySelectorAll<HTMLElement>("[data-yunari-host-display]"),
   );
   expect(
     rows.map((row) => row.textContent?.startsWith("This PC") ?? false),
@@ -476,7 +474,7 @@ it("asks only the questions the theme on that display raises", async () => {
     "the region did not ask about the theme this display falls back to",
   ).toEqual([{ display: "this-pc", theme: "kitchen-strip" }]);
   expect(
-    container.querySelector("[data-vigilia-host-section='questions']"),
+    container.querySelector("[data-yunari-host-section='questions']"),
     "a theme that reads no assignable hardware is asked a question anyway",
   ).toBeNull();
 
@@ -489,14 +487,14 @@ it("asks only the questions the theme on that display raises", async () => {
   expect(
     must(
       container.querySelector<HTMLElement>(
-        "[data-vigilia-host-section='questions']",
+        "[data-yunari-host-section='questions']",
       ),
       "the questions section",
     ).textContent,
     "the section does not name the theme the questions belong to",
   ).toContain(uiCopy.hostSettings.questions.heading("Hallway clock"));
   expect(
-    selectValue(container, "[data-vigilia-host-answer='data-disk']"),
+    selectValue(container, "[data-yunari-host-answer='data-disk']"),
     "an unanswered slot does not open on following this PC's settings",
   ).toBe("");
 });
@@ -508,11 +506,11 @@ it("offers each slot's devices with the automatic choice first", async () => {
   const { container } = await mountHost({ ...TWO_DISPLAYS, devices: DEVICES });
 
   expect(
-    selectValue(container, "[data-vigilia-host-device-group='gpu']"),
+    selectValue(container, "[data-yunari-host-device-group='gpu']"),
     "the slot does not show the device that was chosen for it",
   ).toBe("gpu-0");
   expect(
-    selectValue(container, "[data-vigilia-host-device-group='system-disk']"),
+    selectValue(container, "[data-yunari-host-device-group='system-disk']"),
     "a slot with nothing chosen does not open on the automatic choice",
   ).toBe("");
 
@@ -520,7 +518,7 @@ it("offers each slot's devices with the automatic choice first", async () => {
     await offered(
       must(
         container.querySelector<HTMLElement>(
-          "[data-vigilia-host-device-group='gpu']",
+          "[data-yunari-host-device-group='gpu']",
         ),
         "the card slot",
       ),
@@ -531,7 +529,7 @@ it("offers each slot's devices with the automatic choice first", async () => {
   expect(
     must(
       container.querySelector<HTMLInputElement>(
-        "[data-vigilia-host-name='ssd-0']",
+        "[data-yunari-host-name='ssd-0']",
       ),
       "the name row for the drive",
     ).value,
@@ -612,11 +610,11 @@ it("writes both display fields together", async () => {
   });
 
   const zone = must(
-    container.querySelector<HTMLElement>("[data-vigilia-host-time-zone]"),
+    container.querySelector<HTMLElement>("[data-yunari-host-time-zone]"),
     "the clock's zone row",
   );
   expect(
-    selectValue(container, "[data-vigilia-host-time-zone]"),
+    selectValue(container, "[data-yunari-host-time-zone]"),
     "a display with no chosen zone does not open on this PC's own",
   ).toBe("");
   expect(
@@ -663,7 +661,7 @@ it("draws no display when the display map cannot be read", async () => {
   });
 
   expect(
-    container.querySelectorAll("[data-vigilia-host-display]"),
+    container.querySelectorAll("[data-yunari-host-display]"),
     "a failed read was drawn as an empty list",
   ).toHaveLength(0);
   expect(
@@ -687,11 +685,11 @@ it("draws no status strip of its own, and publishes the line instead", async () 
   const { container, published } = await mountHost(TWO_DISPLAYS);
 
   expect(
-    container.querySelector("[data-vigilia-host-status]"),
+    container.querySelector("[data-yunari-host-status]"),
     "the region drew a status line the shell's strip also draws",
   ).toBeNull();
   expect(
-    container.querySelector("[data-vigilia-host-display-count]"),
+    container.querySelector("[data-yunari-host-display-count]"),
     "the region drew a display count the shell's strip also draws",
   ).toBeNull();
   expect(
@@ -724,7 +722,7 @@ it("answers a zone write in its own words, not the device save's", async () => {
 
     await offered(
       must(
-        container.querySelector<HTMLElement>("[data-vigilia-host-time-zone]"),
+        container.querySelector<HTMLElement>("[data-yunari-host-time-zone]"),
         "the clock's zone row",
       ),
     );

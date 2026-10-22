@@ -25,7 +25,7 @@ transform flags are re-derived from it rather than persisted alongside it."* —
 the revived scene and re-applies `TRANSFORM_LOCKED` to every object `isLocked`
 reports true (`:96`).
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every non-test writer of `locked`, `selectable` and `evented` across
 `src/web` (`.set("locked", …)`, `.set({ … })`, `flag: value`); `persist.ts` in
@@ -136,7 +136,7 @@ from Node — no browser, because nothing visible changes.
   entries, and `locked`, `selectable` and `evented` are each absent from it.
 - **`SCENE_PERSISTED_PROPERTIES`**, read from `persist.ts:58-76`: ten entries — five
   string literals, `["id","provenance","selectable","evented","locked"]`, and the
-  five `VIGILIA_*` constants at `:61-65`. The three flags are among the literals and
+  five `YUNARI_*` constants at `:61-65`. The three flags are among the literals and
   none is in Fabric's list, so each is persisted only because this list names it.
   (The probe collected string literals only, which is why the printed list is the
   five and not the ten.)

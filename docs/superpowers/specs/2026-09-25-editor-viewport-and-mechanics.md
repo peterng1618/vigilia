@@ -5,7 +5,7 @@
 
 ## Why
 
-An authoring tool is a camera plus a document. Vigilia's editor has the document
+An authoring tool is a camera plus a document. Yunari's editor has the document
 and no camera: the canvas is a fixed, exactly-artboard-sized element with a single
 `setViewportTransform` call (`editor-shell.ts:132`) and no zoom or pan input at
 all. Precise placement, and seeing anything at other than fit-to-window, is

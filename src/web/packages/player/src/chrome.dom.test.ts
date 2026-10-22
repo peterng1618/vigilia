@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { Sample, SampleSource } from "@vigilia/renderer-core";
+import type { Sample, SampleSource } from "@yunari/renderer-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   chromeBand,
@@ -19,8 +19,8 @@ function skeleton(): void {
   document.body.replaceChildren();
   for (const side of ["top", "bottom"] as const) {
     const band = document.createElement("div");
-    band.id = `vigilia-chrome-${side}`;
-    band.dataset["vigiliaChrome"] = side;
+    band.id = `yunari-chrome-${side}`;
+    band.dataset["yunariChrome"] = side;
     document.body.append(band);
     if (side === "top") {
       const host = document.createElement("div");
@@ -33,7 +33,7 @@ function skeleton(): void {
 function stripsIn(side: "top" | "bottom"): HTMLElement[] {
   return [
     ...chromeBand(side).querySelectorAll<HTMLElement>(
-      "[data-vigilia-chrome-strip]",
+      "[data-yunari-chrome-strip]",
     ),
   ];
 }
@@ -44,7 +44,7 @@ describe("the display's chrome", () => {
   it("puts a strip in the band it names, and nowhere else", () => {
     putStrip({
       side: "top",
-      id: "vigilia-connection",
+      id: "yunari-connection",
       text: "Reconnecting",
       background: "#003a4a",
       color: "#7fdce9",
@@ -52,7 +52,7 @@ describe("the display's chrome", () => {
 
     expect(stripsIn("top")).toHaveLength(1);
     expect(stripsIn("bottom")).toHaveLength(0);
-    expect(document.getElementById("vigilia-connection")?.textContent).toBe(
+    expect(document.getElementById("yunari-connection")?.textContent).toBe(
       "Reconnecting",
     );
   });
@@ -64,21 +64,21 @@ describe("the display's chrome", () => {
     // by hand.
     putStrip({
       side: "top",
-      id: "vigilia-connection",
+      id: "yunari-connection",
       text: "first",
       background: "#003a4a",
       color: "#7fdce9",
     });
     putStrip({
       side: "top",
-      id: "vigilia-connection",
+      id: "yunari-connection",
       text: "second",
       background: "#003a4a",
       color: "#7fdce9",
     });
 
-    expect(document.querySelectorAll("#vigilia-connection")).toHaveLength(1);
-    expect(document.getElementById("vigilia-connection")?.textContent).toBe(
+    expect(document.querySelectorAll("#yunari-connection")).toHaveLength(1);
+    expect(document.getElementById("yunari-connection")?.textContent).toBe(
       "second",
     );
   });
@@ -94,22 +94,22 @@ describe("the display's chrome", () => {
   it("keeps the order the strips were put in, so two notices stay legible apart", () => {
     putStrip({
       side: "top",
-      id: "vigilia-availability",
+      id: "yunari-availability",
       text: "a",
       background: "#3a2a00",
       color: "#ffce6a",
     });
     putStrip({
       side: "top",
-      id: "vigilia-connection",
+      id: "yunari-connection",
       text: "b",
       background: "#003a4a",
       color: "#7fdce9",
     });
 
     expect(stripsIn("top").map((strip) => strip.id)).toEqual([
-      "vigilia-availability",
-      "vigilia-connection",
+      "yunari-availability",
+      "yunari-connection",
     ]);
   });
 
@@ -125,15 +125,15 @@ describe("the display's chrome", () => {
   it("takes the empty space back when a strip is removed", () => {
     putStrip({
       side: "bottom",
-      id: "vigilia-connection",
+      id: "yunari-connection",
       text: "Lost the host.",
       background: "#003a4a",
       color: "#7fdce9",
     });
-    removeStrip("vigilia-connection");
+    removeStrip("yunari-connection");
 
     expect(stripsIn("bottom")).toHaveLength(0);
-    expect(document.getElementById("vigilia-connection")).toBeNull();
+    expect(document.getElementById("yunari-connection")).toBeNull();
   });
 });
 
@@ -144,7 +144,7 @@ describe("the strips the display is told by", () => {
     showConnectionState("reconnecting", 3);
 
     expect(stripsIn("bottom").map((strip) => strip.id)).toEqual([
-      "vigilia-connection",
+      "yunari-connection",
     ]);
   });
 
@@ -163,7 +163,7 @@ describe("the strips the display is told by", () => {
     // display's edge instead of laid out in the band. The one strip that took
     // room was the crop notice, and it is gone (`docs/decisions/0069`).
     showConnectionState("reconnecting", 3);
-    expect(document.getElementById("vigilia-connection")?.style.position).toBe(
+    expect(document.getElementById("yunari-connection")?.style.position).toBe(
       "fixed",
     );
   });
@@ -216,13 +216,13 @@ describe("the availability warning's own lifetime", () => {
 
   it("clears itself three seconds after it is raised", () => {
     showAvailabilityNotice(gapSource(), GAP_KEYS);
-    expect(document.getElementById("vigilia-availability")).not.toBeNull();
+    expect(document.getElementById("yunari-availability")).not.toBeNull();
 
     vi.advanceTimersByTime(2_999);
-    expect(document.getElementById("vigilia-availability")).not.toBeNull();
+    expect(document.getElementById("yunari-availability")).not.toBeNull();
 
     vi.advanceTimersByTime(1);
-    expect(document.getElementById("vigilia-availability")).toBeNull();
+    expect(document.getElementById("yunari-availability")).toBeNull();
   });
 
   it("does not re-raise it while the condition persists", () => {
@@ -236,7 +236,7 @@ describe("the availability warning's own lifetime", () => {
 
     for (let call = 0; call < 30; call += 1) {
       showAvailabilityNotice(source, GAP_KEYS);
-      expect(document.getElementById("vigilia-availability")).toBeNull();
+      expect(document.getElementById("yunari-availability")).toBeNull();
     }
 
     vi.advanceTimersByTime(30_000);
@@ -249,7 +249,7 @@ describe("the availability warning's own lifetime", () => {
     showAvailabilityNotice(recoveredSource, GAP_KEYS);
     showAvailabilityNotice(gapSource(), GAP_KEYS);
 
-    expect(document.getElementById("vigilia-availability")).not.toBeNull();
+    expect(document.getElementById("yunari-availability")).not.toBeNull();
   });
 
   it("overlays it, so raising or clearing it cannot re-fit the scene", () => {
@@ -258,18 +258,18 @@ describe("the availability warning's own lifetime", () => {
     // composition. This is the half that must survive the dismissal.
     showAvailabilityNotice(gapSource(), GAP_KEYS);
 
-    expect(
-      document.getElementById("vigilia-availability")?.style.position,
-    ).toBe("fixed");
+    expect(document.getElementById("yunari-availability")?.style.position).toBe(
+      "fixed",
+    );
   });
 
   it("gives no other strip a lifetime: the transport notice is unchanged by this", () => {
     // One strip has a dismissal timer and the rest do not. A shared helper that
     // quietly handed every strip one would be that decision made by accident.
     showConnectionState("reconnecting", 3);
-    expect(document.getElementById("vigilia-connection")).not.toBeNull();
+    expect(document.getElementById("yunari-connection")).not.toBeNull();
 
     vi.advanceTimersByTime(60_000);
-    expect(document.getElementById("vigilia-connection")).not.toBeNull();
+    expect(document.getElementById("yunari-connection")).not.toBeNull();
   });
 });

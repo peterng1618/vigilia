@@ -43,7 +43,7 @@ Where a piece this plan consumes has not landed, say so in the first commit and 
 - **Bible §5's control vocabulary is closed.** A surface that needs a control §5 lacks **amends the bible in the same commit** or is not that control (§10). Task 2 does exactly one such amendment and says why; no second one is added without the same treatment.
 - **No Fabric object is ever mirrored into React** (§2.1, ADR-0039), and no new dependency: React 19, Base UI and Tailwind v4 are present (`0038`/`0039` stand). `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled. No licence headers; comments are 1–3 lines and explain *why*. 500 lines is a signal and 800 is a stop.
 - Run from `src/web/`; the scripts are `package.json`'s. Stage explicit paths; never `git add -A`. Conventional Commit titles.
-- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `VIGILIA_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
+- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `YUNARI_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
 - **A new test must be shown to fail when the behaviour it guards is disabled**, before it is trusted. Every task below states its red proof.
 - **The register.** This plan closes no row. `vg-187` (the modal guard) stays open; `vg-172`, `vg-185`, `vg-192` stay open. Task 4 records a finding it does not fix as a `Discovered, not fixed:` trailer on its own commit, per `AGENTS.md` — it is materialised into the register from there, not here. Say in each commit which row's half it answers.
 
@@ -96,7 +96,7 @@ export function Settings(props: {
 
 ```bash
 cd src/web
-grep -rn "data-vigilia-palette\b" packages tests | grep -v palette-token | wc -l
+grep -rn "data-yunari-palette\b" packages tests | grep -v palette-token | wc -l
 grep -rn "editor-shell-dialog" packages tests | wc -l
 ```
   Record both in the commit message. The first is the header chip's locator census Task 2 re-points; the second is how many places the one dialog class is already addressed.
@@ -206,7 +206,7 @@ it("returns to following the OS when follow-the-system is turned back on", async
 });
 
 it("the header has no palette control", () => {
-  expect(header(host).querySelector("[data-vigilia-palette]")).toBeNull();
+  expect(header(host).querySelector("[data-yunari-palette]")).toBeNull();
 });
 ```
   Run: `npx vitest run packages/editor/src/editor-shell/settings.dom.test.tsx packages/editor/src/editor-shell/palette.test.ts`
@@ -230,7 +230,7 @@ And one rule beneath the table: **a set too large for `Segmented` is a list of c
 
 - [ ] **Step 4: Re-point every locator in the same commit**
 
-The header chip's locator is `[data-vigilia-palette]` — **50 matches across 12 files, and most of them are not this control** (`data-vigilia-palette-token`, `-color`, `-kind`, `-angle`, `-name`, `-stop-color`, `-replacement`, `-delete`, `-users`, `-picker` all belong to the Document pane's palette panel and are untouched). The shell chip's own sites are: `shell-palette.ts:48` (`choosePalette`), `shell-appearance.spec.ts` (five reads), `panel-labels.spec.ts:54` (the accessible-name sweep list), `shell-layout.dom.test.tsx:171`, and `palette-menu.dom.test.tsx`. Re-point each **by what it means**: `choosePalette` opens the gear, selects Appearance, then chooses the palette — and it must keep asserting the `html[data-shell-palette]` attribute, which is the promise it makes. Delete `palette-menu.dom.test.tsx` with its component, or re-point it at the tab; do not leave a test for a surface that is gone. In `accessible-names.dom.test.ts`, **re-point the chip's own entry and add the modal's controls to the list that is already there — do not widen the audit's coverage contract, which is plan 6's Task 4.**
+The header chip's locator is `[data-yunari-palette]` — **50 matches across 12 files, and most of them are not this control** (`data-yunari-palette-token`, `-color`, `-kind`, `-angle`, `-name`, `-stop-color`, `-replacement`, `-delete`, `-users`, `-picker` all belong to the Document pane's palette panel and are untouched). The shell chip's own sites are: `shell-palette.ts:48` (`choosePalette`), `shell-appearance.spec.ts` (five reads), `panel-labels.spec.ts:54` (the accessible-name sweep list), `shell-layout.dom.test.tsx:171`, and `palette-menu.dom.test.tsx`. Re-point each **by what it means**: `choosePalette` opens the gear, selects Appearance, then chooses the palette — and it must keep asserting the `html[data-shell-palette]` attribute, which is the promise it makes. Delete `palette-menu.dom.test.tsx` with its component, or re-point it at the tab; do not leave a test for a surface that is gone. In `accessible-names.dom.test.ts`, **re-point the chip's own entry and add the modal's controls to the list that is already there — do not widen the audit's coverage contract, which is plan 6's Task 4.**
 
 - [ ] **Step 5: Red proofs**
 
@@ -522,7 +522,7 @@ it. These rendering owners join this plan's ratchet and capture inventory.
 ```bash
 cd src/web
 node -e "const g=require('../../scripts/design-tokens.gated.json');console.log(g.gated.length, g.gated.join('\n'))"
-grep -rn "data-vigilia-palette\b" packages tests | grep -v palette-token | wc -l
+grep -rn "data-yunari-palette\b" packages tests | grep -v palette-token | wc -l
 grep -rn "shortcutLabel\|shortcutSpokenLabel\|shortcutReferenceGroups" packages tests --include=*.ts --include=*.tsx | grep -v "\.test\." | wc -l
 grep -c "#[0-9a-fA-F]\{3,8\}" packages/editor/src/editor-shell/editor-shell.css
 ```
@@ -584,7 +584,7 @@ The capture opens the gear, asserts the three tabs are present and that exactly 
 ```bash
 cd src/web
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
 ```
   Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking.
 

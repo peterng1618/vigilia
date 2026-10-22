@@ -16,7 +16,7 @@ import { Circle, classRegistry } from "fabric/es";
  *
  * Both keep Fabric's own angle properties and go through Fabric's own
  * serializer, so a save writes the sweep and a reopen reads it back with no
- * Vigilia-side parsing — which is what keeps the round trip from needing a
+ * Yunari-side parsing — which is what keeps the round trip from needing a
  * second model of the shape beside it.
  */
 

@@ -134,7 +134,7 @@ it("keeps every choice the old control offered reachable, inside one view cluste
   expect(
     host
       .querySelector(".editor-shell-zoom")
-      ?.querySelector("[data-vigilia-zoom]"),
+      ?.querySelector("[data-yunari-zoom]"),
     "and the readout sits inside it",
   ).not.toBeNull();
 
@@ -155,7 +155,7 @@ it("keeps every choice the old control offered reachable, inside one view cluste
     ).not.toBeNull();
   }
   expect(
-    host.querySelector("[data-vigilia-zoom]")?.textContent,
+    host.querySelector("[data-yunari-zoom]")?.textContent,
     "and the percentage readout, the last choice in the list",
   ).toMatch(/^\d+%$/);
 
@@ -203,7 +203,7 @@ it("offers the camera's −, + and fit beside the readout, stepping by the keys'
     ).not.toBeNull();
   }
   expect(
-    cluster?.querySelector("[data-vigilia-zoom]"),
+    cluster?.querySelector("[data-yunari-zoom]"),
     "and the readout is still there",
   ).not.toBeNull();
 });
@@ -245,16 +245,16 @@ it("keeps reading the camera's zoom, because that readout is not this task's to 
   // Not the display's name, under any choice: two browser tests pin this
   // control as the place the author reads the camera's scale, and a display is
   // chosen by default — so a name here would remove that capability on open.
-  expect(host.querySelector("[data-vigilia-zoom]")?.textContent).toBe("50%");
+  expect(host.querySelector("[data-yunari-zoom]")?.textContent).toBe("50%");
 
   await setZoom(2);
-  expect(host.querySelector("[data-vigilia-zoom]")?.textContent).toBe("200%");
+  expect(host.querySelector("[data-yunari-zoom]")?.textContent).toBe("200%");
 
   // A display is the lens, not the zoom: choosing one re-frames the camera
   // (measured in the viewport's own tests and in the browser), which is the
   // camera's business and not this label's.
   await setDisplay(undefined);
-  expect(host.querySelector("[data-vigilia-zoom]")?.textContent).toBe("200%");
+  expect(host.querySelector("[data-yunari-zoom]")?.textContent).toBe("200%");
 });
 
 it("offers every display and Fit, and each is one click away", async () => {

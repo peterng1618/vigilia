@@ -14,7 +14,7 @@ this more than "call an API" is that the client is **a locally-run host with no
 client secret**, it must not be able to name the target path itself, and the
 token it holds is the first credential this product stores.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `github`, `oauth`, `device`, `fork`, `pulls`, `Bearer`, `Authorization`
 across `src/web/packages/**`; the host's outbound calls (`themes/download.ts`);
@@ -66,7 +66,7 @@ Measured 2026-10-22, not assumed:
 - `POST https://github.com/login/device/code` with an invalid `client_id`
   answers **`404` `{"error":"Not Found"}`** — the endpoint exists and rejects an
   unknown client rather than failing at the network.
-- `GET https://api.github.com/repos/peterng1618/vigilia-store` answers **`200`**
+- `GET https://api.github.com/repos/peterng1618/yunari-store` answers **`200`**
   with `private: false`, `fork: false`, `default_branch: main`, `size: 5` — the
   catalogue repo is public and forkable, so the flow's premise holds.
 - What this does **not** establish: that a real device code is issued. That

@@ -1,4 +1,4 @@
-import type { Sample } from "@vigilia/renderer-core";
+import type { Sample } from "@yunari/renderer-core";
 import { uiCopy } from "./ui-copy.js";
 
 /**

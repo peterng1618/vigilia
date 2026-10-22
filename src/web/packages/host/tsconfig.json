@@ -15,7 +15,7 @@
     // `node:` import is unresolved.
     "types": ["node"],
     "paths": {
-      "@vigilia/renderer-core": ["../renderer-core/src/index.ts"]
+      "@yunari/renderer-core": ["../renderer-core/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"]

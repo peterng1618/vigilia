@@ -18,7 +18,7 @@ other*. Take all four of these before probing anything.
 
 | Resource | How to get your own | Why |
 |---|---|---|
-| Host | `node packages/host/bin/vigilia.js --no-browser --port <free> --app-dir <dir> --themes-dir <dir>` from `src/web/` | Two agents on one port see each other's documents. Six stale servers from dead sessions have already had to be killed. |
+| Host | `node packages/host/bin/yunari.js --no-browser --port <free> --app-dir <dir> --themes-dir <dir>` from `src/web/` | Two agents on one port see each other's documents. Six stale servers from dead sessions have already had to be killed. |
 | Theme library | `--app-dir` and `--themes-dir` pointing at a scratch directory | You will rename, delete, group and re-colour the Starter. That must never touch the real library or the other agent's. |
 | Browser | The Playwright MCP browser is shared and will refuse a second instance. Drive your own Chromium over CDP instead — see below. Do **not** edit `.mcp.json` to get an `--isolated` flag; the agent environment is user-owned. |
 | Bundles | `npm run build` from `src/web/` before you look at anything | A stale bundle has already produced two wrong conclusions on this pass. |
@@ -27,7 +27,7 @@ Launching your own Chromium, on Windows, against a Playwright install:
 
 ```bash
 "$LOCALAPPDATA/ms-playwright/chromium-<build>/chrome-win64/chrome.exe" \
-  --remote-debugging-port=<free> --user-data-dir='D:\vigilia-tester\chrome-profile' \
+  --remote-debugging-port=<free> --user-data-dir='D:\yunari-tester\chrome-profile' \
   --no-first-run --no-default-browser-check about:blank
 ```
 

@@ -62,7 +62,7 @@ Everything the pass has shipped. **Read the one-line "what it proved" beside eac
 - [x] **F1.8** — rail icons, 9px off their buttons. *Proved:* `display:block` put the inline SVG at the line-box start. → `5b25307`
 - [x] **F1.35/U9** — the trends chart's aliasing. *Proved:* `MAX_BACKING_PIXELS` clamped the **largest** chart to 1.53× while every smaller one got 2×, so the only aliased graph was the one a reader looks at. → `de57743`
 - [x] **F1.6** — the favicon, editor and player. → `7708e5b`
-- [x] **F1.10** — a token says how many objects use it, and which. *Proved:* the traversal already walked the scene and **returned a count that was thrown away**; and my completeness claim was wrong — charts name tokens in `settings` and carry no `vigiliaPaint`. → `4a647f9` `b474563` `4c42793` `658721f` `9696760`
+- [x] **F1.10** — a token says how many objects use it, and which. *Proved:* the traversal already walked the scene and **returned a count that was thrown away**; and my completeness claim was wrong — charts name tokens in `settings` and carry no `yunariPaint`. → `4a647f9` `b474563` `4c42793` `658721f` `9696760`
 - [x] **F1.3 / F1.5 / F1.25 / F1.32** — Description is a textarea, the type panel has a label column, the panels' copy moved to `ui-copy.ts`, the language sample says what it is. → `9280099` `c1b5f18` `dbc8bff` `3f8f7ad`
 - [x] **F1.12–F1.15** — the host's chooser and editor link, the device name, the grouped banner, refusals made visible, and a stale refusal no longer outlives its cause. → `e245138` `074be0b` `845bd3e` `36251be`
 - [x] **F1.16–F1.21** — every primitive visible, the material controls widened, `contentFit` renamed and the control removed, the Insert menu shares one owner. → `1b948c0` `d15c265` `db351bc` `23b4e7f`
@@ -196,7 +196,7 @@ Dispatched work, both settled and ready. Nothing below needs a decision first.
 
 **This is the best finding in the pass: a fully tested feature that no human can reach.**
 
-`createAssetPanel` (`packages/editor/src/asset-manager/index.ts:243`) appends two `input[type=file]` elements — `data-vigilia-asset-import` and `data-vigilia-asset-replace` — plus a remove button, and **nothing triggers them**. Measured: both inputs are `display: none` with `getClientRects().length === 0`, no `<label for>`, not wrapped in a label. The only interactive elements the pane renders are a `<select>` and **"Remove asset"**. Grepping the package, the only two `.click()` calls are `picker.click()` (the package opener, `editor-main.ts:156`) and `link.click()` in persistence — neither touches the asset inputs.
+`createAssetPanel` (`packages/editor/src/asset-manager/index.ts:243`) appends two `input[type=file]` elements — `data-yunari-asset-import` and `data-yunari-asset-replace` — plus a remove button, and **nothing triggers them**. Measured: both inputs are `display: none` with `getClientRects().length === 0`, no `<label for>`, not wrapped in a label. The only interactive elements the pane renders are a `<select>` and **"Remove asset"**. Grepping the package, the only two `.click()` calls are `picker.click()` (the package opener, `editor-main.ts:156`) and `link.click()` in persistence — neither touches the asset inputs.
 
 **Why the suite is green anyway:** the specs import with `setInputFiles` (`editor.spec.ts:2185`, `reference-theme.spec.ts:2273`), which drives a `display: none` input directly and does not care that a human could never click it. The feature is proven by a method the product does not offer.
 
@@ -215,7 +215,7 @@ Dispatched work, both settled and ready. Nothing below needs a decision first.
 | F1.5 | Two `<label>`s stacked with no input between | A structural bug in Type presets, not a style choice. | type preset panel |
 | F1.6 | No favicon | 404 on every load of the editor. | editor `index.html` / build |
 | F1.7 | The Insert menu omits Panel | Two surfaces offer the same six objects and have already drifted: the rail's **Add** pane offers Text, Panel, Gauge, Line, Bar, Pie; the **Insert** menu offers the same list **minus Panel**. The omission matters — a panel is the most fundamental object here and the composition is mostly panels. Two lists that must stay in sync and don't is the actual defect; one owner reading from both is the fix. | `new-object-panel.ts` + the menu owner |
-| F1.8 | **A scene object cannot be named at all** | Insert a Text and the layer list shows `text-7363db18-c109-42ec-b1ec-8728c2d04292`. There is no field to change it: the only "Name" inputs in the whole editor are `vigiliaThemeName`, `vigiliaPaletteName` and `vigiliaTypeName`. Every object an author ever creates is a UUID, permanently. This is the most author-facing gap found so far and it was escalated from P2 on the evidence. **Escalated 2026-09-29.** | `renderer-core` types + envelope schema + validator + editor |
+| F1.8 | **A scene object cannot be named at all** | Insert a Text and the layer list shows `text-7363db18-c109-42ec-b1ec-8728c2d04292`. There is no field to change it: the only "Name" inputs in the whole editor are `yunariThemeName`, `yunariPaletteName` and `yunariTypeName`. Every object an author ever creates is a UUID, permanently. This is the most author-facing gap found so far and it was escalated from P2 on the evidence. **Escalated 2026-09-29.** | `renderer-core` types + envelope schema + validator + editor |
 
 **F1.8's shape, decided.** The authored `id` stays the stable key and is what bindings and round-trips reference — it is not renamed. A new optional `name` rides on the object beside it, exactly as globals already carry a display name (§75). Absent means "fall back to the id", so a hand-authored scene that predates the field still opens. The layer list, the selection and any semantics that would otherwise print an id show the name when there is one.
 
@@ -244,11 +244,11 @@ Dispatched work, both settled and ready. Nothing below needs a decision first.
 
 **Glass now widens with them — ruled 2026-09-30.** This note originally said glass does not widen, and the user has since ruled that it does. `GLASS_OBJECT_TYPES` becomes `Rect | Circle | Ellipse | Triangle | Polygon | Group`. **Polyline, Path and Line are excluded** — they have no closed area to sample, which is the same reason an open shape takes a content token as its stroke rather than a fill. `localPath` in `scene-fabric/src/glass.ts` is the renderer limit and it is a small one: **`ctx.ellipse` is already in that file**, building the rounded rect's four corners, so a circle is roughly one line and `ctx.clip()` already works on any path. Triangle and Polygon are the same shape of work — build the path, clip it. **The published schema widens with `GLASS_TYPES`**, and the schema-drift guard that compares them is what will fail if only one moves; that guard is doing its job and must not be relaxed to make this pass.
 
-| F1.9 | **There is no shape surface at all** | `Rect` is the only shape the model produces: `new-fabric-theme-objects.ts` emits `Rect`, `Textbox`, `Path` and `VigiliaChart` and nothing else, and the Add pane's "Panel" is a rectangle with no choice. A dashboard product that cannot draw an ellipse or a triangle is limited, and this was found by using the app, not by reading it. **Scope widened by the user (2026-09-29): all primitive Fabric shapes, and their properties.** Fabric 7 ships `Rect, Circle, Ellipse, Triangle, Polygon, Polyline, Line, Path` — all present in the installed package, so this is authoring and material work, not a dependency. See the scope note below. | `new-object-defaults.ts`, the panel primitive, `selection-inspector/panel.ts` |
+| F1.9 | **There is no shape surface at all** | `Rect` is the only shape the model produces: `new-fabric-theme-objects.ts` emits `Rect`, `Textbox`, `Path` and `YunariChart` and nothing else, and the Add pane's "Panel" is a rectangle with no choice. A dashboard product that cannot draw an ellipse or a triangle is limited, and this was found by using the app, not by reading it. **Scope widened by the user (2026-09-29): all primitive Fabric shapes, and their properties.** Fabric 7 ships `Rect, Circle, Ellipse, Triangle, Polygon, Polyline, Line, Path` — all present in the installed package, so this is authoring and material work, not a dependency. See the scope note below. | `new-object-defaults.ts`, the panel primitive, `selection-inspector/panel.ts` |
 
 ### Host findings, found by running it (2026-09-29)
 
-The host was started for the first time in this pass — `node packages/host/bin/vigilia.js --no-browser --port 4185`. Everything below is measured, not inferred.
+The host was started for the first time in this pass — `node packages/host/bin/yunari.js --no-browser --port 4185`. Everything below is measured, not inferred.
 
 | # | Finding | Evidence | Fix owner |
 |---|---|---|---|
@@ -256,7 +256,7 @@ The host was started for the first time in this pass — `node packages/host/bin
 | F1.11 | **Nothing links to the editor** | `server.ts` serves `/editor` (302) and `/settings` (200). The root page renders **zero** `<a>` tags and zero `href`s, and `/settings` links nowhere either. A user who lands on the product cannot reach the editor from anywhere in the UI. | host root + settings markup |
 | F1.12 | **Device names fall back to machine strings** | Under *Devices on this PC* → *Graphics card*, the only value offered is **"First card found (default)"**. That is a discovery fallback presented as if it were a product name, and it is what a real user with one GPU sees. | the device-identity owner |
 | F1.13 | **The player's unread-sensor banner repeats itself** | `player/src/main.ts:496` builds the notice as a count, then joins up to three `sample.message` strings with a space, then appends `(and N more)`. It never deduplicates. Measured on a real host with four unsupplied sensors, the rendered banner is **326 characters** and contains the sentence *"no provider on this PC reports that sensor; check the device assignment or that its source is running"* **twice, run together with no separator**. It also carries a raw internal URL (`http://127.0.0.1:8085`) and a `(and 1 more)` debug tail, all on a wall display. **Fix shape:** the host owns the reason vocabulary, so the player should group by reason — `4 of 30 sensors have no reading: 2 no provider…, 1 unreachable…` — rather than concatenate sentences. | `player/src/main.ts` |
-| F1.14 | **The player's failure path strands the user** | A bad `?theme=` renders a bare `<pre>` of monospace red on a black page — *"Vigilia could not load this theme. Could not load theme (404)."* — with no link, no retry and no route onward. `host-player.spec.ts:504` asserts the `<pre>` is *absent* in the happy path, so the failure presentation has never been looked at by anyone. | `player/src/main.ts` |
+| F1.14 | **The player's failure path strands the user** | A bad `?theme=` renders a bare `<pre>` of monospace red on a black page — *"Yunari could not load this theme. Could not load theme (404)."* — with no link, no retry and no route onward. `host-player.spec.ts:504` asserts the `<pre>` is *absent* in the happy path, so the failure presentation has never been looked at by anyone. | `player/src/main.ts` |
 
 | F1.15 | **Every "refused, tell the author" path in the inspector tells nobody** | `createErrorManager` (`error-manager/index.ts:36`) **fires a canvas event** and logs to the console — it renders nothing itself. Grepping the package, **nothing outside the error manager's own tests subscribes to `editor:warning` or `editor:error`.** Measured on the opacity field: typing 500 is correctly refused, the field snaps back to `100`, the object stays at `1`, and the structured warning `{category: "controls", message: "That value cannot be applied to the selection."}` is emitted — and **nothing appears in the DOM**. The author sees a number jump back with no explanation. This is systemic, not one field: geometry, glass, opacity, the run fields and the palette all refuse through this same path, and each promises the author feedback in its own comment. **Fix shape:** the shell already renders a status line — subscribe there, so the refusal is visible where the author is already looking. | `error-manager` + `editor-shell` status surface |
 
@@ -287,7 +287,7 @@ The player had never been looked at as a user in this pass. It **works**: the da
 
 | # | Finding | Landed in | Proof |
 |---|---|---|---|
-| F0.4 | An author cannot import or replace an asset at all | `ce80354`, `a36c5fb`, `c8590fe` | 1956 unit tests green; 6 e2e pass. Red-without-fix stubbed the trigger and the import test timed out waiting for a `filechooser`. **Verified by hand:** Import / Replace / Remove are visible, the dropdown reads `starter-backdrop.jpg` with the id as its value, a preview renders, and the hidden input is correctly still `display:none` behind a button. It **did not** fix one of F1.19's controls: `vigiliaPaletteToken` was still unlabelled, and the asset pane's new select is a different control. |
+| F0.4 | An author cannot import or replace an asset at all | `ce80354`, `a36c5fb`, `c8590fe` | 1956 unit tests green; 6 e2e pass. Red-without-fix stubbed the trigger and the import test timed out waiting for a `filechooser`. **Verified by hand:** Import / Replace / Remove are visible, the dropdown reads `starter-backdrop.jpg` with the id as its value, a preview renders, and the hidden input is correctly still `display:none` behind a button. It **did not** fix one of F1.19's controls: `yunariPaletteToken` was still unlabelled, and the asset pane's new select is a different control. |
 | F1.19, F1.4 | Seven (in fact fifteen) controls had a visible label and no accessible name; "Release version" was a bare label | `9fd56a0` | 1969 unit tests green; 4 new Playwright tests and 11 existing editor specs pass. Red-without-fix: removing the two `htmlFor` pairings left 6 controls unnamed in Chromium and took 4 unit tests red. **Measured in a browser, not asserted:** `ariaSnapshot` over all 35 controls of the Settings pane computes a name for every one. The audit opened the gradient and delete branches, so it found 15 — the finding's 7, plus the palette's Angle, both stop positions, both stop colours, the `Paint` and `Reassign to` selects, the type panel's `Reassign to`, and the language sample. `output` is labelable, so the release version takes the same `for`/`id` pairing and computes `status "Release version"`. **Not fixed, found there:** F1.5 and F1.3 remain. |
 | F1.9 | No shape surface; all primitive Fabric shapes and their properties | `9b47534` | 1908 unit tests green; red-without-fix took `panel.dom.test.ts` to **20 failed / 34 passed**; 3 Playwright specs pass; capture regenerated and inspected. **Glass did not widen**, as instructed. |
 | F1.8 | A scene object cannot be named at all | `1e0c5a0` | 1915 unit tests green; 4 Playwright specs pass; verified by hand — shapes get correct names, pre-field objects carry no `name` key. |
@@ -310,7 +310,7 @@ the split is worth taking rather than noting. — both over the "500 is a signal
 | F1.16 | **A newly inserted closed shape is invisible** | Inserted all six non-rect shapes and screenshotted the stage: **only the polyline is visible** (it takes a light stroke, as open shapes should). The circle, ellipse, triangle, polygon and path are filled `#0c0e13` and read as nothing. Cause: `newShapeSurface` fills from `surfacePalette(globals, "panel")`, and `SURFACE_TOKENS` is `["background", "bars", "scene", "surface", "track"]` — **`panel` is not in the list**, so a shape is filled with the scene's own backdrop. That list is right for a chart track and wrong for a shape an author draws, and the doc comment directly above says the opposite of what the code does: *"a shape an author draws a card on must be as legible as a panel."* **The comment and the code disagree, and the code is what ships.** | `new-object-defaults.ts` |
 | F1.17 | **The chart chips lost their group when the shapes gained one** | Before F1.9 the Add pane was one flat list of six peers. Now it is `Text`, then a **SHAPE** legend over eight buttons, then **four unlabelled chart chips** below it. The charts were peers of Panel before and are now orphaned under a heading that is not about them. Measured with Playwright's own accessible-name engine: `getByRole("group", { name: "Shape" })` resolves, but **the group name is not concatenated onto a button's accessible name** — so `getByRole("button", { name: "Line", exact: true })` resolves to **2** (the shape and the chart). That is not only a test problem: a screen-reader user hears "Line" twice with nothing to tell them apart, and it already broke a spec that meant to click the chart. **Grouping the charts the same way fixes both** — the visual orphaning and the ambiguity. | `new-object-panel.ts` |
 | F1.18 | **Every new shape's id is prefixed `panel-` whatever it is** | `new-object-panel.ts:82` hardcodes `` `panel-${crypto.randomUUID()}` `` for all eight kinds. Measured: an ellipse gets `panel-ab86824d`, a circle `panel-25b9dc21`, a line `panel-12c41175`. F1.8 gave the *display* the right name, so an author never sees this — but the id is the **stable key** that bindings, the schema path and the envelope carry, so a circle whose key is `panel-…` misleads everyone who reads the document rather than the screen. Same class of defect F1.8 caught in reverse: a shape wearing another kind's identity. `SHAPE_KINDS` and `newObjectName(kind)` already exist on both sides of this line. | `new-object-panel.ts` |
-| F1.19 | **Seven controls have no accessible name, and they have visible labels** | Audited every focusable control in the editor: 155 visible, **7 unnamed** — `vigiliaThemeName`, `vigiliaThemeAuthor`, `vigiliaThemeDescription`, `vigiliaPaletteToken`, `vigiliaPaletteName`, `vigiliaTypePreset`, `vigiliaTypeReplacement`. The markup is `<div class="vigilia-field"><label>Name</label><input …></div>`: the label has **no `for`**, the input is a **sibling rather than wrapped**, and there is no `id`, `aria-label` or `aria-labelledby`. The label is visible to a sighted user and invisible to a screen reader, which announces "edit text" and nothing else. AGENTS.md requires an accessible name on every control. **The fix has an in-repo precedent:** `selection-inspector` already pairs `label.htmlFor` with `select.id`; the theme-settings, palette and type panels simply do not. **Shares a cause with F1.4** — a bare `<label>` with no `for` — so both should be fixed as one. | theme settings, palette manager, type preset panels |
+| F1.19 | **Seven controls have no accessible name, and they have visible labels** | Audited every focusable control in the editor: 155 visible, **7 unnamed** — `yunariThemeName`, `yunariThemeAuthor`, `yunariThemeDescription`, `yunariPaletteToken`, `yunariPaletteName`, `yunariTypePreset`, `yunariTypeReplacement`. The markup is `<div class="yunari-field"><label>Name</label><input …></div>`: the label has **no `for`**, the input is a **sibling rather than wrapped**, and there is no `id`, `aria-label` or `aria-labelledby`. The label is visible to a sighted user and invisible to a screen reader, which announces "edit text" and nothing else. AGENTS.md requires an accessible name on every control. **The fix has an in-repo precedent:** `selection-inspector` already pairs `label.htmlFor` with `select.id`; the theme-settings, palette and type panels simply do not. **Shares a cause with F1.4** — a bare `<label>` with no `for` — so both should be fixed as one. | theme settings, palette manager, type preset panels |
 
 ### P2 — data model
 
@@ -355,7 +355,7 @@ That last group is the point: F1.2 deleted the glyphs and F1.1 added state to th
 | F1.33 | **Converting a theme to portrait strands most of the composition, silently** | Found by doing the core workflow end-to-end on the main display. The starter is 1672 × 941. Setting Ratio to 19.5:9 and Orientation to portrait (F0.2's own controls, working correctly — 19.5:9 filled the others to 2340 × 1080, portrait gave 1080 × 2340) narrowed the artboard to 1080 while the content kept its positions. `reference-theme.spec.ts` pins this as intended — *"persists artboard properties without rescaling Fabric objects"* — and the editor does show the artboard bounds. **The player does not.** The Storage and Network panels live at x = 1138, outside a 1080-wide artboard, so on the phone they are simply **gone**: no crop cue, no warning, nothing. A one-click ratio change silently deletes two thirds of a dashboard. | player + artboard resize |
 | F1.34 | **Out-of-artboard content is dropped by the player with no cue** | The mechanism behind F1.33, and it stands on its own. The player shows what the artboard contains and has no way to say *something was here and is not now*. A wall display and a phone both lose it identically, so the reader cannot tell a short dashboard from a broken one. | player |
 
-| F1.35 | **A chart's inspector says "Paint: not set"** | Named by the F0.1 implementer, true of **every chart in every theme** and predating this pass. `VigiliaChart` keeps its colour in `settings`; `paintReferenceOf` (`selection-inspector/appearance.ts:28`) reads only `vigiliaPaint`. So the resolution line under a selected chart reports that the chart has no paint, while the chart is painted. The same line is the one F1.19 made *announce correctly* — it is announcing the wrong thing. | `paintReferenceOf` / chart paint |
+| F1.35 | **A chart's inspector says "Paint: not set"** | Named by the F0.1 implementer, true of **every chart in every theme** and predating this pass. `YunariChart` keeps its colour in `settings`; `paintReferenceOf` (`selection-inspector/appearance.ts:28`) reads only `yunariPaint`. So the resolution line under a selected chart reports that the chart has no paint, while the chart is painted. The same line is the one F1.19 made *announce correctly* — it is announcing the wrong thing. | `paintReferenceOf` / chart paint |
 | F1.36 | **The host serves no templates, so `/` lists none** | The starter-as-template landed in the **editor's** library, under Templates beside Your themes. The host's own chooser at `/` shows none, because a template is never stored and the host has no way to serve one. A template the display chooser cannot show is only half a template. | `packages/host/` |
 | F1.37 | **A new card on a blank theme is 1.33:1** | The honest cost of the minimal nine-token palette, measured by the F0.1 implementer and not hidden: a card inserted on a blank theme is visible only from its own `panelStroke` outline. The blank theme's page token is `chartTrack` because `panel` puts a card on the page at **1.02:1** and `dim` puts text at 1.74:1 — so `chartTrack` is right and the *card* still has no surface to sit on. Not fixable without changing the palette decision, which is the user's. | minimal palette decision |
 
@@ -376,7 +376,7 @@ Three things it found and fixed on the way: `SURFACE_TOKENS` never looked for `c
 
 The five failure modes this pass implies that no single task's tests exercise:
 
-1. **A rebuild step that silently uses a different control than an author would.** The driver and the product share no code, but if the driver reaches into `window.vigilia` to set a value a click would set, the proof is void. **Any `page.evaluate` that writes scene state is a defect in the driver.**
+1. **A rebuild step that silently uses a different control than an author would.** The driver and the product share no code, but if the driver reaches into `window.yunari` to set a value a click would set, the proof is void. **Any `page.evaluate` that writes scene state is a defect in the driver.**
 2. **A round trip that passes on the DOM and fails in the envelope.** Reading the live DOM proves the control repainted; only reading the persisted package proves save. Every round-trip task must assert on the reloaded envelope.
 3. **A finding recorded but not classified.** The Findings table is not a log; an unclassified row means the pass cannot be judged complete. Blocking/deferred is required at observation time.
 4. **A blocking finding "fixed" by a second control that describes the same thing.** A fix that adds a second owner is a new defect; the fix must sit inside the one owner named in `docs/architecture/ownership.md`.
@@ -438,7 +438,7 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 **It also named F1.41**, above: *Preview fit* said "Contain"/"Cover" while *Media fit* said "cover"/"contain" for the same two values, in one panel.
 
 | F1.42 | **The canvas context menu cannot scroll** | Measured by the F1.39 implementer: the context menu fits at 1280 × 720 and does not fit a shorter editor window, and it has no scroll. A 13-item menu on a short window would simply be clipped at the bottom, with the last item unreachable. The editor is desktop-only, so the window can still be short. | `editor-shell/canvas-context-menu` |
-| F1.43 | **A happy-path assertion got weaker** | `host-player.spec.ts:504` asserts no `<pre>` in the player happy path. After `b01b301` replaced the failure `<pre>` with a real page, that assertion still passes but now **guards a marker the failure path no longer uses** — it would not notice the failure page coming back as a `<pre>`. Re-point it at `[data-vigilia-load-failure]`. | `tests/e2e/host-player.spec.ts` |
+| F1.43 | **A happy-path assertion got weaker** | `host-player.spec.ts:504` asserts no `<pre>` in the player happy path. After `b01b301` replaced the failure `<pre>` with a real page, that assertion still passes but now **guards a marker the failure path no longer uses** — it would not notice the failure page coming back as a `<pre>`. Re-point it at `[data-yunari-load-failure]`. | `tests/e2e/host-player.spec.ts` |
 
 ### F1.14, F1.38 and F1.39 landed; F1.41 verified, not fixed
 
@@ -446,9 +446,9 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 
 **A display that could not load now says so as a page, not a strip** — so it cannot be read as a gap:
 
-> **This display has nothing to show** — Vigilia could not load the theme this display was pointed at. `Reason: Could not load theme (404).` **[Try again]** *Go to the host*
+> **This display has nothing to show** — Yunari could not load the theme this display was pointed at. `Reason: Could not load theme (404).` **[Try again]** *Go to the host*
 
-`document.title` becomes *Vigilia — nothing to display*, so a reader with several displays open can tell which one broke. The link is underlined rather than boxed because the host's own stylesheet says a link is the only control that leaves the page.
+`document.title` becomes *Yunari — nothing to display*, so a reader with several displays open can tell which one broke. The link is underlined rather than boxed because the host's own stylesheet says a link is the only control that leaves the page.
 
 **And the new page made an old behaviour a lie, which it fixed.** A packaged font that would not load used to call `showFailure` — but `loadFontAssets` never rejects; it reports per face and carries on. So a display **drawing correctly in a fallback** was covered by a page claiming nothing was shown. It is now a warning.
 
@@ -460,7 +460,7 @@ The artboard controls carry, via `aria-describedby` on all five size controls: *
 
 `75c671e`, `310cc2b`, `4ea07e7`.
 
-**F1.43 is the most consequential result in the pass, and it was worse than one assertion.** I recorded it as `host-player.spec.ts:504` alone. It found **five** `locator("pre")` assertions — four in `host-player.spec.ts`, one in `host-media.spec.ts` — and proved the claim on a real host at a `?theme=` that cannot be served: the display showed the failure page with `preCount 0, failureCount 1`. **The old assertion passed on a dead screen.** All five now name `[data-vigilia-load-failure]`.
+**F1.43 is the most consequential result in the pass, and it was worse than one assertion.** I recorded it as `host-player.spec.ts:504` alone. It found **five** `locator("pre")` assertions — four in `host-player.spec.ts`, one in `host-media.spec.ts` — and proved the claim on a real host at a `?theme=` that cannot be served: the display showed the failure page with `preCount 0, failureCount 1`. **The old assertion passed on a dead screen.** All five now name `[data-yunari-load-failure]`.
 
 The reason none of it was caught: **nothing browser-tested the failure page at all.** It shipped with a jsdom test, and a jsdom test cannot see that a `<pre>` stopped being how the product fails.
 
@@ -474,7 +474,7 @@ The reason none of it was caught: **nothing browser-tested the failure page at a
 
 `docs/evidence/screenshots/` holds **57 images** and a large share are stale: they show the old starter theme, an editor UI from before the current shell, or the **v1 schema**, which is queued for removal. A stale evidence screenshot is worse than none — it is a claim about the product that is no longer true, kept in the repo where a reader will believe it.
 
-**The approach is mechanical rather than a judgement call per file.** Regenerate every registered capture from the current build with `VIGILIA_CAPTURE=1 --workers=1`, then diff: an image that regenerates differently was stale, and an image that regenerates identically was already current. That answers all 57 without anyone eyeballing each one, and it cannot be talked into leaving a stale picture because it "looked fine".
+**The approach is mechanical rather than a judgement call per file.** Regenerate every registered capture from the current build with `YUNARI_CAPTURE=1 --workers=1`, then diff: an image that regenerates differently was stale, and an image that regenerates identically was already current. That answers all 57 without anyone eyeballing each one, and it cannot be talked into leaving a stale picture because it "looked fine".
 
 **Then** delete the README rows whose capture no longer exists or documents v1 behaviour that is going away, and say which images were dropped rather than quietly emptying a directory.
 
@@ -556,12 +556,12 @@ fails the test instead.
 viewable.** The player renders every region, the sensor gaps are gaps rather than
 zeros (§97 intact), and nothing is clipped at either size.
 
-#### F2.12 — **BLOCKING, filed: [#11](https://github.com/peterng1618/vigilia/issues/11) — the frosted-glass control does not carry the frosted material**
+#### F2.12 — **BLOCKING, filed: [#11](https://github.com/peterng1618/yunari/issues/11) — the frosted-glass control does not carry the frosted material**
 
 **This is the pass's headline finding, and it is the one the whole pass was
 waiting to see in pixels.**
 
-`selection-inspector/glass.ts` writes exactly one thing: the `vigiliaGlass`
+`selection-inspector/glass.ts` writes exactly one thing: the `yunariGlass`
 treatment. It never touches the fill. So ticking **Frosted glass** puts a 40-unit
 blur *under whatever fill the card already had* — and a card's fill is chosen by
 `new-object-defaults.ts:474`:
@@ -616,7 +616,7 @@ Review Focus #4's exact trap — a second owner for one property. And the questi
 of **whether enabling a material should overwrite a fill the author chose** has no
 precedent in the repo: a chart painted blue, then frosted, would lose its blue.
 That is a product decision, it is the user's, and the plan's rule for those is
-record and move on. Filed as **[#11](https://github.com/peterng1618/vigilia/issues/11)**
+record and move on. Filed as **[#11](https://github.com/peterng1618/yunari/issues/11)**
 with the three candidate behaviours written out.
 
 #### F2.13 — **blocking, fixed: `Background media` is on the Design tab, and the wrong tab is a ten-minute timeout**
@@ -625,7 +625,7 @@ with the three candidate behaviours written out.
 Background media. The artboard panel is a *document* panel, mounted in **Design**
 — `shell-layout.tsx` carries the comment *"Document panels stay mounted in Design:
 a selection must not make the theme's own settings unreachable"* — so on Data the
-`<select data-vigilia-background-asset>` exists in the DOM and is **not visible**,
+`<select data-yunari-background-asset>` exists in the DOM and is **not visible**,
 and `selectOption` retried for the full test timeout with no message saying why.
 
 Not a product defect; the product is right and says so in its own comment. The
@@ -649,7 +649,7 @@ caught it because **no spec imported it** — `buildComposition` and
 inline. A file of finished work that had never run is the exact thing the
 screenshot spring clean and this pass both exist to surface.
 
-#### F2.16 — **BLOCKING, filed: [#12](https://github.com/peterng1618/vigilia/issues/12) — a value run cannot be told not to print its unit, so a value and its unit print the unit twice**
+#### F2.16 — **BLOCKING, filed: [#12](https://github.com/peterng1618/yunari/issues/12) — a value run cannot be told not to print its unit, so a value and its unit print the unit twice**
 
 The CPU card reads **`95.4%%`** and the GPU card **`1%%`** on a real display.
 
@@ -900,7 +900,7 @@ Fixed: `enterGroup` records nothing unless the entry really is a `Group`; enteri
 
 **U2, what "in use" meant.** A top-level `canvas.getObjects()` entry with that `assetId`, or `artboard.backgroundMedia` naming it. The agent could not construct a false positive — every refusal it provoked was genuine — so it did not widen the check to silence the message. It found where it *was* wrong: **it was shallow** (`getObjects()` is root-only, so a **grouped** image reported itself unused and removing the declaration deleted bytes out from under a live object — while `objectsOf()`, already recursive and used by `hydrate`, was never called), and **it was partial** (a type preset's font face is a reference in the envelope and no Fabric object at all).
 
-**U9 was not ECharts.** `renderScale` was already 2×, but `MAX_BACKING_PIXELS = 486_000` clamped **the trends chart** — the largest, and the one a reader actually looks at — to **1.53×**, while every smaller chart got the full 2×. So the only aliased graph was the important one. Raising the ceiling to one 1080p frame gives a 1958 × 430 backing store. The "one knob for all four" already existed: `VigiliaChart.renderScale`, applied to every family, and runtime-only per §67.
+**U9 was not ECharts.** `renderScale` was already 2×, but `MAX_BACKING_PIXELS = 486_000` clamped **the trends chart** — the largest, and the one a reader actually looks at — to **1.53×**, while every smaller chart got the full 2×. So the only aliased graph was the important one. Raising the ceiling to one 1080p frame gives a 1958 × 430 backing store. The "one knob for all four" already existed: `YunariChart.renderScale`, applied to every family, and runtime-only per §67.
 
 **U8** was a layout bug worth nine pixels: every rail icon's centre sat **9 px left** of its button, because the buttons were `display: block` and the inline SVG sat at the start of the line box. Now 0 px on all four.
 
@@ -914,7 +914,7 @@ Fixed: `enterGroup` records nothing unless the entry really is a `Group`; enteri
 
 **`contentFit` (`23b4e7f`).** The rename reached seven layers — published schema, envelope type, validator, the artboard model (taken down to the geometry layer so `mount.ts` reads `contentFit` rather than `fitMode: plan.artboard.contentFit`), plan/mount/scene/player, fixtures and tests. **The drift guard never named the key, so it caught nothing**; a case was added asserting `contentFit` is the right enum *and* `fitMode` is absent, and it went red for the right reason. The code-side half is the one that matters at a trust boundary: `fitMode` is now **refused as an unknown field** rather than silently read as `contain`.
 
-**It found a test that would never have gone red.** `panel-labels.spec.ts:32` listed `[data-vigilia-artboard-fit-mode]` in its audit — but the audit *skips selectors with count 0* and the `>= 30` floor still held at 36, so it would have sat there naming a control that can no longer render, green throughout. That is the same failure shape as everything else this pass has found: a passing test guarding nothing.
+**It found a test that would never have gone red.** `panel-labels.spec.ts:32` listed `[data-yunari-artboard-fit-mode]` in its audit — but the audit *skips selectors with count 0* and the `>= 30` floor still held at 36, so it would have sat there naming a control that can no longer render, green throughout. That is the same failure shape as everything else this pass has found: a passing test guarding nothing.
 
 It also caught that **§53 ("Editor preview matches player behaviour") became false** once the control was gone, and rewrote it — and that a `...current` spread is what stops an author-set cover being silently uncropped when the size changes. **It resolved one thing rather than asking:** the label "Content fit" has no control to label, so `uiCopy.panels.previewFit` was deleted rather than left as dead copy. Flagged, and correctly.
 
@@ -931,7 +931,7 @@ Meta is covered — `modifier: true` computes `ctrlKey || metaKey`, confirmed by
 
 ### Token usage landed, and my completeness claim was wrong (`4a647f9`)
 
-**I verified that the token traversal was complete and it was not.** I checked that an envelope `TextRun` carries `typePreset` and a `StyleMap` and no palette `token` — true, **but I only checked text.** A `VigiliaChart` names tokens in its `settings` (track, progress, a series palette, threshold bands) and carries **no `vigiliaPaint` at all**. The old walk would report a token **dead while a gauge was painted with it** — precisely the false negative this feature exists to prevent. The implementer read chart settings in and left the *rewrite* to `ChartManager`, which owns the engine re-apply, and said so.
+**I verified that the token traversal was complete and it was not.** I checked that an envelope `TextRun` carries `typePreset` and a `StyleMap` and no palette `token` — true, **but I only checked text.** A `YunariChart` names tokens in its `settings` (track, progress, a series palette, threshold bands) and carries **no `yunariPaint` at all**. The old walk would report a token **dead while a gauge was painted with it** — precisely the false negative this feature exists to prevent. The implementer read chart settings in and left the *rewrite* to `ChartManager`, which owns the engine re-apply, and said so.
 
 Hand-checked in a browser: `frost` → 8 (the eight cards, all eight in the layer tree), `cpu` → 5 **including `trends-chart`** — the chart case, structurally invisible before.
 
@@ -1074,7 +1074,7 @@ it, and it round-trips. But **all 28 text objects in the reference document read
 says why in one line — `new-fabric-theme-objects.ts:129` returns
 `{ type, id, left, top, width, … }` and never writes `name`, and the same is true
 of `rect()`, `frostedCard()`, `path()` and `chart()`. The property is not
-namespaced (`VIGILIA_NAME_PROPERTY` is the bare string `"name"`), so the field was
+namespaced (`YUNARI_NAME_PROPERTY` is the bare string `"name"`), so the field was
 always available.
 
 **This matters more than a cosmetic gap.** The layer list is the author's only
@@ -1099,7 +1099,7 @@ one cost a save and a reload.
 
 **U34 — the palette colour field accepts anything, and persists it.** U25
 records that the palette's colour control is a free-text field; driving it shows
-what that costs. `[data-vigilia-palette-color]` accepts `#123456`,
+what that costs. `[data-yunari-palette-color]` accepts `#123456`,
 **`rebeccapurple`**, and an empty string, with **no alert and no diagnostic** in
 every case. Then, decisively: **save the package and `rebeccapurple` is
 persisted** — `globals.palette.panel.value.color` reads it straight back out of
@@ -1319,7 +1319,7 @@ Nine tests, 1.9 minutes, all eight regions built from their own blank theme thro
 | F2.10 | The Format field never named its vocabulary | A date painted as raw `EEE, Sep d, yyyy` |
 | F2.11 | A three-series chart had **one** series colour | The Trends panel is three series |
 
-Three deferred as product decisions with no precedent, each with its candidates written out: **issues [#8](https://github.com/peterng1618/vigilia/issues/8), [#9](https://github.com/peterng1618/vigilia/issues/9), [#10](https://github.com/peterng1618/vigilia/issues/10)**.
+Three deferred as product decisions with no precedent, each with its candidates written out: **issues [#8](https://github.com/peterng1618/yunari/issues/8), [#9](https://github.com/peterng1618/yunari/issues/9), [#10](https://github.com/peterng1618/yunari/issues/10)**.
 
 **And the shape of the work, which is the finding worth keeping.** Once the surface was honest, all nine tests build and pass in **1.9 minutes**. The first three regions took longer than the last five combined — the pass was more than half *fixing the surface* than building on it. That is the argument for doing a proof pass before shipping: the cost of an unauthorable product is not the hours to build the thing, it is that nobody can build it at all.
 
@@ -1327,7 +1327,7 @@ Three deferred as product decisions with no precedent, each with its candidates 
 
 ### The blank theme works, end to end — the plan's premise, verified
 
-Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Vigilia", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
+Driven by hand, not read off a report. **New theme** → chooser → Create → the dirty guard when the document is unsaved → **0 objects at 1920 × 1080**, Name "New theme", Author "Yunari", Description empty, and **Background "Chart track" / Bar colour "Panel"** — the minimal ten-token palette resolving, with nothing reading "not set" anywhere.
 
 Then, as an author: a **Rectangle** and two **charts** all insert with palette-backed defaults, and the selection inspector shows a **Name** field (F1.8), geometry, opacity, and the chart's own paint — *"Stroke paint: palette.text → #ecf5ff"*, *"Series paint 1: palette.text → #ecf5ff"* — which is **F1.35 already fixed** in a live build.
 
@@ -1342,9 +1342,9 @@ candidates written out:
 
 | Issue | Finding | The open question |
 |---|---|---|
-| [#8](https://github.com/peterng1618/vigilia/issues/8) | F2.6 | keep minting token ids, or derive one from the name at creation |
-| [#9](https://github.com/peterng1618/vigilia/issues/9) | F2.7 | what the Height field means before the author has authored a height |
-| [#10](https://github.com/peterng1618/vigilia/issues/10) | F2.11's limit | whether a series' colour belongs to a slot or to a binding — a format change, or nothing at all |
+| [#8](https://github.com/peterng1618/yunari/issues/8) | F2.6 | keep minting token ids, or derive one from the name at creation |
+| [#9](https://github.com/peterng1618/yunari/issues/9) | F2.7 | what the Height field means before the author has authored a height |
+| [#10](https://github.com/peterng1618/yunari/issues/10) | F2.11's limit | whether a series' colour belongs to a slot or to a binding — a format change, or nothing at all |
 
 ### The broad gate, and what its five failures were
 
@@ -1364,9 +1364,9 @@ passed, 143 skipped, 2 failed, exit 1.**
 
 | Failing test | Cause | Whose |
 |---|---|---|
-| `display-fabric.spec.ts:663` "unknown hosted themes show a clear load failure" — **×2** (desktop + phone) | **Stale assertion.** It expects `"Vigilia could not load this theme"`, a string `player/src` has not contained since **F1.14** (`b01b301`, which landed *before* this pass's first commit). F1.14 replaced the bare `<pre>` with a real page, so the test asserts copy that does not exist. **Fixed here** — the same class as F1.43 — re-pointed at the page the failure path actually renders, and it now asserts the reason and both ways out as well as the absence of a drawn scene. Red without the fix: 1 test red on the old text | F1.14's implementer left it; I fixed it |
+| `display-fabric.spec.ts:663` "unknown hosted themes show a clear load failure" — **×2** (desktop + phone) | **Stale assertion.** It expects `"Yunari could not load this theme"`, a string `player/src` has not contained since **F1.14** (`b01b301`, which landed *before* this pass's first commit). F1.14 replaced the bare `<pre>` with a real page, so the test asserts copy that does not exist. **Fixed here** — the same class as F1.43 — re-pointed at the page the failure path actually renders, and it now asserts the reason and both ways out as well as the absence of a drawn scene. Red without the fix: 1 test red on the old text | F1.14's implementer left it; I fixed it |
 | `glass-authoring.spec.ts:171` "refuses a radius past the published bound" — **still red** | Asserts `#status` is **exactly** `"Theme package saved"`, but the footer also carries `"Warning: That value cannot be applied to the selection."` — the **F1.15** refusal surface, whose copy is in `ui-copy.ts` from `9290bdd`, long before this pass. An exact-`textContent` assertion on a footer that now legitimately carries a diagnostic | **Deliberately not touched.** `glass-authoring.spec.ts`, `glass.ts` and `glass.dom.test.ts` were uncommitted in the shared worktree on both runs — another agent is editing that file right now, and its fix will move underneath mine. The cause is established and the fix is one assertion; it belongs to whoever is in that file |
-| `reference-theme.spec.ts:365` "a new document is the reference composition" | The `Ctrl+N` **Discard** prompt timeout — **issue [#7](https://github.com/peterng1618/vigilia/issues/7)**, recorded as pre-existing with cause not established and reproduced at HEAD by its own implementer | Not mine, not fixed, already filed |
+| `reference-theme.spec.ts:365` "a new document is the reference composition" | The `Ctrl+N` **Discard** prompt timeout — **issue [#7](https://github.com/peterng1618/yunari/issues/7)**, recorded as pre-existing with cause not established and reproduced at HEAD by its own implementer | Not mine, not fixed, already filed |
 | `host-player.spec.ts:542` "paints its charts in the theme's own palette" | A **chroma threshold**: measured 412 against a `> 500` bound, on the *reference* theme rendered by the *player* | **Passed on the re-run**, so it is a rendering-threshold flake rather than a regression — which is the answer a single run could not have given. `packages/player` is **zero files** in this pass's diff either way |
 
 **Stated plainly because the gate is this pass's to run:** the suite is **red**,
@@ -1384,8 +1384,8 @@ exit 0 — and `lint` and `format:check` are now clean **tree-wide**, because
 | Failing test | Verdict |
 |---|---|
 | `glass-authoring.spec.ts:171` "refuses a radius past the published bound" | **Fixed and verified — 4 passed, exit 0.** The deferral above is lifted: the file's owner finished and committed, so the file was clean and the collision was over. The helper asserted `#status` **equals** its text, but that footer is F1.15's diagnostic surface and the radius test's *own* refusal is on it — the test's next three lines assert exactly that refusal. Contains, not equals. A stale assertion, not a defect |
-| `reference-theme.spec.ts:365` "a new document is the reference composition" | **Still red, still filed, still not established.** The `Ctrl+N` **Discard** prompt timeout — issue [#7](https://github.com/peterng1618/vigilia/issues/7), reproduced at HEAD by its own implementer. Not mine, not fixed, cause not established |
-| ~~`display-fabric.spec.ts:663` ×2~~ | Closed earlier in this pass — the stale `"Vigilia could not load this theme"` string F1.14 removed. Green in this run |
+| `reference-theme.spec.ts:365` "a new document is the reference composition" | **Still red, still filed, still not established.** The `Ctrl+N` **Discard** prompt timeout — issue [#7](https://github.com/peterng1618/yunari/issues/7), reproduced at HEAD by its own implementer. Not mine, not fixed, cause not established |
+| ~~`display-fabric.spec.ts:663` ×2~~ | Closed earlier in this pass — the stale `"Yunari could not load this theme"` string F1.14 removed. Green in this run |
 | ~~`host-player.spec.ts:542`~~ | Green in this run, as on the re-run before it. The chroma threshold does not reproduce |
 
 **So: of the five the pass inherited, four are closed and one remains**, and the
@@ -1445,9 +1445,9 @@ than the live DOM — is covered by one test that builds the CPU card, presses t
 header's **Save package**, unzips the file the browser downloaded and reads
 `theme.json` out of it. Asserted on the saved document, not the screen: the
 artboard is the 1920 × 1080 the chooser was asked for; the value object's
-`vigiliaText.box` is the 220 × 60 the author typed; its two runs are a value run
+`yunariText.box` is the 220 × 60 the author typed; its two runs are a value run
 and a `%` literal; `cpu.load` is **declared in the envelope's bindings**; the
-card's `vigiliaGlass.blurRadius` is 40; the card's fill, the icon's stroke and
+card's `yunariGlass.blurRadius` is 40; the card's fill, the icon's stroke and
 the chart's settings are all `palette.*` references and the chart's settings
 contain **no hex literal at all**; and the four objects carry the names the
 author gave, with the stable key still separate — F1.8's shape, asserted.
@@ -1515,7 +1515,7 @@ so the canvas is not left standing on text the document does not hold.
 
 `chart-manager/panel.ts` renders one row per binding **the chart already has**.
 Nothing declares the first one. Measured on a blank theme: a `Line` chart
-inserted from the Add pane shows **0** `[data-vigilia-binding]` controls, and
+inserted from the Add pane shows **0** `[data-yunari-binding]` controls, and
 `ChartManager.addChart` creates no binding.
 
 `buildChartPlan` (`renderer-core/src/scene/plan.ts:615`) makes a line series, a
@@ -1556,12 +1556,12 @@ they placed"*. For a text object they did not. A label could not be lined up wit
 a card at all.
 
 **Wrap accepted an edit and did the opposite.** The run editor offers Align, Wrap
-and Overflow to every object carrying `vigiliaText`. Two of the three are
+and Overflow to every object carrying `yunariText`. Two of the three are
 `Textbox` behaviour and an `IText` has none of it. Measured, with a 57-character
 caption, Wrap **on**, and W typed as 200:
 
 > `width 749`, rendered **1193** — one line, straight past the box, and
-> `vigiliaText.wrap` reads `true`, so the document records the ask.
+> `yunariText.wrap` reads `true`, so the document records the ask.
 
 The 200 is then gone: the object is 1193 wide and the W field will say 1193. A
 starter `textbox` with the same content reports 262 and honours it.
@@ -1601,7 +1601,7 @@ boxes: a 300-wide clock, a 306-wide rule, a 220-wide caption.
 
 **Fixed in the owner `ownership.md` names** — "Selection geometry, appearance,
 runs and text layout", which is `selection-inspector/`. ADR 0003 already decided
-that `vigiliaText.box` owns a text object's box because a `Textbox` cannot hold
+that `yunariText.box` owns a text object's box because a `Textbox` cannot hold
 one; the inspector was writing past that owner. It now writes the authored box
 and re-asserts it through `applyAuthoredText`, and reads it back so the field
 shows the box rather than whatever the text happens to measure. A shape still
@@ -1639,7 +1639,7 @@ fields mean what they mean everywhere else.
 ### F2.9 — **BLOCKING: X and Y were still the centre on a chart**
 
 F2.4's defect, one object kind later, and the reason the gauge could not be put
-in its card. `newChart` never set an origin, so a `VigiliaChart` arrived with
+in its card. `newChart` never set an origin, so a `YunariChart` arrived with
 Fabric's **centre** origin — while a `Rect`, a `Path`, a shape and (after
 F2.4) a text object were all corner-anchored. Measured, a 200 × 200 gauge:
 
@@ -1736,22 +1736,22 @@ Written 2026-09-29 against the tree, not inherited. Every key below was read fro
 
 | Control | Selector | Owner |
 |---|---|---|
-| Geometry X/Y/W/H/rotation | `[data-vigilia-geometry]` | `selection-inspector/index.ts` |
-| Artboard width/height | `[data-vigilia-artboard]` | `editor-shell` artboard panel |
-| Opacity 0–100 | `[data-vigilia-opacity]` | `selection-inspector/appearance.ts` |
-| Panel fill / stroke | `[data-vigilia-panel-fill]`, `[data-vigilia-panel-stroke]` | `selection-inspector/panel.ts` |
-| Border width / radius / shadow | `[data-vigilia-panel-border]`, `-radius`, `-shadow` | `selection-inspector/panel.ts` |
-| Glass on/off | `[data-vigilia-glass-enabled]` | `selection-inspector/glass.ts` |
-| Glass blur 0–48 | `[data-vigilia-glass-blur]` | `selection-inspector/glass.ts` |
-| Resolved reference line | `[data-vigilia-resolution]` | `selection-inspector/appearance.ts` |
-| Run list | `[data-vigilia-runs]`, rows `[data-vigilia-run="N"]` | `selection-inspector/runs.ts` |
-| Run preset / colour | `[data-vigilia-run-preset="N"]`, `[data-vigilia-run-colour="N"]` | `selection-inspector/runs.ts` |
-| Text align / wrap / overflow | `[data-vigilia-text-align]`, `-wrap`, `-overflow` | `selection-inspector/runs.ts` |
-| Run source / format / zone | `[data-vigilia-run-source="N"]`, `-format`, `-zone` | `selection-inspector/runs.ts` |
-| Style tab | `[data-vigilia-panel="style"]` | `selection-inspector/style.ts` |
-| Globals (no selection) | `[data-vigilia-globals]` | `selection-inspector/style.ts` |
-| Palette token / kind / colour | `[data-vigilia-palette-token]`, `-kind`, `-color` | `palette-manager/panel.ts` |
-| Palette reassign / delete | `[data-vigilia-palette-replacement]`, `-delete` | `palette-manager/panel.ts` |
+| Geometry X/Y/W/H/rotation | `[data-yunari-geometry]` | `selection-inspector/index.ts` |
+| Artboard width/height | `[data-yunari-artboard]` | `editor-shell` artboard panel |
+| Opacity 0–100 | `[data-yunari-opacity]` | `selection-inspector/appearance.ts` |
+| Panel fill / stroke | `[data-yunari-panel-fill]`, `[data-yunari-panel-stroke]` | `selection-inspector/panel.ts` |
+| Border width / radius / shadow | `[data-yunari-panel-border]`, `-radius`, `-shadow` | `selection-inspector/panel.ts` |
+| Glass on/off | `[data-yunari-glass-enabled]` | `selection-inspector/glass.ts` |
+| Glass blur 0–48 | `[data-yunari-glass-blur]` | `selection-inspector/glass.ts` |
+| Resolved reference line | `[data-yunari-resolution]` | `selection-inspector/appearance.ts` |
+| Run list | `[data-yunari-runs]`, rows `[data-yunari-run="N"]` | `selection-inspector/runs.ts` |
+| Run preset / colour | `[data-yunari-run-preset="N"]`, `[data-yunari-run-colour="N"]` | `selection-inspector/runs.ts` |
+| Text align / wrap / overflow | `[data-yunari-text-align]`, `-wrap`, `-overflow` | `selection-inspector/runs.ts` |
+| Run source / format / zone | `[data-yunari-run-source="N"]`, `-format`, `-zone` | `selection-inspector/runs.ts` |
+| Style tab | `[data-yunari-panel="style"]` | `selection-inspector/style.ts` |
+| Globals (no selection) | `[data-yunari-globals]` | `selection-inspector/style.ts` |
+| Palette token / kind / colour | `[data-yunari-palette-token]`, `-kind`, `-color` | `palette-manager/panel.ts` |
+| Palette reassign / delete | `[data-yunari-palette-replacement]`, `-delete` | `palette-manager/panel.ts` |
 | Delete selection | canvas toolbar trash → `session.deleteActive()` | `editor-shell/bridge.ts` |
 
 **Two facts that shape the pass:**
@@ -1763,9 +1763,9 @@ Written 2026-09-29 against the tree, not inherited. Every key below was read fro
 
 Measured 2026-09-29, so the driver does not rediscover these:
 
-- The editor's global is **`window["vigilia-fabric-editor-N"]`**, holding `{ canvas, viewport, historyManager, textManager, imageManager, layerManager, objectLockManager, errorManager, cropManager, deletionManager, clipboardManager, groupingManager, destroy }`. **`window.vigilia` is the player's, not the editor's** — reaching for it finds nothing and looks like a broken app. **The `N` is per instance and is not stable:** creating a document tears the editor down and the global becomes `-2`, with the old name removed rather than left stale. **Resolve it at use — `Object.values(window).find(v => v?.canvas && v.historyManager)` — and never cache it across a `New`.** A cached handle reads as a live document after it is gone, which is the worst kind of wrong.
+- The editor's global is **`window["yunari-fabric-editor-N"]`**, holding `{ canvas, viewport, historyManager, textManager, imageManager, layerManager, objectLockManager, errorManager, cropManager, deletionManager, clipboardManager, groupingManager, destroy }`. **`window.yunari` is the player's, not the editor's** — reaching for it finds nothing and looks like a broken app. **The `N` is per instance and is not stable:** creating a document tears the editor down and the global becomes `-2`, with the old name removed rather than left stale. **Resolve it at use — `Object.values(window).find(v => v?.canvas && v.historyManager)` — and never cache it across a `New`.** A cached handle reads as a live document after it is gone, which is the worst kind of wrong.
 - `canvas.viewportTransform` is a **property**. There is no `getViewportTransform()` method; calling it throws.
-- The artboard controls exist and are `vigiliaArtboardWidth` / `vigiliaArtboardHeight`, in the Data tab under Theme Settings.
+- The artboard controls exist and are `yunariArtboardWidth` / `yunariArtboardHeight`, in the Data tab under Theme Settings.
 - The View menu offers `Data source`, `Chart refresh` and `Value runs` toggles — **and nothing else.** **Correction, 2026-09-30:** this line used to say the View menu also offers `Zoom to fit`, `Zoom to selection` and `100 %`. It does not. Those three live on the **zoom button in the bottom-right of the stage** (`.editor-shell-zoom`, `aria-label="Zoom level"`, a real `Menu.Trigger` with `aria-haspopup="menu"`), which is a better home for them and is keyboard reachable. Measured: the View menu holds exactly 3 items, the zoom menu exactly 3, and they do not overlap. A driver written from the old line would look in the View menu, find nothing, and report a missing control.
 - A starter text object is Fabric `textbox`; a newly inserted one is `i-text`. **Both enter editing mode**, so in-place editing covers the whole document — but a scene holds two text classes, which is worth remembering when a round trip misbehaves.
 - Reading the scene through the handle is fine and is how the driver counts and locates objects. **Writing** through it is not — every authored change goes through a real control.
@@ -1972,7 +1972,7 @@ Each proves the **persisted envelope**, not the DOM.
 
 - [ ] **Step 1: Write the test**
 
-Open a blank document, add a text object, set align/wrap/overflow through `[data-vigilia-text-align]`, `-wrap`, `-overflow`, save, reopen, and assert the **reloaded envelope's** `vigiliaText.layout` carries all three. Asserting the DOM instead is a defect, not a shortcut.
+Open a blank document, add a text object, set align/wrap/overflow through `[data-yunari-text-align]`, `-wrap`, `-overflow`, save, reopen, and assert the **reloaded envelope's** `yunariText.layout` carries all three. Asserting the DOM instead is a defect, not a shortcut.
 
 - [ ] **Step 2: Run it and read the failure**
 
@@ -2020,7 +2020,7 @@ git commit -m "test(author): in-place edit commits once, undoes, and survives sa
 
 - [ ] **Step 1: Write the test**
 
-Select a bound text object, change one run's preset through `[data-vigilia-run-preset="0"]` and override its colour through `[data-vigilia-run-colour="0"]`, save, reopen, assert both are in the reloaded envelope's `vigiliaText.runs[0]`, then clear the override and assert the run returns to its preset.
+Select a bound text object, change one run's preset through `[data-yunari-run-preset="0"]` and override its colour through `[data-yunari-run-colour="0"]`, save, reopen, assert both are in the reloaded envelope's `yunariText.runs[0]`, then clear the override and assert the run returns to its preset.
 
 - [ ] **Step 2: Run, record, classify, fix or file**
 
@@ -2068,7 +2068,7 @@ git commit -m "test(author): the rebuild starts from a real blank theme"
 
 - [ ] **Step 1: Build the region through the UI only**
 
-Insert a panel through the Add panel action. Set fill and stroke through `[data-vigilia-panel-fill]` / `-stroke`, border width and radius through `-border` / `-radius`. Add the two text objects, set each run's preset through `[data-vigilia-run-preset]`, and set the tracked wordmark's spacing through its type preset in the globals.
+Insert a panel through the Add panel action. Set fill and stroke through `[data-yunari-panel-fill]` / `-stroke`, border width and radius through `-border` / `-radius`. Add the two text objects, set each run's preset through `[data-yunari-run-preset]`, and set the tracked wordmark's spacing through its type preset in the globals.
 
 - [ ] **Step 2: Compare against the target by eye**
 
@@ -2086,7 +2086,7 @@ git commit -m "test(author): the wordmark and clock card, built from blank by ha
 
 - [ ] **Step 1: Build the CPU card**
 
-Panel, then the frosted material: enable `[data-vigilia-glass-enabled]` and set `[data-vigilia-glass-blur]` to 40. The tint is **not** a panel control — it is the `palette.frost` token, edited through `[data-vigilia-palette-color]`. If the rebuild needs a tint control and cannot find one, that is a finding, **not** a workaround.
+Panel, then the frosted material: enable `[data-yunari-glass-enabled]` and set `[data-yunari-glass-blur]` to 40. The tint is **not** a panel control — it is the `palette.frost` token, edited through `[data-yunari-palette-color]`. If the rebuild needs a tint control and cannot find one, that is a finding, **not** a workaround.
 
 - [ ] **Step 2: Add the reading and the caption**
 
@@ -2125,7 +2125,7 @@ git commit -m "test(author): trends, storage and network, built from blank by ha
 
 - [ ] **Step 1: Save, package and run the rebuilt theme on the real host**
 
-Build the host, then start it with `node packages/host/bin/vigilia.js --no-browser`. Open the saved theme on a real display and compare to the target. A dashboard that renders differently on the player than in the editor is a finding even when both look plausible alone.
+Build the host, then start it with `node packages/host/bin/yunari.js --no-browser`. Open the saved theme on a real display and compare to the target. A dashboard that renders differently on the player than in the editor is a finding even when both look plausible alone.
 
 - [ ] **Step 2: Assert the persisted envelope, not the live DOM**
 
@@ -2148,7 +2148,7 @@ git commit -m "test(author): the rebuilt theme saves, runs, and matches the targ
 - [ ] **Step 1: Register the captures, then drive the phone project**
 
 Add the rows to the README **before** running, then:
-`VIGILIA_CAPTURE=1 npx playwright test tests/e2e/author-journey.spec.ts --project=phone-chromium --workers=1 --reporter=line`
+`YUNARI_CAPTURE=1 npx playwright test tests/e2e/author-journey.spec.ts --project=phone-chromium --workers=1 --reporter=line`
 
 The suite already exercises phone width; the obligation is that a person looked at the generated images.
 
@@ -2238,9 +2238,9 @@ So the shape that reuses without importing a second framework is: **take the col
 
 The user wants back what the first homemade editor showed: **how many objects a token is linked to, and which ones**, so dead tokens can be found.
 
-**The traversal already exists and already counts.** `packages/scene-fabric/src/palette-references.ts` — `reassignObjectPaletteReferences` walks the whole scene recursively through groups, rewrites every `vigiliaPaint` reference, rewrites every text run's `style.color.ref`, **and returns `changes: number`**. It is the count, computed and thrown away.
+**The traversal already exists and already counts.** `packages/scene-fabric/src/palette-references.ts` — `reassignObjectPaletteReferences` walks the whole scene recursively through groups, rewrites every `yunariPaint` reference, rewrites every text run's `style.color.ref`, **and returns `changes: number`**. It is the count, computed and thrown away.
 
-**And it is complete, which was worth checking.** A `TextRun` in the envelope carries `typePreset` and a `StyleMap` — no palette `token` field — so `vigiliaPaint` and `run.style.color` are the *only* two places a palette token can be referenced, and both are covered. So the count is accurate today, not approximate.
+**And it is complete, which was worth checking.** A `TextRun` in the envelope carries `typePreset` and a `StyleMap` — no palette `token` field — so `yunariPaint` and `run.style.color` are the *only* two places a palette token can be referenced, and both are covered. So the count is accurate today, not approximate.
 
 **So this is not a new traversal.** It is the same walk collecting ids alongside the count, plus a per-token figure in the palette panel and a way to jump to an object — and it should live beside `palette-references.ts` rather than in the panel, so the number in the UI and the number that guards a deletion come from one place. That last part matters: the panel showing "3 uses" and the delete guard deciding "safe to remove" reading different walks is how a token gets deleted out from under a live object.
 

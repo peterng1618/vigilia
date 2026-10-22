@@ -8,8 +8,8 @@ import {
   knownTimeZones,
   SAMPLE_STREAM_PATH,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
-import type { ChartRefreshRate } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import type { ChartRefreshRate } from "@yunari/scene-fabric";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
@@ -105,7 +105,7 @@ import { SseConnection } from "./transport/sse.js";
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
 
 /** Non-loopback displays present this header; loopback never needs to. */
-const SESSION_HEADER = "x-vigilia-session";
+const SESSION_HEADER = "x-yunari-session";
 
 /** One refusal for every way a code can fail — unknown, expired, spent or
  *  simply wrong. A caller that could tell them apart could search the space. */
@@ -116,7 +116,7 @@ const NO_PAIRING_CODE =
  *  this host has no OAuth app: registering one is the author's move, not a
  *  retry. */
 const NO_GITHUB_CLIENT_ID =
-  "This host has no GitHub OAuth client id; register an OAuth app and set VIGILIA_GITHUB_CLIENT_ID.";
+  "This host has no GitHub OAuth client id; register an OAuth app and set YUNARI_GITHUB_CLIENT_ID.";
 
 /** What a theme read answers: the stored record, or undefined for a theme the
  *  store will not serve. */
@@ -181,7 +181,7 @@ export interface HostServerOptions {
    *  route test can install without a network. */
   readonly fetch?: typeof fetch;
   /** The OAuth app the device flow signs in through. Omitted falls back to
-   *  `VIGILIA_GITHUB_CLIENT_ID`; without either, the start route answers that
+   *  `YUNARI_GITHUB_CLIENT_ID`; without either, the start route answers that
    *  registration is missing rather than pretending a sign-in can start. */
   readonly githubClientId?: string;
   /** Where the signed-in GitHub identity is kept. Omitted when the host keeps
@@ -258,7 +258,7 @@ export interface HostServerOptions {
  *  certificate warning while it does — a session and a trusted certificate are
  *  precisely what it cannot present. The root is public by construction; its
  *  key is never served and never leaves this machine. */
-export const CA_CERTIFICATE_PATH = "/vigilia-ca.crt";
+export const CA_CERTIFICATE_PATH = "/yunari-ca.crt";
 
 export interface HostingState {
   /** True when this host is reachable beyond loopback right now. */
@@ -596,7 +596,7 @@ function firstRunPage(): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>Vigilia</title>
+    <title>Yunari</title>
     <!-- The host's own pages are separate documents from the two bundles, so
          they need their own copy of the mark: without a link the browser
          probes \`/favicon.ico\` and logs a 404 on every load. The same file the
@@ -660,7 +660,7 @@ function sendHtml(
 function sendCertificate(response: http.ServerResponse, body: string): void {
   response.writeHead(200, {
     "content-type": "application/x-x509-ca-cert",
-    "content-disposition": 'attachment; filename="vigilia-ca.crt"',
+    "content-disposition": 'attachment; filename="yunari-ca.crt"',
   });
   response.end(body);
 }
@@ -867,7 +867,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const caCertificate = options.caCertificate;
   const hostRecord = options.host;
   const githubClientId =
-    options.githubClientId ?? process.env.VIGILIA_GITHUB_CLIENT_ID;
+    options.githubClientId ?? process.env.YUNARI_GITHUB_CLIENT_ID;
   const githubToken = options.githubToken;
   /** The single device flow this host is waiting on. The browser sends nothing
    *  that could name another, so there is one value rather than a map. */

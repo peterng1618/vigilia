@@ -1,8 +1,8 @@
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { readThemePackage, writeThemePackage } from "@yunari/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createThemeStore } from "./store.js";
 import { createThumbnailStore } from "./thumbnails.js";
@@ -25,7 +25,7 @@ describe("thumbnails", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-thumbs-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-thumbs-"));
   });
 
   afterEach(async () => {

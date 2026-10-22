@@ -209,7 +209,7 @@ right, it settles the shape:
 **The host has never drawn a pixel.** `server.ts`'s `tick()` samples the union of the
 active displays' semantic keys once, serialises one batch, and offers it to every
 connection — the browser does all rendering. The host's entire dependency list is
-`@vigilia/renderer-core`, `@vigilia/theme-package` and `systeminformation`. There is no
+`@yunari/renderer-core`, `@yunari/theme-package` and `systeminformation`. There is no
 canvas, no image encoder, no serial and no USB anywhere in the workspace: a scan of
 every `package.json` under `packages/` for a canvas, image, serial, USB or HID
 dependency returns nothing.
@@ -246,7 +246,7 @@ node --openssl-legacy-provider -e '<des-cbc, key and IV slv3tuzx, 500 zero bytes
 
 504 is exactly the `ENCRYPTED_SIZE` constant both independent implementations carry, which
 is the cross-check that this is the right primitive and not merely a cipher that runs. So
-the ways out are: launch the host with the flag (or have `bin/vigilia.js` re-exec itself
+the ways out are: launch the host with the flag (or have `bin/yunari.js` re-exec itself
 with it), take a pure-JS DES (`@li0ard/des`, `node-forge` — both MIT), or not support the
 family. **The earlier reading of this paragraph — "the fast family is the awkward one" —
 is refuted by that measurement**, and it was doing load-bearing work: it was offered as
@@ -327,7 +327,7 @@ can be wrong rather than as a fact.
   is read from `totmin/galahad2lcd`'s shipped config, not from a protocol document.
 - **That `--openssl-legacy-provider` is acceptable to ship.** It was measured to work on
   Node 24.13.0 / OpenSSL 3.5.4 in this shell. Whether the host's own launch path can carry
-  the flag — `bin/vigilia.js`, any packaged form, and whether a future Node drops it — was
+  the flag — `bin/yunari.js`, any packaged form, and whether a future Node drops it — was
   not investigated.
 - **That no JS/TS implementation exists.** That is a GitHub code search for the literal key
   `slv3tuzx` with `--language typescript` and `--language javascript`, both empty, plus a
@@ -344,7 +344,7 @@ packet layer is ours to write, and the transport dependency plus its licence che
 remaining cost rather than a cipher to own.
 
 **What that does not discharge is rung 5's harder half** — whether anyone has solved
-"render a Vigilia theme into a region of a panel". Nobody has, in any language: the
+"render a Yunari theme into a region of a panel". Nobody has, in any language: the
 projects above all render their own scene model, and `casehud` is the closest and is still
 Go with its own themes. The mechanism boundary this design named — a dirty-region
 scheduler where a wrong box is a stale region on a wall — has no prior art to borrow.

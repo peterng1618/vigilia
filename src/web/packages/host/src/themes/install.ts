@@ -1,5 +1,5 @@
-import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
-import { readThemePackage, themeVideoRefusals } from "@vigilia/theme-package";
+import { DASHBOARD_THEME_KIND } from "@yunari/renderer-core";
+import { readThemePackage, themeVideoRefusals } from "@yunari/theme-package";
 import type { ThemeOriginsStore } from "../settings/theme-origins.js";
 import { downloadPackage } from "./download.js";
 import { importThemePackage, type ThemeImportResult } from "./import.js";

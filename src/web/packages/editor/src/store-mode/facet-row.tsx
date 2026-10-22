@@ -56,7 +56,7 @@ export function toggleFacet(
  *  control to have one, and a facet's values are the record's, so the id cannot
  *  be minted from a counter that would move with the catalogue. */
 const facetTriggerId = (facetId: string): string =>
-  `vigilia-store-facet-${facetId}`;
+  `yunari-store-facet-${facetId}`;
 
 /**
  * One run of values, and the heading a grouped run takes over its rows.
@@ -103,13 +103,13 @@ function FacetButton(props: {
       <Popover.Trigger
         type="button"
         id={facetTriggerId(facet.id)}
-        data-vigilia-facet={facet.id}
+        data-yunari-facet={facet.id}
         className={`${wellClasses("panel")} w-auto flex-none gap-[var(--space-6)] text-xs text-muted data-[popup-open]:border-muted data-[popup-open]:text-text`}
       >
-        <span data-vigilia-facet-name="">{facet.name}</span>
+        <span data-yunari-facet-name="">{facet.name}</span>
         {count === 0 ? null : (
           <span
-            data-vigilia-facet-count=""
+            data-yunari-facet-count=""
             className="font-mono text-2xs text-muted"
           >
             {count}
@@ -123,7 +123,7 @@ function FacetButton(props: {
         <Popover.Positioner sideOffset={6} align="start" className="z-50">
           <Popover.Popup
             aria-label={facet.name}
-            data-vigilia-facet-popup={facet.id}
+            data-yunari-facet-popup={facet.id}
             className="flex max-h-[var(--available-height)] w-[16rem] flex-col gap-[var(--space-4)] overflow-y-auto rounded-xl border border-edge bg-panel p-[var(--space-8)] shadow-[var(--elev-2)]"
           >
             {/* The sentence the drawing puts above the groups, where the facet
@@ -133,7 +133,7 @@ function FacetButton(props: {
                 would say something else. */}
             {facet.hint === undefined ? null : (
               <p
-                data-vigilia-facet-hint=""
+                data-yunari-facet-hint=""
                 className="px-[var(--space-8)] pt-[var(--space-4)] pb-[var(--space-8)] text-xs text-muted"
               >
                 {facet.hint}
@@ -160,7 +160,7 @@ function FacetButton(props: {
                   : {
                       role: "group" as const,
                       "aria-label": run.group,
-                      "data-vigilia-facet-group": run.group,
+                      "data-yunari-facet-group": run.group,
                     })}
                 className={RUN_CLASSES}
               >
@@ -209,7 +209,7 @@ function FacetOptionRow(props: {
       nativeButton
       render={<button type="button" />}
       id={facetOptionId(facet.id, option.id)}
-      data-vigilia-facet-option={option.id}
+      data-yunari-facet-option={option.id}
       checked={checked}
       onCheckedChange={() => onToggle()}
       className="group flex min-h-[32px] w-full items-center gap-[var(--space-8)] rounded-md border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-6)] text-left text-xs text-muted hover:border-muted data-[checked]:border-accent data-[checked]:text-text data-[checked]:[background:var(--stage)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
@@ -222,7 +222,7 @@ function FacetOptionRow(props: {
           <Glyph icon={CHECK_GLYPH} size={10} />
         </Checkbox.Indicator>
       </span>
-      <span data-vigilia-facet-option-name="" className="flex-1">
+      <span data-yunari-facet-option-name="" className="flex-1">
         {option.name}
       </span>
       <span className="flex-none font-mono text-2xs text-faint">
@@ -257,7 +257,7 @@ export function FacetRow(props: {
       // the five are always rendered, and a region too narrow for one line puts
       // the rest on the next rather than clipping them out of reach.
       className="flex min-w-0 flex-wrap items-center gap-[var(--space-8)]"
-      data-vigilia-facet-row=""
+      data-yunari-facet-row=""
       role="group"
       aria-label={uiCopy.store.facets.label}
     >

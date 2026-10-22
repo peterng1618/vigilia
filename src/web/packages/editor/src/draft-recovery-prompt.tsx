@@ -49,7 +49,7 @@ export function DraftRecoveryPrompt({
       label={lead}
     >
       <p className="editor-shell-dialog-lead">{lead}</p>
-      <div className="vigilia-dialog-actions">
+      <div className="yunari-dialog-actions">
         {ANSWERS.map(([value, word]) => (
           <button
             key={value}

@@ -1,4 +1,4 @@
-import type { PlanTextSegment, ResolvedStyle } from "@vigilia/renderer-core";
+import type { PlanTextSegment, ResolvedStyle } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { textShapeFor } from "./text-runs.js";
 
@@ -62,7 +62,7 @@ describe("several runs", () => {
     // Found by putting a screenshot of this path next to the DOM path's.
     const shape = textShapeFor(
       [
-        segment("Vigilia", { fontWeight: 700 }),
+        segment("Yunari", { fontWeight: 700 }),
         segment(" dashboard", { fill: "#888" }),
       ],
       { fill: "#ffffff" },

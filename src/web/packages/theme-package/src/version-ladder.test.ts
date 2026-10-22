@@ -1,7 +1,7 @@
 import {
   envelopeKeysFor,
   type FabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import {
   bumpVersion,

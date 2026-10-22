@@ -423,7 +423,7 @@ In `editor-shell.ts`:
 - The `ResizeObserver` in `mountEditorShell` now only calls `viewport.resize()`; `setArtboard` and `setFitMode` call `viewport.zoomToFit()` (fit mode `cover` can reuse the `Math.max` branch from the deleted helper inside `fitZoom`, if a fit mode is still needed).
 - `container` keeps `position: absolute; inset: 0` and drops `margin: auto`, which existed only to centre an artboard-sized box.
 
-In `editor-shell.css`, `#vigilia-fabric-editor { width: 100%; height: 100% }` already does the right thing; remove any rule that sizes the canvas to the artboard.
+In `editor-shell.css`, `#yunari-fabric-editor { width: 100%; height: 100% }` already does the right thing; remove any rule that sizes the canvas to the artboard.
 
 - [x] **Step 4: Run the tests**
 
@@ -434,7 +434,7 @@ Expected: PASS. Existing tests that assert an artboard-sized canvas (for example
 
 ```bash
 cd src/web && npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium \
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium \
   --grep "captures the mounted editor for visual review" --workers=1
 ```
 
@@ -601,15 +601,15 @@ test("zooms and pans the canvas, and cannot lose the artboard", async ({ page },
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
   await page.goto(EDITOR);
   // Read the camera through its own accessor: `viewport.zoom()` is the owner of
-  // zoom (Task 1), and `window.vigiliaEditorBridge` is the page handle Plan B
+  // zoom (Task 1), and `window.yunariEditorBridge` is the page handle Plan B
   // Task 4 established. Reaching into `canvas.getZoom()` through a debug-key
   // scan reads a different owner and breaks when the handle moves.
   const readZoom = () => page.evaluate(() =>
-    (window as unknown as { vigiliaEditorBridge: { editor: { viewport: { zoom(): number } } } })
-      .vigiliaEditorBridge.editor.viewport.zoom());
+    (window as unknown as { yunariEditorBridge: { editor: { viewport: { zoom(): number } } } })
+      .yunariEditorBridge.editor.viewport.zoom());
 
   const fitted = await readZoom();
-  await page.locator("#vigilia-fabric-editor canvas.upper-canvas")
+  await page.locator("#yunari-fabric-editor canvas.upper-canvas")
     .hover({ position: { x: 200, y: 200 } });
   // Control is required: a plain wheel pans (Step 1 pins that), so wheeling
   // without it asserts the opposite of the unit contract and can only pass by
@@ -630,7 +630,7 @@ test("zooms and pans the canvas, and cannot lose the artboard", async ({ page },
   await page.keyboard.up("Space");
   const transform = await page.evaluate(() =>
     (window as never as Record<string, { canvas: { viewportTransform: number[] } }>)
-      [Object.keys(window).find((key) => key.startsWith("vigilia-fabric-editor"))!]!
+      [Object.keys(window).find((key) => key.startsWith("yunari-fabric-editor"))!]!
       .canvas.viewportTransform);
   // The pan is clamped, so the transform saturates rather than running away.
   // Asserting only finiteness would pass for an unclamped transform — which is
@@ -639,7 +639,7 @@ test("zooms and pans the canvas, and cannot lose the artboard", async ({ page },
   // drag the same way again and the translate must not move.
   const translate = () => page.evaluate(() =>
     (window as never as Record<string, { canvas: { viewportTransform: number[] } }>)
-      [Object.keys(window).find((key) => key.startsWith("vigilia-fabric-editor"))!]!
+      [Object.keys(window).find((key) => key.startsWith("yunari-fabric-editor"))!]!
       .canvas.viewportTransform.slice(4, 6));
   expect(Number.isFinite(transform[4])).toBe(true);
   expect(Number.isFinite(transform[5])).toBe(true);
@@ -730,14 +730,14 @@ it("shows the zoom as a percentage and resets to fit", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(<ZoomReadout viewport={viewport} />));
-  expect(host.querySelector("[data-vigilia-zoom]")?.textContent).toBe("50%");
+  expect(host.querySelector("[data-yunari-zoom]")?.textContent).toBe("50%");
 
   // The readout must track the camera, not just render its first value.
   await act(async () => {
     zoom = 2;
     for (const listener of listeners) listener();
   });
-  expect(host.querySelector("[data-vigilia-zoom]")?.textContent).toBe("200%");
+  expect(host.querySelector("[data-yunari-zoom]")?.textContent).toBe("200%");
 
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Zoom to fit"]')?.click());
   expect(zoomToFit).toHaveBeenCalled();
@@ -768,7 +768,7 @@ Expected: PASS.
 
 Then rebuild, wheel-zoom in a real browser session, and confirm the readout tracks the zoom rather than staying at the fit value. A capture alone does not prove the tracking: the readout renders a plausible number at fit too. Pan with a space-drag and confirm the percentage is **unchanged** by the pan while the canvas visibly moves, then ctrl-wheel and confirm it changes — that pair is what distinguishes "tracking the camera" from "rendered once at mount".
 
-Add a `docs/evidence/screenshots/README.md` row for the capture and register the corresponding test in `tests/e2e/editor.spec.ts`. **The e2e must be named in the Files list above**, and it must read the percentage through `window.vigiliaEditorBridge` rather than the canvas: Task 1 made `ViewportManager` the owner of zoom, so a test that reads `canvas.getZoom()` cannot detect a readout that stopped following the camera.
+Add a `docs/evidence/screenshots/README.md` row for the capture and register the corresponding test in `tests/e2e/editor.spec.ts`. **The e2e must be named in the Files list above**, and it must read the percentage through `window.yunariEditorBridge` rather than the canvas: Task 1 made `ViewportManager` the owner of zoom, so a test that reads `canvas.getZoom()` cannot detect a readout that stopped following the camera.
 
 **Any pointer coordinate this test needs comes from the canvas, never a literal.** Task 5 adds the camera-derived shared helper (`artboardScreenRect`-based) for tests that need an *artboard* point; this task runs first and needs only "somewhere over the canvas", so the locator is the right and smaller source — and it is the idiom `editor.spec.ts:1828-1835` (`canvas.upper-canvas` locator at `:1829`) already uses:
 
@@ -780,7 +780,7 @@ insertion and are unchanged.
 
 ```ts
 await page
-  .locator("#vigilia-fabric-editor canvas.upper-canvas")
+  .locator("#yunari-fabric-editor canvas.upper-canvas")
   .hover({ position: { x: 200, y: 200 } });
 // Control is required: a plain wheel PANS (see the navigation tests), so
 // wheeling without the modifier asserts the opposite of the contract and can
@@ -830,13 +830,13 @@ git commit -m "feat(editor): zoom readout with fit and 100% resets"
 
 This task owns the accessor because it is the first e2e consumer after Task 2, and every later task's browser test needs the same mapping. **Task 10 does not define it; it uses it.**
 
-Expose the computation rather than adding a second one: `artboardScreenRect(canvas, artboard)` already exists as a module-local function at `editor-shell.ts:121`, used for the background-media element at `:375`. Move that maths onto the camera, then have `editor-shell.ts` call `viewport.artboardScreenRect()` and **delete the local copy** — two implementations of the same transform is the duplication AGENTS.md's "one owner per concept" forbids. The camera already holds the canvas, the viewport transform and the artboard accessor, so no new dependency is introduced, and the frame is unchanged: the media layer is a DOM child of the container the canvas fills (`mountBackgroundMedia` prepends it to `container` at `:365`, and `.editor-shell-stage #vigilia-fabric-editor` is `width/height: 100%`), so container-relative and canvas-relative coincide there. **Do not "fix" the returned frame to satisfy the media layer — nothing needs changing at the call site.**
+Expose the computation rather than adding a second one: `artboardScreenRect(canvas, artboard)` already exists as a module-local function at `editor-shell.ts:121`, used for the background-media element at `:375`. Move that maths onto the camera, then have `editor-shell.ts` call `viewport.artboardScreenRect()` and **delete the local copy** — two implementations of the same transform is the duplication AGENTS.md's "one owner per concept" forbids. The camera already holds the canvas, the viewport transform and the artboard accessor, so no new dependency is introduced, and the frame is unchanged: the media layer is a DOM child of the container the canvas fills (`mountBackgroundMedia` prepends it to `container` at `:365`, and `.editor-shell-stage #yunari-fabric-editor` is `width/height: 100%`), so container-relative and canvas-relative coincide there. **Do not "fix" the returned frame to satisfy the media layer — nothing needs changing at the call site.**
 
 Fabric's marquee is already on (`SelectableCanvas.d.ts:126`), but it is unreachable because the canvas was exactly the artboard and a full-bleed background rect covered it — verified live, where a corner drag selected and **moved** `header-wash`. Task 2 removed the size cause; the covering rect remains and must be dealt with.
 
 The drag must start in the **pasteboard** — below `header-wash`'s 142px band in *artboard* space — because starting inside that band would grab `header-wash` itself, which is the exact failure this test claims to detect, so a red-then-green loop there would prove nothing.
 
-**The drag coordinates must be derived from the camera, not hardcoded in page space.** Task 2 made the canvas host-sized (measured 626×594 at 1280×720, offset x≈357, y≈72, zoom 0.489), so a literal like `(20, 300)` is no longer in the canvas at all — and since this test asserts only that *nothing moved*, an off-canvas drag passes **vacuously** while proving nothing. Derive the point through the **`artboardScreenRect` accessor this task adds**, read in the page via `window.vigiliaEditorBridge.editor.viewport.artboardScreenRect()`.
+**The drag coordinates must be derived from the camera, not hardcoded in page space.** Task 2 made the canvas host-sized (measured 626×594 at 1280×720, offset x≈357, y≈72, zoom 0.489), so a literal like `(20, 300)` is no longer in the canvas at all — and since this test asserts only that *nothing moved*, an off-canvas drag passes **vacuously** while proving nothing. Derive the point through the **`artboardScreenRect` accessor this task adds**, read in the page via `window.yunariEditorBridge.editor.viewport.artboardScreenRect()`.
 
 *(This line used to say "the accessor Task 10 adds". That was a sequencing error corrected when the accessor moved to this task; Task 10 consumes it.)*
 
@@ -850,10 +850,10 @@ test("a pasteboard drag marquees instead of moving an object", async ({ page }, 
   const read = (): Promise<Array<[string, number | undefined]>> =>
     page.evaluate(() => {
       const bridge = (window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): Array<{ id?: string; left?: number }> } };
         };
-      }).vigiliaEditorBridge;
+      }).yunariEditorBridge;
       return bridge.editor.canvas
         .getObjects()
         .map((object) => [String(object.id), object.left] as [string, number | undefined]);
@@ -866,14 +866,14 @@ test("a pasteboard drag marquees instead of moving an object", async ({ page }, 
   // below rather than assumed away.
   const rect = await page.evaluate(() => {
     const bridge = (window as unknown as {
-      vigiliaEditorBridge: {
+      yunariEditorBridge: {
         editor: { viewport: { artboardScreenRect(): { left: number; top: number; width: number; height: number } } };
       };
-    }).vigiliaEditorBridge;
+    }).yunariEditorBridge;
     return bridge.editor.viewport.artboardScreenRect();
   });
   const canvasBox = (await page
-    .locator("#vigilia-fabric-editor canvas.upper-canvas")
+    .locator("#yunari-fabric-editor canvas.upper-canvas")
     .boundingBox())!;
   // Artboard point -> client point. The scale is uniform and derived from the
   // rect, so this mapping is correct whether or not the artboard's aspect
@@ -1176,7 +1176,7 @@ const stepFor = (event: KeyboardEvent): number =>
 
 **Return before suspending when there is nothing to move.** The `active === undefined` guard is above the `suspend()` call on purpose: suspending with no selection would open a burst that never records anything, and the next `saveState` from any other action would be swallowed into it. `deleteActive` and `arrange` both refuse on an empty selection the same way.
 
-**`{ target: active }` is the payload Fabric itself sends** — `this.fire("object:modified", options)` where `options.target` is the transformed object (`index.mjs`, the `endCurrentTransform` path). `chart-manager`'s listener reads `event.target` and returns early unless it is a `VigiliaChart`, and `indicator-manager`'s reads the same field, so an empty payload would silently skip both.
+**`{ target: active }` is the payload Fabric itself sends** — `this.fire("object:modified", options)` where `options.target` is the transformed object (`index.mjs`, the `endCurrentTransform` path). `chart-manager`'s listener reads `event.target` and returns early unless it is a `YunariChart`, and `indicator-manager`'s reads the same field, so an empty payload would silently skip both.
 
 Capturing `active` before the move rather than re-reading it after is a readability choice, not a correctness one: measured, moving the targets through `setPositionByOrigin` leaves `canvas.getActiveObject()` identical, so both orders give the same payload. Prefer naming the thing once.
 
@@ -1227,16 +1227,16 @@ test("nudges the selection and records one history entry", async ({ page }, test
   // Select through the bridge, not the layer row: a focused panel row is a
   // different starting state, and this test is about the nudge binding.
   await page.evaluate(() => {
-    (window as unknown as { vigiliaEditorBridge: { selectLayer(id: string): void } })
-      .vigiliaEditorBridge.selectLayer("header-wash");
+    (window as unknown as { yunariEditorBridge: { selectLayer(id: string): void } })
+      .yunariEditorBridge.selectLayer("header-wash");
   });
   const left = (): Promise<number | undefined> =>
     page.evaluate(() => {
       const b = (window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): Array<{ id?: string; left?: number }> } };
         };
-      }).vigiliaEditorBridge;
+      }).yunariEditorBridge;
       return b.editor.canvas
         .getObjects()
         .find((object) => object.id === "header-wash")?.left;
@@ -1264,10 +1264,10 @@ test("nudges the selection and records one history entry", async ({ page }, test
   const selectedCount = (): Promise<number> =>
     page.evaluate(() => {
       const b = (window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getActiveObjects(): unknown[] } };
         };
-      }).vigiliaEditorBridge;
+      }).yunariEditorBridge;
       return b.editor.canvas.getActiveObjects().length;
     });
 
@@ -1275,7 +1275,7 @@ test("nudges the selection and records one history entry", async ({ page }, test
   // the layer rename input (Plan B Task 5) and confirm the selection is
   // untouched; without this the binding silently steals the field's own
   // select-all and the author's typed text is never selected.
-  await page.locator('[data-vigilia-layer="header-wash"]').dblclick();
+  await page.locator('[data-yunari-layer="header-wash"]').dblclick();
   const rename = page.locator('input[aria-label^="Rename"]');
   await expect(rename).toBeFocused();
   await rename.press("Control+a");
@@ -1528,13 +1528,13 @@ Escape goes through `ShortcutManager`, not a raw window listener: it is already 
 test("enters a group, steps back out, and survives an undo", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop surface");
   await page.goto(EDITOR);
-  await setThemePackage(page, "grouping.vigilia-theme", {
+  await setThemePackage(page, "grouping.yunari-theme", {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "grouping",
     artboard: { width: 320, height: 180 },
-    // A raw `fill` with no `vigiliaPaint` is rejected by the validator:
-    // "fill must reference an existing palette token through vigiliaPaint."
+    // A raw `fill` with no `yunariPaint` is rejected by the validator:
+    // "fill must reference an existing palette token through yunariPaint."
     // Every fixture in this file declares the palette it paints from.
     globals: {
       palette: {
@@ -1551,36 +1551,36 @@ test("enters a group, steps back out, and survives an undo", async ({ page }, te
         { type: "Group", id: "grp", left: 40, top: 40, width: 30, height: 30,
           objects: [
             { type: "Rect", id: "child", left: 0, top: 0, width: 30, height: 30,
-              fill: "#00b8d9", vigiliaPaint: { fill: "palette.accent" },
+              fill: "#00b8d9", yunariPaint: { fill: "palette.accent" },
               originX: "left", originY: "top" },
           ] },
         { type: "Rect", id: "outside", left: 240, top: 40, width: 30, height: 30,
-          fill: "#00b8d9", vigiliaPaint: { fill: "palette.accent" },
+          fill: "#00b8d9", yunariPaint: { fill: "palette.accent" },
           originX: "left", originY: "top" },
       ],
     },
   });
-  await expect(page.locator("#status")).toHaveText("Opened grouping.vigilia-theme");
+  await expect(page.locator("#status")).toHaveText("Opened grouping.yunari-theme");
 
   // Points are derived from the camera, never from the canvas box: the canvas is
   // host-sized, so its box says nothing about where the artboard is.
   const rect = await page.evaluate(() => {
     const b = (window as unknown as {
-      vigiliaEditorBridge: {
+      yunariEditorBridge: {
         editor: {
           viewport: {
             artboardScreenRect(): { left: number; top: number; width: number; height: number };
           };
         };
       };
-    }).vigiliaEditorBridge;
+    }).yunariEditorBridge;
     return b.editor.viewport.artboardScreenRect();
   });
   // `rect` is canvas-relative, so the canvas box offset is added here. Task 10
   // assembles this same pair into one `sceneToClient` helper; this test is the
   // first consumer and the local form is deliberate, not a second owner.
   const canvasBox = (await page
-    .locator("#vigilia-fabric-editor canvas.upper-canvas")
+    .locator("#yunari-fabric-editor canvas.upper-canvas")
     .boundingBox())!;
   const at = (x: number, y: number): [number, number] => [
     canvasBox.x + rect.left + (x / 320) * rect.width,
@@ -1594,7 +1594,7 @@ test("enters a group, steps back out, and survives an undo", async ({ page }, te
   }> =>
     page.evaluate(() => {
       const b = (window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: {
               getActiveObject(): { id?: string } | undefined;
@@ -1605,7 +1605,7 @@ test("enters a group, steps back out, and survives an undo", async ({ page }, te
             };
           };
         };
-      }).vigiliaEditorBridge;
+      }).yunariEditorBridge;
       const canvas = b.editor.canvas;
       const group = canvas.getObjects().find((object) => object.id === "grp");
       return {
@@ -1645,10 +1645,10 @@ test("enters a group, steps back out, and survives an undo", async ({ page }, te
   const inCanvas = (): Promise<boolean> =>
     page.evaluate(() => {
       const b = (window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getActiveObject(): unknown; getObjects(): unknown[] } };
         };
-      }).vigiliaEditorBridge;
+      }).yunariEditorBridge;
       return b.editor.canvas
         .getObjects()
         .includes(b.editor.canvas.getActiveObject());
@@ -1723,11 +1723,11 @@ it("marks the group whose children are current and dims the rest", async () => {
   await act(async () => root.render(
     <LayerPanel bridge={bridge(rows, { groupContext: () => ["group"] })} />,
   ));
-  expect(host.querySelector('[data-vigilia-layer="group"]')?.getAttribute("data-context")).toBe("true");
-  expect(host.querySelector('[data-vigilia-layer="other"]')?.getAttribute("data-context")).toBe("false");
+  expect(host.querySelector('[data-yunari-layer="group"]')?.getAttribute("data-context")).toBe("true");
+  expect(host.querySelector('[data-yunari-layer="other"]')?.getAttribute("data-context")).toBe("false");
   // The child inside the current context is selectable in its own right — the
   // half of the branch that Step 3 adds, and the reason the context is marked.
-  expect(host.querySelector('[data-vigilia-layer="child"]')?.getAttribute("data-context")).toBe("true");
+  expect(host.querySelector('[data-yunari-layer="child"]')?.getAttribute("data-context")).toBe("true");
 });
 ```
 
@@ -1755,12 +1755,12 @@ Mark `data-context="true"` on **every row inside the current context, not only t
 
 Because the tree can now select a group's children directly, the old "selection resolves a child through its owning group" behaviour is no longer the only path: keep it for a canvas click, but let a tree click on a child select the child itself when its group is the current context.
 
-**The muted style is a stylesheet rule, not an inline style.** `data-context` is already on the row, so `editor-shell.css` owns the declaration next to `.vigilia-layer-row`:
+**The muted style is a stylesheet rule, not an inline style.** `data-context` is already on the row, so `editor-shell.css` owns the declaration next to `.yunari-layer-row`:
 
 ```css
 /* Only an entered group dims anything: with no context every row is reachable,
    and the rows would carry the attribute with the misleading value. */
-.vigilia-layer-row[data-context="false"] {
+.yunari-layer-row[data-context="false"] {
   opacity: 0.45;
 }
 ```
@@ -1786,14 +1786,14 @@ it("dims nothing when no group is entered", async () => {
   await act(async () => root.render(
     <LayerPanel bridge={bridge(contextRows, { groupContext: () => [] })} />,
   ));
-  for (const row of host.querySelectorAll(".vigilia-layer-row"))
+  for (const row of host.querySelectorAll(".yunari-layer-row"))
     expect(row.getAttribute("data-context")).toBeNull();
 });
 ```
 
 **A note for anyone who reads the review instead of this plan:** the task review called the `context.size > 0` guard "redundant once the rule is CSS" and suggested dropping it. That is wrong here — but the reasoning is subtle enough to be worth stating, because the review's own fix is *nearly* right. An absent attribute genuinely matches nothing, so the review is correct that the *rule* needs no guard; what it missed is that a guard must still exist to keep the attribute from being written. Deleting the condition without moving it into the attribute expression produces the dimmed-on-open tree. The condition, not the rule, is what moved.
 
-In `tests/e2e/editor.spec.ts`, extend Task 7's committed "enters a group, steps back out, and survives an undo" case rather than writing a new spec: it already carries the `grouping.vigilia-theme` fixture and the camera-mapped `at(x, y)`. After it enters the group, assert on its existing rows that the entered group's row and its child read `data-context="true"`, an outside row reads `"false"`, and the outside row's computed `opacity` is `"0.45"` while the child's is **`"1"`** — the computed value, not the attribute, is what proves the stylesheet rule actually selects the row, and the child's positive assertion is what stops a rule that dimmed every row from passing. **This file is single-occupancy**: the UI-polish plan's Task 9 (B9) and this plan's Tasks 7 and 10 all edit it, so dispatch this fix only when no other implementer holds it.
+In `tests/e2e/editor.spec.ts`, extend Task 7's committed "enters a group, steps back out, and survives an undo" case rather than writing a new spec: it already carries the `grouping.yunari-theme` fixture and the camera-mapped `at(x, y)`. After it enters the group, assert on its existing rows that the entered group's row and its child read `data-context="true"`, an outside row reads `"false"`, and the outside row's computed `opacity` is `"0.45"` while the child's is **`"1"`** — the computed value, not the attribute, is what proves the stylesheet rule actually selects the row, and the child's positive assertion is what stops a rule that dimmed every row from passing. **This file is single-occupancy**: the UI-polish plan's Task 9 (B9) and this plan's Tasks 7 and 10 all edit it, so dispatch this fix only when no other implementer holds it.
 
 **That conditional is a real branch in `selectLayer`, and the existing test already pins the other half.** `bridge.dom.test.ts:212-217` asserts `selectLayer("child")` calls `setActiveObject(group)` — the owning group — and Task 5's `bridgeFor` widened the canvas stub, so that assertion is live. The new branch must therefore be *only* "the child's group is the current context", leaving the group resolution in place for every other case; a bare "select the child" rewrite turns that existing test red for the right reason. Note also that `selectLayer` resolves through `ownerOf(root, id)` (`bridge.ts:150`; this read `:144`, which is `const root = canvas.getObjects();` — the same function, three lines above the call), whose first parameter is root and whose only caller here passes `canvas.getObjects()` — not the object form.
 
@@ -1938,7 +1938,7 @@ git commit -m "feat(editor): canvas context menu from the action registry"
 
 **Stage the capture by name, never `docs/evidence/screenshots` as a directory** — it holds roughly forty PNGs
 owned by other tasks and another plan, and it currently carries a modified `editor-desktop-chromium.png` that no
-task here owns. If the capture file is absent, the capture step did not run: check `VIGILIA_CAPTURE=1` was set
+task here owns. If the capture file is absent, the capture step did not run: check `YUNARI_CAPTURE=1` was set
 and the grep reported a non-zero test count rather than exiting zero having run nothing.
 
 ---
@@ -1961,7 +1961,7 @@ The spec's acceptance item "snapping guides and indicators stay correct at non-1
 
 **This task also owns two e2e tests that Task 2 turned red — they are yours to fix, not Task 2's.** Task 2 made the canvas host-sized instead of artboard-sized; the tests map a fixed artboard coordinate through the **canvas bounding box** (`box.x + (432/1280)*box.width`), an identity that held only while the canvas *was* the artboard. Measured after Task 2: canvas 626×594, zoom 0.4890625, `ty` 120.94 — so `box.height` is now the host's 594 rather than `720 × zoom = 352`, and the mapping also ignores `ty` entirely. The two failing tests are `persists an ordinary drag and restores it through undo` and `rehydrates a chart runtime after undo`. **Find them by name** — `grep -n "persists an ordinary drag\|rehydrates a chart runtime" src/web/tests/e2e/editor.spec.ts`. They were at `:1313` and `:1407` when this paragraph was written and are at `:1390` and `:1695` now; this file has moved under every task in this plan, which is why the step below identifies sites by what they are rather than where they are. Drag mechanics are **not** broken: a 60px screen drag moves an object 124.5 units, which is `60 / 0.4890625` exactly.
 
-Fix the mapping at its owner rather than re-deriving it in the spec. **Task 5 already added `ViewportManager.artboardScreenRect()` for exactly this reason — consume it, do not define a second one.** It returns the artboard's rect **relative to the canvas element**, so the canvas box offset is added once, in one place: the `sceneToClient` helper in Step 1. Have the spec's shared helper call it through `window.vigiliaEditorBridge`; a test file must not carry its own copy of the camera's transform.
+Fix the mapping at its owner rather than re-deriving it in the spec. **Task 5 already added `ViewportManager.artboardScreenRect()` for exactly this reason — consume it, do not define a second one.** It returns the artboard's rect **relative to the canvas element**, so the canvas box offset is added once, in one place: the `sceneToClient` helper in Step 1. Have the spec's shared helper call it through `window.yunariEditorBridge`; a test file must not carry its own copy of the camera's transform.
 - One shared helper serves every mapping site, and **Step 1's grep derives the set — no line numbers are given here on purpose.** They have been wrong in every revision of this paragraph (`:1903-1918`, `:1806-1821`, `:1727-1730`, `:1369-1370`, `:1577-1578`…), because three different tasks have added e2e cases to this file since the paragraph was written, moving every later site by 45, 138, then 48 lines. The step below identifies each site by what it is.
 - **`selectStarterChart` is passing on a near-miss and that is a latent bug.** Its click point now lands at scene (432,458); `load-gauge` spans scene y 374–462, so it still selects the chart but only 4px from the object's bottom edge, inside the `gauge-card` overlap. That margin is why `rehydrates a chart runtime after undo` grabbed the parent card instead. Rewrite the helper with the accessor **and add the precondition assertion it lacks** — that `load-gauge` is the active object before the drag — so the margin can never silently widen again.
 
@@ -1989,10 +1989,10 @@ type ArtboardRect = { left: number; top: number; width: number; height: number }
 async function artboardRect(page: Page): Promise<ArtboardRect> {
   return page.evaluate(() =>
     (window as unknown as {
-      vigiliaEditorBridge: {
+      yunariEditorBridge: {
         editor: { viewport: { artboardScreenRect(): ArtboardRect } };
       };
-    }).vigiliaEditorBridge.editor.viewport.artboardScreenRect());
+    }).yunariEditorBridge.editor.viewport.artboardScreenRect());
 }
 
 /** A scene point in CLIENT coordinates. `sceneWidth` is the fixture's artboard
@@ -2006,7 +2006,7 @@ async function sceneToClient(
 ): Promise<{ x: number; y: number }> {
   const rect = await artboardRect(page);
   const box = (await page
-    .locator("#vigilia-fabric-editor canvas.upper-canvas")
+    .locator("#yunari-fabric-editor canvas.upper-canvas")
     .boundingBox())!;
   const scale = rect.width / sceneWidth;
   return { x: box.x + rect.left + x * scale, y: box.y + rect.top + y * scale };
@@ -2035,7 +2035,7 @@ async function clientOfScene(
 ): Promise<{ x: number; y: number }> {
   const centre = await page.evaluate((objectId) => {
     const bridge = (window as unknown as {
-      vigiliaEditorBridge: {
+      yunariEditorBridge: {
         editor: {
           canvas: {
             getObjects(): Array<{
@@ -2045,7 +2045,7 @@ async function clientOfScene(
           };
         };
       };
-    }).vigiliaEditorBridge;
+    }).yunariEditorBridge;
     const object = bridge.editor.canvas
       .getObjects()
       .find((candidate) => candidate.id === objectId);
@@ -2074,7 +2074,7 @@ Measured at `92e846a`, that returns **14 lines — seven x/y pairs**, not "nine 
 - **two more** of the plain `/ 1280` + `/ 720` form, each in its own test body.
 - **one pair** in `selectStarterChart` with the *same* `432 / 1280` + `418 / 720` numbers as the literal pair above — find the helper by name (`grep -n "async function selectStarterChart"`), not by line.
 
-**The seventh is the most important one and is easy to talk yourself out of. Find it by its `panX`** — it is the only pair in the file that names a `panX`/`panY` variable, and the only one reaching for `viewportTransform` by hand. It reads that transform off the editor through an `Object.entries(window).find(([key]) => key.startsWith("vigilia-fabric-editor-"))` probe and applies `x: box.x + panX + zoom * x` by hand. That is not a mapping that happens to be correct — it is a **second copy of the camera's transform**, plus a private-instance hack that reaches past the bridge, which is precisely what this task exists to delete. It computes the same point `artboardScreenRect()` does (`rect.left` is the transform's `tx`, which is what that code calls `panX`), so repointing it is behaviour-preserving; the thing that test verifies is the marquee's reachability, not the transform. **Repoint it like the rest**, and if you conclude otherwise, say why in the report rather than leaving it silently unlisted.
+**The seventh is the most important one and is easy to talk yourself out of. Find it by its `panX`** — it is the only pair in the file that names a `panX`/`panY` variable, and the only one reaching for `viewportTransform` by hand. It reads that transform off the editor through an `Object.entries(window).find(([key]) => key.startsWith("yunari-fabric-editor-"))` probe and applies `x: box.x + panX + zoom * x` by hand. That is not a mapping that happens to be correct — it is a **second copy of the camera's transform**, plus a private-instance hack that reaches past the bridge, which is precisely what this task exists to delete. It computes the same point `artboardScreenRect()` does (`rect.left` is the transform's `tx`, which is what that code calls `panX`), so repointing it is behaviour-preserving; the thing that test verifies is the marquee's reachability, not the transform. **Repoint it like the rest**, and if you conclude otherwise, say why in the report rather than leaving it silently unlisted.
 
 The grep is the authority for the *set*; anything still listed when you are done is a site you missed:
 
@@ -2225,7 +2225,7 @@ it("reports scene size rather than screen size when the camera is zoomed", () =>
   );
 
   expect(
-    document.querySelector<HTMLElement>(".vigilia-size-indicator")?.textContent,
+    document.querySelector<HTMLElement>(".yunari-size-indicator")?.textContent,
   ).toBe("100 × 50");
   indicators.destroy();
 });
@@ -2377,11 +2377,11 @@ The player consumes `scene-fabric`, never editor UI or the camera. Confirm `npm 
 
 Open, in the editor, and record what each shows: the artboard centred with pasteboard visible; a zoomed view with a correct readout; a marquee drag selecting without moving; a context menu matching the dock; a group entered with the tree showing the context. Each is a visible outcome and each needs the rendered check, not an object count.
 
-`captureVisualReview` returns immediately unless `VIGILIA_CAPTURE` is set, so running the spec files with `--grep` produces no image. Three of the five have registered names — `editor-zoom-readout` (the zoom readout), `editor-toolbar` (the dock, whose entry set the menu must match) and `editor-canvas-context-menu` (the menu itself, added by Task 9) — so re-run those three captures under the gate:
+`captureVisualReview` returns immediately unless `YUNARI_CAPTURE` is set, so running the spec files with `--grep` produces no image. Three of the five have registered names — `editor-zoom-readout` (the zoom readout), `editor-toolbar` (the dock, whose entry set the menu must match) and `editor-canvas-context-menu` (the menu itself, added by Task 9) — so re-run those three captures under the gate:
 
 ```bash
 cd src/web && npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1 \
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --workers=1 \
   --grep "tracks the camera's zoom|captures the canvas dock|captures the canvas context menu"
 ```
 
@@ -2389,7 +2389,7 @@ That third capture is also the direct evidence for "a context menu matching the 
 
 In PowerShell the same call needs the pattern single-quoted — `--grep 'tracks the camera''s zoom|captures the canvas dock|captures the canvas context menu'` — or the `|` is read as a pipe (AGENTS.md's known trap). Use the Bash tool if that is simpler.
 
-The centred artboard-and-pasteboard view, the marquee and the group entry have no registered name; inspect those by hand. Run the host (`node packages/host/bin/vigilia.js`, built first) and perform each gesture rather than inventing a capture title in the last commit — a screenshot the gate did not ask for and the README does not register is not evidence.
+The centred artboard-and-pasteboard view, the marquee and the group entry have no registered name; inspect those by hand. Run the host (`node packages/host/bin/yunari.js`, built first) and perform each gesture rather than inventing a capture title in the last commit — a screenshot the gate did not ask for and the README does not register is not evidence.
 
 - [x] **Step 5: Update STATUS.md**
 

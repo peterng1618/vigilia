@@ -24,7 +24,7 @@ third-party tools**. `docs/architecture/ownership.md` already says what that is:
 
 The hazard is specific and it has a direction. The schema is the *stricter*
 reader, so the failure is a theme the editor authored and will open, refused by
-every tool that validates against what Vigilia published. Nothing throws at
+every tool that validates against what Yunari published. Nothing throws at
 authoring time; it throws when somebody else opens the file.
 
 `KNOWN_KEYS.binding` (six keys) versus `$defs/binding` (six keys) happened to
@@ -34,7 +34,7 @@ own runs panel (`selection-inspector/runs.ts:168-183`) and persisted by
 `serialize.ts:47-48`. **That drift exists today, without a rename**, and is the
 row's failure already happening.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `KNOWN_KEYS`, `knownKeysFor`, the inline key lists in
 `fabric-envelope-validate.ts` (envelope root, globals, bindings, text-run style,
@@ -95,10 +95,10 @@ hold here.
 - *Schema as source, validate with ajv.* The thread's own conclusion is that
   TypeScript types "are way too constrained to be the source of truth to
   everything" and "should be derivatives off the json schemas". Sound advice for
-  a document JSON Schema can fully describe. Vigilia's cannot: cross-reference
+  a document JSON Schema can fully describe. Yunari's cannot: cross-reference
   invariants — `unresolved-asset-ref`, `unresolved-global-ref`, `duplicate-id`,
   `binding-count`, node depth and count bounds — are the reason `validate.ts`
-  is 1,600 lines, and the schema says as much itself: *"Vigilia validates object
+  is 1,600 lines, and the schema says as much itself: *"Yunari validates object
   identity, nesting bounds and JSON safety before revival."* Adopting ajv would
   mean deleting those checks to satisfy a registry.
 - *Ajv standalone codegen.* Compile the schema at build time into a plain

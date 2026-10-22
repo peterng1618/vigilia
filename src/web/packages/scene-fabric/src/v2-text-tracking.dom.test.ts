@@ -4,7 +4,7 @@ import {
   type FabricGlobals,
   type Globals,
   resolveTextSegments,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   type FabricObject,
   FabricText,
@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAuthoredText,
   refreshBoundText,
-  VIGILIA_TEXT_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
 } from "./fabric-text.js";
 import { applyObjectTypePresets } from "./object-type.js";
 import { reviveScene, serialiseScene } from "./persist.js";
@@ -109,7 +109,7 @@ function reading(
     top: box.top + box.height / 2,
     fontSize: 32,
   });
-  object.set(VIGILIA_TEXT_PROPERTY, { wrap: false, ...layout, runs });
+  object.set(YUNARI_TEXT_PROPERTY, { wrap: false, ...layout, runs });
   object.clipPath = new Rect({
     width: box.width,
     height: box.height,
@@ -127,7 +127,7 @@ function textbox(
   layout: Readonly<Record<string, unknown>> = {},
 ): Textbox {
   const object = new Textbox("—", { id, width: BOX.width, fontSize: 32 });
-  object.set(VIGILIA_TEXT_PROPERTY, { runs, ...layout });
+  object.set(YUNARI_TEXT_PROPERTY, { runs, ...layout });
   return object;
 }
 
@@ -177,7 +177,7 @@ describe("the v2 path applies tracking", () => {
 
   it("keeps tracking when the editor repaints authored text", () => {
     const object = textbox("wordmark", [
-      { kind: "literal", text: "VIGILIA", typePreset: "typePresets.tracked" },
+      { kind: "literal", text: "YUNARI", typePreset: "typePresets.tracked" },
     ]);
     const canvas = canvasOf([object]);
     const globals = globalsWith({ letterSpacing: 0.8 });
@@ -185,7 +185,7 @@ describe("the v2 path applies tracking", () => {
 
     applyAuthoredText(canvas, globals, { bindings: {} });
 
-    expect(object.text).toBe("VIGILIA");
+    expect(object.text).toBe("YUNARI");
     expect(object.charSpacing).toBeCloseTo(25, 6);
   });
 });

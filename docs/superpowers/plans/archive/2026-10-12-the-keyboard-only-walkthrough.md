@@ -4,9 +4,9 @@
 
 **Goal:** One browser spec on the real host that completes §13.1's nine interactions by keyboard alone, so acceptance item 3 stops keeping the editor-redesign objective open.
 
-**Architecture:** A single spec added to the existing `desktop-host` Playwright project, which starts the real `vigilia-dashboard` host through its own `webServer`. The spec drives the keyboard only — every step advances focus and presses keys, and no step calls `click` on a locator to choose something. It asserts the three invariants §13.1 states: each region has a reachable focus target, Escape affects exactly one innermost owner, and the walkthrough returns to the original document without unintended history.
+**Architecture:** A single spec added to the existing `desktop-host` Playwright project, which starts the real `yunari-dashboard` host through its own `webServer`. The spec drives the keyboard only — every step advances focus and presses keys, and no step calls `click` on a locator to choose something. It asserts the three invariants §13.1 states: each region has a reachable focus target, Escape affects exactly one innermost owner, and the walkthrough returns to the original document without unintended history.
 
-**Tech Stack:** Playwright, the real host (`node packages/host/bin/vigilia.js --no-browser`), the shared `tests/e2e/` helpers.
+**Tech Stack:** Playwright, the real host (`node packages/host/bin/yunari.js --no-browser`), the shared `tests/e2e/` helpers.
 
 **Spec:** [`docs/superpowers/specs/2026-10-08-editor-design-language-design.md`](../specs/2026-10-08-editor-design-language-design.md) — §13.1 is the requirement; its Acceptance section is the measure.
 
@@ -15,9 +15,9 @@
 - **Keyboard only.** A step that reaches a control by clicking it has not proved keyboard access. `page.keyboard.press` and `Tab`/`Shift+Tab` are the only ways focus moves; `page.locator(...).click()` is permitted **only** where the click is the thing under test, never to position focus.
 - **One spec file, in the existing project.** No new project, no new helper module, no new assertion library. §13.1: *"plan 6 assembles the real-host walkthrough, not another test framework."*
 - **The real host, started as the project already starts it.** `desktop-host`'s `webServer` runs the host on its own port with its own app dir; the spec must not start a second one.
-- **Rebuild before every browser run.** Playwright previews built bundles, and the host binary must be built before `bin/vigilia.js` runs. Rebuild after **every** source change, including after reverting a deliberate break.
+- **Rebuild before every browser run.** Playwright previews built bundles, and the host binary must be built before `bin/yunari.js` runs. Rebuild after **every** source change, including after reverting a deliberate break.
 - **`--workers=1`, and never two Playwright suites at once** (strictPort; `reuseExistingServer`).
-- **Screenshots are evidence, not golden files**; capture only actions registered in `docs/evidence/screenshots/README.md`, and only with `VIGILIA_CAPTURE=1 --workers=1`.
+- **Screenshots are evidence, not golden files**; capture only actions registered in `docs/evidence/screenshots/README.md`, and only with `YUNARI_CAPTURE=1 --workers=1`.
 - **A `--grep` matching nothing exits 0 having run zero tests.** Every browser run in this plan reports its test count.
 - **§13.1's "each region has a reachable focus target" means a region that has content — ruled by the user on 2026-10-12.** The shell's opening state has an empty inspector that renders one sentence and legitimately contributes no tab stop; adding a focus target to an empty column is not required and would be an anti-pattern. So a region's reachability is asserted **in the state where that region has content**, and the census is taken after a keyboard selection exists. `REGIONS` stays the same four — this changes *when* the assertion is taken, never how many regions there are, and trimming the list would still be the forbidden move.
 - **§N markers are stable**; never renumber. `DESIGN.md` is the design document, `docs/design/design-language.md` no longer exists.

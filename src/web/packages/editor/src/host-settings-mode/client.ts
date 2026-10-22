@@ -2,7 +2,7 @@ import {
   isMeasurementSystem,
   isTimeZoneName,
   type MeasurementSystem,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 
 /**
  * The editor's seam to the host's own settings: which hardware this PC reports,

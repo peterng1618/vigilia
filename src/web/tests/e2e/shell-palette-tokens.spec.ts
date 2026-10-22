@@ -10,19 +10,19 @@ import { openEditor, shellColours } from "./shell-palette-readers.js";
 import { themeToken, typeStep } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
 
-/** Responsibility: How each palette's `--vigilia-*` tokens resolve and reach the surfaces that consume them, in the chrome and through the portal. */
+/** Responsibility: How each palette's `--yunari-*` tokens resolve and reach the surfaces that consume them, in the chrome and through the portal. */
 test.describe("shell palettes", () => {
   test.skip(
     ({ browserName }) => browserName !== "chromium",
     "measured through getComputedStyle; the custom-property cascade is what is under test",
   );
 
-  test("every palette paints the surfaces its --vigilia-* tokens name", async ({
+  test("every palette paints the surfaces its --yunari-* tokens name", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
-    // Today five of the six resolve to nothing: `--vigilia-*` was declared only
+    // Today five of the six resolve to nothing: `--yunari-*` was declared only
     // under `[data-shell-palette="editorial"]`, so under the others the
     // declaration that referenced it was dropped and the element rendered
     // transparent.
@@ -47,12 +47,12 @@ test.describe("shell palettes", () => {
 
     expect(
       unresolved,
-      "a --vigilia-* reference with no declaration in scope is invalid at " +
+      "a --yunari-* reference with no declaration in scope is invalid at " +
         "computed-value time, and the declaration using it is dropped whole",
     ).toEqual([]);
   });
 
-  /** `vg-458` (item 1): the `--vigilia-scrollbar-*` tokens were declared for
+  /** `vg-458` (item 1): the `--yunari-scrollbar-*` tokens were declared for
    *  the shell's own scrollers and read by nothing, so the pane's column and the
    *  inspector painted the OS default.
    *
@@ -161,7 +161,7 @@ test.describe("shell palettes", () => {
         const style = getComputedStyle(document.documentElement);
         return {
           palette: document.documentElement.getAttribute("data-shell-palette"),
-          thumb: style.getPropertyValue("--vigilia-scrollbar-thumb").trim(),
+          thumb: style.getPropertyValue("--yunari-scrollbar-thumb").trim(),
         };
       });
 
@@ -551,7 +551,7 @@ async function scrollbarReading(
     const reference = document.createElement("div");
     reference.style.scrollbarWidth = "thin";
     reference.style.scrollbarColor =
-      "var(--vigilia-scrollbar-thumb) var(--vigilia-scrollbar-track)";
+      "var(--yunari-scrollbar-thumb) var(--yunari-scrollbar-track)";
     document.body.append(reference);
     const declared = getComputedStyle(reference);
     const expected = {
@@ -607,7 +607,7 @@ function expectScrollbarTokens(
     ).toBe(reading.expected.width);
     expect(
       scroller.colour,
-      `${name} is not painted by the --vigilia-scrollbar-* tokens (${scroller.colour})`,
+      `${name} is not painted by the --yunari-scrollbar-* tokens (${scroller.colour})`,
     ).toBe(reading.expected.colour);
   }
 }

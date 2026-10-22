@@ -25,13 +25,13 @@ editor's own reading signature (`editor/src/chart-manager/index.ts`). Both write
 number that is exactly the *axis* window, and therefore leaves nothing below
 `toSeriesPoints`' window start for the one predecessor it keeps.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `createLiveSource` (`data/live-source.ts`), `SampleStore.history` /
 `sampleTimeMs` (`data/store.ts`), `buildChartPlan` (`scene/plan.ts`),
 `buildLineOption` / `toSeriesPoints` / `sampleTimeMs` / `linePlaybackDelayMs`
 (`charts/line.ts`), `startChartRefresh` (`scene-fabric/chart-refresh.ts`),
-`VigiliaChart._render` / `_overscanWidth` / `_backingSize`
+`YunariChart._render` / `_overscanWidth` / `_backingSize`
 (`scene-fabric/chart-object.ts`).
 
 Found: the whole mechanism, and **no owner for the requested history**. The
@@ -57,7 +57,7 @@ here.
 
 Searched: `EventSource` (the transport), `requestAnimationFrame` (the cadence),
 `Date.now()` (the only clock the renderer has), and the canvas crop in
-`VigiliaChart._render`.
+`YunariChart._render`.
 
 Found: a clock and a repaint hook, and nothing that places a trailing window.
 **This rung discharges nothing**, which is the case the gate exists for.
@@ -107,7 +107,7 @@ A per-frame reader (`src/web/tests/e2e/live-chart-edge.spec.ts`, run under the
 host on 4175) recorded, on every frame, `xAxis.min`/`max`, the series'
 timestamps, `convertToPixel` for the axis ends and the newest sample, the
 chart's rect, the ECharts canvas width and the crop edge. Readings:
-`%TEMP%/vigilia-live-edge/{before,after}.json`, 2 129 and 2 054 frames of the
+`%TEMP%/yunari-live-edge/{before,after}.json`, 2 129 and 2 054 frames of the
 starter's 963 × 215 `trends-chart`. "Steady state" below means the series covers
 at least 59 s of its 61 s axis: 504 frames before, 501 after.
 

@@ -11,7 +11,7 @@
  * the focus return are assertable here.
  */
 
-import { readThemePackage } from "@vigilia/theme-package";
+import { readThemePackage } from "@yunari/theme-package";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
@@ -104,7 +104,7 @@ describe("PersistenceManager", () => {
     ).toBe(true);
   });
 
-  it("saves empty-asset themes as valid .vigilia-theme packages", async () => {
+  it("saves empty-asset themes as valid .yunari-theme packages", async () => {
     let downloaded: { name: string; bytes: Uint8Array } | undefined;
     const manager = new PersistenceManager(
       baseline,
@@ -123,7 +123,7 @@ describe("PersistenceManager", () => {
     };
 
     await manager.save(changedEnvelope, {});
-    expect(downloaded?.name).toBe("living-room.vigilia-theme");
+    expect(downloaded?.name).toBe("living-room.yunari-theme");
     expect(readThemePackage(downloaded!.bytes)).toMatchObject({
       ok: true,
       envelope: changedEnvelope,

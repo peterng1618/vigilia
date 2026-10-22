@@ -76,14 +76,14 @@ function ArrangeRow({
   return (
     <div
       className="flex flex-wrap items-center gap-[var(--space-6)]"
-      data-vigilia-arrange-row=""
+      data-yunari-arrange-row=""
     >
       {actions.map((action) => (
         <ControlIconButton
           key={action.id}
           label={action.label}
           disabled={!action.enabled}
-          data={{ "data-vigilia-arrange-action": "" }}
+          data={{ "data-yunari-arrange-action": "" }}
           onClick={() => run(action.id)}
         >
           <Glyph icon={objectAction(action.id).icon} size={15} />
@@ -117,10 +117,10 @@ export function SelectionLead({
   return (
     <div
       className="flex flex-col gap-[var(--space-8)] border-b border-edge pt-[var(--space-12)] pb-[var(--space-8)]"
-      data-vigilia-selection-lead=""
+      data-yunari-selection-lead=""
     >
       {glassRefusal === undefined ? null : (
-        <p className="m-0 text-sm text-muted" data-vigilia-glass-refusal="">
+        <p className="m-0 text-sm text-muted" data-yunari-glass-refusal="">
           {glassRefusal}
         </p>
       )}

@@ -1,4 +1,4 @@
-import { MAX_ARCHIVE_BYTES } from "@vigilia/theme-package";
+import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 
 /**
  * Fetches one catalogue package. The address is data from a remote document,

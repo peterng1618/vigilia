@@ -1,4 +1,4 @@
-import type { Globals } from "@vigilia/renderer-core";
+import type { Globals } from "@yunari/renderer-core";
 import {
   type FabricObject,
   Group,
@@ -10,7 +10,7 @@ import { fabricArtboardPaint } from "./artboard-paint.js";
 import { Arc } from "./sector-object.js";
 
 /** Persisted semantic palette references for Fabric object paint properties. */
-export const VIGILIA_PAINT_PROPERTY = "vigiliaPaint";
+export const YUNARI_PAINT_PROPERTY = "yunariPaint";
 
 /**
  * What an author is told when their document asks for a fill the arc will not
@@ -142,14 +142,14 @@ function applyPaints(
   options: PaintApplicationOptions,
 ): void {
   for (const object of objects) {
-    const refs = object.get(VIGILIA_PAINT_PROPERTY);
+    const refs = object.get(YUNARI_PAINT_PROPERTY);
     if (isPaintRefs(refs)) {
       for (const [property, ref] of Object.entries(refs)) {
         // Revival refuses at the read — the revived arc's own fill is withheld —
         // and this refuses at the write, because the pass runs after revival and
         // would otherwise re-resolve the reference onto the object. Both are
         // load-bearing for the render: drop this branch and the chord is back on
-        // the editor canvas. The reference is kept — `vigiliaPaint` is persisted,
+        // the editor canvas. The reference is kept — `yunariPaint` is persisted,
         // so dropping it rewrites the author's document on the next save, and the
         // refusal is re-applied on every load regardless.
         if (property === "fill" && refusesFill(object)) {
@@ -201,13 +201,13 @@ function isPaintRefs(value: unknown): value is FabricPaintRefs {
  *
  * Revival refuses every `refusesFill` object whether or not it carries a
  * palette reference, so it is the only site that sees a hand-authored arc with
- * no `vigiliaPaint` at all. That is the case a report belongs to; the
+ * no `yunariPaint` at all. That is the case a report belongs to; the
  * reference-carrying arc is this pass's to report, and revival staying quiet
  * about it is what keeps one refusal from being said twice on one load.
  */
 export function refusalIsPaintPasses(
   object: Pick<FabricObject, "get">,
 ): boolean {
-  const refs = object.get(VIGILIA_PAINT_PROPERTY);
+  const refs = object.get(YUNARI_PAINT_PROPERTY);
   return isPaintRefs(refs) && refs?.fill !== undefined;
 }

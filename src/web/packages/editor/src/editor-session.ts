@@ -2,8 +2,8 @@ import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
   type SampleSource,
-} from "@vigilia/renderer-core";
-import { sceneBoxesOf } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { sceneBoxesOf } from "@yunari/scene-fabric";
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
@@ -135,7 +135,7 @@ interface EditorSessionOptions {
   readonly unsaved?: boolean;
 }
 
-/** Owns Vigilia editor composition on the native Fabric canvas. */
+/** Owns Yunari editor composition on the native Fabric canvas. */
 export class EditorSession {
   readonly charts: ChartManager;
   readonly #runtime: LiveRuntime;
@@ -159,7 +159,7 @@ export class EditorSession {
   constructor(options: EditorSessionOptions) {
     if (options.shell.scene === undefined) {
       throw new Error(
-        "The editor shell needs a scene adapter for Vigilia extensions.",
+        "The editor shell needs a scene adapter for Yunari extensions.",
       );
     }
     this.#options = options;

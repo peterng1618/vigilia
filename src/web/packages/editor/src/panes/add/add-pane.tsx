@@ -24,11 +24,11 @@ import { CARD_DIAGRAMS } from "./card-diagrams.js";
  * tree.
  *
  * The element contracts the imperative panel carried are on the tile's own
- * button: `data-vigilia-panel-add="<shape>"` and
- * `data-vigilia-panel-card="<card id>"`. `data-vigilia-panel="add"` is the
+ * button: `data-yunari-panel-add="<shape>"` and
+ * `data-yunari-panel-card="<card id>"`. `data-yunari-panel="add"` is the
  * pane's, written by `Pane`, and is deliberately not written again here.
  *
- * A group is scoped by `data-vigilia-add-group="<kind>"` — the group's own
+ * A group is scoped by `data-yunari-add-group="<kind>"` — the group's own
  * identity, never the heading above it, which is copy an author reads and a
  * copy change moves. The pane holds the file path as well as this list, so a
  * locator scoped to the pane reaches controls that are not insert controls.
@@ -68,11 +68,11 @@ export function AddPane({
         return (
           <fieldset
             key={group.label}
-            className="vigilia-add-group"
-            data-vigilia-add-group={group.kind}
+            className="yunari-add-group"
+            data-yunari-add-group={group.kind}
           >
-            <legend className="vigilia-add-eyebrow">{group.label}</legend>
-            <div className="vigilia-add-grid">{tiles}</div>
+            <legend className="yunari-add-eyebrow">{group.label}</legend>
+            <div className="yunari-add-grid">{tiles}</div>
           </fieldset>
         );
       })}
@@ -110,20 +110,18 @@ function InsertTile({
     <button
       ref={ref}
       type="button"
-      className={
-        object.kind === "text" ? "vigilia-add-text" : "vigilia-add-tile"
-      }
+      className={object.kind === "text" ? "yunari-add-text" : "yunari-add-tile"}
       aria-label={object.label}
       {...(object.kind === "shape"
-        ? { "data-vigilia-panel-add": object.shape }
+        ? { "data-yunari-panel-add": object.shape }
         : {})}
       {...(object.kind === "card"
-        ? { "data-vigilia-panel-card": object.card }
+        ? { "data-yunari-panel-card": object.card }
         : {})}
       onClick={() => onInsert(object)}
     >
       {tileMark(object)}
-      {named ? <span className="vigilia-add-label">{object.label}</span> : null}
+      {named ? <span className="yunari-add-label">{object.label}</span> : null}
     </button>
   );
 }

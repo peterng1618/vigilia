@@ -18,7 +18,7 @@ export function paneBody(page: Page): Locator {
  *  spin. */
 export async function openEveryGroup(page: Page): Promise<void> {
   const twisties = page.locator(
-    '[data-vigilia-layer] button[aria-label^="Expand"]',
+    '[data-yunari-layer] button[aria-label^="Expand"]',
   );
   for (let opened = await twisties.count(); opened > 0; opened -= 1) {
     await twisties.first().click();

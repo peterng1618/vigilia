@@ -35,7 +35,7 @@ export type HostProbe = (
  *  key itself: `readStoredPairing` reads through `isPairedHost`, which refuses a
  *  blank `hostId`, so a writer that reintroduced the blank record would satisfy
  *  such a case by being rejected later (R76). */
-export const PAIRING_STORAGE_KEY = "vigilia.display.pairing";
+export const PAIRING_STORAGE_KEY = "yunari.display.pairing";
 
 /** A probe that never answers is an address with no host on it, and this is what
  *  bounds the ladder: 253 addresses at a browser's own connect timeout is not a

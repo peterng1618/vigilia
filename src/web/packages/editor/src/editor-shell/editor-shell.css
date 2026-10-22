@@ -84,32 +84,32 @@ body,
    too. `:root` and `[data-shell-palette="x"]` have equal specificity, so a
    palette can only override a base value by source order; below them, this
    block silently won and graphite's control surface never applied. For the same
-   reason the dark base must come *after* it (`vg-357`), or `--vigilia-control-bg`
+   reason the dark base must come *after* it (`vg-357`), or `--yunari-control-bg`
    would outrank the dark base and a dark-reporting OS would paint this block's
    editorial paper in the pre-attribute frame.
 
    Five tokens, down from fifteen (`vg-552`). The ten that went —
-   `--vigilia-text`, `-panel-bg`, `-panel-border`, `-control-border`,
+   `--yunari-text`, `-panel-bg`, `-panel-border`, `-control-border`,
    `-input-bg`, `-muted`, `-selection-bg`, `-accent`, `-accent-dim` and `-guide`
    — each named a job the React control set now holds through §4's roles, so
    every one was a declaration no rule read: the knob that lies `--shell-flat`
    was (`vg-312`). The five that stay each have a reader, and the literals among
-   them stay literals because no shell token is that colour. `--vigilia-subdued` sits
-   between the shell's muted and its surface, and `--vigilia-control-bg` cannot
+   them stay literals because no shell token is that colour. `--yunari-subdued` sits
+   between the shell's muted and its surface, and `--yunari-control-bg` cannot
    alias `--shell-backdrop`: that holds this same colour under editorial and
    light's gradient and graphite's dark flat ground everywhere else, so aliasing
    it painted the wrong surface onto every button. A palette that needs a
    different control surface declares one below. */
 :root {
-  --vigilia-canvas-bg: #26241f;
-  --vigilia-control-bg: #f5f1e8;
-  --vigilia-subdued: #8a8272;
+  --yunari-canvas-bg: #26241f;
+  --yunari-control-bg: #f5f1e8;
+  --yunari-subdued: #8a8272;
   /* `vg-479`: both were literals, so a dark shell painted `#c9c2b1` against its
      own ground — no palette could reach them. `--shell-text` is a role every
      palette declares, so an ink over the surface follows the palette from this
      one declaration.
 
-     **Two values and not three.** `--vigilia-scrollbar-thumb-hover` stood here
+     **Two values and not three.** `--yunari-scrollbar-thumb-hover` stood here
      and is gone (`vg-491`): its only reader was the `::-webkit-scrollbar-thumb`
      hover rule, and that family paints nothing beside the pair below, so the
      declaration was one nothing could consume. `scrollbar-color` states a thumb
@@ -119,12 +119,12 @@ body,
      — the palette swatch chip — resolves this against the live palette rather
      than its own. No scroller lives in a chip, so nothing paints the wrong
      ground; a chip that ever grows one declares the pair for itself. */
-  --vigilia-scrollbar-thumb: color-mix(
+  --yunari-scrollbar-thumb: color-mix(
     in srgb,
     var(--shell-text) 24%,
     transparent
   );
-  --vigilia-scrollbar-track: transparent;
+  --yunari-scrollbar-track: transparent;
 }
 
 /* The dark half of the base frame: a dark-reporting OS resolves `graphite`, the
@@ -142,7 +142,7 @@ body,
    and light name the display face they took from the `:root` block above,
    and editorial and light name the control paper. That block precedes this one
    for the same reason: had the control tokens' `:root` stayed below, its
-   `--vigilia-control-bg` would have outranked this one by source order at equal
+   `--yunari-control-bg` would have outranked this one by source order at equal
    specificity. With that, the pre-attribute frame is graphite in full rather
    than graphite's ground under the editorial display face and control paper. */
 @media (prefers-color-scheme: dark) {
@@ -159,7 +159,7 @@ body,
     --shell-primary-bg: var(--shell-accent);
     --shell-primary-text: #06131a;
     --shell-display: system-ui, sans-serif;
-    --vigilia-control-bg: #0a1116c9;
+    --yunari-control-bg: #0a1116c9;
     --bg: var(--shell-backdrop);
     --panel: var(--shell-surface);
     --panel-2: var(--shell-surface-strong);
@@ -209,7 +209,7 @@ body,
   /* `vg-357`: editorial's control paper, declared for the same reason as the
      token above and at the value `:root` already gave it, so the dark base can
      carry graphite's. */
-  --vigilia-control-bg: #f5f1e8;
+  --yunari-control-bg: #f5f1e8;
   /* DESIGN.md §4's role vocabulary, aliased per palette and never once at `:root`:
      an alias is substituted where it is declared, so a root-only declaration
      would pin a subtree that re-declares `--shell-*` — the swatch chip — to
@@ -261,7 +261,7 @@ body,
 
    **What the drawing does not name is not invented.** `--warn`
    (`--shell-warm`), `--shell-display` and graphite's one
-   `--vigilia-control-bg` override have no drawing token: they are the product's
+   `--yunari-control-bg` override have no drawing token: they are the product's
    own roles and the report says so rather than this block inventing a value. */
 [data-shell-palette="graphite"] {
   --shell-backdrop: #0b0e12; /* --bg: the drawn ground is flat */
@@ -276,10 +276,10 @@ body,
   --shell-primary-bg: var(--shell-accent); /* the chip's `background` */
   --shell-primary-text: #06131a; /* the chip's `color`, `:32` */
   --shell-display: system-ui, sans-serif;
-  /* The only `--vigilia-*` token a palette overrides. Editorial's paper
+  /* The only `--yunari-*` token a palette overrides. Editorial's paper
      control is unreadable on graphite's dark chrome, and the backdrop cannot
      be aliased here because it is a flat colour here and editorial's paper. */
-  --vigilia-control-bg: #0a1116c9;
+  --yunari-control-bg: #0a1116c9;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -337,7 +337,7 @@ body,
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #f7e2d2;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --vigilia-control-bg: #f0d3bc;
+  --yunari-control-bg: #f0d3bc;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -368,7 +368,7 @@ body,
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #e4efd9;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --vigilia-control-bg: #d8e8c8;
+  --yunari-control-bg: #d8e8c8;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -399,7 +399,7 @@ body,
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #ece3f7;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --vigilia-control-bg: #ded1ef;
+  --yunari-control-bg: #ded1ef;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -436,7 +436,7 @@ body,
      here at the values it already resolved to so the dark base can carry
      graphite's without moving this palette (`vg-357`). */
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --vigilia-control-bg: #f5f1e8;
+  --yunari-control-bg: #f5f1e8;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -594,14 +594,14 @@ body,
 
 /* §4: `--hot` marks destructive affordances, and delete is the only one. This is
    the **one** rule that paints the mark, so it is keyed on the shared
-   `data-vigilia-destructive` (`objectActions.ts`'s `destructiveMarker` owns both
+   `data-yunari-destructive` (`objectActions.ts`'s `destructiveMarker` owns both
    the attribute name and which actions carry it) and on nothing a surface owns.
    It is deliberately not a control's own class: the mark has to reach every
    surface the registry renders, including the one that is portalled out of the
    dock.
 
    That is the failure it replaced. The colour used to be painted by
-   `.editor-shell-dock button[data-vigilia-destructive]`, and the canvas context
+   `.editor-shell-dock button[data-yunari-destructive]`, and the canvas context
    menu portals its popup to `body`, so the dock-scoped rule could not reach it:
    the menu's Delete carried the mark and painted `--shell-text` like every other
    entry. A popup-scoped second rule would have expressed "destructive paints
@@ -633,7 +633,7 @@ body,
    refused it. A blocked destructive control therefore keeps its own tone, and
    §4's "a disabled destructive control stays `--faint`" is held by the rule
    rather than by no surface happening to pass `disabled`. */
-[data-vigilia-destructive]:not([disabled]):not([aria-disabled="true"]) {
+[data-yunari-destructive]:not([disabled]):not([aria-disabled="true"]) {
   color: var(--hot);
 }
 
@@ -963,7 +963,7 @@ body,
 
      No `color` here, deliberately: an item inherits the popup's `--shell-text`
      already, and the declaration that used to restate that (`color: inherit`)
-     outranked a bare `[data-vigilia-destructive]` at (0,2,0) — which is what
+     outranked a bare `[data-yunari-destructive]` at (0,2,0) — which is what
      kept the menu's Delete from painting §4's `--hot`. */
   display: flex;
   align-items: center;
@@ -1082,20 +1082,20 @@ body,
   /* The layer panel is DESIGN.md's 246px (§7.3, "width 246px by default"). The
      360px this column carried before was plan 2's own measurement, taken when a
      row carried four things it had not: a 40px kind specimen, the name, and two
-     columns naming it — what it *is* (`.vigilia-layer-role`) and the key it
-     reads (`.vigilia-layer-bound`). That 360px was a budget this pane chose, and
+     columns naming it — what it *is* (`.yunari-layer-role`) and the key it
+     reads (`.yunari-layer-bound`). That 360px was a budget this pane chose, and
      §7.3 supersedes it, so the pane is re-cut to 246px rather than re-argued.
 
      The cost was measured rather than assumed, the same way the 360px was: on
      canvas at 1600×900, every group open, the scrollbar in place, counting
-     `.vigilia-layer-name`'s `scrollWidth > clientWidth` per row. The starter's
+     `.yunari-layer-name`'s `scrollWidth > clientWidth` per row. The starter's
      60 names ellipsise 31 with the role in the row and 22 with it taken out —
      the role still costs names, which is the delta the case is about — against
      2 in the superseded 360px column. At 246px the row also stopped holding its
      four columns, and the give came from the kind column rather than the role:
      `group-trends-card`'s role `Performance trends` ran 11px past the row's own
      edge, and the mark slot went 40px → 28px to buy it back, since the mark
-     slot is designed to clip and a role is not (`.vigilia-layer-mark`).
+     slot is designed to clip and a role is not (`.yunari-layer-mark`).
 
      The canvas is `minmax(0, 1fr)`, so every pixel here comes off the stage —
      which is why the 360px was measured at all. The narrower pane gives those
@@ -1244,7 +1244,7 @@ body,
 .editor-shell-inspector {
   overflow: auto;
 }
-/* The scrollbar is the shell's, not the platform's: the `--vigilia-scrollbar-*`
+/* The scrollbar is the shell's, not the platform's: the `--yunari-scrollbar-*`
    pair was declared for this and read by nothing until `vg-458`, so every
    scroller painted the OS default.
 
@@ -1271,7 +1271,7 @@ body,
 .editor-shell-menu-popup,
 .editor-shell-dialog {
   scrollbar-width: thin;
-  scrollbar-color: var(--vigilia-scrollbar-thumb) var(--vigilia-scrollbar-track);
+  scrollbar-color: var(--yunari-scrollbar-thumb) var(--yunari-scrollbar-track);
 }
 /* `cursor: pointer` is the shell's standing convention for a control, and it is
    the **only** thing this rule may say about an inspector button. The rest of
@@ -1286,7 +1286,7 @@ body,
 }
 /* The dock's buttons take their *shape* here and their **colour from the dock
    below**, not from a declaration of their own. A `color:` on the button applies
-   directly to it, so it outranks §4's bare `[data-vigilia-destructive]` marker
+   directly to it, so it outranks §4's bare `[data-yunari-destructive]` marker
    rule at (0,1,1) against (0,1,0) — both unlayered author styles, so specificity
    decides. That is exactly how the dock's Delete stopped painting `--hot` when
    the mark's rule stopped being dock-scoped. On the container the buttons
@@ -1326,7 +1326,7 @@ body,
    inside either ancestor belongs to a control row now, and a row centres its
    label — this rule's 12px top margin against the row's `items-center` pushed
    every label 6px below its control, and no utility could win against it because
-   it is unlayered. A label that is not a row's own belongs to `.vigilia-field`,
+   it is unlayered. A label that is not a row's own belongs to `.yunari-field`,
    which already writes its own `margin-top: 0`. */
 .editor-shell-panel section:not(.editor-shell-pane),
 .editor-shell-inspector section {
@@ -1367,7 +1367,7 @@ body,
    per tile. The `fieldset` stays, because a group is what tells the shape Line
    from the chart Line — for a screen reader (`role="group"`, named by the
    legend) as much as for an eye. */
-.editor-shell-panel .vigilia-add-group {
+.editor-shell-panel .yunari-add-group {
   margin: 0 0 var(--space-16);
   padding: 0;
   border: 0;
@@ -1375,7 +1375,7 @@ body,
 }
 /* §2's eyebrow, exactly: `--text-2xs`, 600, .11em, muted, uppercase, and it
    labels a region rather than a control. */
-.editor-shell-panel .vigilia-add-eyebrow {
+.editor-shell-panel .yunari-add-eyebrow {
   display: block;
   width: 100%;
   margin: 0 0 var(--space-8);
@@ -1391,7 +1391,7 @@ body,
    1px `--edge`, at the reference's 4-up density. Four columns is the baseline
    the tiles were measured at in the 246px pane, and density is not itself a
    defect — the card labels are what would overflow, and they ellipsise. */
-.vigilia-add-grid {
+.yunari-add-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-6);
@@ -1400,7 +1400,7 @@ body,
    `border-radius` are the control set's, declared here. The panel-wide `button`
    box this used to have to outrank no longer exists (see `.editor-shell-panel`
    below), so these are the tile's own values rather than a neutralisation. */
-.editor-shell-panel .vigilia-add-tile {
+.editor-shell-panel .yunari-add-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1419,10 +1419,10 @@ body,
 /* §5 rule 6: hover raises the resting `--edge` to `--muted`. The chart tiles'
    lucide glyphs carry `currentColor`, so the tile's colour change reaches them;
    nothing moves and nothing scales. */
-.editor-shell-panel .vigilia-add-tile:hover,
-.editor-shell-panel .vigilia-add-tile:focus-visible,
-.editor-shell-panel .vigilia-add-text:hover,
-.editor-shell-panel .vigilia-add-text:focus-visible {
+.editor-shell-panel .yunari-add-tile:hover,
+.editor-shell-panel .yunari-add-tile:focus-visible,
+.editor-shell-panel .yunari-add-text:hover,
+.editor-shell-panel .yunari-add-text:focus-visible {
   border-color: var(--muted);
   color: var(--text);
 }
@@ -1430,7 +1430,7 @@ body,
    tile: the diagram is what is recognised at a glance, and the tile's accessible
    name is the whole word either way. Measured at the 246px pane, one of the
    eight — "Performance trends" — truncates; the other seven fit. */
-.vigilia-add-label {
+.yunari-add-label {
   max-width: 100%;
   overflow: hidden;
   font-size: var(--text-2xs);
@@ -1441,7 +1441,7 @@ body,
 /* Text stands alone, in `insertGroups()`'s own order between the units and the
    primitives, and as the one full-width row rather than a grid tile: a lone
    square beside a card grid reads as a ninth card. */
-.editor-shell-panel .vigilia-add-text {
+.editor-shell-panel .yunari-add-text {
   display: flex;
   align-items: center;
   gap: var(--space-8);
@@ -1458,7 +1458,7 @@ body,
   text-align: left;
   cursor: pointer;
 }
-.editor-shell-panel .vigilia-add-text .vigilia-add-label {
+.editor-shell-panel .yunari-add-text .yunari-add-label {
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
 }
@@ -1466,7 +1466,7 @@ body,
    sized: an asset's intrinsic dimensions are the author's, so the picture is
    contained inside a fixed height and never stretches the pane to its own
    aspect. */
-.editor-shell-panel .vigilia-asset-preview {
+.editor-shell-panel .yunari-asset-preview {
   display: block;
   max-width: 100%;
   max-height: var(--asset-preview-max-height);
@@ -1482,12 +1482,12 @@ body,
    the drawing draws. What is left that still needs a box is one surface's own
    DOM: the Add pane's asset buttons, which no control in the set draws.
    Add a hook rather than widening the selector back to the ancestor. */
-.editor-shell-panel [data-vigilia-asset-import],
-.editor-shell-panel [data-vigilia-asset-replace],
-.editor-shell-panel [data-vigilia-asset-remove],
-.editor-shell-panel [data-vigilia-asset-normalize],
-.editor-shell-panel [data-vigilia-asset-fill],
-.editor-shell-panel [data-vigilia-asset-use-normalized] {
+.editor-shell-panel [data-yunari-asset-import],
+.editor-shell-panel [data-yunari-asset-replace],
+.editor-shell-panel [data-yunari-asset-remove],
+.editor-shell-panel [data-yunari-asset-normalize],
+.editor-shell-panel [data-yunari-asset-fill],
+.editor-shell-panel [data-yunari-asset-use-normalized] {
   max-width: 100%;
   min-height: 30px;
   margin: 4px 4px 4px 0;
@@ -1499,13 +1499,13 @@ body,
      root's `--text-md` 13px instead (plan 8's D9). */
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
-  background: var(--vigilia-control-bg);
+  background: var(--yunari-control-bg);
   color: var(--shell-text);
 }
 /* The Composition pane's inline rename field: the other input the panes render
    as plain DOM, and the one place the old rule's `padding: 4px 6px` was still
    doing work. A field the control set draws takes its own box from its well. */
-.editor-shell-panel .vigilia-layer-rename {
+.editor-shell-panel .yunari-layer-rename {
   max-width: 100%;
   min-height: 30px;
   margin: 4px 4px 4px 0;
@@ -1517,7 +1517,7 @@ body,
      root's `--text-md` 13px instead (plan 8's D9). */
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
-  background: var(--vigilia-control-bg);
+  background: var(--yunari-control-bg);
   color: var(--shell-text);
 }
 /* The inspector's half of the box above, **named by the control it still
@@ -1531,13 +1531,13 @@ body,
    add/remove, the chart's remove-series and the crop row — the type-preset
    reveal went with item 17's read-only section (`vg-474`). Add a hook here
    rather than widening the selector back to the ancestor. */
-.editor-shell-inspector [data-vigilia-run-add],
-.editor-shell-inspector [data-vigilia-run-remove],
-.editor-shell-inspector [data-vigilia-chart-binding-remove],
-.editor-shell-inspector [data-vigilia-crop],
-.editor-shell-inspector [data-vigilia-crop-aspect],
-.editor-shell-inspector [data-vigilia-crop-apply],
-.editor-shell-inspector [data-vigilia-crop-cancel] {
+.editor-shell-inspector [data-yunari-run-add],
+.editor-shell-inspector [data-yunari-run-remove],
+.editor-shell-inspector [data-yunari-chart-binding-remove],
+.editor-shell-inspector [data-yunari-crop],
+.editor-shell-inspector [data-yunari-crop-aspect],
+.editor-shell-inspector [data-yunari-crop-apply],
+.editor-shell-inspector [data-yunari-crop-cancel] {
   max-width: 100%;
   min-height: 30px;
   margin: 4px 4px 4px 0;
@@ -1549,25 +1549,25 @@ body,
      root's `--text-md` 13px instead (plan 8's D9). */
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
-  background: var(--vigilia-control-bg);
+  background: var(--yunari-control-bg);
   color: var(--shell-text);
 }
-.editor-shell-inspector [data-vigilia-run-add]:hover,
-.editor-shell-inspector [data-vigilia-run-remove]:hover,
-.editor-shell-inspector [data-vigilia-chart-binding-remove]:hover,
-.editor-shell-inspector [data-vigilia-crop]:hover,
-.editor-shell-inspector [data-vigilia-crop-aspect]:hover,
-.editor-shell-inspector [data-vigilia-crop-apply]:hover,
-.editor-shell-inspector [data-vigilia-crop-cancel]:hover {
+.editor-shell-inspector [data-yunari-run-add]:hover,
+.editor-shell-inspector [data-yunari-run-remove]:hover,
+.editor-shell-inspector [data-yunari-chart-binding-remove]:hover,
+.editor-shell-inspector [data-yunari-crop]:hover,
+.editor-shell-inspector [data-yunari-crop-aspect]:hover,
+.editor-shell-inspector [data-yunari-crop-apply]:hover,
+.editor-shell-inspector [data-yunari-crop-cancel]:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }
-.editor-shell-panel [data-vigilia-asset-import]:hover,
-.editor-shell-panel [data-vigilia-asset-replace]:hover,
-.editor-shell-panel [data-vigilia-asset-remove]:hover,
-.editor-shell-panel [data-vigilia-asset-normalize]:hover,
-.editor-shell-panel [data-vigilia-asset-fill]:hover,
-.editor-shell-panel [data-vigilia-asset-use-normalized]:hover {
+.editor-shell-panel [data-yunari-asset-import]:hover,
+.editor-shell-panel [data-yunari-asset-replace]:hover,
+.editor-shell-panel [data-yunari-asset-remove]:hover,
+.editor-shell-panel [data-yunari-asset-normalize]:hover,
+.editor-shell-panel [data-yunari-asset-fill]:hover,
+.editor-shell-panel [data-yunari-asset-use-normalized]:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }
@@ -1617,9 +1617,9 @@ body,
 /* Panel reveal: opacity 0→1 with a 4px rise, on mount only — no list stagger. */
 .editor-shell-panel,
 .editor-shell-inspector {
-  animation: vigilia-panel-in 160ms ease-out;
+  animation: yunari-panel-in 160ms ease-out;
 }
-@keyframes vigilia-panel-in {
+@keyframes yunari-panel-in {
   from {
     opacity: 0;
     transform: translateY(4px);
@@ -1645,11 +1645,11 @@ body,
   }
 }
 
-/* The action row the three converted dialogs still share. `.vigilia-dialog`,
+/* The action row the three converted dialogs still share. `.yunari-dialog`,
    its `::backdrop`, `-lead` and `-size` were deleted with this task: their last
    consumers were the imperative dialogs part i converted, and no editor source
    or CSS addresses them any more. */
-.vigilia-dialog-actions {
+.yunari-dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -1776,7 +1776,7 @@ body,
 /* §5 rule 2's read-only rows — the About pane's and the `?` sheet's. The
    Keyboard tab's rebind row is excluded: it is interactive, and keeps the flex
    row its drawing gives it (`current/settings-keyboard.html:56`). */
-.editor-shell-dialog dl > div:not([data-vigilia-shortcut-row]) {
+.editor-shell-dialog dl > div:not([data-yunari-shortcut-row]) {
   display: grid;
   grid-template-columns: 74px 1fr;
 }
@@ -1786,14 +1786,14 @@ body,
 /* §5 rule 2 — the label wraps inside the 74px column rather than widening it.
    `anywhere` and not `break-word`: only `anywhere` counts the break in the
    element's min-content size, so only it keeps a long word inside the track. */
-.editor-shell-dialog dl > div:not([data-vigilia-shortcut-row]) > dt {
+.editor-shell-dialog dl > div:not([data-yunari-shortcut-row]) > dt {
   overflow-wrap: anywhere;
 }
 .editor-shell-dialog dd {
   margin: 0;
 }
 /* §5 rule 2 — the value cell is right-aligned. */
-.editor-shell-dialog dl > div:not([data-vigilia-shortcut-row]) > dd {
+.editor-shell-dialog dl > div:not([data-yunari-shortcut-row]) > dd {
   text-align: right;
 }
 .editor-shell-dialog kbd {
@@ -1811,13 +1811,13 @@ body,
   padding: 6px 12px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
-  background: var(--vigilia-control-bg);
+  background: var(--yunari-control-bg);
   color: var(--shell-text);
   /* §2 — `--text-sm` 12px, "Control text": a dialog's own button is a
      control, and this rule reaches the two dialogs that draw one directly (the
      settings modal's Close and the `?` sheet's) rather than letting them inherit
      the portalled document's 13px. The three dialogs that wrap their buttons in
-     `.vigilia-dialog-actions` already take `text-sm` from `ACTION_BUTTON`. */
+     `.yunari-dialog-actions` already take `text-sm` from `ACTION_BUTTON`. */
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
   cursor: pointer;
@@ -1975,7 +1975,7 @@ body,
   border: 1px solid var(--shell-edge);
   border-radius: var(--radius-sm);
 }
-.editor-shell-keyboard [data-vigilia-shortcut-row] {
+.editor-shell-keyboard [data-yunari-shortcut-row] {
   /* Centred rather than the sheet's baseline: a row here carries a 26px
      control, and baselining the label against it drops the label. Wrapped,
      because an armed row also carries §9's refusal and it belongs under the
@@ -2008,7 +2008,7 @@ body,
      and a button is a control; the drawing draws both return-to-default actions
      at 6px (`current/settings-keyboard.html`), one act being one control. */
   border-radius: var(--radius-md);
-  background: var(--vigilia-control-bg);
+  background: var(--yunari-control-bg);
   color: var(--shell-muted);
   font: inherit;
   font-size: var(--text-xs);
@@ -2057,73 +2057,73 @@ body,
 
 /* Opt-in density primitives: a panel chooses a dense row rather than the shell
    forcing every control onto its own full-width line. */
-.vigilia-field {
+.yunari-field {
   display: grid;
   grid-template-columns: var(--field-label-width) 1fr;
   align-items: center;
   gap: 6px;
   margin-top: 12px;
 }
-.vigilia-field-row {
+.yunari-field-row {
   display: flex;
   gap: 6px;
   align-items: center;
   margin-top: 12px;
 }
-.vigilia-numeric {
+.yunari-numeric {
   font-variant-numeric: tabular-nums;
 }
-.vigilia-field input,
-.vigilia-field select,
-.vigilia-field textarea,
-.vigilia-field-row input,
-.vigilia-field-row select {
+.yunari-field input,
+.yunari-field select,
+.yunari-field textarea,
+.yunari-field-row input,
+.yunari-field-row select {
   width: auto;
   display: inline-block;
   margin: 0;
 }
 /* The shell gives panel labels a line of their own; inside a field the row owns
    the line. */
-.vigilia-field > label,
-.vigilia-field > span,
-.vigilia-field-row > label,
-.vigilia-field-row > span {
+.yunari-field > label,
+.yunari-field > span,
+.yunari-field-row > label,
+.yunari-field-row > span {
   display: block;
   margin-top: 0;
 }
 /* A pair is one flex line. The row wraps rather than squeezing its fields: the
    Add pane's import/replace pair is the one left that is not `ControlPair`, and
    two buttons in a 240px column do not share the width a control would. */
-.vigilia-field-row {
+.yunari-field-row {
   flex-wrap: wrap;
 }
 /* A numeric box is a fixed measure, never a column-wide one: the artboard pair
    puts two of them on the same row. */
-.vigilia-field input[type="number"],
-.vigilia-field-row input[type="number"] {
+.yunari-field input[type="number"],
+.yunari-field-row input[type="number"] {
   width: 4.5em;
 }
-.vigilia-field [role="alert"],
-.vigilia-field-row [role="alert"] {
+.yunari-field [role="alert"],
+.yunari-field-row [role="alert"] {
   margin: 4px 0 0;
   color: var(--shell-danger);
   font-size: 12px;
 }
-.vigilia-field [role="alert"] {
+.yunari-field [role="alert"] {
   grid-column: 1 / -1;
 }
-.vigilia-field-row [role="alert"] {
+.yunari-field-row [role="alert"] {
   flex-basis: 100%;
 }
 /* A bounded field's slider sits in the control column, under the box that stays
    the precise instrument, and its bound reads as part of the field rather than
    as a failure. */
-.vigilia-field input[type="range"] {
+.yunari-field input[type="range"] {
   grid-column: 2;
   width: 100%;
   margin: 0;
 }
-.vigilia-field .vigilia-field-bound {
+.yunari-field .yunari-field-bound {
   grid-column: 1 / -1;
   margin: 4px 0 0;
   color: var(--shell-muted);
@@ -2132,10 +2132,10 @@ body,
 }
 
 /* The layer tree: one dense line per layer, indentation carrying the depth. */
-[data-vigilia-panel="layers"] [role="tree"] {
+[data-yunari-panel="layers"] [role="tree"] {
   position: relative;
 }
-.vigilia-layer-row {
+.yunari-layer-row {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -2158,14 +2158,14 @@ body,
      buttons inside keep their own `pointer` below. */
   cursor: grab;
 }
-.vigilia-layer-row button {
+.yunari-layer-row button {
   cursor: pointer;
 }
 
 /* Mid-gesture there are three answers and all three are visible. Before this
    the row under the pointer was the same row it had been all along, so a
    refused drop and a landing one looked identical until release. */
-.vigilia-layer-row[data-drop="refused"] {
+.yunari-layer-row[data-drop="refused"] {
   /* Unreachable, the same word the panel already uses for a hidden or
      out-of-context row — but struck through, because refusing to let go of a
      layer is not the same as greying one out. */
@@ -2173,46 +2173,46 @@ body,
   text-decoration: line-through;
   cursor: not-allowed;
 }
-.vigilia-layer-row[data-drop="slot"] {
+.yunari-layer-row[data-drop="slot"] {
   cursor: copy;
 }
 /* Every row the drag cannot land on recedes, so the slot reads as the one
    place the drop would go rather than as one more row of the same list. */
-[data-vigilia-panel="layers"]
+[data-yunari-panel="layers"]
   [role="tree"][data-dragging]
-  .vigilia-layer-row:not([data-drop="slot"]) {
+  .yunari-layer-row:not([data-drop="slot"]) {
   opacity: 0.4;
 }
 /* The refusal is held a shade stronger than the rest, so "no" is still legible
    against a list that is already dimmed. */
-[data-vigilia-panel="layers"]
+[data-yunari-panel="layers"]
   [role="tree"][data-dragging]
-  .vigilia-layer-row[data-drop="refused"] {
+  .yunari-layer-row[data-drop="refused"] {
   opacity: 0.65;
 }
 /* The row being moved says so too, so the author can see what they picked up. */
-[data-vigilia-panel="layers"]
+[data-yunari-panel="layers"]
   [role="tree"][data-dragging]
-  .vigilia-layer-row[data-drag-source] {
+  .yunari-layer-row[data-drag-source] {
   cursor: grabbing;
   opacity: 0.65;
 }
 /* Only an entered group dims anything: with no group entered every top-level
    layer is selectable on the canvas, and a tree greyed out by default would
    say the opposite. */
-.vigilia-layer-row[data-context="false"] {
+.yunari-layer-row[data-context="false"] {
   opacity: 0.45;
 }
 /* A hidden layer is dimmed the way an unreachable one is, for the same reason:
    the canvas honours the eye button, so the row has to say what the canvas is
    doing. Without it the only difference is a tooltip's title, which is a mouse
    affordance for a state an author sets once and then forgets. */
-.vigilia-layer-row[data-hidden="true"] {
+.yunari-layer-row[data-hidden="true"] {
   opacity: 0.45;
 }
 /* Entering a group already dims what it makes unreachable; a hidden row inside
    one should not stack two opacities into an unreadable row. */
-.vigilia-layer-row[data-hidden="true"][data-context="false"] {
+.yunari-layer-row[data-hidden="true"][data-context="false"] {
   opacity: 0.45;
 }
 
@@ -2222,7 +2222,7 @@ body,
    The `1px` radius is a **degenerate mark**: the line is 2px and its radius is
    half that, so the value *is* its own thickness rather than a step on §3's
    closed scale. Task 6's ratchet exempts it by name. */
-.vigilia-layer-dropline {
+.yunari-layer-dropline {
   position: absolute;
   top: var(--layer-dropline-top, 0);
   left: var(--layer-dropline-left, 6px);
@@ -2233,7 +2233,7 @@ body,
   pointer-events: none;
 }
 /* Every pane's chrome (DESIGN.md §7.3): a title bar, a body and an optional footer
-   toolbar. The section is the pane itself, so `data-vigilia-panel` names it.
+   toolbar. The section is the pane itself, so `data-yunari-panel` names it.
 
    The pane's own name overrides the panel-wide `h2` rule above it. That rule is
    for a *section* heading inside a pane — uppercase, display serif, a hairline
@@ -2306,11 +2306,11 @@ body,
 .editor-shell-pane-actions button {
   padding: 0;
 }
-.vigilia-layer-row[data-selected="true"] {
+.yunari-layer-row[data-selected="true"] {
   background: color-mix(in srgb, var(--shell-text) 14%, transparent);
   color: var(--shell-text);
 }
-.vigilia-layer-row button {
+.yunari-layer-row button {
   min-height: 20px;
   width: 20px;
   margin: 0;
@@ -2324,7 +2324,7 @@ body,
   border: 1px solid transparent;
   background: transparent;
 }
-.vigilia-layer-row button:hover {
+.yunari-layer-row button:hover {
   border-color: var(--muted);
 }
 /* The twisty column, whether the row draws one or only reserves its place.
@@ -2332,8 +2332,8 @@ body,
    twisty next to a 20px placeholder left the column ~4px narrower than the
    button is wide, and the flexible bound column absorbed the difference — so
    the *name* re-flowed every time a row gained or lost its twisty. */
-.vigilia-layer-twisty,
-.vigilia-layer-row > button:first-child {
+.yunari-layer-twisty,
+.yunari-layer-row > button:first-child {
   flex: 0 0 20px;
   width: 20px;
   display: inline-flex;
@@ -2362,7 +2362,7 @@ body,
    shortens how far the line overruns into the reserved strip (the role's
    coverage falls 58px → 50px). So the value waits for a ruling that names a
    lever the arithmetic can honour; `vg-260` carries the counts. */
-.vigilia-layer-mark {
+.yunari-layer-mark {
   flex: 0 0 28px;
   min-width: 0;
   display: inline-flex;
@@ -2375,7 +2375,7 @@ body,
    it yields a control, and it yields the role last." The `6ch` floor below is
    the *resting* row's — a row that draws no control has no strip to pay for, and
    the floor is what keeps a deep, key-heavy row from crushing its name. */
-.vigilia-layer-name {
+.yunari-layer-name {
   flex: 1 1 auto;
   min-width: 6ch;
   overflow: hidden;
@@ -2388,7 +2388,7 @@ body,
    still a width the row may not have. The name loses nothing where there is room
    to take: `flex-grow: 1` still gives it every free pixel, so the floor only ever
    mattered while the line was shrinking. */
-.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-name {
+.yunari-layer-row:has(.yunari-layer-state button) .yunari-layer-name {
   min-width: 0;
 }
 /* §7.3's order is a precedence, and these two declarations are what make it one
@@ -2399,8 +2399,8 @@ body,
    `999` is not a measurement: it is a weight large enough that the two columns
    which yield first take the whole violation and freeze at their zero minimum,
    leaving the residue to the role. */
-.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-name,
-.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-bound {
+.yunari-layer-row:has(.yunari-layer-state button) .yunari-layer-name,
+.yunari-layer-row:has(.yunari-layer-state button) .yunari-layer-bound {
   flex-shrink: 999;
 }
 /* **And the role yields last, and it clips rather than being covered** — §7.3's
@@ -2409,14 +2409,14 @@ body,
    paints over says nothing at all where one that ellipsises says what it can.
    `overflow: hidden` is what makes it clip: a shrunken box with `visible`
    overflow still paints its text past its own edge. */
-.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-role {
+.yunari-layer-row:has(.yunari-layer-state button) .yunari-layer-role {
   flex-shrink: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 /* A group holds others, and a bold name says so without a mark repeating it. */
-.vigilia-layer-row[data-kind="group"] .vigilia-layer-name {
+.yunari-layer-row[data-kind="group"] .yunari-layer-name {
   font-weight: 600;
 }
 /* What the row is, in the document's own words. Rendered on every row, unlike
@@ -2435,7 +2435,7 @@ body,
    2 with the role taken out, where the spec's illustrated `chart · line ×3` in
    place of `Line ×3` costs 7 of 60. So a chart says the family and the count,
    and does not repeat the word the family already carries. */
-.vigilia-layer-role {
+.yunari-layer-role {
   flex: none;
   white-space: nowrap;
   color: var(--shell-muted);
@@ -2447,7 +2447,7 @@ body,
    All of it was measured. Reserving the strip's width on the row cost the
    *name* that width on every row, permanently, on every theme — so the room the
    controls need is held open only on the rows that draw them, which is the
-   `:has` rule under `.vigilia-layer-bound`. Overlaying is what makes that rule
+   `:has` rule under `.yunari-layer-bound`. Overlaying is what makes that rule
    affordable: the controls only exist on the row the author is on, where they
    are looking at them rather than reading the key they cover.
 
@@ -2457,7 +2457,7 @@ body,
    on, and it is deliberate: the alternative was paying it on all sixty. The
    bound column is what gives way, and it is the right thing to give way,
    because it is on the row as a fact and a key is one hover away. */
-.vigilia-layer-state {
+.yunari-layer-state {
   position: absolute;
   right: 4px;
   top: 0;
@@ -2472,7 +2472,7 @@ body,
    role on every row at rest (`vg-265` — the role is covered, not clipped, which
    is why no overflow reading saw it). Where controls are drawn, the surface is
    still what keeps a key running underneath from showing between two icons. */
-.vigilia-layer-state:has(button) {
+.yunari-layer-state:has(button) {
   background: var(--shell-surface);
   border-radius: 4px;
   padding-left: 6px;
@@ -2480,12 +2480,12 @@ body,
 /* §5 makes an icon control a 26px square, and the row is 26px so the two agree.
    Every button in the slot, the entry control included: the `:has` count below
    is `6 + 26n + 4(n - 1)`, so a 20px entry button would make every row's
-   reservation wrong. The entry's glyph and its `data-vigilia-layer-entry`
+   reservation wrong. The entry's glyph and its `data-yunari-layer-entry`
    contract are unchanged — only the box it sits in is the slot's.
 
    Scoped to this slot because the twisty beside it keeps the 20px column the
    row's own `button` rule gives every row button. */
-.vigilia-layer-row .vigilia-layer-state button {
+.yunari-layer-row .yunari-layer-state button {
   width: 26px;
   min-height: 26px;
 }
@@ -2494,7 +2494,7 @@ body,
    three-key chart gives way before the layer's own name does — the one thing a
    layer list must never ellipsise. On the attended row the two shrink together,
    §7.3 ordering the key against the controls and never against the name. */
-.vigilia-layer-bound {
+.yunari-layer-bound {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -2550,16 +2550,16 @@ body,
    could not match, and the fourth button it was written for was the rename pen
    `vg-462` removed (`vg-492`). `calc()` states the arithmetic rather than
    hiding it behind a number. */
-.vigilia-layer-row:has(.vigilia-layer-state button) {
+.yunari-layer-row:has(.yunari-layer-state button) {
   padding-right: calc(4px + 6px + 26px * 1);
 }
-.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2)) {
+.yunari-layer-row:has(.yunari-layer-state button:nth-child(2)) {
   padding-right: calc(4px + 6px + 26px * 2 + 4px);
 }
-.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3)) {
+.yunari-layer-row:has(.yunari-layer-state button:nth-child(3)) {
   padding-right: calc(4px + 6px + 26px * 3 + 8px);
 }
-.vigilia-layer-rename {
+.yunari-layer-rename {
   flex: 1;
   min-width: 0;
   min-height: var(--layer-rename-min-height);
@@ -2575,7 +2575,7 @@ body,
      so a border here would be the same hairline drawn twice. No radius either:
      it is a flush region of the shell, square like the other three (plan 7
      Task 3). */
-  background: var(--vigilia-canvas-bg);
+  background: var(--yunari-canvas-bg);
 }
 /* §7.5's two top corners in one row, so §7.7's "clusters cannot collide" is a
    layout fact rather than a number reserved against the other cluster's width:
@@ -2656,7 +2656,7 @@ body,
   position: absolute;
   inset: 0;
 }
-.editor-shell-stage #vigilia-fabric-editor {
+.editor-shell-stage #yunari-fabric-editor {
   width: 100%;
   height: 100%;
 }
@@ -2674,7 +2674,7 @@ body,
   transform: translateX(-50%);
   /* The cluster's colour, inherited by every control in it. It is here rather
      than on `.editor-shell-dock button` so that §4's bare
-     `[data-vigilia-destructive]` rule is the only declaration applying directly
+     `[data-yunari-destructive]` rule is the only declaration applying directly
      to Delete — see the note on the button rule above. */
   color: var(--shell-text);
   /* §7.5: a cluster sits 14–16px in from the stage's edges, so the dock is
@@ -2807,8 +2807,8 @@ body,
    An outline only. It must not cover the artboard or dim the pasteboard: the
    claim it makes is where the screen's edges are, and anything more would be
    the lens deciding what the author can see. */
-[data-vigilia-display-screen] {
-  border: 1px solid var(--vigilia-subdued);
+[data-yunari-display-screen] {
+  border: 1px solid var(--yunari-subdued);
   box-sizing: border-box;
 }
 .editor-shell-inspector {

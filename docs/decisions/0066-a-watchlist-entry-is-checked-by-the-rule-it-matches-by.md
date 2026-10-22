@@ -29,7 +29,7 @@ section and the Document pane's This document section — so that decision's sub
 is gone. The replacement is therefore not "where `0030` went" but "which live
 editor mechanism owner the entry's slot should gate".
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `WATCHLIST`, `isWatched`, `matchesDirectory`, `covers`, `claimedPaths`
 and the `--self-test` block in `scripts/reuse-gate.mjs`; decisions `0025`

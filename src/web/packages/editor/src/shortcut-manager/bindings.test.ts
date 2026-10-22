@@ -39,7 +39,7 @@ function store(initial: Readonly<Record<string, string>> = {}): Storage {
   };
 }
 
-const KEY = "vigilia.editor.shortcut-overrides";
+const KEY = "yunari.editor.shortcut-overrides";
 
 /** Ctrl+Shift+P, the chord the header prints. */
 const PUBLISH_CHORD: ShortcutBinding = {

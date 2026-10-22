@@ -29,10 +29,10 @@ export function StatusReadout({
   if (objectCount === undefined) return null;
   return (
     <>
-      <span data-vigilia-status-objects="">
+      <span data-yunari-status-objects="">
         {uiCopy.statusBar.objects(objectCount)}
       </span>
-      <span data-vigilia-status-selected="">
+      <span data-yunari-status-selected="">
         {uiCopy.statusBar.selected(selectedCount)}
       </span>
     </>

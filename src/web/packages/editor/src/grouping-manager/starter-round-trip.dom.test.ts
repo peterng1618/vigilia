@@ -4,7 +4,7 @@ import {
   outsideCount,
   type SceneBox,
   sceneBoxesOf,
-} from "@vigilia/scene-fabric";
+} from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   type Canvas,

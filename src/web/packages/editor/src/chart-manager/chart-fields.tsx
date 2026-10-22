@@ -3,7 +3,7 @@ import {
   type ChartContent,
   removeSetting,
   writeSetting,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type * as React from "react";
 import { ControlNumber } from "../components/ui/control-number.js";
 import { ControlSegmented } from "../components/ui/control-segmented.js";
@@ -180,7 +180,7 @@ export interface ChartContentFieldsView {
 /** One paint reference: the token it names now, and the tokens it may name. */
 export interface ChartPaintRowView {
   readonly id: string;
-  /** The `data-vigilia-chart-paint` value: `track`, or `palette.0` for a slice. */
+  /** The `data-yunari-chart-paint` value: `track`, or `palette.0` for a slice. */
   readonly key: string;
   readonly label: string;
   /** The settings key this row writes, without the repeated index. */
@@ -289,13 +289,13 @@ function ChartSeriesRow(props: {
 
   return (
     <div
-      data-vigilia-chart-series={binding.id}
+      data-yunari-chart-series={binding.id}
       className="flex flex-col gap-[var(--space-6)]"
     >
       <ControlSelect
         label={`Binding: ${binding.id}`}
-        id={`vigilia-chart-binding-${binding.id}`}
-        data={{ "data-vigilia-binding": binding.id }}
+        id={`yunari-chart-binding-${binding.id}`}
+        data={{ "data-yunari-binding": binding.id }}
         value={binding.semanticKey}
         options={row.keyOptions}
         onChange={(key) => set("semanticKey", key)}
@@ -304,7 +304,7 @@ function ChartSeriesRow(props: {
       {row.removable ? (
         <button
           type="button"
-          data-vigilia-chart-binding-remove={binding.id}
+          data-yunari-chart-binding-remove={binding.id}
           className="self-start text-xs text-muted"
           onClick={() => edits.onRemoveBinding(chartId, binding.id)}
         >
@@ -319,8 +319,8 @@ function ChartSeriesRow(props: {
           separates it from the artboard's 16384 validity ceiling (`vg-493`). */}
       <ControlSlider
         label="Precision"
-        id={`vigilia-chart-binding-${binding.id}-precision`}
-        data={{ "data-vigilia-binding-field": field("precision") }}
+        id={`yunari-chart-binding-${binding.id}-precision`}
+        data={{ "data-yunari-binding-field": field("precision") }}
         value={binding.precision ?? PRECISION_FLOOR}
         unauthored={binding.precision === undefined}
         min={MIN_PRECISION}
@@ -331,8 +331,8 @@ function ChartSeriesRow(props: {
       />
       <ControlSelect
         label={uiCopy.panels.unitDisplay}
-        id={`vigilia-chart-binding-${binding.id}-unit-display`}
-        data={{ "data-vigilia-binding-field": field("unitDisplay") }}
+        id={`yunari-chart-binding-${binding.id}-unit-display`}
+        data={{ "data-yunari-binding-field": field("unitDisplay") }}
         value={binding.unitDisplay ?? ""}
         options={series.unitOptions}
         onChange={(value) =>
@@ -344,16 +344,16 @@ function ChartSeriesRow(props: {
       />
       <ControlNumber
         label="Scale"
-        id={`vigilia-chart-binding-${binding.id}-scale`}
-        data={{ "data-vigilia-binding-field": field("scale") }}
+        id={`yunari-chart-binding-${binding.id}-scale`}
+        data={{ "data-yunari-binding-field": field("scale") }}
         value={binding.scale}
         onCommit={(value) => set("scale", value)}
         onClear={() => set("scale", undefined)}
       />
       <ControlNumber
         label="Offset"
-        id={`vigilia-chart-binding-${binding.id}-offset`}
-        data={{ "data-vigilia-binding-field": field("offset") }}
+        id={`yunari-chart-binding-${binding.id}-offset`}
+        data={{ "data-yunari-binding-field": field("offset") }}
         value={binding.offset}
         onCommit={(value) => set("offset", value)}
         onClear={() => set("offset", undefined)}
@@ -368,7 +368,7 @@ function ChartSettingRow(props: {
   readonly write: (path: readonly string[], value: unknown) => void;
 }): React.JSX.Element {
   const { row, write } = props;
-  const data = { "data-vigilia-chart-setting": row.key };
+  const data = { "data-yunari-chart-setting": row.key };
 
   switch (row.control) {
     case "number":
@@ -450,14 +450,14 @@ export function ChartContentFields(props: {
 
   return (
     <div
-      data-vigilia-chart-fields="content"
+      data-yunari-chart-fields="content"
       className="flex flex-col gap-[var(--space-6)]"
     >
       {view.aspect === undefined ? null : (
         <ControlSegmented
           label={view.aspect.label}
           id={view.aspect.id}
-          data={{ "data-vigilia-chart-aspect": "" }}
+          data={{ "data-yunari-chart-aspect": "" }}
           value={view.aspect.value}
           options={view.aspect.options}
           onChange={(option) => {
@@ -470,7 +470,7 @@ export function ChartContentFields(props: {
       <ControlSelect
         label={view.series.label}
         id={view.series.id}
-        data={{ "data-vigilia-chart-binding-add": "" }}
+        data={{ "data-yunari-chart-binding-add": "" }}
         // A constant value, so the chooser is consumed by the click that makes
         // it: a control that held its choice would declare the same series again
         // on the next render.
@@ -483,7 +483,7 @@ export function ChartContentFields(props: {
       />
 
       {view.series.full === undefined ? null : (
-        <p className="vigilia-run-note" data-vigilia-chart-binding-full="">
+        <p className="yunari-run-note" data-yunari-chart-binding-full="">
           {view.series.full}
         </p>
       )}
@@ -515,7 +515,7 @@ export function ChartPaintFields(props: {
 
   return (
     <div
-      data-vigilia-chart-fields="paint"
+      data-yunari-chart-fields="paint"
       className="flex flex-col gap-[var(--space-6)]"
     >
       {view.rows.map((row) => (
@@ -523,7 +523,7 @@ export function ChartPaintFields(props: {
           key={row.key}
           label={row.label}
           id={row.id}
-          data={{ "data-vigilia-chart-paint": row.key }}
+          data={{ "data-yunari-chart-paint": row.key }}
           value={row.ref}
           options={row.options}
           disabled={row.refused}

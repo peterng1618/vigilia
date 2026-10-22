@@ -63,7 +63,7 @@ describe("glass lifecycle", () => {
         evented: false,
       }),
     );
-    s.canvas.add(panel({ vigiliaGlass: { blurRadius: 8 } }));
+    s.canvas.add(panel({ yunariGlass: { blurRadius: 8 } }));
     s.canvas.renderAll();
     const before = s.pixel(100, 100);
 
@@ -144,7 +144,7 @@ describe("glass lifecycle", () => {
       {
         left: 100,
         top: 100,
-        vigiliaGlass: { blurRadius: 24 },
+        yunariGlass: { blurRadius: 24 },
       } as Record<string, unknown>,
     );
     s.canvas.add(group);
@@ -207,7 +207,7 @@ describe("glass lifecycle", () => {
       own: number,
     ): { alpha: number; panel: Rect } => {
       const s = stage({ texture: false });
-      const subject = panel({ vigiliaGlass: { blurRadius: 8 }, opacity: own });
+      const subject = panel({ yunariGlass: { blurRadius: 8 }, opacity: own });
       s.canvas.add(
         new Group([subject], { left: 100, top: 100, opacity: ancestor }),
       );
@@ -249,7 +249,7 @@ describe("glass lifecycle", () => {
     const s = stage({ texture: false });
     s.canvas.add(
       panel({
-        vigiliaGlass: { blurRadius: 8 },
+        yunariGlass: { blurRadius: 8 },
         opacity: -0.5,
       }),
     );

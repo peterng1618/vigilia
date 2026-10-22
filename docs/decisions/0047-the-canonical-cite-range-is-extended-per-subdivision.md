@@ -27,7 +27,7 @@ landed.
 The shape is the inverse of the one already handled: a marker *over*-claimed by
 another document's numbering was refused, and this is a marker nothing can claim.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** `scripts/design-md.mjs` for the range, its consumers and its
 self-test; `DESIGN.md` for the marker; `docs/`, `src/` and `scripts/` for a

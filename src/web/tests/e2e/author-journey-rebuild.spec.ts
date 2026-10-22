@@ -71,7 +71,7 @@ test.describe("the reference composition, built from blank", () => {
     expect(await readScene(page)).toEqual([]);
 
     await openPane(page, "Add");
-    const pane = page.locator('[data-vigilia-panel="add"]');
+    const pane = page.locator('[data-yunari-panel="add"]');
     // **What the pane offers, not how many buttons that is.** The count was 13
     // written at a moment when the pane held 13 buttons, and every insertion
     // since — shapes, charts, the card library — moved it, so the assertion went
@@ -97,13 +97,13 @@ test.describe("the reference composition, built from blank", () => {
     // longer offers a read of what the document references.
     await openPane(page, "Tokens");
     const offered = page.locator(
-      "[data-vigilia-palette-token-row], [data-vigilia-type-preset-row]",
+      "[data-yunari-palette-token-row], [data-yunari-type-preset-row]",
     );
     await expect(offered.first()).toBeVisible();
     // The same two sets the removed section resolved — the theme's own palette
     // and its own presets — read from the lists that own them.
     expect(await offered.count()).toBeGreaterThanOrEqual(20);
-    await expect(page.locator("[data-vigilia-type-presets]")).toHaveCount(1);
+    await expect(page.locator("[data-yunari-type-presets]")).toHaveCount(1);
 
     await page.screenshot({ path: SHOT("01-blank") });
   });
@@ -174,14 +174,14 @@ test.describe("the reference composition, built from blank", () => {
       colour: "palette.text",
     });
     await selectLayer(page, "time");
-    await chooseIn(page, '[data-vigilia-run-source="0"]', "time.now");
-    await page.locator('[data-vigilia-run-format="0"]').fill("HH:mm");
-    await page.locator('[data-vigilia-run-format="0"]').blur();
+    await chooseIn(page, '[data-yunari-run-source="0"]', "time.now");
+    await page.locator('[data-yunari-run-format="0"]').fill("HH:mm");
+    await page.locator('[data-yunari-run-format="0"]').blur();
     // PM beside it, as its own run — the reason F2.1 was blocking.
-    await page.locator("[data-vigilia-run-add]").click();
-    await fill(page, '[data-vigilia-run-text="1"]', "PM");
-    await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.24-400");
-    await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
+    await page.locator("[data-yunari-run-add]").click();
+    await fill(page, '[data-yunari-run-text="1"]', "PM");
+    await chooseIn(page, '[data-yunari-run-preset="1"]', "typePresets.24-400");
+    await chooseIn(page, '[data-yunari-run-colour="1"]', "palette.dim");
 
     // The rule under it. A `Path` takes its data as SVG commands, which is the
     // only way a hairline is drawn at all.
@@ -191,10 +191,10 @@ test.describe("the reference composition, built from blank", () => {
     // A rule is a stroke, not a shape. On a path that arrives with no fill the
     // inspector offers **one** paint control and it writes the stroke — see
     // `paintPropertyFor` — so there is no separate Fill picker to clear, and
-    // asking for `[data-vigilia-panel-fill]` waits for a control this shape
+    // asking for `[data-yunari-panel-fill]` waits for a control this shape
     // deliberately does not render. Which token goes on it is the whole choice.
-    await chooseToken(page, "[data-vigilia-panel-stroke]", "Rule");
-    await fill(page, "[data-vigilia-panel-border]", 1);
+    await chooseToken(page, "[data-yunari-panel-stroke]", "Rule");
+    await fill(page, "[data-yunari-panel-border]", 1);
 
     await addText(page, {
       name: "date",
@@ -207,11 +207,9 @@ test.describe("the reference composition, built from blank", () => {
       colour: "palette.dim",
     });
     await selectLayer(page, "date");
-    await chooseIn(page, '[data-vigilia-run-source="0"]', "date.today");
-    await page
-      .locator('[data-vigilia-run-format="0"]')
-      .fill("ddd, MMM D, YYYY");
-    await page.locator('[data-vigilia-run-format="0"]').blur();
+    await chooseIn(page, '[data-yunari-run-source="0"]', "date.today");
+    await page.locator('[data-yunari-run-format="0"]').fill("ddd, MMM D, YYYY");
+    await page.locator('[data-yunari-run-format="0"]').blur();
 
     await page.screenshot({ path: SHOT("02-clock-region") });
 
@@ -267,8 +265,8 @@ test.describe("the reference composition, built from blank", () => {
     await setName(page, "cpu-card-icon");
     await place(page, { x: 452, y: 218, w: 28, h: 28 });
     // A path with no fill paints its stroke, so this one control is both.
-    await chooseToken(page, "[data-vigilia-panel-stroke]", "CPU blue");
-    await fill(page, "[data-vigilia-panel-border]", 2);
+    await chooseToken(page, "[data-yunari-panel-stroke]", "CPU blue");
+    await fill(page, "[data-yunari-panel-border]", 2);
 
     await addText(page, {
       name: "cpu-card-title",
@@ -286,19 +284,19 @@ test.describe("the reference composition, built from blank", () => {
     await insert(page, "Text", "text");
     await setName(page, "cpu-card-value");
     await place(page, { x: 448, y: 262, w: 220, h: 60 });
-    await fill(page, '[data-vigilia-run-text="0"]', "32");
-    await chooseIn(page, '[data-vigilia-run-preset="0"]', "typePresets.60-600");
-    await chooseIn(page, '[data-vigilia-run-colour="0"]', "palette.text");
-    await chooseIn(page, '[data-vigilia-run-source="0"]', "cpu.load");
-    await page.locator("[data-vigilia-run-add]").click();
-    await fill(page, '[data-vigilia-run-text="1"]', "%");
-    await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
-    await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
+    await fill(page, '[data-yunari-run-text="0"]', "32");
+    await chooseIn(page, '[data-yunari-run-preset="0"]', "typePresets.60-600");
+    await chooseIn(page, '[data-yunari-run-colour="0"]', "palette.text");
+    await chooseIn(page, '[data-yunari-run-source="0"]', "cpu.load");
+    await page.locator("[data-yunari-run-add]").click();
+    await fill(page, '[data-yunari-run-text="1"]', "%");
+    await chooseIn(page, '[data-yunari-run-preset="1"]', "typePresets.32-400");
+    await chooseIn(page, '[data-yunari-run-colour="1"]', "palette.dim");
     await page.waitForTimeout(200);
 
     // A reading and a unit on one object, and the reading bound to a key.
     expect(await readObject(page, "cpu-card-value")).toMatchObject({
-      vigiliaText: {
+      yunariText: {
         runs: [
           { kind: "value", typePreset: "typePresets.60-600" },
           { kind: "literal", text: "%", typePreset: "typePresets.32-400" },
@@ -351,9 +349,9 @@ async function glyph(
   await setName(page, name);
   await place(page, box);
   // A path with no fill paints its stroke, so this one control is both.
-  await chooseToken(page, "[data-vigilia-panel-stroke]", token);
-  await fill(page, "[data-vigilia-panel-border]", 2);
-  await fill(page, "[data-vigilia-shape-path]", data);
+  await chooseToken(page, "[data-yunari-panel-stroke]", token);
+  await fill(page, "[data-yunari-panel-border]", 2);
+  await fill(page, "[data-yunari-shape-path]", data);
 }
 
 /** A chip: a square with pins on all four sides, as every device icon is. */
@@ -399,11 +397,11 @@ async function reading(
   await selectLayer(page, name);
   // The run editor lives in the selection's own column, which no pane choice
   // affects, so reaching it needs no click at all.
-  await chooseIn(page, '[data-vigilia-run-source="0"]', key);
-  await page.locator("[data-vigilia-run-add]").click();
-  await fill(page, '[data-vigilia-run-text="1"]', "%");
-  await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
-  await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
+  await chooseIn(page, '[data-yunari-run-source="0"]', key);
+  await page.locator("[data-yunari-run-add]").click();
+  await fill(page, '[data-yunari-run-text="1"]', "%");
+  await chooseIn(page, '[data-yunari-run-preset="1"]', "typePresets.32-400");
+  await chooseIn(page, '[data-yunari-run-colour="1"]', "palette.dim");
 }
 
 test.describe("the rest of the composition", () => {
@@ -476,7 +474,7 @@ test.describe("the rest of the composition", () => {
       paint: ["GPU violet"],
     });
     // A card sparkline has no axes in the target, and the family offers them.
-    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page.locator('[data-yunari-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("04-gpu-card") });
 
     // The box the author typed, not the measurement under it — F2.5.
@@ -485,7 +483,7 @@ test.describe("the rest of the composition", () => {
       renderedWidth: 240,
     });
     expect(await readObject(page, "gpu-card-value")).toMatchObject({
-      vigiliaText: {
+      yunariText: {
         runs: [
           { kind: "value", typePreset: "typePresets.60-600" },
           { kind: "literal", text: "%" },
@@ -542,15 +540,11 @@ test.describe("the rest of the composition", () => {
     // field is the enforcing control: a value it cannot hold never reaches the
     // chart, so a journey that typed one was asserting a document that cannot
     // exist.
-    await fill(page, '[data-vigilia-chart-setting="startAngle"]', 135);
-    await fill(page, '[data-vigilia-chart-setting="endAngle"]', 45);
-    await fill(page, '[data-vigilia-chart-setting="thickness"]', 14);
-    await page.locator('[data-vigilia-chart-setting="roundCap"]').check();
-    await chooseToken(
-      page,
-      '[data-vigilia-chart-paint="track"]',
-      "Chart track",
-    );
+    await fill(page, '[data-yunari-chart-setting="startAngle"]', 135);
+    await fill(page, '[data-yunari-chart-setting="endAngle"]', 45);
+    await fill(page, '[data-yunari-chart-setting="thickness"]', 14);
+    await page.locator('[data-yunari-chart-setting="roundCap"]').check();
+    await chooseToken(page, '[data-yunari-chart-paint="track"]', "Chart track");
     await reading(
       page,
       "ram-value",
@@ -606,15 +600,11 @@ test.describe("the rest of the composition", () => {
       series: ["vram.used.percent"],
       paint: [undefined, "VRAM magenta"],
     });
-    await fill(page, '[data-vigilia-chart-setting="startAngle"]', 90);
-    await fill(page, '[data-vigilia-chart-setting="endAngle"]', -270);
-    await fill(page, '[data-vigilia-chart-setting="thickness"]', 14);
-    await page.locator('[data-vigilia-chart-setting="roundCap"]').check();
-    await chooseToken(
-      page,
-      '[data-vigilia-chart-paint="track"]',
-      "Chart track",
-    );
+    await fill(page, '[data-yunari-chart-setting="startAngle"]', 90);
+    await fill(page, '[data-yunari-chart-setting="endAngle"]', -270);
+    await fill(page, '[data-yunari-chart-setting="thickness"]', 14);
+    await page.locator('[data-yunari-chart-setting="roundCap"]').check();
+    await chooseToken(page, '[data-yunari-chart-paint="track"]', "Chart track");
     await reading(
       page,
       "vram-value",
@@ -697,19 +687,19 @@ test.describe("the rest of the composition", () => {
       series: ["cpu.load", "gpu.load", "ram.used.percent"],
       paint: ["CPU blue", "GPU violet", "RAM teal"],
     });
-    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page.locator('[data-yunari-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("06-trends") });
 
-    // The committed key, read off the `data-vigilia-value` hook rather than
+    // The committed key, read off the `data-yunari-value` hook rather than
     // `.value`: the binding control is plan 1's select now — a `button`
     // carrying the hook — and `HTMLButtonElement.value` is always `""`, so the
     // old read answered three empty strings instead of the three series.
     const series = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("[data-vigilia-binding]")).map(
+      Array.from(document.querySelectorAll("[data-yunari-binding]")).map(
         (binding) =>
           binding
-            .querySelector("[data-vigilia-value]")
-            ?.getAttribute("data-vigilia-value"),
+            .querySelector("[data-yunari-value]")
+            ?.getAttribute("data-yunari-value"),
       ),
     );
     expect(series).toEqual(["cpu.load", "gpu.load", "ram.used.percent"]);
@@ -754,10 +744,10 @@ test.describe("the rest of the composition", () => {
       colour: "palette.text",
     });
     await selectLayer(page, "storage-card-value");
-    await page.locator("[data-vigilia-run-add]").click();
-    await fill(page, '[data-vigilia-run-text="1"]', "%");
-    await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.24-400");
-    await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
+    await page.locator("[data-yunari-run-add]").click();
+    await fill(page, '[data-yunari-run-text="1"]', "%");
+    await chooseIn(page, '[data-yunari-run-preset="1"]', "typePresets.24-400");
+    await chooseIn(page, '[data-yunari-run-colour="1"]', "palette.dim");
     await addChart(page, {
       family: "Bar",
       name: "storage-bar",
@@ -768,9 +758,9 @@ test.describe("the rest of the composition", () => {
       series: ["disk.used.percent"],
       paint: ["CPU blue"],
     });
-    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page.locator('[data-yunari-chart-setting="showAxes"]').uncheck();
     await page
-      .locator('[data-vigilia-chart-setting="showCategoryLabels"]')
+      .locator('[data-yunari-chart-setting="showCategoryLabels"]')
       .uncheck();
     await addText(page, {
       name: "storage-card-name",
@@ -844,7 +834,7 @@ test.describe("the rest of the composition", () => {
       series: ["network.download", "network.upload"],
       paint: ["CPU blue", "GPU violet"],
     });
-    await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
+    await page.locator('[data-yunari-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("08-network") });
 
     expect((await readScene(page)).map((object) => object.name)).toEqual(
@@ -903,11 +893,11 @@ test("what the rebuild authored survives the save", async ({
     colour: "palette.text",
   });
   await selectLayer(page, "cpu-card-value");
-  await chooseIn(page, '[data-vigilia-run-source="0"]', "cpu.load");
-  await page.locator("[data-vigilia-run-add]").click();
-  await fill(page, '[data-vigilia-run-text="1"]', "%");
-  await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
-  await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
+  await chooseIn(page, '[data-yunari-run-source="0"]', "cpu.load");
+  await page.locator("[data-yunari-run-add]").click();
+  await fill(page, '[data-yunari-run-text="1"]', "%");
+  await chooseIn(page, '[data-yunari-run-preset="1"]', "typePresets.32-400");
+  await chooseIn(page, '[data-yunari-run-colour="1"]', "palette.dim");
   await addChart(page, {
     family: "Line",
     name: "cpu-card-sparkline",
@@ -940,7 +930,7 @@ test("what the rebuild authored survives the save", async ({
       readonly objects: readonly {
         readonly id: string;
         readonly name?: string;
-        readonly vigiliaText?: {
+        readonly yunariText?: {
           readonly runs: readonly {
             readonly kind: string;
             readonly text?: string;
@@ -949,8 +939,8 @@ test("what the rebuild authored survives the save", async ({
           }[];
           readonly box?: { readonly width: number; readonly height: number };
         };
-        readonly vigiliaPaint?: Readonly<Record<string, string>>;
-        readonly vigiliaGlass?: { readonly blurRadius: number };
+        readonly yunariPaint?: Readonly<Record<string, string>>;
+        readonly yunariGlass?: { readonly blurRadius: number };
         readonly settings?: Readonly<Record<string, unknown>>;
       }[];
     };
@@ -963,13 +953,13 @@ test("what the rebuild authored survives the save", async ({
   expect(envelope.artboard).toMatchObject({ width: 1920, height: 1080 });
 
   // F2.5: the box the author typed, persisted as the box.
-  expect(byName("cpu-card-value")?.vigiliaText?.box).toMatchObject({
+  expect(byName("cpu-card-value")?.yunariText?.box).toMatchObject({
     width: 220,
     height: 60,
   });
 
   // F2.1: two runs, the first a reading and the second its unit.
-  expect(byName("cpu-card-value")?.vigiliaText?.runs).toEqual([
+  expect(byName("cpu-card-value")?.yunariText?.runs).toEqual([
     expect.objectContaining({
       kind: "value",
       typePreset: "typePresets.60-600",
@@ -989,9 +979,9 @@ test("what the rebuild authored survives the save", async ({
 
   // The card's material, the icon's stroke, and the chart's own paint: all
   // references, never literals, or §73 is broken in a document nobody hand-wrote.
-  expect(byName("cpu-card")?.vigiliaGlass?.blurRadius).toBe(40);
-  expect(byName("cpu-card")?.vigiliaPaint?.["fill"]).toMatch(/^palette\./);
-  expect(byName("cpu-card-icon")?.vigiliaPaint?.["stroke"]).toMatch(
+  expect(byName("cpu-card")?.yunariGlass?.blurRadius).toBe(40);
+  expect(byName("cpu-card")?.yunariPaint?.["fill"]).toMatch(/^palette\./);
+  expect(byName("cpu-card-icon")?.yunariPaint?.["stroke"]).toMatch(
     /^palette\./,
   );
   expect(JSON.stringify(byName("cpu-card-sparkline")?.settings)).not.toMatch(

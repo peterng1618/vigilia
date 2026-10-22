@@ -31,7 +31,7 @@ Two things have to be true and neither is Fabric's to give:
 The shape of the problem is therefore: *where does a box live when the
 platform's own text object insists on owning it?*
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scene-fabric/src/{fabric-text,object-type,persist,adapter}.ts`,
 `renderer-core/src/theme/{document,validate,fabric-envelope-validate}.ts`,
@@ -45,7 +45,7 @@ survived several attempts:
 
 - `TextContent` (`document.ts:173-179`) already owns `wrap`, `overflow`,
   `align`, `verticalAlign`. It carries **no width or height**, and
-  `vigiliaText` is the only Vigilia-owned field that round-trips the v2 scene
+  `yunariText` is the only Yunari-owned field that round-trips the v2 scene
   (`persist.ts:46-55`, `SCENE_PERSISTED_PROPERTIES`).
 - `runtimeLayout` (`fabric-text.ts:60-88`) already reads the box back **out of
   the `clipPath`** in preference to measuring the object. `applyClip`
@@ -176,7 +176,7 @@ that will not allow that, and its own tracker says so.
 | `splitByGrapheme: true` | removes the floor, keeps one `set` funnel | ~1 line | destroys word-preference wrapping | rejected |
 | Patch/fork `Textbox.initDimensions` | exact | fork | `AGENTS.md` forbids it; `fabric` is a hard dependency | rejected |
 | Restore the width after `initDimensions`, in each pass | exact for placement | ~1 line | one `set` (`changeWidth`, `updateText`) still eats a resize; does not survive `loadFromJSON` | partial — kept as the pass-level half |
-| **Store the box in `vigiliaText`; re-assert through Fabric's own `set` funnel** | exact; makes resize stick; survives save/reload | ~1 persisted field + 2 validators | older documents fall back to the measured box | **accepted** |
+| **Store the box in `yunariText`; re-assert through Fabric's own `set` funnel** | exact; makes resize stick; survives save/reload | ~1 persisted field + 2 validators | older documents fall back to the measured box | **accepted** |
 
 ## Rung 6 — probe
 
@@ -207,7 +207,7 @@ saw no change.
 
 ## Decision
 
-**`vigiliaText.box: { width, height }` is the owner.** Fabric's `width` and
+**`yunariText.box: { width, height }` is the owner.** Fabric's `width` and
 `height` become caches the box re-asserts, and the box is what
 `runtimeLayout` reads — so the clip carries it and nothing consults a
 measurement for placement. Both dimensions are required, because Fabric
@@ -228,5 +228,5 @@ assignment on the way out, so the number the author dragged is the number
 (`index.mjs:1237`), which is not overridden and so is untouched.
 
 **Not a fork, and not a second scene tree.** The Fabric object stays the
-persisted scene; `vigiliaText` is already its authored half, and this adds one
+persisted scene; `yunariText` is already its authored half, and this adds one
 field to it.

@@ -1,9 +1,9 @@
-import type { Sample, SampleEntry } from "@vigilia/renderer-core";
+import type { Sample, SampleEntry } from "@yunari/renderer-core";
 import {
   describeSemanticKey,
   diskDeviceId,
   diskDeviceOf,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { displayNameFor } from "../settings/devices.js";
 import {
   type DeviceAssignment,
@@ -21,7 +21,7 @@ import type {
 import { redactForBrowser } from "./provider.js";
 
 /**
- * LibreHardwareMonitor as an optional external program (§97): Vigilia reads the
+ * LibreHardwareMonitor as an optional external program (§97): Yunari reads the
  * JSON its built-in web server publishes and never links or compiles its .NET
  * library. When LHM is absent or its server is off, `sample` reports `missing`
  * with a reason so the registry can fall back, and `health()` says unavailable.

@@ -16,9 +16,9 @@
 import {
   Arc,
   applyObjectPalettePaints,
-  VIGILIA_PAINT_PROPERTY,
   Wedge,
-} from "@vigilia/scene-fabric";
+  YUNARI_PAINT_PROPERTY,
+} from "@yunari/scene-fabric";
 import { Canvas, StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { createErrorManager } from "./error-manager/index.js";
@@ -75,7 +75,7 @@ describe("a document the editor will not draw as written", () => {
         fill: "#1a1f2b",
         stroke: "",
       });
-      arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.panel" });
+      arc.set(YUNARI_PAINT_PROPERTY, { fill: "palette.panel" });
       return arc;
     });
 
@@ -96,7 +96,7 @@ describe("a document the editor will not draw as written", () => {
         endAngle: 90,
         fill: "#1a1f2b",
       });
-      wedge.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.panel" });
+      wedge.set(YUNARI_PAINT_PROPERTY, { fill: "palette.panel" });
       return wedge;
     });
 

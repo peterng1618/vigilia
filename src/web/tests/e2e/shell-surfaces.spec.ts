@@ -46,16 +46,16 @@ test("the dialogs and the inspector's sections paint every palette", async ({
   // slot of the rail, it is the right column and is always mounted.
   await selectLayer(page, "group-cpu-card");
   // The section is plan 1's `InspectorSection`: a `<section>` carrying
-  // `data-vigilia-section`, whose header — the thing painted from the shell's
+  // `data-yunari-section`, whose header — the thing painted from the shell's
   // tokens — is a button.
   //
-  // **Scoped to the column, because `[data-vigilia-section]` alone is not the
+  // **Scoped to the column, because `[data-yunari-section]` alone is not the
   // column's.** The Document pane renders its own sections from the same
   // component (plan 4 Task 8), and it is a rail slot this test never opens, so
   // an unscoped `.first()` resolved to a *hidden* `theme` section inside it and
   // the assertion below could never see the column at all.
   const section = page
-    .locator(".editor-shell-inspector [data-vigilia-section]")
+    .locator(".editor-shell-inspector [data-yunari-section]")
     .first();
   await expect(section).toBeVisible();
 

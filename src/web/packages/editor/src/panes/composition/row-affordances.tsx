@@ -40,7 +40,7 @@ import { uiCopy } from "../../ui-copy.js";
  * (`useControlTooltip`), so their name and their tooltip are one string (§6)
  * exactly as an icon button's are.
  *
- * They are also direct children of `.vigilia-layer-state`, never wrapped: the
+ * They are also direct children of `.yunari-layer-state`, never wrapped: the
  * stylesheet asks that slot's own buttons how much room beside the key they
  * need (`:has(... button:nth-child(n))`), and a wrapper would put every button
  * at position one of its own parent and answer the question for one control on

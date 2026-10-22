@@ -19,8 +19,8 @@
 - A heading weight is clamped to the nearest weight its family actually ships, and the clamped value is recorded on the face.
 - The exported surface of `font-catalog.ts` — `fontTrio`, `fontTrios`, `faceForRole`, `applyFontTrio` — is unchanged. Callers do not learn about generation.
 - `previewFontFace` and `releaseFontPreview` keep their signatures. A separate multi-face owner is added beside them.
-- The `data-vigilia-font-face`, `data-vigilia-font-trio`, `data-vigilia-font-apply` and `vigiliaFontTrio` selectors keep working and keep their keyboard behaviour.
-- Favourites live in the host. They never enter a `.vigilia-theme` package, the document schema, or the player.
+- The `data-yunari-font-face`, `data-yunari-font-trio`, `data-yunari-font-apply` and `yunariFontTrio` selectors keep working and keep their keyboard behaviour.
+- Favourites live in the host. They never enter a `.yunari-theme` package, the document schema, or the player.
 - New UI copy goes in `editor/src/ui-copy.ts`, not inline in a component.
 - No licence headers in source files. The generated module carries a provenance header naming Fonttrio (MIT) as the pairing source.
 - AGENTS.md rules apply throughout: no `git add -A`, Conventional Commit titles, run commands from `src/web/`.
@@ -175,7 +175,7 @@ import { fileURLToPath } from "node:url";
 const FONTTRIO_COMMIT = process.env["FONTTRIO_COMMIT"] ?? "";
 const FONTTRIO_RAW = `https://raw.githubusercontent.com/kapishdima/fonttrio/${FONTTRIO_COMMIT}`;
 const FONTSOURCE_API = "https://api.fontsource.org/v1/fonts";
-const UA = { "User-Agent": "vigilia-font-catalogue" };
+const UA = { "User-Agent": "yunari-font-catalogue" };
 const OUT = path.join(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
   "packages/editor/src/font-trios.generated.ts",
@@ -456,7 +456,7 @@ Expected: FAIL — `catalogFaces` is not exported, and `fontTrios()` still retur
 In `src/web/packages/editor/src/font-catalog.ts`, delete the hand-written `TRIOS` array and the `face(...)` helper and the `FONTSOURCE_LICENSE` constant, and add the import and `catalogFaces`:
 
 ```ts
-import type { TypePreset } from "@vigilia/renderer-core";
+import type { TypePreset } from "@yunari/renderer-core";
 import {
   GENERATED_FACES,
   type GeneratedFace,
@@ -515,7 +515,7 @@ Leave `faceForRole` and `applyFontTrio` exactly as they are. `applyFontTrio` alr
 
 ```bash
 cd src/web && npm test -- --run packages/editor/src/font-catalog.test.ts packages/editor/src/font-trios.generated.test.ts
-npm run typecheck -w @vigilia/editor
+npm run typecheck -w @yunari/editor
 ```
 
 Expected: PASS. The editor typecheck fails on `GeneratedFace` not being assignable if `GeneratedTrio.faces` is a fixed 3-tuple against a `readonly CuratedFontFace[]` — in that case relax the cast to `as unknown as readonly FontTrio[]` with a comment saying the generator emits the shape.
@@ -746,7 +746,7 @@ export function createSpecimenCache(
 
 ```bash
 cd src/web && npm test -- --run packages/editor/src/font-specimen-cache.dom.test.ts
-npm run typecheck -w @vigilia/editor
+npm run typecheck -w @yunari/editor
 ```
 
 Expected: PASS, 4 tests.
@@ -1013,7 +1013,7 @@ export function queryFaces(
 
 ```bash
 cd src/web && npm test -- --run packages/editor/src/font-catalog-query.test.ts
-npm run typecheck -w @vigilia/editor
+npm run typecheck -w @yunari/editor
 ```
 
 Expected: PASS, 7 tests.
@@ -1064,7 +1064,7 @@ import {
 
 let dir: string;
 beforeEach(async () => {
-  dir = await mkdtemp(path.join(tmpdir(), "vigilia-favorites-"));
+  dir = await mkdtemp(path.join(tmpdir(), "yunari-favorites-"));
 });
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
@@ -1243,7 +1243,7 @@ Bind it near `const display = options.display;` (line 344): `const fontFavorites
 
 ```bash
 cd src/web && npm test -- --run packages/host/src/settings/font-favorites.test.ts
-npm run typecheck -w @vigilia/host
+npm run typecheck -w @yunari/host
 ```
 
 Expected: PASS, 6 tests.
@@ -1280,7 +1280,7 @@ git commit -m "feat(host): store favourite font trios"
   }
   export function FontPicker(props: FontPickerProps): React.JSX.Element;
   ```
-  It is a controlled component: the parent owns the query state and the favourites, and the picker reports intent through the three callbacks. Row elements carry `data-vigilia-font-row`, `data-vigilia-font-face-row` and `data-vigilia-font-favorite` so browser tests and the existing selectors keep working.
+  It is a controlled component: the parent owns the query state and the favourites, and the picker reports intent through the three callbacks. Row elements carry `data-yunari-font-row`, `data-yunari-font-face-row` and `data-yunari-font-favorite` so browser tests and the existing selectors keep working.
 
 - [ ] **Step 1: Add the picker copy**
 
@@ -1336,9 +1336,9 @@ const render = async (host: HTMLElement, root: ReturnType<typeof createRoot>, pr
 it("lists a face per row and renders the name in its own family", async () => {
   const { host, props, root } = setup();
   await render(host, root, props);
-  const rows = host.querySelectorAll("[data-vigilia-font-face-row]");
+  const rows = host.querySelectorAll("[data-yunari-font-face-row]");
   expect(rows.length).toBeGreaterThan(0);
-  expect(rows[0]!.getAttribute("data-vigilia-font-family")).toBe(
+  expect(rows[0]!.getAttribute("data-yunari-font-family")).toBe(
     catalogFaces()[0]!.family,
   );
   root.unmount();
@@ -1347,13 +1347,13 @@ it("lists a face per row and renders the name in its own family", async () => {
 it("narrows the list from the search field", async () => {
   const { host, props, root } = setup();
   await render(host, root, props);
-  const before = host.querySelectorAll("[data-vigilia-font-face-row]").length;
+  const before = host.querySelectorAll("[data-yunari-font-face-row]").length;
   const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, "jetbrains");
     search.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  const after = host.querySelectorAll("[data-vigilia-font-face-row]").length;
+  const after = host.querySelectorAll("[data-yunari-font-face-row]").length;
   expect(after).toBeLessThan(before);
   expect(host.textContent).toContain("JetBrains");
   root.unmount();
@@ -1364,9 +1364,9 @@ it("reports a trio apply without applying it itself", async () => {
   const { host, props, root } = setup({ onApplyTrio });
   await render(host, root, props);
   await act(async () => {
-    host.querySelector<HTMLSelectElement>("[data-vigilia-font-trio]")!.value = fontTrios()[0]!.id;
+    host.querySelector<HTMLSelectElement>("[data-yunari-font-trio]")!.value = fontTrios()[0]!.id;
     host
-      .querySelector<HTMLButtonElement>("[data-vigilia-font-trio-apply]")!
+      .querySelector<HTMLButtonElement>("[data-yunari-font-trio-apply]")!
       .click();
   });
   expect(onApplyTrio).toHaveBeenCalledWith(fontTrios()[0]!.id);
@@ -1378,8 +1378,8 @@ it("marks a clamped face so the shown weight is the one applying uses", async ()
     { ...catalogFaces()[0]!, clamped: true };
   const { host, props, root } = setup({ faces: [clamped], trios: [] });
   await render(host, root, props);
-  const row = host.querySelector("[data-vigilia-font-face-row]")!;
-  expect(row.getAttribute("data-vigilia-font-clamped")).toBe("true");
+  const row = host.querySelector("[data-yunari-font-face-row]")!;
+  expect(row.getAttribute("data-yunari-font-clamped")).toBe("true");
   expect(row.textContent).toContain("nearest available");
   root.unmount();
 });
@@ -1393,7 +1393,7 @@ it("keeps a row visible when its face will not load", async () => {
     }),
   });
   await render(host, root, props);
-  expect(host.querySelectorAll("[data-vigilia-font-face-row]").length).toBe(
+  expect(host.querySelectorAll("[data-yunari-font-face-row]").length).toBe(
     props.faces.length,
   );
   root.unmount();
@@ -1403,7 +1403,7 @@ it("offers a favourite toggle per trio row", async () => {
   const onToggleFavorite = vi.fn();
   const { host, props, root } = setup({ onToggleFavorite });
   await render(host, root, props);
-  const toggle = host.querySelector<HTMLButtonElement>("[data-vigilia-font-favorite]")!;
+  const toggle = host.querySelector<HTMLButtonElement>("[data-yunari-font-favorite]")!;
   await act(async () => toggle.click());
   expect(onToggleFavorite).toHaveBeenCalledWith(fontTrios()[0]!.id);
   root.unmount();
@@ -1518,27 +1518,27 @@ export function FontPicker({
       <button
         type="button"
         key={face.id}
-        data-vigilia-font-face-row=""
-        data-vigilia-font-family={face.family}
-        data-vigilia-font-clamped={face.clamped === true ? "true" : "false"}
-        className="vigilia-font-row"
+        data-yunari-font-face-row=""
+        data-yunari-font-family={face.family}
+        data-yunari-font-clamped={face.clamped === true ? "true" : "false"}
+        className="yunari-font-row"
         style={{ fontFamily: resident ?? "inherit" }}
         onClick={() => onApplyFace(face)}
       >
-        <span className="vigilia-font-row-name">{face.family}</span>
-        <span className="vigilia-font-row-meta">{face.weight}</span>
+        <span className="yunari-font-row-name">{face.family}</span>
+        <span className="yunari-font-row-meta">{face.weight}</span>
         {face.clamped === true && (
-          <span className="vigilia-font-row-note">{uiCopy.panels.fontClamped}</span>
+          <span className="yunari-font-row-note">{uiCopy.panels.fontClamped}</span>
         )}
         {resident === undefined && faces.length > index && (
-          <span className="vigilia-font-row-note">{uiCopy.panels.loadingFont}</span>
+          <span className="yunari-font-row-note">{uiCopy.panels.loadingFont}</span>
         )}
       </button>
     );
   };
 
   return (
-    <div className="vigilia-font-picker">
+    <div className="yunari-font-picker">
       <input
         type="search"
         aria-label={uiCopy.panels.fontSearch}
@@ -1587,12 +1587,12 @@ export function FontPicker({
       </select>
       <button
         type="button"
-        data-vigilia-font-trio-apply=""
+        data-yunari-font-trio-apply=""
         onClick={() => onApplyTrio(trioId)}
       >
         {uiCopy.panels.applyTrio}
       </button>
-      <div className="vigilia-font-scroll" ref={scrollRef} onScroll={onScroll}>
+      <div className="yunari-font-scroll" ref={scrollRef} onScroll={onScroll}>
         <div style={{ height: visibleFaces.length * ROW_HEIGHT, position: "relative" }}>
           <div ref={sentinelRef} />
           {visibleFaces.slice(start, start + WINDOW).map(faceRow)}
@@ -1600,12 +1600,12 @@ export function FontPicker({
       </div>
       {visibleFaces.length === 0 && <p>{uiCopy.panels.noFontMatches}</p>}
       {visibleTrios.length > 0 && (
-        <ul className="vigilia-font-trios">
+        <ul className="yunari-font-trios">
           {visibleTrios.map((trio) => (
             <li key={trio.id}>
               <button
                 type="button"
-                data-vigilia-font-favorite=""
+                data-yunari-font-favorite=""
                 aria-pressed={favorites.includes(trio.id)}
                 onClick={() => onToggleFavorite(trio.id)}
               >
@@ -1626,21 +1626,21 @@ export function FontPicker({
 `src/web/packages/editor/src/font-picker/font-picker.css` holds the layout only:
 
 ```css
-.vigilia-font-picker { display: grid; gap: 6px; }
-.vigilia-font-scroll { max-height: 320px; overflow-y: auto; }
-.vigilia-font-row {
+.yunari-font-picker { display: grid; gap: 6px; }
+.yunari-font-scroll { max-height: 320px; overflow-y: auto; }
+.yunari-font-row {
   display: flex; align-items: baseline; gap: 8px;
   width: 100%; height: 32px; text-align: left;
 }
-.vigilia-font-row-meta, .vigilia-font-row-note { margin-left: auto; opacity: 0.7; font-size: 11px; }
-.vigilia-font-trios { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow-y: auto; }
+.yunari-font-row-meta, .yunari-font-row-note { margin-left: auto; opacity: 0.7; font-size: 11px; }
+.yunari-font-trios { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow-y: auto; }
 ```
 
 - [ ] **Step 5: Run the test to verify it passes**
 
 ```bash
 cd src/web && npm test -- --run packages/editor/src/font-picker/font-picker.dom.test.tsx
-npm run typecheck -w @vigilia/editor
+npm run typecheck -w @yunari/editor
 ```
 
 Expected: PASS, 6 tests. If the virtualisation makes the first assertion see fewer rows than `props.faces.length`, the window is rendering as designed — assert on `> 0` and on the clamped/favourite rows instead of the full list.
@@ -1733,10 +1733,10 @@ it("disables family and weight while a preset is bound to a face", async () => {
       value: { family: "Inter", size: 32, weight: 700, face: { assetId: "inter-700" } },
     },
   });
-  expect(host.querySelector<HTMLInputElement>("[data-vigiliaTypeFamily]")?.disabled).toBe(true);
-  expect(host.querySelector<HTMLInputElement>("[data-vigiliaTypeWeight]")?.disabled).toBe(true);
+  expect(host.querySelector<HTMLInputElement>("[data-yunariTypeFamily]")?.disabled).toBe(true);
+  expect(host.querySelector<HTMLInputElement>("[data-yunariTypeWeight]")?.disabled).toBe(true);
   expect(host.textContent).toContain("Bound to a packaged face");
-  expect(host.querySelector("[data-vigiliaTypeUnbind]")).not.toBeNull();
+  expect(host.querySelector("[data-yunariTypeUnbind]")).not.toBeNull();
 });
 
 it("leaves an unbound preset's family and weight editable", async () => {
@@ -1749,8 +1749,8 @@ it("leaves an unbound preset's family and weight editable", async () => {
     toggleFavorite: () => Promise.resolve(),
   });
   panel.render({ heading: { name: "Heading", value: { family: "Georgia", size: 32, weight: 400 } } });
-  expect(host.querySelector<HTMLInputElement>("[data-vigiliaTypeFamily]")?.disabled).toBe(false);
-  expect(host.querySelector("[data-vigiliaTypeUnbind]")).toBeNull();
+  expect(host.querySelector<HTMLInputElement>("[data-yunariTypeFamily]")?.disabled).toBe(false);
+  expect(host.querySelector("[data-yunariTypeUnbind]")).toBeNull();
 });
 ```
 
@@ -1821,7 +1821,7 @@ In `src/web/packages/editor/src/type-preset-manager/panel.ts`:
       const unbind = document.createElement("button");
       unbind.type = "button";
       unbind.textContent = uiCopy.panels.unbindFont;
-      unbind.dataset["vigiliaTypeUnbind"] = "";
+      unbind.dataset["yunariTypeUnbind"] = "";
       unbind.addEventListener("click", () => {
         void fontActions!.unbindFace(selected);
       });
@@ -1833,7 +1833,7 @@ In `src/web/packages/editor/src/type-preset-manager/panel.ts`:
 
 Return `bound` from `controls` alongside the existing controls, and add it to the array `controls(entry)` already returns.
 
-- Replace `fontControls()`'s two `<select>`s with a React root, keeping the existing `data-vigilia-font-face`, `data-vigilia-font-trio` and `data-vigilia-font-apply` attributes on their equivalents so the archived plan's selector requirement and the browser tests still hold. Hold the root and the cache on the panel, and release both on `destroy()` — otherwise every specimen face stays resident for the session:
+- Replace `fontControls()`'s two `<select>`s with a React root, keeping the existing `data-yunari-font-face`, `data-yunari-font-trio` and `data-yunari-font-apply` attributes on their equivalents so the archived plan's selector requirement and the browser tests still hold. Hold the root and the cache on the panel, and release both on `destroy()` — otherwise every specimen face stays resident for the session:
 
 ```ts
   let picker: { root: { render(node: React.JSX.Element): void; unmount(): void }; cache: SpecimenCache } | undefined;
@@ -1931,7 +1931,7 @@ Because this file is `.ts`, rename it to `panel.tsx` and update the three import
 
 ```bash
 cd src/web && npm test -- --run packages/editor/src/favorites-client.test.ts packages/editor/src/type-preset-manager/ packages/editor/src/editor-session.dom.test.ts
-npm run typecheck -w @vigilia/editor
+npm run typecheck -w @yunari/editor
 ```
 
 Expected: PASS.
@@ -1969,34 +1969,34 @@ In `src/web/tests/e2e/editor.spec.ts`, replace the body of `captures curated fon
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page.locator("[data-vigilia-type-preset]").selectOption("36-600");
+    await page.locator("[data-yunari-type-preset]").selectOption("36-600");
 
-    const picker = page.locator(".vigilia-font-picker");
+    const picker = page.locator(".yunari-font-picker");
     await expect(picker).toBeVisible();
 
     // More than the single trio the catalogue used to hold.
-    await expect(page.locator("[data-vigilia-font-trio] option")).not.toHaveCount(1);
+    await expect(page.locator("[data-yunari-font-trio] option")).not.toHaveCount(1);
 
-    await page.locator(".vigilia-font-picker input[type=search]").fill("jetbrains");
+    await page.locator(".yunari-font-picker input[type=search]").fill("jetbrains");
     await expect(
-      page.locator("[data-vigilia-font-face-row]").first(),
+      page.locator("[data-yunari-font-face-row]").first(),
     ).toContainText("JetBrains");
 
-    await page.locator("[data-vigilia-font-trio]").selectOption("dashboard");
-    await page.locator("[data-vigilia-font-trio-apply]").click();
+    await page.locator("[data-yunari-font-trio]").selectOption("dashboard");
+    await page.locator("[data-yunari-font-trio-apply]").click();
     await expect(page.locator("#status")).toContainText("Manrope");
 
     // A single face re-seeds one role without disturbing the others.
-    await page.locator("[data-vigilia-font-face-row]").first().click();
+    await page.locator("[data-yunari-font-face-row]").first().click();
     const saved = await savePackage(page);
     expect(saved.bytes.byteLength).toBeGreaterThan(0);
 
     // A bound preset cannot be typed over.
     await expect(
-      page.locator("[data-vigilia-type-family]"),
+      page.locator("[data-yunari-type-family]"),
     ).toBeDisabled();
-    await page.locator("[data-vigilia-type-unbind]").click();
-    await expect(page.locator("[data-vigilia-type-family]")).toBeEnabled();
+    await page.locator("[data-yunari-type-unbind]").click();
+    await expect(page.locator("[data-yunari-type-family]")).toBeEnabled();
 
     await captureVisualReview(page, testInfo, "editor-font-trio");
   });
@@ -2011,7 +2011,7 @@ cd src/web && npx playwright test -g 'browses the catalogue' --workers=1
 Expected: FAIL — the picker is not in the built bundle. Rebuild first if the bundle is stale:
 
 ```bash
-cd src/web && npm run build -w @vigilia/editor
+cd src/web && npm run build -w @yunari/editor
 ```
 
 - [ ] **Step 3: Run the whole gate**
@@ -2033,7 +2033,7 @@ Expected: all clean. Read failures from the JSON report rather than a full log.
 - [ ] **Step 4: Inspect the capture before recording it as evidence**
 
 ```bash
-cd src/web && $env:VIGILIA_CAPTURE='1'; npx playwright test -g 'browses the catalogue' --workers=1
+cd src/web && $env:YUNARI_CAPTURE='1'; npx playwright test -g 'browses the catalogue' --workers=1
 ```
 
 Open the PNG under `docs/evidence/screenshots/` and confirm by eye: the specimen names render in their own families, the row list is scrollable, the clamped row is labelled, and the favourite star is visible. Do not stage a capture you have not looked at.

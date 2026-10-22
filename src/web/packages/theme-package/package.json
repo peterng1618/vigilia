@@ -1,5 +1,5 @@
 {
-  "name": "@vigilia/theme-package",
+  "name": "@yunari/theme-package",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@vigilia/renderer-core": "*",
+    "@yunari/renderer-core": "*",
     "fflate": "0.8.3"
   }
 }

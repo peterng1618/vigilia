@@ -51,7 +51,7 @@ async function chromeGeometry(
     if (host === null) throw new Error("the display has no artboard host");
     const handle = (
       window as unknown as {
-        vigilia?: {
+        yunari?: {
           handle?: {
             transform(): {
               scale: number;
@@ -62,7 +62,7 @@ async function chromeGeometry(
           };
         };
       }
-    ).vigilia?.handle;
+    ).yunari?.handle;
     const transform = handle?.transform();
     if (transform === undefined) throw new Error("the display has no scene");
 
@@ -70,9 +70,7 @@ async function chromeGeometry(
     return {
       host: hostBox,
       strips: [
-        ...document.querySelectorAll<HTMLElement>(
-          "[data-vigilia-chrome-strip]",
-        ),
+        ...document.querySelectorAll<HTMLElement>("[data-yunari-chrome-strip]"),
       ].map((strip) => ({ id: strip.id, box: box(strip) })),
       // The transform's offsets are relative to the host, the rects are not.
       painted: {
@@ -126,7 +124,7 @@ test("a notice that arrives after the fit clears itself without moving the compo
   await page.goto(`${HOST}/?theme=${HOST_MISSING_THEME_ID}&data=live`);
   await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
 
-  await expect(page.locator("[data-vigilia-availability]")).toBeVisible({
+  await expect(page.locator("[data-yunari-availability]")).toBeVisible({
     timeout: 30_000,
   });
 
@@ -140,12 +138,12 @@ test("a notice that arrives after the fit clears itself without moving the compo
 
   const [strip] = raised.strips;
   if (strip === undefined) throw new Error("the notice was not drawn");
-  expect(strip.id).toBe("vigilia-availability");
+  expect(strip.id).toBe("yunari-availability");
   // At the display's top edge, over the artboard rather than beside it.
   expect(strip.box.y).toBe(0);
   expect(overlap(strip.box, raised.painted)).toBeGreaterThan(0);
 
-  await expect(page.locator("[data-vigilia-availability]")).toHaveCount(0, {
+  await expect(page.locator("[data-yunari-availability]")).toHaveCount(0, {
     timeout: 15_000,
   });
   const cleared = await chromeGeometry(page, { width: 640, height: 360 });
@@ -181,14 +179,14 @@ test("a refused transport leaves the whole phone to the artboard", async ({
   await page.setViewportSize(PHONE.portrait);
   await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
 
-  await expect(page.locator("#vigilia-connection")).toBeVisible({
+  await expect(page.locator("#yunari-connection")).toBeVisible({
     timeout: 30_000,
   });
 
   const geometry = await chromeGeometry(page, { width: 640, height: 360 });
 
   expect(geometry.strips.map((strip) => strip.id)).toEqual([
-    "vigilia-connection",
+    "yunari-connection",
   ]);
   expect(geometry.degenerate).toBe(false);
   // The whole phone, to the pixel: the notice is fixed to the display's edge
@@ -237,7 +235,7 @@ test("a display with nothing to say is a display unchanged", async ({
     await page.setViewportSize(viewport);
     await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 20_000,
     });
 

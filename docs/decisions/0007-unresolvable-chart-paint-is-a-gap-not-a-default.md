@@ -22,7 +22,7 @@ expects one".
    how to get it there without moving the media into the canvas — which 0001
    costed and rejected.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `renderer-core/src/charts/{chart-paint,gauge,bar,pie,line,fill}.ts`,
 `renderer-core/src/scene/plan.ts` (`resolveStyleValue`, `resolveStyleMap`,

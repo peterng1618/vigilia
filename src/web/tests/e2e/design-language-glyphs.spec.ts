@@ -55,7 +55,7 @@ test("captures the shell glyphs and words with the Add pane open", async ({
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await expect(
     page.locator("html"),
@@ -65,11 +65,11 @@ test("captures the shell glyphs and words with the Add pane open", async ({
   // §7.2's four slots, and only a shell that has the rail has them.
   await expect(page.locator(".editor-shell-rail-slot")).toHaveCount(4);
   await openPane(page, "Add");
-  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="add"]')).toBeVisible();
   // Exactly one of the rail's four panes is out, by the direct-child reading the
   // shell capture above documents.
   await expect(
-    page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
+    page.locator(".editor-shell-panel > [data-yunari-panel]:visible"),
   ).toHaveCount(1);
 
   // ── 1. Every glyph the shell draws is at §6's weight for its own size ──────
@@ -105,7 +105,7 @@ test("captures the shell glyphs and words with the Add pane open", async ({
         button?.getAttribute("aria-label") ??
         String(
           svg.getAttribute("class") ??
-            svg.getAttribute("data-vigilia-card-diagram") ??
+            svg.getAttribute("data-yunari-card-diagram") ??
             svg.parentElement?.className ??
             svg.tagName,
         ).slice(0, 40);

@@ -1,13 +1,13 @@
 import {
   isObjectName,
-  VIGILIA_GLASS_PROPERTY,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+  YUNARI_GLASS_PROPERTY,
+} from "@yunari/renderer-core";
 import {
   SCENE_PERSISTED_PROPERTIES,
-  VIGILIA_PAINT_PROPERTY,
-  VIGILIA_TEXT_PROPERTY,
-} from "@vigilia/scene-fabric";
+  YUNARI_PAINT_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
+} from "@yunari/scene-fabric";
 import { classRegistry, type FabricObject } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
@@ -148,7 +148,7 @@ describe("new object defaults", () => {
     const defaults = createNewPaintDefaults(globals);
 
     expect(defaults.fill).toBe("#102030");
-    expect(defaults[VIGILIA_PAINT_PROPERTY]).toEqual({ fill: "palette.ink" });
+    expect(defaults[YUNARI_PAINT_PROPERTY]).toEqual({ fill: "palette.ink" });
   });
 
   it("places new text by its edges, as it places every other object", () => {
@@ -170,8 +170,8 @@ describe("new object defaults", () => {
       fontSize: 16,
       fontWeight: 500,
       lineHeight: 1.2,
-      [VIGILIA_PAINT_PROPERTY]: { fill: "palette.ink" },
-      [VIGILIA_TEXT_PROPERTY]: {
+      [YUNARI_PAINT_PROPERTY]: { fill: "palette.ink" },
+      [YUNARI_TEXT_PROPERTY]: {
         runs: [
           {
             text: "New text",
@@ -261,7 +261,7 @@ describe("new object defaults", () => {
     // A panel is a surface. `ink` is the token a new *text* object takes, and
     // painting a whole card in it would hide every label the author puts on it.
     expect(defaults.fill).toBe("#0c0e13");
-    expect(defaults[VIGILIA_PAINT_PROPERTY]).toEqual({
+    expect(defaults[YUNARI_PAINT_PROPERTY]).toEqual({
       fill: "palette.background",
     });
   });
@@ -339,7 +339,7 @@ describe("new shape defaults", () => {
       // `background` is what is painted behind it. Filling a whole shape with
       // the colour it sits on is not a card, it is nothing at all — and an
       // invisible object cannot be selected or edited.
-      expect(shape.get(VIGILIA_PAINT_PROPERTY), kind).toEqual({
+      expect(shape.get(YUNARI_PAINT_PROPERTY), kind).toEqual({
         fill: "palette.panel",
       });
       expect(shape.fill, kind).toBe("#081523d9");
@@ -352,7 +352,7 @@ describe("new shape defaults", () => {
     // always for.
     for (const kind of CLOSED_KINDS) {
       const shape = createNewShape(`shape-${kind}`, globals, kind, placement);
-      expect(shape.get(VIGILIA_PAINT_PROPERTY), kind).toEqual({
+      expect(shape.get(YUNARI_PAINT_PROPERTY), kind).toEqual({
         fill: "palette.background",
       });
     }
@@ -370,7 +370,7 @@ describe("new shape defaults", () => {
         placement,
       );
 
-      expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      expect(shape.get(YUNARI_PAINT_PROPERTY)).toEqual({
         stroke: "palette.text",
       });
       expect(shape.stroke, kind).toBe("#ecf5ff");
@@ -387,7 +387,7 @@ describe("new shape defaults", () => {
     // rather than left to the two `it.each` sweeps.
     const shape = createNewShape("shape-path", cardGlobals, "path", placement);
 
-    expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(shape.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.panel",
     });
     expect(shape.fill).toBe("#081523d9");
@@ -423,7 +423,7 @@ describe("new shape defaults", () => {
       // The saved document is only palette-reassignable if the shape carries its
       // own reference. An open shape is stroked, so it references a stroke.
       const stroked = OPEN_KINDS.includes(kind);
-      expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      expect(shape.get(YUNARI_PAINT_PROPERTY)).toEqual({
         [stroked ? "stroke" : "fill"]: stroked
           ? "palette.ink"
           : "palette.background",
@@ -449,7 +449,7 @@ describe("the surface a shape takes once it is frosted", () => {
     // carried it.
     const shape = createNewShape("glass-1", frostGlobals, "rect", placement);
 
-    expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(shape.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.panel",
     });
     expect(frostedShapeFill(frostGlobals, "palette.panel")).toBe(
@@ -494,13 +494,13 @@ describe("the surface a shape takes once it is frosted", () => {
     // author sees. Both have to come back, or the material is one reload from
     // being a flat tint again.
     const shape = createNewShape("glass-2", frostGlobals, "rect", placement);
-    shape.set(VIGILIA_PAINT_PROPERTY, {
+    shape.set(YUNARI_PAINT_PROPERTY, {
       fill: frostedShapeFill(
         frostGlobals,
         "palette.panel",
       ) as `palette.${string}`,
     });
-    shape.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
+    shape.set(YUNARI_GLASS_PROPERTY, { blurRadius: 16 });
 
     const revived = await revive(saved(shape));
     const after = saved(revived);
@@ -508,10 +508,10 @@ describe("the surface a shape takes once it is frosted", () => {
     expect(
       validateFabricThemeEnvelope(envelopeWith(after, frostGlobals)).ok,
     ).toBe(true);
-    expect(revived.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(revived.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.frost",
     });
-    expect(revived.get(VIGILIA_GLASS_PROPERTY)).toEqual({ blurRadius: 16 });
+    expect(revived.get(YUNARI_GLASS_PROPERTY)).toEqual({ blurRadius: 16 });
   });
 });
 
@@ -554,7 +554,7 @@ describe("a new shape through the persisted envelope", () => {
     (kind) => {
       const object = {
         ...saved(createNewShape(`shape-${kind}`, globals, kind, placement)),
-        [VIGILIA_GLASS_PROPERTY]: { blurRadius: 16 },
+        [YUNARI_GLASS_PROPERTY]: { blurRadius: 16 },
       };
 
       const result = validateFabricThemeEnvelope(envelopeWith(object));

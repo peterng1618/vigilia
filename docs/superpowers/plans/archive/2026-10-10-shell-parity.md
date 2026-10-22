@@ -22,7 +22,7 @@
 - **One owner per concept**: read `docs/architecture/ownership.md` before adding or moving a token, and extend the existing owner rather than adding a second declaration of the same value.
 - No new dependency; no change to `packages/renderer-core`, the player, the host or the theme format; Fabric JSON stays the persisted scene.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on. Refuse an invalid numeric input rather than coercing it to zero.
-- **Captures** follow `docs/evidence/screenshots/README.md`: built bundles, `VIGILIA_CAPTURE=1`, `--workers=1`, registered actions only. Rebuild the affected bundles after any source change **and** after reverting a deliberate break.
+- **Captures** follow `docs/evidence/screenshots/README.md`: built bundles, `YUNARI_CAPTURE=1`, `--workers=1`, registered actions only. Rebuild the affected bundles after any source change **and** after reverting a deliberate break.
 - **A red browser run at the default worker count is not a measurement** (`vg-285`): re-run a failing spec alone at `--workers=2` before believing it.
 - Report anything not actually verified, in the report and in the commit.
 
@@ -246,7 +246,7 @@ Run the existing contrast assertions (`keyboard.spec.ts` measures the modal surf
 
 - [ ] **Step 5: Assert the derivation holds, not only the six outcomes**
 
-One case that fails if a palette's ladder stops matching graphite's: for each of the five, the luminance ordering of `--bg`/`--panel`/`--panel-2` matches graphite's, **and where graphite separates two rungs the derived palette separates them too** — strict `bg < panel < panel2` for the five, with editorial's `panel == panel2` (`#fffdf7` for both) as the one named licensed exception, because its control-inside-panel separation is carried by `--vigilia-control-bg` rather than by the rung. Six transcribed value sets pass the per-role assertions and drift apart again the moment someone edits one; this is the assertion that keeps the ruling true.
+One case that fails if a palette's ladder stops matching graphite's: for each of the five, the luminance ordering of `--bg`/`--panel`/`--panel-2` matches graphite's, **and where graphite separates two rungs the derived palette separates them too** — strict `bg < panel < panel2` for the five, with editorial's `panel == panel2` (`#fffdf7` for both) as the one named licensed exception, because its control-inside-panel separation is carried by `--yunari-control-bg` rather than by the rung. Six transcribed value sets pass the per-role assertions and drift apart again the moment someone edits one; this is the assertion that keeps the ruling true.
 
 **An order-only assertion is a ceiling, and `vg-308` records it.** A ladder collapsed to steps of 0.0001 keeps its order and passes, and no magnitude floor belongs here: "at least X luminance" has no rule behind it, and picking one is the move this plan has already had to undo. The separation rule above is what can be stated without inventing a number; the magnitude is `vg-308`'s to rule on.
 

@@ -1,8 +1,8 @@
-import type { Artboard, FabricPalette } from "@vigilia/renderer-core";
+import type { Artboard, FabricPalette } from "@yunari/renderer-core";
 import {
   objectPaletteReferences,
   reassignObjectPaletteReferences,
-} from "@vigilia/scene-fabric";
+} from "@yunari/scene-fabric";
 import type { Canvas } from "fabric/es";
 import type { PaletteTokenUse } from "./panel.js";
 

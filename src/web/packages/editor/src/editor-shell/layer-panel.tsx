@@ -47,7 +47,7 @@ export function LayerActions({
       ? OBJECT_ACTIONS
       : objectActionsFor(bridge);
   return (
-    <footer className="editor-shell-pane-actions" data-vigilia-layer-actions="">
+    <footer className="editor-shell-pane-actions" data-yunari-layer-actions="">
       {actions.map((action) => (
         <ControlIconButton
           key={action.id}
@@ -55,7 +55,7 @@ export function LayerActions({
           disabled={!selected}
           // The mark is the whole mechanism: `destructiveMarker` carries the
           // registry's flag to every surface, and the one
-          // `[data-vigilia-destructive]` rule in the shell paints it `--hot`.
+          // `[data-yunari-destructive]` rule in the shell paints it `--hot`.
           // Nothing here says "destructive" a second time.
           data={destructiveMarker(action)}
           onClick={() => bridge?.run(action.id)}

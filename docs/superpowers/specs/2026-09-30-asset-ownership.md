@@ -141,7 +141,7 @@ consequence. Items 1–3 are the shape.
 
 **The export.** `writeThemePackage` needs every declared byte in one call
 (`theme-package/src/index.ts:59-65` rejects a partial map), and a
-`.vigilia-theme` is a portable file for someone with no host. **The host must
+`.yunari-theme` is a portable file for someone with no host. **The host must
 not build it** — that would make the export depend on the library folder, and a
 theme with unsaved work, which is the normal state while authoring, has nothing
 on disk to package. The editor fetches the bytes it does not hold, on demand,
@@ -237,7 +237,7 @@ request lives. If only one ships, ship 1 and 3.
   behaviour change, and the ceiling is the store's 32 MB — chosen, not measured.
 - Step 5 makes the editor depend on the host for the bytes it draws, so the
   editor preview stops working offline for any theme already in the library. A
-  `.vigilia-theme` opened from a file has no host URL and keeps holding its
+  `.yunari-theme` opened from a file has no host URL and keeps holding its
   bytes, which means the editor has two modes rather than one. That is the
   largest real cost of the target shape and it is why step 5 comes after the
   cheap ones.

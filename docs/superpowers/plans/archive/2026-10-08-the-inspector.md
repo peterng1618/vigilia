@@ -4,7 +4,7 @@
 
 **Goal:** Rewrite `selection-inspector/` — 2,714 lines of imperative DOM across 18 files — as a React column of §6's five sections, built from plan 1's control set, reading a projected view through the bridge and writing through the existing funnel, so that **the rendering changes and no rule does** (§2.3).
 
-**Architecture:** The column's rendering becomes React; its **rules do not move**. `index.ts` keeps the three things it already owns — which object is described (`target()`), how a field writes it, and the commit path — and gains one generalisation: the write funnel is keyed by the field's `data-vigilia-*` hook instead of by `GeometryKey`, so the string a test locates a control by and the string a control commits through are the same string. React reads a **serializable projection** (`SelectionView`) rebuilt on demand from Fabric and never holds an object (ADR-0039 / §2.1). `createSelectionInspector(host, options)` keeps its signature, so nothing outside this family changes: it creates a React root inside the host it is given, exactly as `shell-layout.tsx` already does for `CanvasDock`. The per-kind plan (`perKindColumn`) already returns sections as data; this extends it one level down to **fields as data**, so §2.3 parity is a comparison of two row lists rather than a DOM diff.
+**Architecture:** The column's rendering becomes React; its **rules do not move**. `index.ts` keeps the three things it already owns — which object is described (`target()`), how a field writes it, and the commit path — and gains one generalisation: the write funnel is keyed by the field's `data-yunari-*` hook instead of by `GeometryKey`, so the string a test locates a control by and the string a control commits through are the same string. React reads a **serializable projection** (`SelectionView`) rebuilt on demand from Fabric and never holds an object (ADR-0039 / §2.1). `createSelectionInspector(host, options)` keeps its signature, so nothing outside this family changes: it creates a React root inside the host it is given, exactly as `shell-layout.tsx` already does for `CanvasDock`. The per-kind plan (`perKindColumn`) already returns sections as data; this extends it one level down to **fields as data**, so §2.3 parity is a comparison of two row lists rather than a DOM diff.
 
 **Tech Stack:** TypeScript, React 19, Base UI, Fabric 7.4.0, Tailwind v4 (`@theme`), Biome 2.x, Vitest (jsdom), Playwright.
 
@@ -20,7 +20,7 @@
 Verified against the source:
 
 - `SELECTION_KINDS` is `["shape", "text", "chart", "image", "group", "activeSelection"]` (`per-kind-column.ts:88`).
-- `selectionKindOf()` dispatches on the Fabric class — `ActiveSelection`, then `VigiliaChart`, then `Group`, then the `type` tag, then `FabricImage`, else `shape` (`per-kind-column.ts:112`).
+- `selectionKindOf()` dispatches on the Fabric class — `ActiveSelection`, then `YunariChart`, then `Group`, then the `type` tag, then `FabricImage`, else `shape` (`per-kind-column.ts:112`).
 - **A card is not a kind and no card-role dispatch exists anywhere** in `selection-inspector/`. A card is a `Group`, and `KIND_QUESTIONS.group` is `{ childrenAppearance: true }` — nothing more.
 - `supportsPanelFields()` admits exactly ten shape classes (`Rect`, `Circle`, `Ellipse`, `Triangle`, `Polygon`, `Polyline`, `Line`, `Path`, `Arc`, `Wedge`) and **no `Group`** (`panel.ts:84`).
 - The glass refusal is `supportsGlass(kindOf(object)) && !(object instanceof Group)` (`glass.ts:85`), and the reason is rendered by the control's own `refusalOf` — `uiCopy.inspectorFields.glassRefused(kind)`.
@@ -59,8 +59,8 @@ Where plan 1 or plan 2 has not landed a piece this plan consumes, say so in the 
 ## Global Constraints
 
 - **No behaviour changes** (§2.3). Same fields, same eligibility gates, same refusals, same read-only markers. The instrument is the existing contract tests: the descriptor completeness record (`renderer-core/src/charts/settings-fields.test.ts`, `coverage against the real settings shapes`), the per-kind tests (`selectionKindOf`, `KIND_QUESTIONS` totality — `index.dom.test.ts:1207-1257`), and `supportsPanelFields()`. **Where a test locates imperative internals it is re-pointed at the React surface in the same commit, and a re-pointed locator is shown to fail when the behaviour it guards is disabled before it is trusted.**
-- **The `data-vigilia-*` hooks are the DOM contract and they are preserved.** They are read by the unit suites and by the browser specs — `data-vigilia-section` (14 e2e reads), `data-vigilia-panel-fill` (14), `data-vigilia-glass-enabled` (14), `data-vigilia-crop` (10), `data-vigilia-geometry` (9), `data-vigilia-name` (6), the run hooks (10+), and `data-vigilia-nothing-selected`. A hook stays **on the control's own focusable element**, because a suite reads `[data-vigilia-geometry="width"]` and then reads `.value` off it. A hook moved to a wrapper is a broken locator wearing a passing test.
-- **The old CSS primitives die with the imperative surface.** `.vigilia-field`, `.vigilia-field-row` and `.vigilia-resolution` have **37 reads** — 23 `.vigilia-resolution` and 5 `.vigilia-field` + 2 `.vigilia-field-row` in `selection-inspector/*.dom.test.ts`, and 4 + 2 + 1 in `tests/e2e/`. They are replaced by plan 1's control structure, and every read is re-pointed in the task that removes the class.
+- **The `data-yunari-*` hooks are the DOM contract and they are preserved.** They are read by the unit suites and by the browser specs — `data-yunari-section` (14 e2e reads), `data-yunari-panel-fill` (14), `data-yunari-glass-enabled` (14), `data-yunari-crop` (10), `data-yunari-geometry` (9), `data-yunari-name` (6), the run hooks (10+), and `data-yunari-nothing-selected`. A hook stays **on the control's own focusable element**, because a suite reads `[data-yunari-geometry="width"]` and then reads `.value` off it. A hook moved to a wrapper is a broken locator wearing a passing test.
+- **The old CSS primitives die with the imperative surface.** `.yunari-field`, `.yunari-field-row` and `.yunari-resolution` have **37 reads** — 23 `.yunari-resolution` and 5 `.yunari-field` + 2 `.yunari-field-row` in `selection-inspector/*.dom.test.ts`, and 4 + 2 + 1 in `tests/e2e/`. They are replaced by plan 1's control structure, and every read is re-pointed in the task that removes the class.
 - **No Fabric object is ever mirrored into React.** The column holds a `SelectionView` value and an imperative `SelectionEdits` port. `edits` checks the view's expected target revision against the live target **at call time**, so a stale control cannot mutate a later selection. `renderer-core` stays Fabric- and DOM-free; no new dependency (React 19, Base UI, Tailwind are present; `0038`/`0039` stand).
 - **The write funnel stays single.** `index.ts` keeps `target()`, the `write` rules (a text object's authored box, a shape's scale, `applyAuthoredText`, `setCoords`) and `commit()` (one `saveState` per committed edit). §2.3's "one history entry per edit" is an existing invariant, not a new one — the React surface must call `commit()` exactly as often.
 - **Scales and roles only.** Every value comes from plan 1's tokens (`--text-*`, `--radius-*`, `--space-*`, `--elev-*`) and the palette roles (bible §4). No hex, no off-scale px. **Every file this plan converts joins `scripts/design-tokens.gated.json` in the task that converts it** — the ratchet is seeded as work lands, never afterwards. The column is elevation 0 (bible §3): no shadow, no blur.
@@ -70,7 +70,7 @@ Where plan 1 or plan 2 has not landed a piece this plan consumes, say so in the 
 - **`index.ts` holds or shrinks** (**540** lines today — controller correction after Task 1; this said 655, which was never measured — and the surface moves out of it). No licence headers; comments are 1–3 lines and explain *why*. 500 lines is a signal and 800 is a stop.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled. Refuse invalid numeric input rather than coercing it to zero.
 - Run from `src/web/`; the scripts are `package.json`'s. Stage explicit paths; never `git add -A`. Conventional Commit titles.
-- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `VIGILIA_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
+- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `YUNARI_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
 - **A new test must be shown to fail when the behaviour it guards is disabled**, before it is trusted. Every task below states its red proof.
 - **The register.** `vg-121`, `vg-122` and `vg-089` are already `verified` in `docs/product/backlog-archive.jsonl`; this plan re-closes nothing. `vg-094` and `vg-153` are the Tokens pane's (spec §5.3) and stay open. **`vg-148` is this plan's to close** — the projection's subscription is rebuilt in Task 1, and the lock notify that row names is added there. `vg-158` stays open (its cause is not established), as do `vg-160`, `vg-185` and `vg-192`. Say in the commit which half of which row the commit answers.
 
@@ -231,11 +231,11 @@ The subject's `kindLine` is a **new string about an existing fact**, so it is on
 
 - [ ] **Step 3: Give the control set one optional `data` passthrough, in the same commit**
 
-Plan 1 now defines `ControlProps.data` as full `data-*` attribute names and forwards it onto the actual focus target. Consume that contract; if the landed implementation lacks it, reconcile plan 1's delivery rather than defining another spelling here. The hook is not the field identity: `data-vigilia-geometry` names several values, and run fields repeat per run. `FieldView` must carry a stable field id, full data attributes, validation/domain metadata and a target revision; run rows also carry their existing run id. Read-only rows put hooks on their value element, never an invented focusable control.
+Plan 1 now defines `ControlProps.data` as full `data-*` attribute names and forwards it onto the actual focus target. Consume that contract; if the landed implementation lacks it, reconcile plan 1's delivery rather than defining another spelling here. The hook is not the field identity: `data-yunari-geometry` names several values, and run fields repeat per run. `FieldView` must carry a stable field id, full data attributes, validation/domain metadata and a target revision; run rows also carry their existing run id. Read-only rows put hooks on their value element, never an invented focusable control.
 
 - [ ] **Step 4: Mount React inside the host, and keep the session's contract**
 
-`index.ts` keeps `createSelectionInspector` and the returned `SelectionInspector` (`root`, `render`, `setGlobals`, `setLocale`); internally `render()` becomes "re-project and publish" for the subject, and `setGlobals`/`setLocale` do the same. **Controller correction after Task 1:** the five field sections keep rebuilding their DOM until their own tasks convert them, because their builders still return `HTMLElement`s and Step 7 requires the family suite to pass — so Task 1 mounts React in a `reactHost` above a sibling `sectionsHost` and `render()` stops rebuilding DOM only when Task 2's `column.tsx` owns both. The seven canvas listeners (`index.ts:502-524`) and the `restoring` flag's `try`/`finally` stay exactly as they are — they now call `publish()` instead of `render()`. `root` stays the `<section data-vigilia-panel="selection">` element so `[data-vigilia-panel="selection"]` keeps resolving.
+`index.ts` keeps `createSelectionInspector` and the returned `SelectionInspector` (`root`, `render`, `setGlobals`, `setLocale`); internally `render()` becomes "re-project and publish" for the subject, and `setGlobals`/`setLocale` do the same. **Controller correction after Task 1:** the five field sections keep rebuilding their DOM until their own tasks convert them, because their builders still return `HTMLElement`s and Step 7 requires the family suite to pass — so Task 1 mounts React in a `reactHost` above a sibling `sectionsHost` and `render()` stops rebuilding DOM only when Task 2's `column.tsx` owns both. The seven canvas listeners (`index.ts:502-524`) and the `restoring` flag's `try`/`finally` stay exactly as they are — they now call `publish()` instead of `render()`. `root` stays the `<section data-yunari-panel="selection">` element so `[data-yunari-panel="selection"]` keeps resolving.
 
 - [ ] **Step 5: Close `vg-148` — the projection publishes on a lock change**
 
@@ -243,7 +243,7 @@ Plan 1 now defines `ControlProps.data` as full `data-*` attribute names and forw
 
 - [ ] **Step 6: Build the subject block and the empty state**
 
-The subject: the name at `--text-md` and the kind line at `--text-xs` in `--muted`, in a block with a 1px `--edge` bottom border — not a chrome label (bible §7.4: "The column opens with the subject, not a chrome label"). Empty: one line carrying `data-vigilia-nothing-selected`, the text from `uiCopy.inspectorFields.nothingSelected` (it exists and is already the string), and zero `[data-vigilia-section]`. The locked note stays (`uiCopy.inspectorFields.locked`) and still prints above the sections.
+The subject: the name at `--text-md` and the kind line at `--text-xs` in `--muted`, in a block with a 1px `--edge` bottom border — not a chrome label (bible §7.4: "The column opens with the subject, not a chrome label"). Empty: one line carrying `data-yunari-nothing-selected`, the text from `uiCopy.inspectorFields.nothingSelected` (it exists and is already the string), and zero `[data-yunari-section]`. The locked note stays (`uiCopy.inspectorFields.locked`) and still prints above the sections.
 
 - [ ] **Step 7: Run the suite to green and prove the invariant is not vacuous**
 
@@ -263,7 +263,7 @@ Add the converted files to `scripts/design-tokens.gated.json`, `npm run design:c
 
 **Outcome:** The column renders Content, Position, Layer, Paint and Spends as plan 1's `InspectorSection`, in the order `SETTINGS_SECTIONS` decides; a section with nothing in it is not rendered at all; Position is the one section closed by default; re-rendering does not collapse a section the author opened.
 
-**Owning symbols/landmarks:** `per-kind-column.ts` (`ColumnSectionId`, `ColumnSection`, `defaultOpenOf`, `sectionOrder`, `titleOf`, `perKindColumn`, `context.sections`), `index.ts`'s `sections` map, `editor-shell/controls/property-section.ts` (one of its two remaining consumers), `.vigilia-section*` / `[data-vigilia-section]` in `editor-shell.css`.
+**Owning symbols/landmarks:** `per-kind-column.ts` (`ColumnSectionId`, `ColumnSection`, `defaultOpenOf`, `sectionOrder`, `titleOf`, `perKindColumn`, `context.sections`), `index.ts`'s `sections` map, `editor-shell/controls/property-section.ts` (one of its two remaining consumers), `.yunari-section*` / `[data-yunari-section]` in `editor-shell.css`.
 
 **Files:**
 - Create: `packages/editor/src/selection-inspector/column.tsx`, `packages/editor/src/selection-inspector/column.dom.test.tsx`
@@ -278,7 +278,7 @@ Add the converted files to `scripts/design-tokens.gated.json`, `npm run design:c
 
 ```bash
 cd src/web
-grep -rn "data-vigilia-section\|vigilia-section" packages/editor/src tests/e2e | wc -l
+grep -rn "data-yunari-section\|yunari-section" packages/editor/src tests/e2e | wc -l
 grep -c "" packages/editor/src/selection-inspector/index.ts packages/editor/src/selection-inspector/per-kind-column.ts
 ```
 Record both numbers in the commit message — they are the before-state.
@@ -289,7 +289,7 @@ Record both numbers in the commit message — they are the before-state.
 
 ```tsx
 it("renders the five questions in the order SETTINGS_SECTIONS decides", () => {
-  const ids = renderedSections(viewOf(rect)).map((el) => el.dataset["vigiliaSection"]);
+  const ids = renderedSections(viewOf(rect)).map((el) => el.dataset["yunariSection"]);
   expect(ids).toEqual(SETTINGS_SECTIONS.map((s) => s.id));   // not a hard-coded list
 });
 it("renders no header at all for a section with nothing in it", () => {});
@@ -304,13 +304,13 @@ Expected: **FAIL** — the module does not exist.
 
 `column.tsx` maps `view.sections` **in the order the projection gives it** — it does not sort, group or re-order. `perKindColumn` keeps `sectionOrder` reading `SETTINGS_SECTIONS`, so Review Focus 2's failure is caught by writing the assertion against `SETTINGS_SECTIONS` rather than against a literal list.
 
-Each section renders its `fields` and `extras` (both empty at this task) **plus the imperative body it is handed**, which `index.ts` mounts into a per-section container — the "and nothing else" clause becomes true only as Tasks 3–6 empty the bodies. `data-vigilia-section="<id>"` sits on the section element. **Controller correction (ruling B, in the ledger):** emptiness is the projection's decision, not React's — `perKindColumn` already filters `body.length > 0`, and React renders exactly the sections it is given, in the order given. Do **not** add a React-side `fields.length + extras.length === 0` rule: at this task `fields` is empty by construction, so that rule blanks the whole column, and it makes React a second owner of a rule the projection owns. The count is preserved: `ColumnSectionView` gains `readonly count: number`, carried straight from today's `ColumnSection.count` (`per-kind-column.ts:66` — it is the body's length and the projection already computes it), and `inspector-section.tsx` gains an optional `count?: number` the header prints — because a collapsed section must keep saying how much it holds (`index.dom.test.ts:754` guards it, and the fixture page cannot, because it renders the same component). `defaultOpen: false` for `position` and `advanced` only, unchanged from `defaultOpenOf`.
+Each section renders its `fields` and `extras` (both empty at this task) **plus the imperative body it is handed**, which `index.ts` mounts into a per-section container — the "and nothing else" clause becomes true only as Tasks 3–6 empty the bodies. `data-yunari-section="<id>"` sits on the section element. **Controller correction (ruling B, in the ledger):** emptiness is the projection's decision, not React's — `perKindColumn` already filters `body.length > 0`, and React renders exactly the sections it is given, in the order given. Do **not** add a React-side `fields.length + extras.length === 0` rule: at this task `fields` is empty by construction, so that rule blanks the whole column, and it makes React a second owner of a rule the projection owns. The count is preserved: `ColumnSectionView` gains `readonly count: number`, carried straight from today's `ColumnSection.count` (`per-kind-column.ts:66` — it is the body's length and the projection already computes it), and `inspector-section.tsx` gains an optional `count?: number` the header prints — because a collapsed section must keep saying how much it holds (`index.dom.test.ts:754` guards it, and the fixture page cannot, because it renders the same component). `defaultOpen: false` for `position` and `advanced` only, unchanged from `defaultOpenOf`.
 
 **The `advanced` member is latent and stays.** `ColumnSectionId` includes `"advanced"` and `perKindColumn` never emits it; the chart family's own collapsed field is mounted by `chart-manager`, not here. Keep the member and say in the comment that it is unmounted, rather than deleting a vocabulary member a caller may mount — deleting it is a behaviour change dressed as tidying.
 
 - [ ] **Step 4: Re-point the section locators in the same commit**
 
-`index.dom.test.ts`'s `describe("the column's sections")` block (`:672-920`) reads `[data-vigilia-section]`, `.vigilia-field` and the section handles. Re-point each to the React surface: the hook stays, the class locators move to the control's own structure, and the "keeps the sections the author opened across a re-render" case (`:726`) becomes "across a re-publish" — it is the same assertion against the new mechanism.
+`index.dom.test.ts`'s `describe("the column's sections")` block (`:672-920`) reads `[data-yunari-section]`, `.yunari-field` and the section handles. Re-point each to the React surface: the hook stays, the class locators move to the control's own structure, and the "keeps the sections the author opened across a re-render" case (`:726`) becomes "across a re-publish" — it is the same assertion against the new mechanism.
 
 - [ ] **Step 5: Red proofs**
 
@@ -328,7 +328,7 @@ Content, Position, Layer and Paint stop building DOM and start returning `FieldV
 
 ### Task 3: Content and Layer — the subject's own fields, and a text object's runs
 
-**Outcome:** Content renders the name field and a text object's run editor; Layer renders rotation and opacity. Every row is a plan-1 control carrying its existing `data-vigilia-*` hook on its own focusable element. **Controller correction (ruling H, in the ledger):** a chart's own content fields are **Task 3a's**, not this task's — this Outcome claimed them while 3a's own preamble says 3a exists because the chart fields are the ones the React boundary could not reach from here. The boundary is the **directory**: `chart-manager/**` and `settings-field.ts`'s chart consumers are 3a's, `selection-inspector/**` is this task's. Task 3 wires the dispatch of the `chartContent` and `chartPaint` extra kinds; 3a supplies the renderer, and 3a proves "every descriptor visible pre-plan has a rendered, named control" for the chart families.
+**Outcome:** Content renders the name field and a text object's run editor; Layer renders rotation and opacity. Every row is a plan-1 control carrying its existing `data-yunari-*` hook on its own focusable element. **Controller correction (ruling H, in the ledger):** a chart's own content fields are **Task 3a's**, not this task's — this Outcome claimed them while 3a's own preamble says 3a exists because the chart fields are the ones the React boundary could not reach from here. The boundary is the **directory**: `chart-manager/**` and `settings-field.ts`'s chart consumers are 3a's, `selection-inspector/**` is this task's. Task 3 wires the dispatch of the `chartContent` and `chartPaint` extra kinds; 3a supplies the renderer, and 3a proves "every descriptor visible pre-plan has a rendered, named control" for the chart families.
 
 **Owning symbols/landmarks:** `appearance.ts` (`createNameField`, `createOpacityField`, `createResolutionLine`, `createTypePresetReveal`), `runs.ts` (817 lines — `createRunEditor`, `RunBindingPort`), `per-kind-column.ts` (`contentBody`, `layerBody`, `rotationField`), `index.ts`'s `focusedControl`/`restoreFocus`, `chart-manager`'s `ChartFieldsPort.content`.
 
@@ -340,7 +340,7 @@ Content, Position, Layer and Paint stop building DOM and start returning `FieldV
 
 **Interfaces:**
 - Consumes: Task 1's `FieldView`/`ExtraView` and `SelectionEdits`; plan 1's `ControlText`, `ControlSwatch`, `ControlWell`, `ControlSelect`, `ControlNumber`, `ControlSlider`, `ControlToggle`, `ControlSegmented`. Number clearing and slider preview/cancel use plan 1's exact callbacks, with target-revision checks on every write.
-- Produces: `FieldView`s carrying the hooks `data-vigilia-name`, `data-vigilia-geometry="angle"`, `data-vigilia-opacity`; and `<RunEditor nodeId={…} edits={…} />` rendering the hooks `data-vigilia-runs`, `data-vigilia-run-source`, `data-vigilia-run-format`, `data-vigilia-run-preset`, `data-vigilia-run-colour`, `data-vigilia-run-text`, `data-vigilia-run-zone`, `data-vigilia-run-unit-display`, `data-vigilia-run-format-preview`, `data-vigilia-run-add`, `data-vigilia-run-remove`.
+- Produces: `FieldView`s carrying the hooks `data-yunari-name`, `data-yunari-geometry="angle"`, `data-yunari-opacity`; and `<RunEditor nodeId={…} edits={…} />` rendering the hooks `data-yunari-runs`, `data-yunari-run-source`, `data-yunari-run-format`, `data-yunari-run-preset`, `data-yunari-run-colour`, `data-yunari-run-text`, `data-yunari-run-zone`, `data-yunari-run-unit-display`, `data-yunari-run-format-preview`, `data-yunari-run-add`, `data-yunari-run-remove`.
 
 - [ ] **Step 1: Write the failing test for the two rules that are defects, not style**
 
@@ -366,7 +366,7 @@ The run editor is the one sub-surface the row union cannot express, so it stays 
 
 - [ ] **Step 4: Re-point the Content and Layer locators in the same commit**
 
-`index.dom.test.ts:140-380` and `:594-671` read `.vigilia-field`, `.vigilia-field-row`, `data-vigilia-name`, `data-vigilia-geometry="angle"`, `data-vigilia-opacity`, `data-vigilia-reveal-type-presets`, and the run hooks. Every read is re-pointed in this commit; each re-pointed locator is proven red in Step 5.
+`index.dom.test.ts:140-380` and `:594-671` read `.yunari-field`, `.yunari-field-row`, `data-yunari-name`, `data-yunari-geometry="angle"`, `data-yunari-opacity`, `data-yunari-reveal-type-presets`, and the run hooks. Every read is re-pointed in this commit; each re-pointed locator is proven red in Step 5.
 
 - [ ] **Step 5: Red proofs**
 
@@ -431,7 +431,7 @@ list; do not put chart mutation rules in the generic inspector dispatcher.
 
 **Interfaces:**
 - Consumes: Task 1's `FieldView` and `SelectionEdits`; the existing `GeometryPort` unchanged.
-- Produces: `FieldView`s carrying `data-vigilia-geometry="left|top|width|height"`, `data-vigilia-crop*`, `data-vigilia-bleeds`, `data-vigilia-shape-sides|points|path|line|angle`, and the `data-vigilia-resolution` line for the size disagreement.
+- Produces: `FieldView`s carrying `data-yunari-geometry="left|top|width|height"`, `data-yunari-crop*`, `data-yunari-bleeds`, `data-yunari-shape-sides|points|path|line|angle`, and the `data-yunari-resolution` line for the size disagreement.
 
 - [ ] **Step 1: Write the failing test for the pairing and the refusal**
 
@@ -447,19 +447,19 @@ Existing group/bleed behaviour may already pass; record that as preserved baseli
 
 - [ ] **Step 2: Move the write rules into the dispatcher, and keep every one**
 
-`write` (`index.ts:370-414`) keeps its four branches verbatim: a text object's width/height write `vigiliaText.box` and re-run `applyAuthoredText`, a shape's scale, `setCoords()` at the end. The dispatcher resolves `target()` at call time and refuses through `stillTarget` — **the stale-event refusal survives**, and the test at `index.dom.test.ts:575` is the control.
+`write` (`index.ts:370-414`) keeps its four branches verbatim: a text object's width/height write `yunariText.box` and re-run `applyAuthoredText`, a shape's scale, `setCoords()` at the end. The dispatcher resolves `target()` at call time and refuses through `stillTarget` — **the stale-event refusal survives**, and the test at `index.dom.test.ts:575` is the control.
 
 - [ ] **Step 3: Keep the size-disagreement line, and keep it quiet**
 
-The line exists because a text object's Size field shows the authored box while the object draws a different edge (`index.ts:72-113`). It stays, it keeps `data-vigilia-resolution="size"`, and it reads as a note in `--muted` — not a control (bible §5.1's "a border means editable").
+The line exists because a text object's Size field shows the authored box while the object draws a different edge (`index.ts:72-113`). It stays, it keeps `data-yunari-resolution="size"`, and it reads as a note in `--muted` — not a control (bible §5.1's "a border means editable").
 
 - [ ] **Step 4: Open the collapsed section in the shared driver, not by un-collapsing it**
 
-Position is closed by default and every geometry helper drives an input inside it. The fix belongs in `tests/e2e/rebuild-driver.ts`'s `place()` and the geometry readers — **not** in `defaultOpen`. `activeGeometry` reads through `window.vigiliaEditorBridge` and never touches a DOM geometry input, so it needs no change; `geometryPairBoxes` and the Size-pair and polygon specs do. This is Review Focus 4, and the archived per-kind plan measured the same thing (`2026-10-06-the-per-kind-inspector.md`, Task 7).
+Position is closed by default and every geometry helper drives an input inside it. The fix belongs in `tests/e2e/rebuild-driver.ts`'s `place()` and the geometry readers — **not** in `defaultOpen`. `activeGeometry` reads through `window.yunariEditorBridge` and never touches a DOM geometry input, so it needs no change; `geometryPairBoxes` and the Size-pair and polygon specs do. This is Review Focus 4, and the archived per-kind plan measured the same thing (`2026-10-06-the-per-kind-inspector.md`, Task 7).
 
 - [ ] **Step 5: Re-point the Position locators in the same commit**
 
-`index.dom.test.ts:177-378` and `:921-1110`, plus `panel.dom.test.ts`, `bleed.dom.test.ts` and `crop.dom.test.ts`, read `.vigilia-field-row`, `[data-vigilia-geometry]`, `[data-vigilia-resolution]`, `[data-vigilia-bleeds]`, `[data-vigilia-crop*]` and `[data-vigilia-shape-*]`.
+`index.dom.test.ts:177-378` and `:921-1110`, plus `panel.dom.test.ts`, `bleed.dom.test.ts` and `crop.dom.test.ts`, read `.yunari-field-row`, `[data-yunari-geometry]`, `[data-yunari-resolution]`, `[data-yunari-bleeds]`, `[data-yunari-crop*]` and `[data-yunari-shape-*]`.
 
 - [ ] **Step 6: Red proofs**
 
@@ -475,7 +475,7 @@ Gated list, `npm run design:check`, `npm run build`, `npx vitest run packages/ed
 
 **Outcome:** Paint renders the panel material fields (fill/ink, stroke, border width, corner radius, shadow, shadow blur, shadow offset) for the ten classes `supportsPanelFields` admits, a chart's own paint fields, and the glass control **present and refused in words** for every kind that cannot carry it — including a group.
 
-**Owning symbols/landmarks:** `panel.ts` (`supportsPanelFields`, `createPanelMaterialFields`, `paintPropertyFor`, `shadowNumber`), `glass.ts` (`createGlassFields`, `supportsGlassControl`, `refusalOf`, `attachReason`, `glassReason`, `treatmentOf`, `writeTreatment`, `clearTreatment`, `VIGILIA_GLASS_PROPERTY`), `per-kind-column.ts` (`paintBody`), `chart-manager`'s `ChartFieldsPort.paint`.
+**Owning symbols/landmarks:** `panel.ts` (`supportsPanelFields`, `createPanelMaterialFields`, `paintPropertyFor`, `shadowNumber`), `glass.ts` (`createGlassFields`, `supportsGlassControl`, `refusalOf`, `attachReason`, `glassReason`, `treatmentOf`, `writeTreatment`, `clearTreatment`, `YUNARI_GLASS_PROPERTY`), `per-kind-column.ts` (`paintBody`), `chart-manager`'s `ChartFieldsPort.paint`.
 
 **Files:**
 - Modify: `packages/editor/src/selection-inspector/panel.ts`, `packages/editor/src/selection-inspector/glass.ts`, `packages/editor/src/selection-inspector/per-kind-column.ts`, `packages/editor/src/selection-inspector/view.ts`, `packages/editor/src/selection-inspector/glass.dom.test.ts`, `packages/editor/src/selection-inspector/panel.dom.test.ts`
@@ -483,7 +483,7 @@ Gated list, `npm run design:check`, `npm run build`, `npx vitest run packages/ed
 
 **Interfaces:**
 - Consumes: Task 1's `FieldView` (the `swatch` control is bible §5's *swatch well*), plan 1's `ControlWell`, `ControlNumber`, `ControlToggle`, and `ControlProps.refused`.
-- Produces: `FieldView`s carrying `data-vigilia-panel-fill|stroke|border|radius|shadow|shadow-blur|shadow-offset`, `data-vigilia-glass-enabled`, `data-vigilia-glass-blur`.
+- Produces: `FieldView`s carrying `data-yunari-panel-fill|stroke|border|radius|shadow|shadow-blur|shadow-offset`, `data-yunari-glass-enabled`, `data-yunari-glass-blur`.
 
 - [ ] **Step 1: Write the failing test for the refusal**
 
@@ -534,7 +534,7 @@ Gated list, `npm run design:check`, `npm run build`, `npx vitest run packages/ed
 
 **Interfaces:**
 - Consumes: Task 1's `FieldView` with `control: "readOnly"`, Task 2's `InspectorSection` with `readOnly: true`.
-- Produces: read-only rows carrying `data-vigilia-resolution` and `data-vigilia-reveal-type-presets` as today.
+- Produces: read-only rows carrying `data-yunari-resolution` and `data-yunari-reveal-type-presets` as today.
 
 - [ ] **Step 1: Write the failing test for the read-only treatment**
 
@@ -581,7 +581,7 @@ Gated list, `npm run design:check`, `npm run build`, `npx vitest run packages/ed
 
 - [ ] **Step 1: Enumerate the field inventory per kind, from the pre-plan code**
 
-Take the list from `git show <plan-3-base>:` for each file, not from the new code — a list re-derived from the rewrite cannot fail. For each of `SELECTION_KINDS` and for a locked object, list every `data-vigilia-*` hook the pre-plan surface rendered, and assert the rebuilt surface renders a **superset**. This is the spec's own test: *does this change remove a step, or does it remove a freedom?*
+Take the list from `git show <plan-3-base>:` for each file, not from the new code — a list re-derived from the rewrite cannot fail. For each of `SELECTION_KINDS` and for a locked object, list every `data-yunari-*` hook the pre-plan surface rendered, and assert the rebuilt surface renders a **superset**. This is the spec's own test: *does this change remove a step, or does it remove a freedom?*
 
 - [ ] **Step 2: Keep the three instruments the spec names, unmodified in intent**
 
@@ -593,8 +593,8 @@ Take the list from `git show <plan-3-base>:` for each file, not from the new cod
 
 ```bash
 cd src/web
-grep -rn "vigilia-field\|vigilia-resolution\|vigilia-section\|data-vigilia-" packages/editor/src/selection-inspector tests/e2e | wc -l
-grep -rn "vigilia-field" packages/editor/src/selection-inspector tests/e2e | wc -l
+grep -rn "yunari-field\|yunari-resolution\|yunari-section\|data-yunari-" packages/editor/src/selection-inspector tests/e2e | wc -l
+grep -rn "yunari-field" packages/editor/src/selection-inspector tests/e2e | wc -l
 ```
 The second number must be **0** when this task commits: the class primitives are gone. Record both counts.
 
@@ -618,11 +618,11 @@ Expected: green, and the summary reports the tests you named ran. Commit the led
 
 **Outcome:** Every file this plan converted is in `scripts/design-tokens.gated.json`, `npm run design:check` exits 0 over them, it still refuses to pass over an empty list, and **no native `<select>` and no native `input type=range` remains in an editor surface the inspector owns**.
 
-**Owning symbols/landmarks:** `scripts/design-tokens.gated.json`, `scripts/design-tokens.mjs`, `npm run design:check`, the control files in `selection-inspector/` and `components/ui/`, `editor-shell.css`'s now-unused `.vigilia-field*` rules.
+**Owning symbols/landmarks:** `scripts/design-tokens.gated.json`, `scripts/design-tokens.mjs`, `npm run design:check`, the control files in `selection-inspector/` and `components/ui/`, `editor-shell.css`'s now-unused `.yunari-field*` rules.
 
 **Files:**
 - Modify: `scripts/design-tokens.gated.json` (the union of every task's additions)
-- Modify: `packages/editor/src/editor-shell/editor-shell.css` (delete the `.vigilia-field*` / `.vigilia-resolution` rules whose last consumer this plan removed)
+- Modify: `packages/editor/src/editor-shell/editor-shell.css` (delete the `.yunari-field*` / `.yunari-resolution` rules whose last consumer this plan removed)
 - Modify: `scripts/design-tokens.mjs`'s built-in `--self-test` only if a covering decision amends the guard; no separate self-test file
 
 **Interfaces:**
@@ -649,7 +649,7 @@ Expected: **0**, then **non-zero with a message naming the empty list** — Revi
 
 - [ ] **Step 3: Red proof**
 
-Add a hex literal and an off-scale `px` to a converted file. Expected: **non-zero, naming the file and the value**. Revert, then re-run to green. Then delete the `.vigilia-field` rules and confirm **no test references the class** (`grep` returns 0) — a rule removed while a locator still reads it is a silent break.
+Add a hex literal and an off-scale `px` to a converted file. Expected: **non-zero, naming the file and the value**. Revert, then re-run to green. Then delete the `.yunari-field` rules and confirm **no test references the class** (`grep` returns 0) — a rule removed while a locator still reads it is a silent break.
 
 - [ ] **Step 4: Commit**
 
@@ -683,7 +683,7 @@ The capture selects the starter's card, asserts the subject block leads, asserts
 ```bash
 cd src/web
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "the sectioned column a card gets" --workers=1
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "the sectioned column a card gets" --workers=1
 ```
 Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking (Review Focus 9).
 
@@ -758,7 +758,7 @@ Named so a later plan owns them rather than this one growing.
 - **Settings, the palette chip's move and the rail's gear** are plan 5, with the `publish.*` chord.
 - **The closed glyph set, the accessible-name/tooltip single owner and the copy rules** are plan 6. This plan uses the existing tooltip owner and the existing glyphs; it does not close the set.
 - **`vg-158`** stays open and is not answered here.
-- **No token is deleted from `editor-shell.css`** except the `.vigilia-field*` and `.vigilia-resolution` rules whose last consumer this plan removes; any other token leaves when its last consumer moves.
+- **No token is deleted from `editor-shell.css`** except the `.yunari-field*` and `.yunari-resolution` rules whose last consumer this plan removes; any other token leaves when its last consumer moves.
 
 ## Self-review
 

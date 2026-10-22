@@ -26,7 +26,7 @@ So the question is not "how do we validate a tag list". It is **where the bounda
 between the format and the vocabulary sits**, given that the vocabulary lives in a
 catalogue this repo does not own.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `tags`, `TAG_PATTERN`, `MAX_TAGS` across `renderer-core`, `theme-package`,
 `schema/` and the editor; `ThemeMetadata` and every existing member of it; the two

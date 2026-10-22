@@ -34,12 +34,12 @@ Where plan 1 has not landed a piece this plan consumes, say so in the first comm
 - **Scales and roles only.** Every value comes from plan 1's tokens (`--text-*`, `--radius-*`, `--space-*`, `--elev-*`) and the palette roles (bible §4). No hex, no off-scale px. **Every file this plan converts joins `scripts/design-tokens.gated.json` in the same task** — the ratchet is seeded as work lands, never afterwards.
 - **No new dependency.** React 19, Base UI and Tailwind v4 are present; `0038` and `0039` stand.
 - **Widths follow the content that fills them.** The inspector becomes the bible's 276px here (it is 280px and nothing measured depends on the 4px). The pane **stays 360px** in this plan: that number is `editor-shell.css`'s measured requirement of the *current* layer row, and the row §5.1 specifies replaces it in plan 4. Halving the column now would ellipsise every named row in the starter.
-- **The device lens's mechanism is untouched.** `display-lens.ts`, `viewport-manager/`, the media layer and `[data-vigilia-display-screen]` keep their behaviour and their owner; this plan changes where the control *is* and what shape it has, never what it frames.
+- **The device lens's mechanism is untouched.** `display-lens.ts`, `viewport-manager/`, the media layer and `[data-yunari-display-screen]` keep their behaviour and their owner; this plan changes where the control *is* and what shape it has, never what it frames.
 - **Leave `shell-layout.tsx`'s chord-rule comment alone** (the one beginning "A row names an id only when that binding reaches the same manager"). `vg-185` owns its false premise, and any rewrite of it pre-judges that row.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled. No licence headers; comments are 1–3 lines and explain *why*. 500 lines is a signal and 800 is a stop — `shell-layout.tsx` is 703 before this plan and the extractions below are what keeps it under.
 - Run from `src/web/`; the scripts are `package.json`'s. Stage explicit paths; never `git add -A`. Conventional Commit titles.
 - **`tests/e2e/` belongs to no tsconfig (`vg-192`), so a bad `openPane(page, "…")` name is caught by nothing but running the spec.** Every re-pointed call site is exercised by a spec in the same task.
-- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `VIGILIA_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
+- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `YUNARI_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
 - **A new test must be shown to fail when the behaviour it guards is disabled**, before it is trusted. Every task below states its red proof.
 - **No register row is closed by this plan.** `vg-153` (the palette and type-preset split lands here, its discharge is plan 4's), `vg-154` (the asset pane's home moves here, the merge is plan 4's), `vg-161` (the Insert menu's removal lands here; the row's subject is the unlanded plan's queue status), `vg-172` and `vg-192` stay open. Say in the commit which half of which row the commit answers.
 
@@ -126,7 +126,7 @@ it("asks for the slot it was given, and only asks", async () => {
   await press(railButton(host, "tokens"));
   expect(onChoose.mock.calls).toEqual([["tokens"]]);
   // Nothing local decides: the rail owns no pane, so the press alone opens none.
-  expect(host.querySelector('[data-vigilia-panel="tokens"]')).toBeNull();
+  expect(host.querySelector('[data-yunari-panel="tokens"]')).toBeNull();
 });
 ```
 
@@ -187,7 +187,7 @@ git commit
 
 **Outcome:** Every pane has the bible's structure — a title bar, a scrolling body, an optional footer toolbar — and the Composition pane's footer holds the object actions, filtered by the registry exactly as the dock filters them.
 
-**Owning symbols/landmarks:** the pane markup in `shell-layout.tsx` (`.editor-shell-panel`), `.editor-shell-panel` rules in `editor-shell.css`, the `aside.editor-shell-inspector`, `layer-panel.tsx`'s `data-vigilia-panel="layers"` section.
+**Owning symbols/landmarks:** the pane markup in `shell-layout.tsx` (`.editor-shell-panel`), `.editor-shell-panel` rules in `editor-shell.css`, the `aside.editor-shell-inspector`, `layer-panel.tsx`'s `data-yunari-panel="layers"` section.
 
 **Files:**
 - Create: `packages/editor/src/editor-shell/pane.tsx`, `packages/editor/src/editor-shell/pane.dom.test.tsx`
@@ -207,7 +207,7 @@ export function Pane(props: {
   readonly children: React.ReactNode;
 }): React.JSX.Element;
 ```
-  The DOM name of each pane does not change: `[data-vigilia-panel="layers"]` stays on the Composition pane's section, so the browsable contract the specs share survives.
+  The DOM name of each pane does not change: `[data-yunari-panel="layers"]` stays on the Composition pane's section, so the browsable contract the specs share survives.
 
 - [ ] **Step 1: Write the failing test for the footer's gate**
 
@@ -259,7 +259,7 @@ Add the converted files to `scripts/design-tokens.gated.json`, run `npm run desi
 
 **Files:**
 - Delete: `packages/editor/src/editor-shell/insert-popover.tsx`, `tests/e2e/insert-popover.spec.ts` (its two journeys are re-pointed, not dropped — see Step 3)
-- Modify: `packages/editor/src/editor-shell/shell-layout.tsx`, `packages/editor/src/editor-shell/shell-layout.dom.test.tsx`, `packages/editor/src/editor-shell/publish-control.tsx`, `packages/editor/src/editor-shell/publish-control.dom.test.tsx`, `packages/editor/src/editor-shell/editor-shell.css`, `packages/editor/src/ui-copy.ts`, `tests/e2e/publish-header.spec.ts`, and the six specs that click `[data-vigilia-save-package]`
+- Modify: `packages/editor/src/editor-shell/shell-layout.tsx`, `packages/editor/src/editor-shell/shell-layout.dom.test.tsx`, `packages/editor/src/editor-shell/publish-control.tsx`, `packages/editor/src/editor-shell/publish-control.dom.test.tsx`, `packages/editor/src/editor-shell/editor-shell.css`, `packages/editor/src/ui-copy.ts`, `tests/e2e/publish-header.spec.ts`, and the six specs that click `[data-yunari-save-package]`
 - Modify: `scripts/design-tokens.gated.json`
 
 **Interfaces:**
@@ -270,7 +270,7 @@ Add the converted files to `scripts/design-tokens.gated.json`, run `npm run desi
 
 ```tsx
 it("has no Insert menu, and every insertable group is still reachable from the Add pane", () => {
-  expect(header(host).querySelector("[data-vigilia-menu='insert']")).toBeNull();
+  expect(header(host).querySelector("[data-yunari-menu='insert']")).toBeNull();
   // Walk the registry, not a copy of it: the menu's removal is only safe while
   // every object it offered still has a tile in the pane.
   const pane = openAddPane(host);
@@ -306,7 +306,7 @@ Brand mark, then `File`, `Edit`, `View` — no tagline, no document name, no per
 
 The header's right-hand control is the publish control, styled as the editor's one filled accent button, and it *is* the toggle (bible §7.1). Everything the surface carries today — the host's address, its port, the pairing token, the QR, the expiry, the §145 warning, the live document's name and any refusal — renders in a popover on that control, so no fact is lost and the header no longer grows with the LAN. Errors stay in words and reach a screen reader (`aria-describedby` for the warning, `role="alert"` for a refusal, as today). Do not print a chord: no `publish.*` binding exists (`Global Constraints`).
 
-The header's separate `Save package` button leaves for the File menu's own row, which already dispatches the same call; re-point the six specs that click `[data-vigilia-save-package]`. **Leave the chord-rule comment in `ShellMenuBar` exactly as it is** — `vg-185` owns it.
+The header's separate `Save package` button leaves for the File menu's own row, which already dispatches the same call; re-point the six specs that click `[data-yunari-save-package]`. **Leave the chord-rule comment in `ShellMenuBar` exactly as it is** — `vg-185` owns it.
 
 - [ ] **Step 5: Red proof — the menu's removal did not remove a capability**
 
@@ -438,7 +438,7 @@ Gated list, `npm run design:check`, `npm run build`, `npx vitest run packages/ed
 
 **Outcome:** One floating cluster at the stage's top-right holding the display lens chips and the zoom cluster (−, value, +, fit), every choice the current control offers still reachable.
 
-**Owning symbols/landmarks:** `editor-shell/display-switch.tsx` (`DisplaySwitch`), `.editor-shell-zoom` in `editor-shell.css`, `[data-vigilia-zoom]`, `viewport-manager/`'s `showDisplay`, `zoomToSelection` and `reset`, `[data-vigilia-display-screen]`.
+**Owning symbols/landmarks:** `editor-shell/display-switch.tsx` (`DisplaySwitch`), `.editor-shell-zoom` in `editor-shell.css`, `[data-yunari-zoom]`, `viewport-manager/`'s `showDisplay`, `zoomToSelection` and `reset`, `[data-yunari-display-screen]`.
 
 **Files:**
 - Modify: `packages/editor/src/editor-shell/display-switch.tsx`, `packages/editor/src/editor-shell/display-switch.dom.test.tsx`, `packages/editor/src/editor-shell/shell-layout.tsx`, `packages/editor/src/editor-shell/editor-shell.css`, `packages/editor/src/ui-copy.ts`
@@ -447,7 +447,7 @@ Gated list, `npm run design:check`, `npm run build`, `npx vitest run packages/ed
 
 **Interfaces:**
 - Consumes: `displayLensGroups(orientation)`, `viewport.display()`, `viewport.zoom()`, `viewport.isFitted()`, `viewport.showDisplay()`, `viewport.zoomToSelection()`, `viewport.reset()` — all unchanged.
-- Produces: the same `DisplaySwitch` entry point with the same props, rendered inside a top-right cluster; `[data-vigilia-zoom]` stays on the element that shows the percentage, because two browser specs and the `editor-zoom-readout` capture read it.
+- Produces: the same `DisplaySwitch` entry point with the same props, rendered inside a top-right cluster; `[data-yunari-zoom]` stays on the element that shows the percentage, because two browser specs and the `editor-zoom-readout` capture read it.
 
 - [ ] **Step 1: Enumerate what the control offers today, before changing it**
 
@@ -480,7 +480,7 @@ Expected: **FAIL**.
 
 - [ ] **Step 3: Move and re-cut the cluster**
 
-The cluster sits 14px from the stage's top-right, at the same treatment as Task 5's chip. Nothing in the lens mechanism changes: `display-lens.ts`, the screen outline `[data-vigilia-display-screen]` (a 1px outline, hidden under Fit), the media layer and the viewport owner are untouched.
+The cluster sits 14px from the stage's top-right, at the same treatment as Task 5's chip. Nothing in the lens mechanism changes: `display-lens.ts`, the screen outline `[data-yunari-display-screen]` (a 1px outline, hidden under Fit), the media layer and the viewport owner are untouched.
 
 **Crowding contract:** the mockup's two illustrative lens chips are not the product's full choice set. Exercise all choices with Add open and inspector visible at 1280×720 and 1440×900, with a long document name and 200% browser zoom. Keep the existing labelled chooser for overflow, or wrap controls within the view cluster; do not force six lenses into a 2–4-option segmented control. Identity and view never overlap, focused controls stay visible, and no transparent cluster wrapper blocks stage gestures. Check both portrait and landscape lens groups. No chosen lens changes authored artboard dimensions or creates history.
 
@@ -500,7 +500,7 @@ Gated list, `npm run design:check`, `npm run build`, then `npx playwright test -
 
 **Outcome:** The dock sits at the stage's bottom-centre at elevation 1 with the bible's radii and control sizes, still rendering both registry halves — the object half filtered, the arrange half greyed.
 
-**Owning symbols/landmarks:** `editor-shell/canvas-dock.tsx` (`CanvasDock`, `Action`, `ArrangeAction`), `.editor-shell-dock` in `editor-shell.css`, `[data-vigilia-canvas-toolbar]`, `[data-vigilia-arrange-action]`.
+**Owning symbols/landmarks:** `editor-shell/canvas-dock.tsx` (`CanvasDock`, `Action`, `ArrangeAction`), `.editor-shell-dock` in `editor-shell.css`, `[data-yunari-canvas-toolbar]`, `[data-yunari-arrange-action]`.
 
 **Files:**
 - Modify: `packages/editor/src/editor-shell/canvas-dock.tsx`, `packages/editor/src/editor-shell/canvas-dock.dom.test.tsx`, `packages/editor/src/editor-shell/editor-shell.css`, `packages/editor/src/editor-shell/shell-layout.dom.test.tsx`
@@ -508,7 +508,7 @@ Gated list, `npm run design:check`, `npm run build`, then `npx playwright test -
 
 **Interfaces:**
 - Consumes: `OBJECT_ACTIONS`, `actionEnabled`, `arrangeActions()` — unchanged, and the only source of what each half shows.
-- Produces: the same element contract (`data-vigilia-canvas-toolbar`, `data-visible`, `data-vigilia-arrange-action`), because `tests/e2e/editor.spec.ts`, `keyboard.spec.ts`, `glass-authoring.spec.ts` and the `editor-toolbar` capture all address it.
+- Produces: the same element contract (`data-yunari-canvas-toolbar`, `data-visible`, `data-yunari-arrange-action`), because `tests/e2e/editor.spec.ts`, `keyboard.spec.ts`, `glass-authoring.spec.ts` and the `editor-toolbar` capture all address it.
 
 - [ ] **Step 1: Write the failing test for the asymmetry**
 
@@ -611,7 +611,7 @@ The capture opens the Add slot, asserts the rail's four slots are present and th
 ```bash
 cd src/web
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
 ```
 
 Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking.
@@ -701,7 +701,7 @@ never against the mockup alone.
 
 **How the two sides were looked at.** The mockup was **rendered** in the
 installed Playwright Chromium at a 1280×720 viewport
-(`file:///D:/git-repos/vigilia/docs/design/mockups/editor-shell.html`), full page
+(`file:///D:/git-repos/yunari/docs/design/mockups/editor-shell.html`), full page
 and as its shell element (1180×638px) — not judged from its source. Each capture
 is 1280×720 and was **Read** whole, then re-cropped at 3–6× (the PNG embedded as
 a data URL in a Playwright page, a clipped region screenshotted upscaled) so the
@@ -736,7 +736,7 @@ before the shot. The 25 rows and their 6 + 12 + 7 tally are unchanged.
 | 2 | Header, right | nothing between the menus and Publish | an `editorial` swatch+name chip in the header | **Deliberate** — the palette chip's move to Settings is **plan 5**'s. |
 | 3 | Header, right | `⌘⇧P` printed beside Publish | no chord printed | **Deliberate, deferred** — no `publish.*` binding exists until **plan 5**; §9 forbids a mark that runs nothing. |
 | 4 | Header, right | a filled accent **Publish** button | nothing | **Deliberate** — `publish-control.tsx:87` returns `null` while the host is unknown, and the preview has no host; §9 forbids a fabricated claim. The control renders with a host. |
-| 5 | Header, left | a brand chevron glyph and a 1px divider before the menus | the wordmark alone, no divider | **Deliberate** — §7.1 requires "brand mark, then `File`, `Edit`, `View`", and the wordmark `Vigilia` occupies exactly that position; the chevron-plus-hairline is the mockup's own illustration of one, which spec §13.1 allows a deliberate visual difference to explain. |
+| 5 | Header, left | a brand chevron glyph and a 1px divider before the menus | the wordmark alone, no divider | **Deliberate** — §7.1 requires "brand mark, then `File`, `Edit`, `View`", and the wordmark `Yunari` occupies exactly that position; the chevron-plus-hairline is the mockup's own illustration of one, which spec §13.1 allows a deliberate visual difference to explain. |
 | 6 | Rail, foot | the settings gear pinned to the foot | no gear | **Deliberate** — a gear that opens nothing asserts a capability the code lacks (§9); **plan 5** builds Settings. |
 | 7 | Rail slot size | 34×34px | 34×34px (both outside §5's 26–30px) | **Register row `vg-227`** owns the decision; the mockup is not edited while it is open. |
 | 8 | Pane title bar | `＋ Add   8 units` | `＋ Add` — no count | **Deliberate** — pane content; **plan 4**. Bible §7.3. |
@@ -745,7 +745,7 @@ before the shot. The 25 rows and their 6 + 12 + 7 tally are unchanged.
 | 11 | Shapes / charts | 4-column glyph tiles | labelled pills (`Rectangle`, `Gauge`, …) | **Deliberate** — **plan 4**. §7.8. |
 | 12 | Text | a glyph well row | a labelled pill | **Deliberate** — **plan 4**. |
 | 13 | Assets | a dashed `Import a file  png · svg` row | an `ASSETS` section: select, preview, Import/Replace/Remove | **Deliberate** — the assets host re-parented into Add; **plan 4** absorbs Assets (`vg-154`). |
-| 14 | Stage ground | a restrained diagonal texture | a flat `--vigilia-canvas-bg` ground | **Deliberate** — §7.5 permits texture *or* a flat ground; §7.8 keeps the artwork dominant. |
+| 14 | Stage ground | a restrained diagonal texture | a flat `--yunari-canvas-bg` ground | **Deliberate** — §7.5 permits texture *or* a flat ground; §7.8 keeps the artwork dominant. |
 | 15 | Stage top-right | compact lens chips (`16:9`, `9:19.5`, `Fit`) + `36%` + expand, all inline | one readout (`−  33%  +  fit`) whose list holds every lens behind a labelled chooser | **Deliberate** — Task 6's crowding resolution; §7.7 permits the labelled chooser over forcing six lenses into chips. The product's `−`/`+` follow §7.5, which the mockup omits; the mockup is left illustrative. |
 | 16 | Stage top-left | dot · name · 1px divider · the word `edited` · weight 500 | dot · name only (no divider; the marker is `Unsaved changes` in the warn role, absent when clean) | **Register row `vg-219`** owns the three; the missing marker here is the **clean** state, not a difference. |
 | 17 | Stage top-right, treatment | cluster radius 9–10px, elevation 1 | `--radius-xl`/`--edge` here, but the glass palette rule off the ladder | **Register row `vg-222`** (two competing cluster treatments; editorial flat, five palettes overlay). |

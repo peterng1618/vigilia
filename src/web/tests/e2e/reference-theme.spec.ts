@@ -1,6 +1,6 @@
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
-import type { FontAssetReference } from "@vigilia/renderer-core";
-import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
+import type { FontAssetReference } from "@yunari/renderer-core";
+import { readThemePackage, writeThemePackage } from "@yunari/theme-package";
 import { strToU8, zipSync } from "fflate";
 import { solidOf } from "../../packages/editor/src/new-fabric-theme-globals.js";
 import { chooseIn, optionsOf, typeIntoControl } from "./control-set.js";
@@ -85,7 +85,7 @@ const BROKEN_FONT_ASSET: FontAssetReference = {
   license: {
     name: "SIL Open Font License 1.1",
     url: "https://openfontlicense.org/",
-    attribution: "Not a real face; a Vigilia test fixture.",
+    attribution: "Not a real face; a Yunari test fixture.",
   },
 };
 
@@ -103,7 +103,7 @@ const desktop = (testInfo: TestInfo): void => {
  * object carrying a series or a batch count has recorded a run, not a document.
  *
  * Read off the starter's own save rather than guessed: the authored set is
- * geometry, paint, type, the four `vigilia*` properties and a chart's `settings`,
+ * geometry, paint, type, the four `yunari*` properties and a chart's `settings`,
  * and nothing below is authored state.
  */
 const NEVER_SAVED = [
@@ -179,11 +179,11 @@ function sceneFacts(page: Page): Promise<readonly ObjectFact[]> {
     };
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): Obj[] } };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     const out: Array<{
       id: string;
       type: string;
@@ -204,7 +204,7 @@ function sceneFacts(page: Page): Promise<readonly ObjectFact[]> {
               width: Math.round(r.width * 100) / 100,
               height: Math.round(r.height * 100) / 100,
             },
-            glass: object.get("vigiliaGlass") ?? null,
+            glass: object.get("yunariGlass") ?? null,
           });
         }
         const children = object.getObjects?.() ?? [];
@@ -223,7 +223,7 @@ function idsOf(facts: readonly ObjectFact[]): readonly string[] {
 async function openEditor(page: Page): Promise<void> {
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await waitForBridge(page);
   // The first envelope is mounted after `loadFontAssets` resolves, so an id
@@ -246,9 +246,9 @@ async function waitForBridge(page: Page): Promise<void> {
     () =>
       (
         window as unknown as {
-          vigiliaEditorBridge?: { editor?: { canvas?: unknown } };
+          yunariEditorBridge?: { editor?: { canvas?: unknown } };
         }
-      ).vigiliaEditorBridge?.editor?.canvas !== undefined,
+      ).yunariEditorBridge?.editor?.canvas !== undefined,
     undefined,
     { timeout: 20_000 },
   );
@@ -263,7 +263,7 @@ async function waitForMedia(page: Page): Promise<void> {
       const element = document.querySelector<
         HTMLImageElement | HTMLVideoElement
       >(
-        "[data-vigilia-background-media] img, [data-vigilia-background-media] video",
+        "[data-yunari-background-media] img, [data-yunari-background-media] video",
       );
       return (
         element !== null &&
@@ -278,9 +278,9 @@ async function waitForMedia(page: Page): Promise<void> {
   await page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: { editor?: { canvas?: { renderAll(): void } } };
+        yunariEditorBridge?: { editor?: { canvas?: { renderAll(): void } } };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     bridge?.editor?.canvas?.renderAll();
   });
 }
@@ -341,13 +341,13 @@ function activeId(page: Page): Promise<string | undefined> {
     () =>
       (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: { getActiveObject(): { id?: string } | undefined };
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas.getActiveObject()?.id,
+      ).yunariEditorBridge.editor.canvas.getActiveObject()?.id,
   );
 }
 
@@ -377,7 +377,7 @@ function forbiddenKeys(envelope: unknown): readonly string[] {
  * The document without Fabric's derived per-character `styles` table.
  *
  * `styles` is what `applyAuthoredText` computes from each object's authored
- * `vigiliaText.runs`; nothing reads it back as authored state, and it is
+ * `yunariText.runs`; nothing reads it back as authored state, and it is
  * recomputed on every mount. It is stripped here so the comparison is about
  * authored state, and the fact that it is *not* stable across two saves is
  * pinned by its own test rather than hidden by this exclusion.
@@ -454,11 +454,11 @@ test.describe("the reference composition, authored", () => {
       await page.evaluate(() => {
         const bridge = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: { viewport: { artboardScreenRect(): ArtboardRect } };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         return bridge.editor.viewport.artboardScreenRect().width;
       }),
     ).toBeGreaterThan(0);
@@ -469,17 +469,17 @@ test.describe("the reference composition, authored", () => {
     // "Shape" group to tell it from the "Line" chart, so a plain name is
     // unambiguous here and stays readable.
     await page
-      .locator('[data-vigilia-add-group="shape"]')
+      .locator('[data-yunari-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const authored = (await activeId(page)) ?? "";
     expect(authored).not.toBe("");
     await typeIntoControl(
       page,
-      page.locator("[data-vigilia-panel-radius]"),
+      page.locator("[data-yunari-panel-radius]"),
       "18",
     );
-    const radius = page.locator("[data-vigilia-panel-radius]");
+    const radius = page.locator("[data-yunari-panel-radius]");
     await expect(radius).toHaveValue("18");
     const beforeSave = await sceneFacts(page);
     const authoredBefore = beforeSave.find((f) => f.id === authored);
@@ -499,7 +499,7 @@ test.describe("the reference composition, authored", () => {
     // what makes the next step a real test rather than a formality.
     await page.reload();
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await expect
       .poll(async () => (await sceneFacts(page)).length, { timeout: 15_000 })
@@ -520,7 +520,7 @@ test.describe("the reference composition, authored", () => {
     // is also what a document the editor quietly rebuilt would look like.
     // Key order is not compared — JSON property order is not authored state —
     // and neither is Fabric's per-character `styles` table, which
-    // `applyAuthoredText` rebuilds from `vigiliaText.runs` on every mount. That
+    // `applyAuthoredText` rebuilds from `yunariText.runs` on every mount. That
     // exclusion is a measured defect, not a convenience: two saves of the same
     // unchanged document disagree on it, and the gap is pinned separately as
     // "a save is reproducible".
@@ -584,12 +584,12 @@ test.describe("the reference composition, authored", () => {
     // **Insert** — a text object and a chart, from the Add pane.
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-yunari-panel="add"]')
       .getByRole("button", { name: "Text", exact: true })
       .click();
     const textId = (await activeId(page)) ?? "";
     await page
-      .locator('[data-vigilia-add-group="shape"]')
+      .locator('[data-yunari-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const panelId = (await activeId(page)) ?? "";
@@ -600,18 +600,14 @@ test.describe("the reference composition, authored", () => {
     // checkbox's own Space key.
     await typeIntoControl(
       page,
-      page.locator("[data-vigilia-panel-radius]"),
+      page.locator("[data-yunari-panel-radius]"),
       "22",
     );
-    const glassToggle = page.locator("[data-vigilia-glass-enabled]");
+    const glassToggle = page.locator("[data-yunari-glass-enabled]");
     await glassToggle.focus();
     await page.keyboard.press("Space");
     await expect(glassToggle).toBeChecked();
-    await typeIntoControl(
-      page,
-      page.locator("[data-vigilia-glass-blur]"),
-      "14",
-    );
+    await typeIntoControl(page, page.locator("[data-yunari-glass-blur]"), "14");
 
     // **Bind** — the new chart pointed at a real semantic key, through the
     // binding select the chart panel owns. The select is named
@@ -621,13 +617,13 @@ test.describe("the reference composition, authored", () => {
     // chart families are their own group, so scoping to it is what tells the
     // two apart — a structural fact, not a DOM position that can move.
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-yunari-panel="add"]')
       .getByRole("group", { name: "Chart" })
       .getByRole("button", { name: "Line", exact: true })
       .click();
     const chartId = (await activeId(page)) ?? "";
     expect(
-      await page.locator("[data-vigilia-binding]").count(),
+      await page.locator("[data-yunari-binding]").count(),
       "a freshly inserted chart arrives unbound",
     ).toBe(0);
 
@@ -644,14 +640,14 @@ test.describe("the reference composition, authored", () => {
     // the canvas object because that is what the author sees; the entered
     // context is only the mechanism.
     await enterLayer(page, "group-cpu-card");
-    await page.locator('[data-vigilia-layer="cpu-card-sparkline"]').click();
+    await page.locator('[data-yunari-layer="cpu-card-sparkline"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card-sparkline");
     // A chart's own fields are in its column with the selection, which is
     // where the binding select lives.
-    const bindingSelect = page.locator("[data-vigilia-binding]").first();
+    const bindingSelect = page.locator("[data-yunari-binding]").first();
     await expect(bindingSelect).toBeVisible();
     // Plan 1's select renders no option until it is opened, and each option
-    // carries the key it commits as `data-vigilia-option`.
+    // carries the key it commits as `data-yunari-option`.
     const keys = await optionsOf(page, bindingSelect);
     const key = keys.find((candidate) => candidate.startsWith("gpu."));
     expect(key, "the document offers a real key to bind").toBeDefined();
@@ -670,7 +666,7 @@ test.describe("the reference composition, authored", () => {
     expect(objects).toContainEqual(
       expect.objectContaining({
         id: panelId,
-        vigiliaGlass: { blurRadius: 14 },
+        yunariGlass: { blurRadius: 14 },
       }),
     );
     // A chart carries its own `LineSettings`, never a built ECharts option.
@@ -692,13 +688,13 @@ test.describe("the reference composition, authored", () => {
     const painted = await page.evaluate(() => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: { getObjects(): Array<{ get(n: string): unknown }> };
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       return bridge.editor.canvas
         .getObjects()
         .map((object) => String(object.get("text") ?? ""))
@@ -713,7 +709,7 @@ test.describe("the reference composition, authored", () => {
     // **Close and reopen** through the file the author exported.
     await page.reload();
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await openPackage(page, saved.bytes);
     await expect
@@ -745,7 +741,7 @@ test.describe("the reference composition, authored", () => {
 
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-add-group="shape"]')
+      .locator('[data-yunari-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const panelId = (await activeId(page)) ?? "";
@@ -755,7 +751,7 @@ test.describe("the reference composition, authored", () => {
     // **Not a package at all.**
     await importFile(
       page,
-      "broken.vigilia-theme",
+      "broken.yunari-theme",
       Buffer.from("this is not a zip archive"),
     );
     await expect(page.locator("#status")).toContainText("Could not import:");
@@ -765,12 +761,12 @@ test.describe("the reference composition, authored", () => {
     // `writeThemePackage`, so the bytes are a real zip around a bad document.
     await importFile(
       page,
-      "invalid.vigilia-theme",
+      "invalid.yunari-theme",
       Buffer.from(
         zipSync({
           "manifest.json": strToU8(
             JSON.stringify({
-              format: "vigilia-theme-package",
+              format: "yunari-theme-package",
               version: 1,
               theme: "theme.json",
             }),
@@ -787,10 +783,10 @@ test.describe("the reference composition, authored", () => {
     expect(after?.rect).toEqual(before?.rect);
     await typeIntoControl(
       page,
-      page.locator("[data-vigilia-panel-radius]"),
+      page.locator("[data-yunari-panel-radius]"),
       "9",
     );
-    await expect(page.locator("[data-vigilia-panel-radius]")).toHaveValue("9");
+    await expect(page.locator("[data-yunari-panel-radius]")).toHaveValue("9");
     const saved = await savePackage(page);
     expect(objectsOf(saved.envelope)).toContainEqual(
       expect.objectContaining({ id: panelId, rx: 9 }),
@@ -821,7 +817,7 @@ test.describe("the reference composition, authored", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await waitForBridge(page);
     await openThemeFromStore(page, storedThemeOfPackage(broken.bytes));
@@ -850,7 +846,7 @@ test.describe("the reference composition, authored", () => {
     );
     await page.mouse.click(centre.x, centre.y);
     await expect.poll(() => activeId(page)).toBe("authoring");
-    const glassToggle = page.locator("[data-vigilia-glass-enabled]");
+    const glassToggle = page.locator("[data-yunari-glass-enabled]");
     await glassToggle.focus();
     await page.keyboard.press("Space");
     await expect(glassToggle).toBeChecked();
@@ -866,7 +862,7 @@ test.describe("the reference composition, authored", () => {
     );
     expect(
       objectsOf(saved.envelope).find((object) => object["id"] === "authoring"),
-    ).toMatchObject({ vigiliaGlass: { blurRadius: expect.any(Number) } });
+    ).toMatchObject({ yunariGlass: { blurRadius: expect.any(Number) } });
   });
 
   test("a run naming a binding the object does not declare says so", async ({
@@ -915,8 +911,8 @@ test.describe("the reference composition, authored", () => {
             fontFamily: "Segoe UI, sans-serif",
             fill: EDGE_OBJECT_FILL,
             id: "orphan",
-            vigiliaPaint: { fill: "palette.edge" },
-            vigiliaText: {
+            yunariPaint: { fill: "palette.edge" },
+            yunariText: {
               runs: [
                 {
                   kind: "value",
@@ -938,20 +934,20 @@ test.describe("the reference composition, authored", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await openThemeFromStore(page, storedThemeOfPackage(built.bytes));
     await waitForBridge(page);
 
     await openPane(page, "Composition");
-    await page.locator('[data-vigilia-layer="orphan"]').click();
+    await page.locator('[data-yunari-layer="orphan"]').click();
     await expect.poll(() => activeId(page)).toBe("orphan");
     // The run editor states the problem rather than leaving a silent gap, and
     // marks which of the three states this is.
-    const note = page.locator('[data-vigilia-run-problem="undeclared"]');
+    const note = page.locator('[data-yunari-run-problem="undeclared"]');
     await expect(note).toBeVisible();
     await expect(note).toHaveAttribute(
-      "data-vigilia-run-binding",
+      "data-yunari-run-binding",
       "not-declared",
     );
     await expect(note).toContainText("resolves to nothing");
@@ -963,7 +959,7 @@ test.describe("the reference composition, authored", () => {
     expect(
       objectsOf(saved.envelope).find((object) => object["id"] === "orphan"),
     ).toMatchObject({
-      vigiliaText: { runs: [{ kind: "value", bindingId: "not-declared" }] },
+      yunariText: { runs: [{ kind: "value", bindingId: "not-declared" }] },
     });
   });
 });
@@ -980,7 +976,7 @@ function captureOf(page: Page): Promise<{
   return page.evaluate(async () => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           capture(): string | undefined;
           editor: {
             canvas: {
@@ -991,7 +987,7 @@ function captureOf(page: Page): Promise<{
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     bridge.editor.canvas.renderAll();
     // The product's own call, not a re-derivation of it. This file used to
     // restate `toCanvasElement(min(1, 640 / max(w, h)))` here, which is how
@@ -1049,7 +1045,7 @@ function artboardTransparencyOfCapture(
     async ([artboardWidth, artboardHeight]) => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             capture(): string | undefined;
             editor: {
               canvas: {
@@ -1069,7 +1065,7 @@ function artboardTransparencyOfCapture(
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       bridge.editor.canvas.renderAll();
       const png = bridge.capture();
       if (png === undefined) throw new Error("the capture produced no picture");
@@ -1138,7 +1134,7 @@ const FIXTURE_WITH_MEDIA = {
       id: "badge",
       kind: "svg" as const,
       path: "assets/badge.svg",
-      license: { name: "MIT", attribution: "Vigilia test fixture." },
+      license: { name: "MIT", attribution: "Yunari test fixture." },
     },
   ],
   scene: {
@@ -1157,7 +1153,7 @@ const FIXTURE_WITH_MEDIA = {
         scaleX: 1,
         scaleY: 1,
         id: "badge",
-        vigiliaAsset: { assetId: "badge", kind: "svg" },
+        yunariAsset: { assetId: "badge", kind: "svg" },
       },
       {
         type: "Textbox",
@@ -1173,8 +1169,8 @@ const FIXTURE_WITH_MEDIA = {
         fontFamily: "Segoe UI, sans-serif",
         fill: EDGE_OBJECT_FILL,
         id: "over-glass",
-        vigiliaPaint: { fill: "palette.edge" },
-        vigiliaText: {
+        yunariPaint: { fill: "palette.edge" },
+        yunariText: {
           runs: [
             {
               kind: "literal",
@@ -1202,14 +1198,14 @@ async function openCaptureFixture(page: Page): Promise<Buffer> {
   if (!built.ok) throw new Error(`capture fixture: ${built.message}`);
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await openThemeFromStore(page, storedThemeOfPackage(built.bytes));
   await waitForBridge(page);
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return image !== null && image.complete && image.naturalWidth > 0;
     },
@@ -1219,9 +1215,9 @@ async function openCaptureFixture(page: Page): Promise<Buffer> {
   await page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: { editor: { canvas: { renderAll(): void } } };
+        yunariEditorBridge: { editor: { canvas: { renderAll(): void } } };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     bridge.editor.canvas.renderAll();
   });
   return Buffer.from(built.bytes);
@@ -1250,7 +1246,7 @@ function bandStats(
       };
       const canvas = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getObjects(): Obj[];
@@ -1269,7 +1265,7 @@ function bandStats(
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       const object = canvas
         .getObjects()
         .find((candidate) => candidate.get("id") === objectId);
@@ -1278,7 +1274,7 @@ function bandStats(
       // treatment stays present, so the panel still composites, and only the
       // radius differs between the two readings.
       if (typeof radius === "number")
-        object.set("vigiliaGlass", { blurRadius: radius });
+        object.set("yunariGlass", { blurRadius: radius });
       canvas.renderAll();
       const rect = object.getBoundingRect();
       const vp = canvas.viewportTransform;
@@ -1335,7 +1331,7 @@ async function waitForStarterBackdrop(page: Page): Promise<void> {
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return (
         image !== null &&
@@ -1443,7 +1439,7 @@ test.describe("the reference composition, captured", () => {
     await openCaptureFixture(page);
     const layer = await page.evaluate(() => {
       const element = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return element === null
         ? null
@@ -1503,7 +1499,7 @@ test.describe("the reference composition, captured", () => {
       };
       const canvas = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getObjects(): Obj[];
@@ -1522,7 +1518,7 @@ test.describe("the reference composition, captured", () => {
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       const objects = canvas.getObjects();
       const find = (id: string): Obj | undefined =>
         objects.find((object) => object.get("id") === id);
@@ -1600,11 +1596,11 @@ test.describe("the reference composition, captured", () => {
         return widths[Math.floor(widths.length / 2)]!;
       };
 
-      glass.set("vigiliaGlass", { blurRadius: 16 });
+      glass.set("yunariGlass", { blurRadius: 16 });
       const blurred = glyphEdgeWidth();
-      glass.set("vigiliaGlass", { blurRadius: 0 });
+      glass.set("yunariGlass", { blurRadius: 0 });
       const control = glyphEdgeWidth();
-      glass.set("vigiliaGlass", { blurRadius: 16 });
+      glass.set("yunariGlass", { blurRadius: 16 });
       const occupied = context
         .getImageData(left, top, width, height)
         .data.some((_, index) => index % 4 === 3 && _ > 0);
@@ -1896,7 +1892,7 @@ function starterBackdropBands(page: Page): Promise<{
     };
     const canvas = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: {
               getObjects(): Obj[];
@@ -1915,7 +1911,7 @@ function starterBackdropBands(page: Page): Promise<{
           };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas;
+    ).yunariEditorBridge.editor.canvas;
     // Groups descended: the frosted panel is a part of the CPU card, and a
     // search of the root list said the starter had lost it.
     const find = (objects: readonly Obj[]): Obj | undefined => {
@@ -2031,20 +2027,20 @@ function starterBackdropBands(page: Page): Promise<{
     };
 
     for (const object of hidden) object.set("visible", false);
-    const authored = card.get("vigiliaGlass") as { blurRadius: number };
+    const authored = card.get("yunariGlass") as { blurRadius: number };
     const authoredFill = card.get("fill") as string;
-    card.set("vigiliaGlass", authored);
+    card.set("yunariGlass", authored);
     const blurred = measure();
-    card.set("vigiliaGlass", { blurRadius: 0 });
+    card.set("yunariGlass", { blurRadius: 0 });
     const sharp = measure();
-    card.set("vigiliaGlass", authored);
+    card.set("yunariGlass", authored);
     card.set("fill", "rgba(8, 21, 35, 0)");
-    card.set("vigiliaGlass", authored);
+    card.set("yunariGlass", authored);
     const clearBlurred = measure();
-    card.set("vigiliaGlass", { blurRadius: 0 });
+    card.set("yunariGlass", { blurRadius: 0 });
     const clearSharp = measure();
     card.set("fill", authoredFill);
-    card.set("vigiliaGlass", authored);
+    card.set("yunariGlass", authored);
     for (const [object, visible] of restore) object.set("visible", visible);
 
     // **Sharpness of what sits above the glass.** The object's own coverage:
@@ -2057,7 +2053,7 @@ function starterBackdropBands(page: Page): Promise<{
         .map((entry) => entry.object)
         .find((candidate) => candidate.get("id") === id);
       if (object === undefined) throw new Error(`the starter lost ${id}`);
-      card.set("vigiliaGlass", { blurRadius: radius });
+      card.set("yunariGlass", { blurRadius: radius });
       const rect = object.getBoundingRect();
       const [gx, gy] = toDevice(rect.left + 6, rect.top + 6);
       const w = Math.max(
@@ -2110,7 +2106,7 @@ function starterBackdropBands(page: Page): Promise<{
     const titleBlurred = sharpness("cpu-card-title", authored.blurRadius);
     const titleControl = sharpness("cpu-card-title", 0);
     const stroke = sharpness("cpu-card-sparkline", authored.blurRadius);
-    card.set("vigiliaGlass", authored);
+    card.set("yunariGlass", authored);
     canvas.renderAll();
 
     // Text legibility: the field under a label's own box, with the label
@@ -2163,14 +2159,14 @@ function starterBackdropBands(page: Page): Promise<{
     // count is what decides how much of the file each column averages.
     //
     // This is the control that makes the rest of the reading mean something:
-    // it says what is *behind the panel*, independently of anything Vigilia
+    // it says what is *behind the panel*, independently of anything Yunari
     // does. Before 0012 the sampler took a pixel-for-pixel crop of the middle
     // of the file sized by the device rect, so at this mount's 0.3744 camera
     // it showed the middle 26.9 % of the photograph where the element showed
     // all of it, and read 16.54 of contrast against this 7.45.
     const photo = (() => {
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       if (image === null || !image.complete || image.naturalWidth === 0) {
         return null;
@@ -2266,7 +2262,7 @@ test.describe("the reference composition, at the sizes it is read at", () => {
 
     /** Every object on the canvas, in scene coordinates. */
     const fitted = await sceneFacts(page);
-    const zoom = page.locator("[data-vigilia-zoom]");
+    const zoom = page.locator("[data-yunari-zoom]");
     await expect(zoom).toHaveText(/^\d+%$/);
     expect(fitted.length).toBeGreaterThan(3);
 
@@ -2289,13 +2285,13 @@ test.describe("the reference composition, at the sizes it is read at", () => {
     const drawn = await page.evaluate(() => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: { lowerCanvasEl: HTMLCanvasElement; renderAll(): void };
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       bridge.editor.canvas.renderAll();
       const element = bridge.editor.canvas.lowerCanvasEl;
       const data = element
@@ -2323,7 +2319,7 @@ test.describe("the reference composition, at the sizes it is read at", () => {
     const dpr = await page.evaluate(() => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 lowerCanvasEl: HTMLCanvasElement;
@@ -2333,7 +2329,7 @@ test.describe("the reference composition, at the sizes it is read at", () => {
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       bridge.editor.canvas.renderAll();
       const element = bridge.editor.canvas.lowerCanvasEl;
       return {
@@ -2354,13 +2350,13 @@ test.describe("the reference composition, at the sizes it is read at", () => {
     const stillPainted = await page.evaluate(() => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: { lowerCanvasEl: HTMLCanvasElement; renderAll(): void };
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       bridge.editor.canvas.renderAll();
       const element = bridge.editor.canvas.lowerCanvasEl;
       const data = element
@@ -2405,15 +2401,11 @@ test.describe("the reference composition, at the sizes it is read at", () => {
     );
     await page.mouse.click(centre.x, centre.y);
     await expect.poll(() => activeId(page)).toBe("authoring");
-    const toggle = page.locator("[data-vigilia-glass-enabled]");
+    const toggle = page.locator("[data-yunari-glass-enabled]");
     await toggle.focus();
     await page.keyboard.press("Space");
     await expect(toggle).toBeChecked();
-    await typeIntoControl(
-      page,
-      page.locator("[data-vigilia-glass-blur]"),
-      "12",
-    );
+    await typeIntoControl(page, page.locator("[data-yunari-glass-blur]"), "12");
 
     const treated = (await sceneFacts(page))
       .filter((fact) => fact.glass !== null)
@@ -2446,7 +2438,7 @@ async function setAngle(page: Page, id: string, angle: number): Promise<void> {
     ([objectId, degrees]) => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getObjects(): Array<{
@@ -2458,7 +2450,7 @@ async function setAngle(page: Page, id: string, angle: number): Promise<void> {
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       bridge.editor.canvas
         .getObjects()
         .find((object) => object.get("id") === objectId)
@@ -2500,10 +2492,10 @@ test.describe("background media", () => {
     // The artboard's own panel is a document panel, so it is in the Document
     // pane; the Add pane was showing, so this is a real swap.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-vigilia-background-asset]", "hero");
+    await chooseIn(page, "[data-yunari-background-asset]", "hero");
     await expect(
-      page.locator("[data-vigilia-background-asset] [data-vigilia-value]"),
-    ).toHaveAttribute("data-vigilia-value", "hero");
+      page.locator("[data-yunari-background-asset] [data-yunari-value]"),
+    ).toHaveAttribute("data-yunari-value", "hero");
     await waitForMedia(page);
     const first = await mediaSrc(page);
     expect(
@@ -2529,12 +2521,12 @@ test.describe("background media", () => {
     // out. The row filed this as "the background-media row never becomes
     // visible"; the control is present and fine, and the step order was stale.
     await openPane(page, "Document");
-    const ids = await optionsOf(page, "[data-vigilia-background-asset]");
+    const ids = await optionsOf(page, "[data-yunari-background-asset]");
     expect(ids).toEqual(expect.arrayContaining(["hero", "hero-2"]));
     expect(ids.filter((id) => id.startsWith("hero"))).toHaveLength(2);
 
     // **Repoint.** The artboard names the new one, and the layer follows it.
-    await chooseIn(page, "[data-vigilia-background-asset]", "hero-2");
+    await chooseIn(page, "[data-yunari-background-asset]", "hero-2");
     await waitForMedia(page);
     const second = await mediaSrc(page);
     expect(second).not.toBe(first);
@@ -2569,16 +2561,16 @@ test.describe("background media", () => {
     });
     // The artboard's own panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-vigilia-background-asset]", "loop");
+    await chooseIn(page, "[data-yunari-background-asset]", "loop");
     await expect(
-      page.locator("[data-vigilia-background-asset] [data-vigilia-value]"),
-    ).toHaveAttribute("data-vigilia-value", "loop");
+      page.locator("[data-yunari-background-asset] [data-yunari-value]"),
+    ).toHaveAttribute("data-yunari-value", "loop");
     await expect
       .poll(
         () =>
           page.evaluate(
             () =>
-              document.querySelector("[data-vigilia-background-media] video")
+              document.querySelector("[data-yunari-background-media] video")
                 ?.tagName ?? null,
           ),
         { timeout: 15_000 },
@@ -2601,7 +2593,7 @@ test.describe("background media", () => {
 function mediaSrc(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const element = document.querySelector<HTMLImageElement | HTMLVideoElement>(
-      "[data-vigilia-background-media] img, [data-vigilia-background-media] video",
+      "[data-yunari-background-media] img, [data-yunari-background-media] video",
     );
     return element?.currentSrc || element?.src || null;
   });
@@ -2625,7 +2617,7 @@ test.describe("known gaps, pinned", () => {
     // `serialiseScene` — which passes `SCENE_PERSISTED_PROPERTIES` and sets
     // `includeDefaultValues = false` — carried it into the package anyway,
     // because `styles` is a set property rather than a Fabric default. The
-    // authored equivalent is `vigiliaText.runs`; nothing reads `styles` back.
+    // authored equivalent is `yunariText.runs`; nothing reads `styles` back.
     // `removeDerivedTextStyles` is the strip that closed it, and this asserts
     // the absence of the table on a real save — descended into, because the
     // table is written on a card's text parts rather than on the card.
@@ -2657,7 +2649,7 @@ test.describe("known gaps, pinned", () => {
     //
     // It is unrevivable state in a shareable artifact: a network policy that
     // meant something only to the tab that saved it. The round trip still
-    // works — the object is re-resolved from `vigiliaAsset.assetId` — so this
+    // works — the object is re-resolved from `yunariAsset.assetId` — so this
     // is a leak, not a break.
     await openEditor(page);
     await openPane(page, "Add");

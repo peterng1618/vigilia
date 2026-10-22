@@ -98,7 +98,7 @@ function calcTermPx(term: string): number {
 }
 
 /** The px a stylesheet *rule* declares for a property — the owner a value has
- *  when no token names it: `.vigilia-layer-mark`'s `flex: 0 0 28px` mark slot,
+ *  when no token names it: `.yunari-layer-mark`'s `flex: 0 0 28px` mark slot,
  *  and the layer row's `:has` arms' reserved `padding-right`, which state their
  *  arithmetic as a `calc()` of px terms rather than as one number. Found by the
  *  rule's own selector text, anchored at a line start so a longer selector

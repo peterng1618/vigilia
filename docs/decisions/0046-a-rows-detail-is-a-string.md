@@ -24,7 +24,7 @@ The non-obvious part is not "validate a field" — it is that the register's `de
 is **prose**, and prose is the field least suited to a shape rule. So the decision
 is what the rule accepts, not whether to have one.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** every reader of `.detail` in `scripts/`; every field `check()` in
 `scripts/backlog-check.mjs` already validates, and how it words a shape refusal.

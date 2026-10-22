@@ -3,7 +3,7 @@
 Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before release.
 
 Scope, stated in `THIRD-PARTY-NOTICES.md`: the packages a workspace
-`package.json` declares directly, never the installed closure, `@vigilia/`
+`package.json` declares directly, never the installed closure, `@yunari/`
 workspace packages excluded. The **Declared dependencies** table below lists
 what the manifests declare — nothing reached only transitively is in it, and not
 every declared package is listed — while the **Vendored source** table is
@@ -99,18 +99,18 @@ re-open the analysis before bundling, downloading or installing them.
 Assessed against the `v0.9.6` release archive
 (`LibreHardwareMonitor.zip`, 6.6 MB, 43 files) and the repository's own
 `LICENSE` and `THIRD-PARTY-NOTICES.txt`. Scope: redistributing LHM inside a
-Vigilia release so it ships as the default extended-sensor source.
+Yunari release so it ships as the default extended-sensor source.
 
 Findings:
 
 - **LHM itself is MPL-2.0.** File-level copyleft: redistribution is permitted,
   including in a larger work, provided LHM's own source stays MPL and its
-  notices travel with it. Vigilia links nothing and modifies nothing.
+  notices travel with it. Yunari links nothing and modifies nothing.
 - **The archive ships no licence or notice file at all**, while bundling
   third-party binaries whose licences require notices: `Aga.Controls.dll`
   (BSD), `HidSharp`, `OxyPlot`, `RAMSPDToolkit-NDD` and the .NET support
   assemblies. Shipping the archive as-is would omit notices those licences
-  require, so **Vigilia must add LHM's `LICENSE` and `THIRD-PARTY-NOTICES.txt`
+  require, so **Yunari must add LHM's `LICENSE` and `THIRD-PARTY-NOTICES.txt`
   plus the per-dependency notices** to its own distribution.
 - **No PawnIO driver binary is in the archive** (no `.sys`; the `PawnIo`
   module is fetched separately at runtime and is LGPL-2.1). Bundling the
@@ -118,12 +118,12 @@ Findings:
   download of the PawnIO module would, and that path needs its own review
   before being enabled.
 - LHM runs with a GUI and enables its web server through an in-app menu, not a
-  command-line switch, so shipping it as the *default* source means Vigilia
+  command-line switch, so shipping it as the *default* source means Yunari
   launching a desktop application on the user's machine.
 
 Conclusion: redistribution is **permissible with notices added**, and is not
 blocked by licence. **Decided by:** user, 2026-09-24 — bundling approved, so
-Vigilia releases ship LHM with its notices. The third-party notices are listed
+Yunari releases ship LHM with its notices. The third-party notices are listed
 in `THIRD-PARTY-NOTICES.md`, and the vendor script stages LHM's `LICENSE` and
 `THIRD-PARTY-NOTICES.txt` because the release archive omits them. Release
 packaging must include those files. A PawnIO module download (LGPL-2.1,

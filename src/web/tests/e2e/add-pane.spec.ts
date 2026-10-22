@@ -22,7 +22,7 @@ const REFUSED = ["fallback", "advanced", "basic", "simple", "expert"];
 
 /** The pane that carries the insertable list. */
 function addPane(page: Page): Locator {
-  return page.locator('[data-vigilia-panel="add"]');
+  return page.locator('[data-yunari-panel="add"]');
 }
 
 test("the Add pane offers units and primitives, neither greyed, neither a fallback", async ({
@@ -70,7 +70,7 @@ test(`the pane's file controls take control text, not the shell's ${themeToken("
   // groups states it — as does `shell.html:137`/`:140` for this pane's own
   // instances. The expected pair is the stylesheet's own declaration, so the
   // row moves with §2 rather than restating it.
-  const importButton = page.locator("[data-vigilia-asset-import]");
+  const importButton = page.locator("[data-yunari-asset-import]");
   await expect(importButton).toBeVisible();
   await expect(importButton).toHaveCSS(
     "font-size",
@@ -96,7 +96,7 @@ test("a card inserted from the Add pane arrives as a unit the tree can name", as
   // card's `group-time-card`). That id is the product's to choose, not the
   // spec's to restate (vg-170; the rule `composition-panel.spec.ts` states).
   await openPane(page, "Composition");
-  const clocks = page.locator(".vigilia-layer-role", { hasText: "Clock" });
+  const clocks = page.locator(".yunari-layer-role", { hasText: "Clock" });
   const before = await clocks.count();
 
   await openPane(page, "Add");
@@ -114,7 +114,7 @@ test("the pane's two Lines are told apart by their group, not by which tile come
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   await page.goto(EDITOR);
-  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+  await page.waitForFunction(() => "yunariEditorBridge" in window);
   await openBlank(page);
 
   // "Line" is a shape and a chart family, and both are in the pane at once. The
@@ -127,9 +127,9 @@ test("the pane's two Lines are told apart by their group, not by which tile come
 
   // The tags are Fabric's, and Fabric lowercases a class name — the same pair
   // `layer-tree.ts`'s `kindOf` tells apart ("Fabric type tags are lowercase
-  // class names; the envelope keeps `VigiliaChart`").
+  // class names; the envelope keeps `YunariChart`").
   expect((await readScene(page)).map((object) => object.type)).toEqual([
     "line",
-    "vigiliachart",
+    "yunarichart",
   ]);
 });

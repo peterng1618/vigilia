@@ -101,7 +101,7 @@ same face list. Both are the same operation at different scopes, so there is
 one list and one meaning.
 
 This replaces the current three-option dropdown. The existing `Font` and
-`Trio` controls, their `data-vigilia-*` selectors and their keyboard
+`Trio` controls, their `data-yunari-*` selectors and their keyboard
 behaviour are kept, because the archived plan requires the controls to stay
 keyboard-accessible with their current selectors.
 
@@ -140,7 +140,7 @@ loading state rather than blocking the list.
 ### Favourites are a machine setting, not theme content
 
 A favourite is a statement by the author about this PC. It is not authored
-theme state and never enters a `.vigilia-theme` package, so the player does not
+theme state and never enters a `.yunari-theme` package, so the player does not
 receive it and the document schema gains no field.
 
 It is stored by a new host settings owner beside `display.ts`, following that

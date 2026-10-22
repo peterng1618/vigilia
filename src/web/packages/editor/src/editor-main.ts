@@ -1,13 +1,13 @@
 import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   assertFabricThemeEnvelopeCompatible,
   type ChartRefreshRate,
   loadFontAssets,
   startChartRefresh,
-} from "@vigilia/scene-fabric";
+} from "@yunari/scene-fabric";
 import { AssetManager } from "./asset-manager/index.js";
 import { EditorSession } from "./editor-session.js";
 import {
@@ -134,7 +134,7 @@ async function start(): Promise<void> {
     {
       onError: (message) => {
         const manager = active?.shell.editor.errorManager;
-        if (manager === undefined) console.warn(`[vigilia:repaint] ${message}`);
+        if (manager === undefined) console.warn(`[yunari:repaint] ${message}`);
         else manager.warn("controls", message);
       },
     },
@@ -217,7 +217,7 @@ async function start(): Promise<void> {
 
   const picker = document.createElement("input");
   picker.type = "file";
-  picker.accept = ".vigilia-theme";
+  picker.accept = ".yunari-theme";
   picker.hidden = true;
   host.parentElement!.append(picker);
 
@@ -390,7 +390,7 @@ async function start(): Promise<void> {
       palette: () => extensions.envelope.globals?.palette,
     });
     active?.bridge.destroy();
-    delete (window as unknown as Record<string, unknown>).vigiliaEditorBridge;
+    delete (window as unknown as Record<string, unknown>).yunariEditorBridge;
     active?.extensions.destroy();
     active?.shell.destroy();
     active?.source.close();
@@ -398,7 +398,7 @@ async function start(): Promise<void> {
     active = { shell, extensions, source, releaseFonts, bridge };
     /** e2e drives a rename through the same bridge the layer panel calls, so the
      * global is published only after the previous document's is torn down. */
-    (window as unknown as Record<string, unknown>).vigiliaEditorBridge = bridge;
+    (window as unknown as Record<string, unknown>).yunariEditorBridge = bridge;
     // The document this mount built is what a display follows now; the
     // previous session's listeners were cleared with it.
     bridge.session.subscribeDocumentChange(offerOpenDocument);

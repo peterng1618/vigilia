@@ -102,7 +102,7 @@ const SELF_TEST = process.argv.includes("--self-test");
 
 if (SELF_TEST) {
   const good = [
-    "# Vigilia status",
+    "# Yunari status",
     "## Current objective",
     "One line.",
     "## Active work",
@@ -118,7 +118,7 @@ if (SELF_TEST) {
   ].join("\n");
   // Many bullets, none over its section's limit: length alone must not fail.
   const longButLegal = [
-    "# Vigilia status",
+    "# Yunari status",
     "## Current objective",
     "One line.",
     "## Active work",

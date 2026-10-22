@@ -3,13 +3,13 @@ import type {
   Binding,
   ChartContent,
   FabricPalette,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   computeComposition,
   defaultLineSettings,
   defaultPieSettings,
   settingsFieldsFor,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { afterEach, describe, expect, it } from "vitest";
 import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
 import { uiCopy } from "../ui-copy.js";
@@ -209,7 +209,7 @@ describe("every chart family's controls", () => {
         // control; the label is how a person does.
         const control = pick(
           stage.host,
-          `data-vigilia-chart-setting="${field.property}"`,
+          `data-yunari-chart-setting="${field.property}"`,
         );
         expect(
           control.id,
@@ -226,29 +226,27 @@ describe("every chart family's controls", () => {
   it("gives the series chooser and the aspect group a control of their own", () => {
     const { stage } = over(line);
     expect(
-      pick(stage.host, "data-vigilia-chart-binding-add").tagName,
+      pick(stage.host, "data-yunari-chart-binding-add").tagName,
       "the series chooser",
     ).toBe("BUTTON");
     expect(
       [
         ...stage.host.querySelectorAll<HTMLElement>(
-          "button[data-vigilia-chart-aspect]",
+          "button[data-yunari-chart-aspect]",
         ),
       ].map((button) => button.textContent?.trim()),
     ).toEqual(["2:1", "3:1", "4:1"]);
     expect(
-      pressedLabel(stage.host, "data-vigilia-chart-aspect"),
+      pressedLabel(stage.host, "data-yunari-chart-aspect"),
     ).toBeUndefined();
   });
 
   it("carries each binding's own hook on its own control", () => {
     const { stage } = over(gauge);
     expect(
-      pick<HTMLButtonElement>(stage.host, 'data-vigilia-binding="cpu"').id,
-    ).toBe("vigilia-chart-binding-cpu");
-    expect(valueText(stage.host, 'data-vigilia-binding="cpu"')).toBe(
-      "CPU load",
-    );
+      pick<HTMLButtonElement>(stage.host, 'data-yunari-binding="cpu"').id,
+    ).toBe("yunari-chart-binding-cpu");
+    expect(valueText(stage.host, 'data-yunari-binding="cpu"')).toBe("CPU load");
     // **A pair's typed half carries the row's own id.** The hook rides the track,
     // which is Base UI's own element and carries its own id; the caller's id
     // names the well, the element a `<label for>` can reach. A typed field is its
@@ -257,23 +255,23 @@ describe("every chart family's controls", () => {
     expect(
       pick<HTMLInputElement>(
         stage.host,
-        'data-vigilia-binding-field-well="cpu.precision"',
+        'data-yunari-binding-field-well="cpu.precision"',
       ).id,
-    ).toBe("vigilia-chart-binding-cpu-precision");
+    ).toBe("yunari-chart-binding-cpu-precision");
     for (const field of ["scale", "offset"]) {
       expect(
         pick<HTMLInputElement>(
           stage.host,
-          `data-vigilia-binding-field="cpu.${field}"`,
+          `data-yunari-binding-field="cpu.${field}"`,
         ).id,
-      ).toBe(`vigilia-chart-binding-cpu-${field}`);
+      ).toBe(`yunari-chart-binding-cpu-${field}`);
     }
     expect(
       pick<HTMLButtonElement>(
         stage.host,
-        'data-vigilia-binding-field="cpu.unitDisplay"',
+        'data-yunari-binding-field="cpu.unitDisplay"',
       ).id,
-    ).toBe("vigilia-chart-binding-cpu-unit-display");
+    ).toBe("yunari-chart-binding-cpu-unit-display");
   });
 
   it("carries each descriptor's hint where a screen reader finds it", () => {
@@ -290,7 +288,7 @@ describe("every chart family's controls", () => {
       for (const field of visible) {
         const control = pick(
           stage.host,
-          `data-vigilia-chart-setting="${field.property}"`,
+          `data-yunari-chart-setting="${field.property}"`,
         );
         // Resolved rather than compared to a minted id: a number field's input
         // carries the control's own id while a slider's track is Base UI's
@@ -317,7 +315,7 @@ describe("every chart family's controls", () => {
       (field) => field.property === "thickness",
     );
     expect(descriptor, "the gauge has a thickness descriptor").toBeDefined();
-    const control = pick(stage.host, 'data-vigilia-chart-setting="thickness"');
+    const control = pick(stage.host, 'data-yunari-chart-setting="thickness"');
     // The row is the tooltip's trigger, as it was before the conversion; it is
     // the one element the control set wraps every control in.
     const row = control.closest(".flex-wrap");
@@ -340,7 +338,7 @@ describe("a setting one level down", () => {
     const { stage, calls } = over(line);
     const duration = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-chart-setting="animation.durationMs"',
+      'data-yunari-chart-setting="animation.durationMs"',
     );
 
     await edit(duration, "2400");
@@ -368,7 +366,7 @@ describe("a setting one level down", () => {
 
     await choose(
       stage.host,
-      'data-vigilia-chart-setting="total"',
+      'data-yunari-chart-setting="total"',
       "A fixed total",
     );
     const fixed = lastSettings(calls) as typeof defaultPieSettings;
@@ -379,7 +377,7 @@ describe("a setting one level down", () => {
     await edit(
       pick<HTMLInputElement>(
         stage.host,
-        'data-vigilia-chart-setting="total.value"',
+        'data-yunari-chart-setting="total.value"',
       ),
       "64",
     );
@@ -406,7 +404,7 @@ describe("a setting one level down", () => {
 
     const track = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-chart-setting="barWidth"',
+      'data-yunari-chart-setting="barWidth"',
     );
     expect(track.type).toBe("range");
     expect(track.min).toBe("0");
@@ -414,7 +412,7 @@ describe("a setting one level down", () => {
 
     const well = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-chart-setting-well="barWidth"',
+      'data-yunari-chart-setting-well="barWidth"',
     );
     expect(well.inputMode).toBe("decimal");
     await edit(well, "30");
@@ -439,7 +437,7 @@ describe("a setting one level down", () => {
     // "the renderer decides" is typed into the well beside the track.
     const end = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-chart-setting-well="endAngle"',
+      'data-yunari-chart-setting-well="endAngle"',
     );
     expect(end.value).toBe("200");
     await edit(end, "");
@@ -453,7 +451,7 @@ describe("a setting one level down", () => {
     const { stage, calls } = over(gauge);
     const thickness = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-chart-setting="thickness"',
+      'data-yunari-chart-setting="thickness"',
     );
 
     await edit(thickness, "-4");
@@ -466,14 +464,14 @@ describe("a setting one level down", () => {
 
   it("applies a toggle the moment it is pressed", async () => {
     const { stage, calls } = over(gauge);
-    await clickHook(stage.host, 'data-vigilia-chart-setting="roundCap"');
+    await clickHook(stage.host, 'data-yunari-chart-setting="roundCap"');
     expect(lastSettings(calls)).toMatchObject({ roundCap: false });
   });
 
   it("offers a select's options in the descriptor's own order", async () => {
     const { stage } = over(line);
     expect(
-      await optionsOf(stage.host, 'data-vigilia-chart-setting="interpolation"'),
+      await optionsOf(stage.host, 'data-yunari-chart-setting="interpolation"'),
     ).toEqual(["Linear", "Smooth", "Step"]);
   });
 });
@@ -482,12 +480,12 @@ describe("a chart's series", () => {
   it("declares the first series, which is what a chart arrives without", async () => {
     const { stage, calls } = over({ ...line, bindings: [] });
 
-    await choose(stage.host, "data-vigilia-chart-binding-add", "CPU load");
+    await choose(stage.host, "data-yunari-chart-binding-add", "CPU load");
 
     expect(calls.added).toEqual([["trend", "cpu.load"]]);
     // The choice is consumed rather than held, so a re-render cannot declare
     // the same series a second time.
-    expect(valueText(stage.host, "data-vigilia-chart-binding-add")).toBe(
+    expect(valueText(stage.host, "data-yunari-chart-binding-add")).toBe(
       uiCopy.inspectorFields.runSeries,
     );
   });
@@ -498,15 +496,15 @@ describe("a chart's series", () => {
     const { stage, calls } = over(gauge);
     const chooser = pick<HTMLButtonElement>(
       stage.host,
-      "data-vigilia-chart-binding-add",
+      "data-yunari-chart-binding-add",
     );
 
     expect(chooser.disabled).toBe(true);
     expect(
-      pick(stage.host, "data-vigilia-chart-binding-full").textContent,
+      pick(stage.host, "data-yunari-chart-binding-full").textContent,
     ).toContain("gauge");
 
-    await clickHook(stage.host, "data-vigilia-chart-binding-add");
+    await clickHook(stage.host, "data-yunari-chart-binding-add");
     await flush();
     // A disabled value cannot invoke a command, whatever a test does to it.
     expect(calls.added).toHaveLength(0);
@@ -516,20 +514,20 @@ describe("a chart's series", () => {
     const two = over(line);
     const buttons = [
       ...two.stage.host.querySelectorAll<HTMLButtonElement>(
-        "[data-vigilia-chart-binding-remove]",
+        "[data-yunari-chart-binding-remove]",
       ),
     ];
     expect(buttons.map((button) => button.textContent?.trim())).toEqual([
       "Remove the series reading cpu.load",
       "Remove the series reading gpu.load",
     ]);
-    await clickHook(two.stage.host, 'data-vigilia-chart-binding-remove="gpu"');
+    await clickHook(two.stage.host, 'data-yunari-chart-binding-remove="gpu"');
     expect(two.calls.removed).toEqual([["trend", "gpu"]]);
 
     // A chart with nothing bound draws no data, so the last series stays.
     const one = over(gauge);
     expect(
-      one.stage.host.querySelector("[data-vigilia-chart-binding-remove]"),
+      one.stage.host.querySelector("[data-yunari-chart-binding-remove]"),
     ).toBeNull();
   });
 
@@ -539,7 +537,7 @@ describe("a chart's series", () => {
       bindings: [{ id: "cpu", semanticKey: "cpu.load", precision: 1 }],
     });
 
-    await choose(stage.host, 'data-vigilia-binding="cpu"', "RAM used");
+    await choose(stage.host, 'data-yunari-binding="cpu"', "RAM used");
 
     expect(calls.bindings.at(-1)).toEqual({
       id: "cpu",
@@ -558,7 +556,7 @@ describe("a chart's series", () => {
     // way back to that state.
     await choose(
       stage.host,
-      'data-vigilia-binding-field="cpu.unitDisplay"',
+      'data-yunari-binding-field="cpu.unitDisplay"',
       uiCopy.unitDisplayOptions[""],
     );
     expect("unitDisplay" in (calls.bindings.at(-1) ?? {})).toBe(false);
@@ -569,7 +567,7 @@ describe("a chart's series", () => {
       bindings: [{ id: "cpu", semanticKey: "cpu.load", unitDisplay: "short" }],
     });
     expect(
-      valueText(stage.host, 'data-vigilia-binding-field="cpu.unitDisplay"'),
+      valueText(stage.host, 'data-yunari-binding-field="cpu.unitDisplay"'),
     ).toBe("Short");
   });
 
@@ -583,14 +581,14 @@ describe("a chart's series", () => {
     });
     const track = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-binding-field="cpu.precision"',
+      'data-yunari-binding-field="cpu.precision"',
     );
     expect(track.type).toBe("range");
     expect(track.min).toBe("0");
     expect(track.max).toBe("6");
     const precision = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-binding-field-well="cpu.precision"',
+      'data-yunari-binding-field-well="cpu.precision"',
     );
 
     await edit(precision, "2.5");
@@ -618,13 +616,13 @@ describe("a chart's series", () => {
     const { stage, calls } = over(gauge);
     const track = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-binding-field="cpu.precision"',
+      'data-yunari-binding-field="cpu.precision"',
     );
     expect(track.value).toBe("0");
 
     const well = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-binding-field-well="cpu.precision"',
+      'data-yunari-binding-field-well="cpu.precision"',
     );
     expect(
       well.value,
@@ -644,13 +642,13 @@ describe("what a chart paints its data with", () => {
   it("names each token by the name its author gave it", async () => {
     const { stage } = over(gauge);
     expect(
-      await optionsOf(stage.host, 'data-vigilia-chart-paint="track"'),
+      await optionsOf(stage.host, 'data-yunari-chart-paint="track"'),
     ).toEqual(["CPU", "GPU", "RAM"]);
   });
 
   it("writes the token the author chose", async () => {
     const { stage, calls } = over(gauge);
-    await choose(stage.host, 'data-vigilia-chart-paint="track"', "RAM");
+    await choose(stage.host, 'data-yunari-chart-paint="track"', "RAM");
     expect(lastSettings(calls)).toMatchObject({
       track: { ref: "palette.ram" },
     });
@@ -668,7 +666,7 @@ describe("what a chart paints its data with", () => {
       },
     });
 
-    await choose(stage.host, 'data-vigilia-chart-paint="palette.0"', "RAM");
+    await choose(stage.host, 'data-yunari-chart-paint="palette.0"', "RAM");
 
     expect(lastSettings(calls)).toMatchObject({
       palette: [{ ref: "palette.ram" }, { ref: "palette.gpu" }],
@@ -683,11 +681,11 @@ describe("what a chart paints its data with", () => {
     stages.push(box.stage);
     const track = pick<HTMLButtonElement>(
       box.stage.host,
-      'data-vigilia-chart-paint="track"',
+      'data-yunari-chart-paint="track"',
     );
 
     expect(track.disabled).toBe(true);
-    await clickHook(box.stage.host, 'data-vigilia-chart-paint="track"');
+    await clickHook(box.stage.host, 'data-yunari-chart-paint="track"');
     await flush();
     expect(box.calls.settings).toHaveLength(0);
   });
@@ -696,9 +694,9 @@ describe("what a chart paints its data with", () => {
 describe("the line chart's aspect group", () => {
   it("resizes the chart to the ratio that was pressed, and shows it as pressed", async () => {
     const { stage, calls } = over({ ...line, aspect: 2 });
-    expect(pressedLabel(stage.host, "data-vigilia-chart-aspect")).toBe("2:1");
+    expect(pressedLabel(stage.host, "data-yunari-chart-aspect")).toBe("2:1");
 
-    await segment(stage.host, "data-vigilia-chart-aspect", "3:1");
+    await segment(stage.host, "data-yunari-chart-aspect", "3:1");
 
     expect(calls.aspects).toEqual([3]);
   });
@@ -706,7 +704,7 @@ describe("the line chart's aspect group", () => {
   it("presses nothing when the chart is at none of the offered ratios", () => {
     const { stage } = over(line);
     expect(
-      pressedLabel(stage.host, "data-vigilia-chart-aspect"),
+      pressedLabel(stage.host, "data-yunari-chart-aspect"),
     ).toBeUndefined();
   });
 });

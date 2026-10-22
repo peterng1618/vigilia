@@ -30,7 +30,7 @@ The trailing-slash strip was not the mistake — it is right, and it is what mak
 normalises a path to the empty string**, and that the answer is applied to one
 side of a join instead of being the join's own definition.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `drivesFrom`, `volumesOf`, `pathOf`, `diskDeviceId`
 (`renderer-core/src/data/semantic-keys.ts`), `lhm-captions.ts`,
@@ -41,7 +41,7 @@ defect. `diskDeviceId` is unrelated: it slugs a *display name*, not a path.
 
 ## Rung 2 — dependencies
 
-Searched: the direct dependencies of `@vigilia/host`.
+Searched: the direct dependencies of `@yunari/host`.
 Found: nothing that normalises paths for us, and nothing that should — this is
 a three-way join between two provider records, and both sides are already
 strings by the time we see them. **No new dependency is warranted.**

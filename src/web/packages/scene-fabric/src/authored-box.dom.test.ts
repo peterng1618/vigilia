@@ -5,14 +5,14 @@ import type {
   PlanNode,
   PlanTextSegment,
   TextRun,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { Rect, StaticCanvas, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
   applyAuthoredText,
   buildText,
   refreshBoundText,
-  VIGILIA_TEXT_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
 } from "./fabric-text.js";
 import { reviveScene, serialiseScene } from "./persist.js";
 
@@ -86,7 +86,7 @@ function reading(
     originX: "left",
     originY: "top",
   });
-  object.set(VIGILIA_TEXT_PROPERTY, {
+  object.set(YUNARI_TEXT_PROPERTY, {
     wrap: true,
     overflow: "ellipsis",
     ...layout,
@@ -192,7 +192,7 @@ describe("the authored box outlives a token wider than it", () => {
     // The migration: a theme saved before this change carries no box, and must
     // not be repaired by a guess.
     const object = reading();
-    object.set(VIGILIA_TEXT_PROPERTY, { wrap: true, runs: runs() });
+    object.set(YUNARI_TEXT_PROPERTY, { wrap: true, runs: runs() });
     const canvas = canvasOf(object);
 
     paint(canvas);
@@ -234,8 +234,8 @@ describe("a width the author dragged stays dragged", () => {
     // And once the box records it — which the editor's resize capture does, and
     // which this stands in for — every later refresh holds it, rather than the
     // pass restoring the box the author just left.
-    object.set(VIGILIA_TEXT_PROPERTY, {
-      ...(object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>),
+    object.set(YUNARI_TEXT_PROPERTY, {
+      ...(object.get(YUNARI_TEXT_PROPERTY) as Record<string, unknown>),
       box: { width: 90, height: BOX.height },
     });
     paint(canvas);
@@ -290,7 +290,7 @@ describe("a height the author wrote is the height the object has", () => {
   });
 
   it("keeps the box height under a scaled object, and the clip on it", () => {
-    // `vigiliaText.box` is the number the object measures against and
+    // `yunariText.box` is the number the object measures against and
     // `boxFrom` puts the scale back on for the clip, so a 1.5x object built at
     // 140 is still 140 in its own space — 210 on the artboard, which is what a
     // corner drag of a 1.5x object produces. Reading one as the other grows the
@@ -442,7 +442,7 @@ describe("the clip is a cache, not saved state", () => {
   it("keeps a stale clip out of the save", () => {
     // An unbound label is never re-resolved by a refresh, so a clip carried in
     // the file is the only thing clipping it — and it would be a rect computed
-    // against an older layout, not against `vigiliaText.box`.
+    // against an older layout, not against `yunariText.box`.
     const object = reading();
     const canvas = canvasOf(object);
     paint(canvas);
@@ -454,7 +454,7 @@ describe("the clip is a cache, not saved state", () => {
     ) as Record<string, unknown>;
 
     expect(entry["clipPath"]).toBeUndefined();
-    expect((entry[VIGILIA_TEXT_PROPERTY] as { box?: unknown }).box).toEqual({
+    expect((entry[YUNARI_TEXT_PROPERTY] as { box?: unknown }).box).toEqual({
       width: BOX.width,
       height: BOX.height,
     });
@@ -478,7 +478,7 @@ describe("the clip is a cache, not saved state", () => {
 
     expect(entry["height"]).toBeUndefined();
     // The box is the owner, and it is what the reload reads.
-    expect((entry[VIGILIA_TEXT_PROPERTY] as { box?: unknown }).box).toEqual({
+    expect((entry[YUNARI_TEXT_PROPERTY] as { box?: unknown }).box).toEqual({
       width: BOX.width,
       height: BOX.height,
     });
@@ -492,7 +492,7 @@ describe("an object with no authored box", () => {
     // through a centre origin moves a corner-anchored object off its corner by
     // half its own size.
     const object = reading();
-    object.set(VIGILIA_TEXT_PROPERTY, { wrap: true, runs: runs() });
+    object.set(YUNARI_TEXT_PROPERTY, { wrap: true, runs: runs() });
     const canvas = canvasOf(object);
     const left = object.left;
     const top = object.top;
@@ -507,7 +507,7 @@ describe("an object with no authored box", () => {
     // The counter-case, so the test above cannot pass by leaving the fallback
     // alone.
     const object = reading();
-    object.set(VIGILIA_TEXT_PROPERTY, { wrap: true, runs: runs() });
+    object.set(YUNARI_TEXT_PROPERTY, { wrap: true, runs: runs() });
     object.set({ originX: "center", originY: "center" });
     object.left += BOX.width / 2;
     object.top += BOX.height / 2;
@@ -703,7 +703,7 @@ describe("an ellipsis on wrapped text inside a fixed box", () => {
       originX: "left",
       originY: "top",
     });
-    object.set(VIGILIA_TEXT_PROPERTY, {
+    object.set(YUNARI_TEXT_PROPERTY, {
       wrap: true,
       overflow: "ellipsis",
       align: "center",
@@ -712,8 +712,8 @@ describe("an ellipsis on wrapped text inside a fixed box", () => {
       runs: [{ kind: "literal", text }],
     });
     // The authored height is one line, so `maxLines` has something to derive.
-    object.set(VIGILIA_TEXT_PROPERTY, {
-      ...(object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>),
+    object.set(YUNARI_TEXT_PROPERTY, {
+      ...(object.get(YUNARI_TEXT_PROPERTY) as Record<string, unknown>),
       box: { width: BOX.width, height: object.getHeightOfLine(0) },
     });
     return object;
@@ -750,8 +750,8 @@ describe("an ellipsis on wrapped text inside a fixed box", () => {
     // A box shorter than its own line height has no line to show, and the clip
     // is what keeps the remainder off whatever is beside it.
     const object = oneLineBox({}, "MEM 61 GB of 32 GB used");
-    object.set(VIGILIA_TEXT_PROPERTY, {
-      ...(object.get(VIGILIA_TEXT_PROPERTY) as Record<string, unknown>),
+    object.set(YUNARI_TEXT_PROPERTY, {
+      ...(object.get(YUNARI_TEXT_PROPERTY) as Record<string, unknown>),
       box: { width: BOX.width, height: 1 },
     });
     const canvas = canvasOf(object);

@@ -80,7 +80,7 @@ export default async function ({ page }) {
    * report twice the real count, which is the same bug as the observer above.
    */
   const counters = await page.evaluate(() => {
-    const canvas = window.vigiliaEditorBridge?.editor?.canvas;
+    const canvas = window.yunariEditorBridge?.editor?.canvas;
     if (!canvas) return { ok: false, text: 0, classes: 0 };
     if (window.__work) return window.__work;
     const protos = new Set();
@@ -147,7 +147,7 @@ export default async function ({ page }) {
   const tokens = TOKENS.length
     ? TOKENS
     : await page.evaluate(() => {
-        const select = document.querySelector("select[data-vigilia-palette-token]");
+        const select = document.querySelector("select[data-yunari-palette-token]");
         if (!select) return [];
         const scored = [...select.options].map((o) => ({
           id: o.value,
@@ -164,7 +164,7 @@ export default async function ({ page }) {
   const results = [];
   for (const id of tokens) {
     const picked = await page.evaluate((token) => {
-      const select = document.querySelector("select[data-vigilia-palette-token]");
+      const select = document.querySelector("select[data-yunari-palette-token]");
       if (!select) return "no-select";
       // By id, never by index: an option added to the Starter shifts every
       // index after it, and a silent retarget is a measurement of nothing.

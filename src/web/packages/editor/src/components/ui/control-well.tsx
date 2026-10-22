@@ -157,7 +157,7 @@ type ControlIds = {
  *  so it is stripped. */
 export function useControlIds(id: string | undefined): ControlIds {
   const generated = useId().replace(/[^\w-]/g, "");
-  const control = id ?? `vigilia-control-${generated}`;
+  const control = id ?? `yunari-control-${generated}`;
   return {
     control,
     label: `${control}-label`,

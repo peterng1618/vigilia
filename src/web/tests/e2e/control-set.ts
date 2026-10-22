@@ -21,7 +21,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * what it names, which is why the suite has to say the new one rather than the
  * product grow the old one back.
  *
- * Every read here is by a `data-vigilia-*` hook or by an ARIA attribute the
+ * Every read here is by a `data-yunari-*` hook or by an ARIA attribute the
  * control owns. **Never by a presentation class**: `wellClasses` and the
  * Tailwind utilities beside it are the design language, and a rename would turn
  * an assertion into a thirty-second timeout naming a selector nobody meant.
@@ -30,7 +30,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 /**
  * The word a plan-1 select prints for what is chosen.
  *
- * Located by the `data-vigilia-value` hook on `Select.Value` and read as text,
+ * Located by the `data-yunari-value` hook on `Select.Value` and read as text,
  * because that element carries **both**: the words in its content and the id
  * the control committed in the attribute. A driver that must assert the
  * reference rather than the word reads the attribute off the same element;
@@ -39,7 +39,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * timeout naming nothing.
  */
 export async function choiceOf(control: Locator): Promise<string> {
-  const value = control.locator("[data-vigilia-value]").first();
+  const value = control.locator("[data-yunari-value]").first();
   await expect(value).toHaveCount(1);
   return value.innerText();
 }
@@ -97,7 +97,7 @@ export async function optionsOf(
 ): Promise<string[]> {
   const { options } = await openList(page, control);
   const values = await options.evaluateAll((nodes) =>
-    nodes.map((node) => node.getAttribute("data-vigilia-option") ?? ""),
+    nodes.map((node) => node.getAttribute("data-yunari-option") ?? ""),
   );
   await page.keyboard.press("Escape");
   return values;
@@ -119,7 +119,7 @@ export async function optionPairs(
   const { options } = await openList(page, control);
   const pairs = await options.evaluateAll((nodes) =>
     nodes.map((node) => ({
-      id: node.getAttribute("data-vigilia-option") ?? "",
+      id: node.getAttribute("data-yunari-option") ?? "",
       label: (node.textContent ?? "").trim(),
     })),
   );
@@ -136,9 +136,9 @@ export async function optionPairs(
  * `Text`, `typePresets.24-400` prints `Card title`); matching on those words
  * would copy the document's glossary into the suite, and the `Text` / `Muted
  * text` pair is a substring collision besides. `control-select.tsx` puts
- * `data-vigilia-option` on each `Select.Item` for exactly this, so the string a
+ * `data-yunari-option` on each `Select.Item` for exactly this, so the string a
  * locator names and the string the control commits are one string — the rule the
- * `data-vigilia-*` hooks already keep.
+ * `data-yunari-*` hooks already keep.
  */
 export async function chooseIn(
   page: Page,
@@ -147,7 +147,7 @@ export async function chooseIn(
 ): Promise<void> {
   const { container } = await openList(page, control);
   const option = container.locator(
-    `[role="option"][data-vigilia-option="${value}"]`,
+    `[role="option"][data-yunari-option="${value}"]`,
   );
   await expect(option).toHaveCount(1);
   await option.click();
@@ -235,7 +235,7 @@ export async function typeIntoControl(
 /** A section's disclosure header: the button §5 makes it. */
 function sectionHeader(page: Page, id: string): Locator {
   return page
-    .locator(`[data-vigilia-section="${id}"] button[aria-expanded]`)
+    .locator(`[data-yunari-section="${id}"] button[aria-expanded]`)
     .first();
 }
 

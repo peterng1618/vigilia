@@ -30,7 +30,7 @@ exclusive and never was; it eliminates Radix and nothing else. The survey below
 measures four libraries that can do it, and two of them ship primitives this editor
 currently hand-rolls.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every primitive import in `packages/*/src`; `ownership.md`; the contents of
 `components/ui/`; who consumes each wrapper.

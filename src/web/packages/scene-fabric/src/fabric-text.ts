@@ -9,8 +9,8 @@ import type {
   SampleSource,
   TextContent,
   TextRun,
-} from "@vigilia/renderer-core";
-import { emptySampleSource, resolveTextSegments } from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
+import { emptySampleSource, resolveTextSegments } from "@yunari/renderer-core";
 import {
   FabricText,
   Group,
@@ -50,9 +50,9 @@ import { textShapeFor } from "./text-runs.js";
 export type PlanTextObject = FabricText | Textbox;
 
 /** Fabric property that preserves authored text semantics without a parallel scene tree. */
-export const VIGILIA_TEXT_PROPERTY = "vigiliaText";
+export const YUNARI_TEXT_PROPERTY = "yunariText";
 
-const VIGILIA_TEXT_LAYOUT_PROPERTY = "vigiliaTextLayout";
+const YUNARI_TEXT_LAYOUT_PROPERTY = "yunariTextLayout";
 const ELLIPSIS = "…";
 
 type RuntimeTextLayout = Readonly<{
@@ -97,7 +97,7 @@ function runtimeLayout(
   object: PlanTextObject,
   authored: TextContent,
 ): RuntimeTextLayout {
-  const saved = object.get(VIGILIA_TEXT_LAYOUT_PROPERTY) as
+  const saved = object.get(YUNARI_TEXT_LAYOUT_PROPERTY) as
     | RuntimeTextLayout
     | undefined;
   if (saved !== undefined) {
@@ -188,8 +188,8 @@ export function buildText(node: PlanNode, box: PlanBox): PlanTextObject {
     : new FabricText("", common);
 
   applyText(object, node, box);
-  object.set(VIGILIA_TEXT_PROPERTY, node.content.authored);
-  object.set(VIGILIA_TEXT_LAYOUT_PROPERTY, {
+  object.set(YUNARI_TEXT_PROPERTY, node.content.authored);
+  object.set(YUNARI_TEXT_LAYOUT_PROPERTY, {
     box,
     layout: node.content.layout,
     style: node.style,
@@ -221,7 +221,7 @@ export function updateText(
   });
 
   applyText(object, node, box);
-  object.set(VIGILIA_TEXT_LAYOUT_PROPERTY, {
+  object.set(YUNARI_TEXT_LAYOUT_PROPERTY, {
     box,
     layout: node.content.layout,
     style: node.style,
@@ -272,7 +272,7 @@ export function applyAuthoredText(
 
       if (isTextObject(object) && !editing) {
         const id = object.get("id");
-        const authored = object.get(VIGILIA_TEXT_PROPERTY);
+        const authored = object.get(YUNARI_TEXT_PROPERTY);
 
         if (
           typeof id === "string" &&
@@ -351,7 +351,7 @@ export function refreshBoundText(
     for (const object of objects) {
       if (isTextObject(object)) {
         const id = object.get("id");
-        const authored = object.get(VIGILIA_TEXT_PROPERTY);
+        const authored = object.get(YUNARI_TEXT_PROPERTY);
         if (
           typeof id === "string" &&
           isTextContent(authored) &&

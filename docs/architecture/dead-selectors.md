@@ -29,7 +29,7 @@ node scripts/dead-selectors.mjs --self-test # 7 cases against a temporary fixtur
 ## 1. Why this lane needs naming at all
 
 Only **two** CSS files ship (`editor-shell.css`, and the host's own pages'
-`vigilia-page.css`), so this does not want a scanner framework. It wants naming
+`yunari-page.css`), so this does not want a scanner framework. It wants naming
 because nothing else can see the problem:
 
 - `editor-shell.css` is the **largest hand-written, non-test source file in the
@@ -65,14 +65,14 @@ finding, 2 on a stylesheet it cannot read.
 Its output at this reading, verbatim:
 
 ```
-dead-selectors: editor-shell.css classes=80 dataAttrs=31  vigilia-page.css classes=17 dataAttrs=2  tokens=130
+dead-selectors: editor-shell.css classes=80 dataAttrs=31  yunari-page.css classes=17 dataAttrs=2  tokens=130
 
 FORWARD — a selector in either stylesheet that no production source applies
   data-popup-open  (attr, editor-shell.css)  test=0 script=0 doc=1 style=0
   data-checked  (attr, editor-shell.css)  test=1 script=0 doc=1 style=0
   data-active  (attr, editor-shell.css)  test=2 script=0 doc=1 style=0
-  data-vigilia-display-screen  (attr, editor-shell.css)  test=1 script=0 doc=3 style=0
-  data-placeholder  (attr, vigilia-page.css)  test=1 script=0 doc=1 style=0
+  data-yunari-display-screen  (attr, editor-shell.css)  test=1 script=0 doc=3 style=0
+  data-placeholder  (attr, yunari-page.css)  test=1 script=0 doc=1 style=0
   forward: 5 of 130 token(s) unapplied
 
 REVERSE — a class production source writes that neither stylesheet defines
@@ -81,13 +81,13 @@ REVERSE — a class production source writes that neither stylesheet defines
   editor-shell-publish-live  src/web/packages/editor/src/editor-shell/publish-control.tsx
   editor-shell-publish-reason  src/web/packages/editor/src/editor-shell/publish-control.tsx
   editor-shell-rail-slot  src/web/packages/editor/src/editor-shell/rail.tsx
-  vigilia-angle-indicator  src/web/packages/editor/src/indicator-manager/index.ts
-  vigilia-field-hint  src/web/packages/editor/src/editor-shell/controls/settings-field.ts
-  vigilia-run-label  src/web/packages/editor/src/selection-inspector/runs.tsx
-  vigilia-run-note  src/web/packages/editor/src/chart-manager/chart-fields.tsx src/web/packages/editor/src/selection-inspector/runs.tsx
-  vigilia-run-preview  src/web/packages/editor/src/selection-inspector/runs.tsx
-  vigilia-size-indicator  src/web/packages/editor/src/indicator-manager/index.ts
-  reverse: 331 class(es) written by production source, 97 defined by the two stylesheets, 234 not — 11 in a stylesheet namespace (named above), 223 outside every namespace (editor- vigilia- theme-), which is Tailwind's vocabulary or a third party's
+  yunari-angle-indicator  src/web/packages/editor/src/indicator-manager/index.ts
+  yunari-field-hint  src/web/packages/editor/src/editor-shell/controls/settings-field.ts
+  yunari-run-label  src/web/packages/editor/src/selection-inspector/runs.tsx
+  yunari-run-note  src/web/packages/editor/src/chart-manager/chart-fields.tsx src/web/packages/editor/src/selection-inspector/runs.tsx
+  yunari-run-preview  src/web/packages/editor/src/selection-inspector/runs.tsx
+  yunari-size-indicator  src/web/packages/editor/src/indicator-manager/index.ts
+  reverse: 331 class(es) written by production source, 97 defined by the two stylesheets, 234 not — 11 in a stylesheet namespace (named above), 223 outside every namespace (editor- yunari- theme-), which is Tailwind's vocabulary or a third party's
 
 dead-selectors: 16 finding(s)
 ```
@@ -111,7 +111,7 @@ instruments.
 - **The owning file is excluded per token**, so a stylesheet does not prove its
   own selector live. This matters here: `editor-shell.css` names
   `.editor-shell-palette-swatch` in a selector list it also defines, and
-  `vigilia-page.css` names `.theme-row` in two rules.
+  `yunari-page.css` names `.theme-row` in two rules.
 - **Comments are stripped before extraction.** The file's own prose names classes
   constantly, and a class named only in a comment is not a class the product
   applies. The file records that trap on itself: `@source inline("bg-shell-surface")`
@@ -153,7 +153,7 @@ instruments.
 
 ## 3. The count
 
-| | `editor-shell.css` | `vigilia-page.css` | total |
+| | `editor-shell.css` | `yunari-page.css` | total |
 |---|---|---|---|
 | Class selectors | 80 | 17 | **97** |
 | `data-*` attribute selectors | 31 | 2 | **33** |
@@ -178,7 +178,7 @@ attribute. The five-token dead list is unchanged.
 ## 4. The reverse direction: eleven classes production writes that neither file defines
 
 `vg-380` was filed on **one** instance and the row's own detail says the string
-`vigilia-field-hint` occurs exactly once in the checkout. That is true of the
+`yunari-field-hint` occurs exactly once in the checkout. That is true of the
 string. It is not true of the direction: the widened reading finds **eleven**
 classes at this reading, and every one is a real DOM class write. The row's
 instance is one of them, and the other ten had never been counted.
@@ -190,12 +190,12 @@ instance is one of them, and the other ten had never been counted.
 | `editor-shell-publish-live` | `editor-shell/publish-control.tsx` | an unstyled hook inside `.editor-shell-publish-popup`'s column |
 | `editor-shell-publish-reason` | `editor-shell/publish-control.tsx` | the same, plus `role="alert"` |
 | `editor-shell-rail-slot` | `editor-shell/rail.tsx` | an unstyled hook; `shell-layout.dom.test.tsx` queries it |
-| `vigilia-angle-indicator` | `indicator-manager/index.ts`, written by `cursor-indicator.ts` | every property is set inline from `CURSOR_INDICATOR_STYLES` |
-| `vigilia-field-hint` | `controls/settings-field.ts` | **the row's instance** — hidden by the inline `cssText` beside it |
-| `vigilia-run-label` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
-| `vigilia-run-note` | `runs.tsx` (three sites), `chart-manager/chart-fields.tsx` | utilities on three of its four sites |
-| `vigilia-run-preview` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
-| `vigilia-size-indicator` | `indicator-manager/index.ts` | the same as the angle indicator |
+| `yunari-angle-indicator` | `indicator-manager/index.ts`, written by `cursor-indicator.ts` | every property is set inline from `CURSOR_INDICATOR_STYLES` |
+| `yunari-field-hint` | `controls/settings-field.ts` | **the row's instance** — hidden by the inline `cssText` beside it |
+| `yunari-run-label` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
+| `yunari-run-note` | `runs.tsx` (three sites), `chart-manager/chart-fields.tsx` | utilities on three of its four sites |
+| `yunari-run-preview` | `selection-inspector/runs.tsx` | the same element carries `text-xs text-muted` |
+| `yunari-size-indicator` | `indicator-manager/index.ts` | the same as the angle indicator |
 
 **Not one of the eleven is a visible defect at this reading**, and that is worth
 stating precisely rather than reassuringly: four are unstyled hooks whose layout
@@ -203,7 +203,7 @@ comes from a parent rule and which a test queries by name, two are painted
 entirely by inline style, one is hidden by the inline `cssText` six lines below
 it, and four carry Tailwind utilities on the same element. **The class is
 redundant in every case, which is not the same as harmless** — the row's own
-argument is that `vigilia-field-hint` is harmless *by accident*, because of a
+argument is that `yunari-field-hint` is harmless *by accident*, because of a
 style written six lines away.
 
 **How the denominator was narrowed, because it is the risk.** The reverse
@@ -213,7 +213,7 @@ naming all 234 would be a report nobody reads — 223 are outside every namespac
 the two stylesheets use, which is Tailwind's vocabulary and other people's hooks,
 not a missing stylesheet rule. So a class is in scope when it begins with a
 **namespace the two files themselves use**: a leading hyphen-separated segment
-appearing on more than one of their class names — `editor-`, `vigilia-`,
+appearing on more than one of their class names — `editor-`, `yunari-`,
 `theme-`. That is the one thing this repo can do that the prior art cannot
 (`0062`, Rung 4: `cssguard` skips expressions, `gulp-check-unused-css` takes an
 `ignore` array, `blok` predicates on Tailwind — all hand-kept lists). The 223 are
@@ -236,7 +236,7 @@ cleared by a named producer, not by a guess.
 | `data-popup-open` | `@base-ui/react@1.8.0` `menu/trigger/MenuTriggerDataAttributes` emits `data-popup-open` / `data-pressed` / `data-disabled`; `shell-layout.tsx`'s `MenuGroup` renders `<Menu.Trigger>` inside `<nav className="editor-shell-menubar">` | the attribute is written by a dependency's own DOM code, so no file in this repo holds the spelling outside the stylesheet |
 | `data-checked` | the same package, `menu/radio-item-indicator/MenuRadioItemIndicatorDataAttributes`; `display-switch.tsx` renders `<Menu.RadioItemIndicator className="editor-shell-menu-tick" keepMounted>` | as above; `keepMounted` is what makes the `:not([data-checked])` rule reachable at all |
 | `data-active` | the same package, `tabs/tab/TabsTabDataAttributes`; `settings.tsx` renders `<Tabs.Tab className="editor-shell-settings-tab">` | as above |
-| `data-vigilia-display-screen` | `editor-shell.ts` — `screen.dataset["vigiliaDisplayScreen"] = ""` | the attribute is written through `dataset`'s camelCase form, so the kebab spelling exists nowhere but the stylesheet and the specs |
+| `data-yunari-display-screen` | `editor-shell.ts` — `screen.dataset["yunariDisplayScreen"] = ""` | the attribute is written through `dataset`'s camelCase form, so the kebab spelling exists nowhere but the stylesheet and the specs |
 | `data-placeholder` | `host/public/theme-list.js` — `box.dataset.placeholder = ""` | as above |
 | `data-template` | `host/public/theme-list.js` — `row.dataset.template = template.id` | as above. Its only literal hit in production source is a JSDoc comment in `host/src/themes/templates.ts`, which is why it does not appear in the command's zero list |
 
@@ -250,7 +250,7 @@ instrument, and widening it was not ruled. It reads every backtick string in
 130 tokens:
 
 ```sh
-node -e 'const fs=require("fs"),path=require("path");const ROOT="D:/git-repos/vigilia";const CSS=[ROOT+"/src/web/packages/editor/src/editor-shell/editor-shell.css",ROOT+"/src/web/packages/host/public/vigilia-page.css"];const SKIP=["node_modules","dist",".git",".vite","coverage","test-results","playwright-report",".agent-scratch",".superpowers",".codegraph",".e2e-host-app"];const strip=s=>{let o="",i=0;for(;;){const a=s.indexOf("/*",i);if(a<0){o+=s.slice(i);break}o+=s.slice(i,a);const b=s.indexOf("*/",a+2);i=b<0?s.length:b+2}return o};const toks=[];for(const f of CSS){const t=strip(fs.readFileSync(f,"utf8"));for(const m of t.matchAll(new RegExp("[.]([A-Za-z_-][A-Za-z0-9_-]*)","g")))toks.push(m[1]);for(const m of t.matchAll(new RegExp("[[]data-[A-Za-z0-9_-]+","g")))toks.push(m[0].slice(1))}const set=[...new Set(toks)];const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(SKIP.includes(e.name))continue;const p=d+"/"+e.name;if(e.isDirectory()){w(p);continue}const x=path.extname(e.name).toLowerCase();if([".ts",".tsx",".js",".jsx",".mjs",".cjs",".html",".htm"].includes(x))files.push(p)}})(ROOT+"/src/web");let hits=0;for(const f of files){const t=fs.readFileSync(f,"utf8");let i=0;for(;;){const a=t.indexOf("`",i);if(a<0)break;const b=t.indexOf("`",a+1);if(b<0)break;i=b+1;const lit=t.slice(a+1,b);if(lit.indexOf("${")<0)continue;for(const k of set){const idx=lit.indexOf(k);if(idx<0)continue;const after=lit.slice(idx+k.length,idx+k.length+1);if(after&&/[A-Za-z0-9_-]/.test(after))continue;console.log("COMPOSED "+k+"   in "+path.relative(ROOT,f).split(path.sep).join("/")+"   literal: "+lit.slice(0,110).split("\n").join(" "));hits++}}}console.log("composed-name sites reaching a token in the two files: "+hits)'
+node -e 'const fs=require("fs"),path=require("path");const ROOT="D:/git-repos/yunari";const CSS=[ROOT+"/src/web/packages/editor/src/editor-shell/editor-shell.css",ROOT+"/src/web/packages/host/public/yunari-page.css"];const SKIP=["node_modules","dist",".git",".vite","coverage","test-results","playwright-report",".agent-scratch",".superpowers",".codegraph",".e2e-host-app"];const strip=s=>{let o="",i=0;for(;;){const a=s.indexOf("/*",i);if(a<0){o+=s.slice(i);break}o+=s.slice(i,a);const b=s.indexOf("*/",a+2);i=b<0?s.length:b+2}return o};const toks=[];for(const f of CSS){const t=strip(fs.readFileSync(f,"utf8"));for(const m of t.matchAll(new RegExp("[.]([A-Za-z_-][A-Za-z0-9_-]*)","g")))toks.push(m[1]);for(const m of t.matchAll(new RegExp("[[]data-[A-Za-z0-9_-]+","g")))toks.push(m[0].slice(1))}const set=[...new Set(toks)];const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(SKIP.includes(e.name))continue;const p=d+"/"+e.name;if(e.isDirectory()){w(p);continue}const x=path.extname(e.name).toLowerCase();if([".ts",".tsx",".js",".jsx",".mjs",".cjs",".html",".htm"].includes(x))files.push(p)}})(ROOT+"/src/web");let hits=0;for(const f of files){const t=fs.readFileSync(f,"utf8");let i=0;for(;;){const a=t.indexOf("`",i);if(a<0)break;const b=t.indexOf("`",a+1);if(b<0)break;i=b+1;const lit=t.slice(a+1,b);if(lit.indexOf("${")<0)continue;for(const k of set){const idx=lit.indexOf(k);if(idx<0)continue;const after=lit.slice(idx+k.length,idx+k.length+1);if(after&&/[A-Za-z0-9_-]/.test(after))continue;console.log("COMPOSED "+k+"   in "+path.relative(ROOT,f).split(path.sep).join("/")+"   literal: "+lit.slice(0,110).split("\n").join(" "));hits++}}}console.log("composed-name sites reaching a token in the two files: "+hits)'
 ```
 
 Output at the first reading: **38 sites, and not one of them composes a name.**
@@ -264,9 +264,9 @@ literal for each so the split below can be re-derived from its output:
   (`uiCopy.diagnostics[current.severity]`, `diagnostic-message.tsx`) and one a
   path segment (`docs/design/mockups/current/${entry}`, `mockup-values.ts`).
 - **13 are a selector template whose fixed part is the token and whose
-  interpolation is a VALUE** — `[data-vigilia-panel="${panel}"]`,
+  interpolation is a VALUE** — `[data-yunari-panel="${panel}"]`,
   `.editor-shell-rail button[data-rail-slot="${id}"]`,
-  `[data-vigilia-layer="${id}"] .vigilia-layer-role`,
+  `[data-yunari-layer="${id}"] .yunari-layer-role`,
   `button.theme-option[data-theme="${id}"]`, `[data-shell-palette="${palette}"]`.
   The name is written whole; the variable is what the attribute is set to, so
   the token is live by the fixed part.
@@ -276,7 +276,7 @@ literal for each so the split below can be re-derived from its output:
   `control-well.tsx`'s `${control}-hint`, `settings-field.ts`'s `${id}-hint` and
   `chart-fields.dom.test.tsx`'s `${control.id}-hint` (twice) match the token
   `hint` inside a generated `-hint` id; `kind-mark.dom.test.tsx`'s
-  `[data-vigilia-layer-mark="${mark.kind}"]` (twice) matches `vigilia-layer-mark`
+  `[data-yunari-layer-mark="${mark.kind}"]` (twice) matches `yunari-layer-mark`
   inside the longer attribute name; `glass.dom.test.ts`'s `[id="${labelledby}"]`
   matches `by` inside the variable name. None of the seven composes a stylesheet
   name: the `-hint` sites build an `aria-describedby` id, not a class.
@@ -302,9 +302,9 @@ reads `classList` writes all the same: the ruling names them, and a reading that
 only worked on a tree with none would be untested the day one arrives.
 
 Nothing in production builds one of these 130 names from fragments. The other
-`dataset[…]` writes in production — `shellPalette`, `vigiliaPanel`,
-`vigiliaChartSetting`, `vigiliaText`, `nodeId` — produce attributes this file
-does not style, except `data-shell-palette` and `data-vigilia-panel`, which the
+`dataset[…]` writes in production — `shellPalette`, `yunariPanel`,
+`yunariChartSetting`, `yunariText`, `nodeId` — produce attributes this file
+does not style, except `data-shell-palette` and `data-yunari-panel`, which the
 literal search already sees; and the `className={\`…${…}\`}` sites compose
 Tailwind utilities owned by the `components/ui/` layer, none of them a name in
 either stylesheet.
@@ -320,7 +320,7 @@ stylesheet**, for the reason the forward direction gives: a file must not prove
 its own selector live.
 
 ```sh
-node -e 'const fs=require("fs"),path=require("path");const Q=String.fromCharCode(34);const ROOT="D:/git-repos/vigilia";const CSS=[ROOT+"/src/web/packages/editor/src/editor-shell/editor-shell.css",ROOT+"/src/web/packages/host/public/vigilia-page.css"];const SKIP=["node_modules","dist",".git",".vite","coverage","test-results","playwright-report",".agent-scratch",".superpowers",".codegraph",".e2e-host-app"];const strip=s=>{let o="",i=0;for(;;){const a=s.indexOf("/*",i);if(a<0){o+=s.slice(i);break}o+=s.slice(i,a);const b=s.indexOf("*/",a+2);i=b<0?s.length:b+2}return o};const pairs=new Set();for(const f of CSS){const t=strip(fs.readFileSync(f,"utf8"));let i=0;for(;;){const a=t.indexOf("[",i);if(a<0)break;const b=t.indexOf("]",a);i=b<0?t.length:b+1;const seg=t.slice(a+1,b);if(seg.indexOf("=")>0)pairs.add(seg)}}const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(SKIP.includes(e.name))continue;const p=d+"/"+e.name;if(e.isDirectory()){w(p);continue}const x=path.extname(e.name).toLowerCase();if([".ts",".tsx",".js",".jsx",".mjs",".cjs",".html",".htm"].includes(x))files.push(p)}})(ROOT+"/src/web");const prod=files.filter(f=>{const q=path.relative(ROOT,f).split(path.sep).join("/");return !(q.indexOf("/tests/")>=0||q.indexOf(".test.")>=0||q.indexOf(".spec.")>=0||q.toLowerCase().indexOf("fixture")>=0)});const body=prod.map(f=>fs.readFileSync(f,"utf8"));console.log("attribute-value selector pairs in the two files: "+pairs.size);for(const pr of [...pairs].sort()){const i=pr.indexOf("=");const nm=pr.slice(0,i);let v=pr.slice(i+1);if(v.slice(0,1)===Q)v=v.slice(1,-1);let n=0;const where=[];for(let k=0;k<body.length;k++){if(body[k].indexOf(v)>=0){n++;if(where.length<3)where.push(path.relative(ROOT,prod[k]).split(path.sep).join("/"))}}console.log((n===0?"  NONE  ":"  live  ")+(nm+"="+Q+v+Q).padEnd(42)+" production files with the bare value: "+n+(n&&n<12?"   "+where.join(" "):""))}'
+node -e 'const fs=require("fs"),path=require("path");const Q=String.fromCharCode(34);const ROOT="D:/git-repos/yunari";const CSS=[ROOT+"/src/web/packages/editor/src/editor-shell/editor-shell.css",ROOT+"/src/web/packages/host/public/yunari-page.css"];const SKIP=["node_modules","dist",".git",".vite","coverage","test-results","playwright-report",".agent-scratch",".superpowers",".codegraph",".e2e-host-app"];const strip=s=>{let o="",i=0;for(;;){const a=s.indexOf("/*",i);if(a<0){o+=s.slice(i);break}o+=s.slice(i,a);const b=s.indexOf("*/",a+2);i=b<0?s.length:b+2}return o};const pairs=new Set();for(const f of CSS){const t=strip(fs.readFileSync(f,"utf8"));let i=0;for(;;){const a=t.indexOf("[",i);if(a<0)break;const b=t.indexOf("]",a);i=b<0?t.length:b+1;const seg=t.slice(a+1,b);if(seg.indexOf("=")>0)pairs.add(seg)}}const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(SKIP.includes(e.name))continue;const p=d+"/"+e.name;if(e.isDirectory()){w(p);continue}const x=path.extname(e.name).toLowerCase();if([".ts",".tsx",".js",".jsx",".mjs",".cjs",".html",".htm"].includes(x))files.push(p)}})(ROOT+"/src/web");const prod=files.filter(f=>{const q=path.relative(ROOT,f).split(path.sep).join("/");return !(q.indexOf("/tests/")>=0||q.indexOf(".test.")>=0||q.indexOf(".spec.")>=0||q.toLowerCase().indexOf("fixture")>=0)});const body=prod.map(f=>fs.readFileSync(f,"utf8"));console.log("attribute-value selector pairs in the two files: "+pairs.size);for(const pr of [...pairs].sort()){const i=pr.indexOf("=");const nm=pr.slice(0,i);let v=pr.slice(i+1);if(v.slice(0,1)===Q)v=v.slice(1,-1);let n=0;const where=[];for(let k=0;k<body.length;k++){if(body[k].indexOf(v)>=0){n++;if(where.length<3)where.push(path.relative(ROOT,prod[k]).split(path.sep).join("/"))}}console.log((n===0?"  NONE  ":"  live  ")+(nm+"="+Q+v+Q).padEnd(42)+" production files with the bare value: "+n+(n&&n<12?"   "+where.join(" "):""))}'
 ```
 
 Output: **26 pairs, two with zero hits.**
@@ -344,7 +344,7 @@ attribute-value selector pairs in the two files: 26
   live  data-shell-palette="light"                 production files with the bare value: 22
   live  data-shell-palette="moss"                  production files with the bare value: 1   src/web/packages/editor/src/editor-shell/palette.ts
   live  data-shell-palette="plum"                  production files with the bare value: 1   src/web/packages/editor/src/editor-shell/palette.ts
-  live  data-vigilia-panel="layers"                production files with the bare value: 9   src/web/packages/editor/src/components/ui/control-select.tsx src/web/packages/editor/src/editor-shell/bridge.ts src/web/packages/editor/src/editor-shell/shell-layout.tsx
+  live  data-yunari-panel="layers"                production files with the bare value: 9   src/web/packages/editor/src/components/ui/control-select.tsx src/web/packages/editor/src/editor-shell/bridge.ts src/web/packages/editor/src/editor-shell/shell-layout.tsx
   live  data-visible="true"                        production files with the bare value: 164
   live  role="alert"                               production files with the bare value: 4   src/web/packages/editor/src/editor-shell/controls/number-field.ts src/web/packages/editor/src/editor-shell/publish-control.tsx src/web/packages/editor/src/editor-shell/settings-keyboard.tsx
   live  role="menuitem"                            production files with the bare value: 1   src/web/packages/editor/src/viewport-manager/navigation.ts
@@ -367,10 +367,10 @@ their producer instead of counted:
 - The six `data-shell-palette` values are the six members of `SHELL_PALETTES`
   (`editor-shell/src/palette.ts`), written by `palette.ts`
   (`document.documentElement.dataset["shellPalette"] = palette`).
-- `data-vigilia-panel="layers"` — the value is the pane `id`: `shell-layout.tsx`
+- `data-yunari-panel="layers"` — the value is the pane `id`: `shell-layout.tsx`
   passes `id="layers"` to `<Pane>`, and `pane.tsx` writes
-  `data-vigilia-panel={id}`. `references.tsx` and `selection-inspector/index.ts`
-  write the other two (`style`, `selection`) through `dataset["vigiliaPanel"]`.
+  `data-yunari-panel={id}`. `references.tsx` and `selection-inspector/index.ts`
+  write the other two (`style`, `selection`) through `dataset["yunariPanel"]`.
 - The React boolean writes — `data-dirty={dirty}`, `data-hidden={!row.visible}`,
   `data-selected={row.selected}`, `data-collapsed={collapsed}`,
   `data-visible={bridge !== undefined}`, `data-fitted={fitted}` — serialise to
@@ -393,12 +393,12 @@ should know what was and was not measured.
   `vg-266` are no longer in the file**: no selector mentioning
   `editor-shell-inspector` or `editor-shell-panel` carries a `select`. What
   survives is four arms: `.editor-shell select`, the `select` arm of the `:is(…)`
-  focus rule, and `.vigilia-field select` and `.vigilia-field-row select`.
+  focus rule, and `.yunari-field select` and `.yunari-field-row select`.
   `settings-field.ts` holds the only `document.createElement("select")` **under
   `.editor-shell`**: `grep -rn 'createElement("select")'` over
   `src/web/packages/editor/src` returns it alone. The same search over
   `src/web/packages` returns two more, `host/public/settings.html`, the host's
-  own settings page, which loads `vigilia-page.css`, not this stylesheet. The
+  own settings page, which loads `yunari-page.css`, not this stylesheet. The
   material point is the import graph: `settingsField` is imported by
   `controls.dom.test.ts` and `copy-defects.test.ts` alone, and its production
   importers (`chart-manager/panel.ts`) take only the `isSettingVisible` predicate.
@@ -412,10 +412,10 @@ should know what was and was not measured.
   clears them. `[role="tree"]`, `[role="alert"]` and `[role="menuitem"]` are
   written by the product.
 - **`id` selectors.** All three are live: `#app` (`editor/index.html`),
-  `#canvas-host` (`shell-layout.tsx`), `#vigilia-fabric-editor`
+  `#canvas-host` (`shell-layout.tsx`), `#yunari-fabric-editor`
   (`editor-shell.ts`).
 
-**Out of scope by the brief's own instruction:** the `--vigilia-*` / `--shell-*`
+**Out of scope by the brief's own instruction:** the `--yunari-*` / `--shell-*`
 custom properties. They are design tokens with their own owner and their own
 gate (`scripts/design-tokens.mjs`), and `vg-357` owns an open defect in them.
 
@@ -446,7 +446,7 @@ gate (`scripts/design-tokens.mjs`), and `vg-357` owns an open defect in them.
   `*DataAttributes` modules (`@base-ui/react@1.8.0`) rather than against
   behaviour; a library that emitted a name from a table would not be visible
   there either.
-- **The literals in `vigilia-page.css` are reached through the host's own DOM
+- **The literals in `yunari-page.css` are reached through the host's own DOM
   code** (`host/public/theme-list.js`), which is not TypeScript and is in no
   tsconfig. Its three `dataset` writes were read in full — `placeholder`,
   `template`, `theme` — and `data-theme` is styled by neither stylesheet.

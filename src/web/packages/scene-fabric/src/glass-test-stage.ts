@@ -253,7 +253,7 @@ export function panel(overrides: Record<string, unknown> = {}): Rect {
     rx: 0,
     ry: 0,
     fill: "rgba(255, 255, 255, 0.5)",
-    vigiliaGlass: { blurRadius: 24 },
+    yunariGlass: { blurRadius: 24 },
     ...overrides,
   });
 }

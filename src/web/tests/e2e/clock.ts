@@ -124,7 +124,7 @@ const installed = new WeakSet<object>();
 export async function openPaused(
   page: Page,
   url: string,
-  ready = '[data-vigilia="artboard"]',
+  ready = '[data-yunari="artboard"]',
 ): Promise<void> {
   await installFixedClock(page);
   await page.goto(url);

@@ -36,5 +36,5 @@ interface TemplateEntry {
 }
 
 export const SHIPPED_TEMPLATES: readonly TemplateEntry[] = [
-  { id: "vigilia-starter-template", name: "Starter — System dashboard" },
+  { id: "yunari-starter-template", name: "Starter — System dashboard" },
 ];

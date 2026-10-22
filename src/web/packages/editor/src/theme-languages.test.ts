@@ -1,4 +1,4 @@
-import { isLocaleName } from "@vigilia/renderer-core";
+import { isLocaleName } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { languageLabel, THEME_LANGUAGES } from "./theme-languages.js";
 

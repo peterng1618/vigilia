@@ -1,4 +1,4 @@
-import { holderOf, isLocked, targetsOf } from "@vigilia/scene-fabric";
+import { holderOf, isLocked, targetsOf } from "@yunari/scene-fabric";
 import type { Canvas, FabricObject } from "fabric/es";
 
 export interface DeletionManager {

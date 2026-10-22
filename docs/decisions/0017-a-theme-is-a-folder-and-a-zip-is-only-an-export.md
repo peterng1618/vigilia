@@ -9,7 +9,7 @@
 
 ## The problem
 
-The library stored each theme as a single `.vigilia-theme` ZIP, and read it back
+The library stored each theme as a single `.yunari-theme` ZIP, and read it back
 by unzipping. So the archive was not an export artifact — it was the **working
 format**, on every save and every read.
 
@@ -24,13 +24,13 @@ The user ruled twice, the second time in answer to this measurement: *"No we
 don't zip round trip on anything. A zip is only made when the author export the
 theme."*
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every `serializeThemePackage` / `readThemePackage` /
 `writeThemePackage` caller in non-test source, and the on-disk layout in
-`~/.vigilia/themes/`.
+`~/.yunari/themes/`.
 
-Found: the app folder was **already** at `~/.vigilia/themes`
+Found: the app folder was **already** at `~/.yunari/themes`
 (`cli/args.ts:26`) — under the home directory, which is where an npm-installed
 Node app conventionally keeps state. **The location was right; the shape was
 wrong.** Three surfaces zip on a working path — the store's read, list and
@@ -40,9 +40,9 @@ reads the archive the author opened.
 
 ## Rung 2 — dependencies
 
-Searched: the direct dependencies of `@vigilia/theme-package`.
+Searched: the direct dependencies of `@yunari/theme-package`.
 Found: **it is the right module and it is untouched by this change.** Reading and
-writing a `.vigilia-theme` is exactly its job, and the export and import paths
+writing a `.yunari-theme` is exactly its job, and the export and import paths
 keep it. Nothing here argues for a different archive library.
 
 ## Rung 3 — platform
@@ -85,7 +85,7 @@ re-import.
 
 ## Rung 6 — probe
 
-Listed `~/.vigilia/themes/` on this machine: three `.vigilia-theme` archives and
+Listed `~/.yunari/themes/` on this machine: three `.yunari-theme` archives and
 one loose `active-theme.json`, i.e. **settings and themes sharing one directory,
 each theme a file where a folder was specified.** Measured sizes: a theme package
 is ~1.2 KB with no assets and the starter backdrop alone is 438 KB — so a package
@@ -97,7 +97,7 @@ is small, which is exactly why zipping it bought nothing.
 where an archive is the point: export, and import of a file the author opened.**
 
 ```
-~/.vigilia/                 app folder
+~/.yunari/                 app folder
   themes/                   the theme library
     <theme-id>/             one theme's own folder — the working format
       theme.json

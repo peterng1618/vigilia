@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 
 /**
  * The header's publish surface, on a real host that is actually serving the LAN.
@@ -84,7 +84,7 @@ async function startHost(): Promise<ChildProcess> {
   const child = spawn(
     "node",
     [
-      "packages/host/bin/vigilia.js",
+      "packages/host/bin/yunari.js",
       "--no-browser",
       "--port",
       String(PORT),
@@ -131,9 +131,9 @@ test.describe("the header's publish surface", () => {
     // The bar's control opens the surface; the host switch is inside it (§7.1
     // puts the facts behind the press, and F1 puts the switch with them: a
     // press that only meant "where is the address" must not stop a session).
-    const publish = page.locator("[data-vigilia-publish]");
+    const publish = page.locator("[data-yunari-publish]");
     const facts = page.locator(".editor-shell-publish-popup");
-    const host = facts.locator("[data-vigilia-host-switch]");
+    const host = facts.locator("[data-yunari-host-switch]");
     await expect(publish).toBeVisible({ timeout: 30_000 });
     // The bar itself never carries an address.
     await expect(page.locator(".editor-shell-header code")).toHaveCount(0);
@@ -147,7 +147,7 @@ test.describe("the header's publish surface", () => {
 
     await expect(host).toHaveAttribute("aria-pressed", "true");
     await expect(facts.locator("code")).toHaveText(new RegExp(`:${PORT}$`));
-    await expect(facts.locator("[data-vigilia-qr]")).toBeVisible();
+    await expect(facts.locator("[data-yunari-qr]")).toBeVisible();
 
     // Still the same origin, which is the claim `createHostBinding` makes.
     expect(page.url()).toContain(`127.0.0.1:${PORT}/editor/`);
@@ -163,9 +163,9 @@ test.describe("the header's publish surface", () => {
 
     await page.goto(`${HOST}/editor/`);
 
-    const publish = page.locator("[data-vigilia-publish]");
+    const publish = page.locator("[data-yunari-publish]");
     const facts = page.locator(".editor-shell-publish-popup");
-    const host = facts.locator("[data-vigilia-host-switch]");
+    const host = facts.locator("[data-yunari-host-switch]");
     await expect(publish).toBeVisible({ timeout: 30_000 });
 
     // The host starts loopback-only, so the address exists only once the switch
@@ -180,7 +180,7 @@ test.describe("the header's publish surface", () => {
     // plain address beside it as the fallback (`docs/decisions/0076`).
     expect(shown).toMatch(/^https:\/\/\d+\.\d+\.\d+\.\d+:\d+$/);
 
-    const qr = facts.locator("[data-vigilia-qr]");
+    const qr = facts.locator("[data-yunari-qr]");
     const box = await qr.boundingBox();
     // A camera needs modules, not a thumbnail: 45 modules at 3 px.
     expect(box?.width).toBeGreaterThanOrEqual(120);

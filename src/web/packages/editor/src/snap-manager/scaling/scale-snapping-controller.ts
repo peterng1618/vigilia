@@ -104,7 +104,7 @@ export function createScaleSnappingController(
     // The plan is derived from Fabric's own resize handle. A control that
     // replaced a behaviour handler or moved its own anchor is not that
     // gesture, and snapping it would put the object somewhere the author never
-    // dragged it. Vigilia's controls manager currently leaves the handlers at
+    // dragged it. Yunari's controls manager currently leaves the handlers at
     // Fabric's values, so this refuses nothing today; it is here so that
     // customising a handle cannot silently defeat resize snapping.
     if (!isStandardRectangularScaleControl({ target, transform })) return null;

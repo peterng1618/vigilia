@@ -3,7 +3,7 @@ import {
   type CatalogueRefusal,
   DASHBOARD_THEME_KIND,
   parseCatalogueIndex,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   CATALOGUE_INDEX_URL,
   catalogueThumbnailUrl,

@@ -1,6 +1,6 @@
 # Implementation plans
 
-Superpowers is Vigilia's sole planning/execution workflow.
+Superpowers is Yunari's sole planning/execution workflow.
 
 Active and queued executable plans live here. A completed or superseded plan
 moves to `archive/` **once no active or queued plan depends on it** — the

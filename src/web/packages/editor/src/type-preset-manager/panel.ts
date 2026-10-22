@@ -1,4 +1,4 @@
-import type { TypePreset } from "@vigilia/renderer-core";
+import type { TypePreset } from "@yunari/renderer-core";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
@@ -54,7 +54,7 @@ export function createTypePresetPanel(
   selection?: PresetSelection,
 ): TypePresetPanel {
   const root = document.createElement("section");
-  // No `data-vigilia-panel` and no title here: `Pane` owns the identity and the
+  // No `data-yunari-panel` and no title here: `Pane` owns the identity and the
   // title bar, and a second element under either is a strict-mode failure for
   // every locator that browses by it.
   host.append(root);

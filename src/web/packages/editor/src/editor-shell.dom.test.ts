@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { createDemoSource } from "@vigilia/fake-source";
-import { objectName } from "@vigilia/renderer-core";
-import { isLocked, serialiseScene } from "@vigilia/scene-fabric";
+import { createDemoSource } from "@yunari/fake-source";
+import { objectName } from "@yunari/renderer-core";
+import { isLocked, serialiseScene } from "@yunari/scene-fabric";
 import { FabricImage, type FabricObject, Group, Rect } from "fabric/es";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEditorShellBridge } from "./editor-shell/bridge.js";
@@ -254,17 +254,17 @@ describe("the dirty guard and what the renderer paints", () => {
         objects?: {
           id?: string;
           objects?: unknown[];
-          vigiliaText?: { runs?: { bindingId?: string }[] };
+          yunariText?: { runs?: { bindingId?: string }[] };
         }[];
       }
     ).objects ?? []) as ReadonlyArray<{
       id?: string;
       objects?: unknown[];
-      vigiliaText?: { runs?: { bindingId?: string }[] };
+      yunariText?: { runs?: { bindingId?: string }[] };
     }>;
     const bindings: Record<string, unknown[]> = {};
     const readRuns = (object: (typeof objects)[number]): void => {
-      const runs = (object.vigiliaText?.runs ?? []).filter(
+      const runs = (object.yunariText?.runs ?? []).filter(
         (run) => run.bindingId,
       );
       if (object.id && runs.length > 0) {
@@ -358,7 +358,7 @@ describe("native editor shell", () => {
     });
     const entry = Object.entries(
       window as unknown as Record<string, unknown>,
-    ).find(([key]) => key.startsWith("vigilia-fabric-editor-"));
+    ).find(([key]) => key.startsWith("yunari-fabric-editor-"));
 
     expect(entry?.[1]).toBe(shell.editor);
 
@@ -599,7 +599,7 @@ describe("editor background media", () => {
     };
 
     const image = host.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     expect(image, "the editor mounted a background image").not.toBeNull();
     expect(asked, "mounting alone asks for nothing").toBe(0);
@@ -635,7 +635,7 @@ describe("editor background media", () => {
     });
     const canvas = shell.editor.canvas;
     const image = host.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     expect(image, "the editor mounted a background image").not.toBeNull();
     let asked = 0;

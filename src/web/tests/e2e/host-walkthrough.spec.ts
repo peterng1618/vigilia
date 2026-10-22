@@ -241,11 +241,11 @@ test.describe("the shell, reached by keyboard alone", () => {
     await chooseRailPane(page, "Tokens");
 
     await expect(
-      page.locator('[data-vigilia-panel="tokens"]'),
+      page.locator('[data-yunari-panel="tokens"]'),
       "the Tokens pane after the rail choice",
     ).toBeVisible();
     await expect(
-      page.locator('[data-vigilia-panel="layers"]'),
+      page.locator('[data-yunari-panel="layers"]'),
       "the Composition pane after the rail choice",
     ).toBeHidden();
 
@@ -320,7 +320,7 @@ test.describe("the shell, reached by keyboard alone", () => {
       "the document after the cancelled edit",
     ).toEqual(before);
     await expect(
-      page.locator(`[${LAYER_ROW}="${id}"] .vigilia-layer-name`),
+      page.locator(`[${LAYER_ROW}="${id}"] .yunari-layer-name`),
       "the row still reads the name the cancelled edit did not take",
     ).toHaveText(original);
 
@@ -421,9 +421,9 @@ test.describe("the shell, reached by keyboard alone", () => {
     //    cancelled and the group is **not** left. `view.exit-group` is bound on
     //    exactly this key.
     const row = page.locator(`[${LAYER_ROW}="${group}"]`);
-    const name = (await row.locator(".vigilia-layer-name").textContent()) ?? "";
+    const name = (await row.locator(".yunari-layer-name").textContent()) ?? "";
     await openLayerRenameField(page);
-    const rename = row.locator(".vigilia-layer-rename");
+    const rename = row.locator(".yunari-layer-rename");
     await expect(rename, "the row's own rename field").toBeFocused();
     await page.keyboard.type(FIELD_DRAFT);
     await expect(rename, "the draft before it is cancelled").not.toHaveValue(
@@ -442,7 +442,7 @@ test.describe("the shell, reached by keyboard alone", () => {
       "the entered context after Escape from a text field",
     ).toEqual([group]);
     await expect(
-      row.locator(".vigilia-layer-name"),
+      row.locator(".yunari-layer-name"),
       "the row's name after the cancelled rename",
     ).toHaveText(name);
 
@@ -461,7 +461,7 @@ test.describe("the shell, reached by keyboard alone", () => {
     // 6. A shortcut capture, armed and cancelled.
     const cancelled = await cancelShortcutCapture(page);
     await expect(
-      page.locator(`[data-vigilia-shortcut-arm="${cancelled}"]`),
+      page.locator(`[data-yunari-shortcut-arm="${cancelled}"]`),
       "the control the walk ended on",
     ).toBeFocused();
   });
@@ -543,11 +543,11 @@ test.describe("the shell, reached by keyboard alone", () => {
     // 2. Choose a rail pane, and leave the walk on the one step 3 goes through.
     await chooseRailPane(page, "Tokens");
     await expect(
-      page.locator('[data-vigilia-panel="tokens"]'),
+      page.locator('[data-yunari-panel="tokens"]'),
       "the Tokens pane after the rail choice",
     ).toBeVisible();
     await expect(
-      page.locator('[data-vigilia-panel="layers"]'),
+      page.locator('[data-yunari-panel="layers"]'),
       "the Composition pane after the Tokens choice",
     ).toBeHidden();
     await chooseRailPane(page, "Composition");
@@ -560,7 +560,7 @@ test.describe("the shell, reached by keyboard alone", () => {
     //    row that would have moved had the cancel not happened.
     const authored = await editFieldThenCancel(page);
     await expect(
-      page.locator(`[${LAYER_ROW}="${id}"] .vigilia-layer-name`),
+      page.locator(`[${LAYER_ROW}="${id}"] .yunari-layer-name`),
       "the row after the cancelled edit",
     ).toHaveText(authored);
 

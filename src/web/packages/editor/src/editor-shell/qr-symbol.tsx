@@ -49,7 +49,7 @@ export function QrCode({
       height={side}
       viewBox={`0 0 ${modules} ${modules}`}
       style={style}
-      data-vigilia-qr=""
+      data-yunari-qr=""
     >
       <rect width={modules} height={modules} fill={QR_PAPER} />
       {/* One path for every dark module: a version-5 symbol is over a thousand

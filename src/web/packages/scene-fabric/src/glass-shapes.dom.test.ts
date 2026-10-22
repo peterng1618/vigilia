@@ -70,7 +70,7 @@ function frosted(make: (withGlass: boolean) => FabricObject): Frosted {
 }
 
 /** The treatment, applied only when asked for. */
-const GLASS = { vigiliaGlass: { blurRadius: 24 } };
+const GLASS = { yunariGlass: { blurRadius: 24 } };
 
 describe("glass on the closed shapes", () => {
   it("clips a circle to the disc, not to the box around it", () => {

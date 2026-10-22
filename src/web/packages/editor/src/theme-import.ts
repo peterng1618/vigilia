@@ -17,7 +17,7 @@ export type ThemeImportResult =
   | { readonly ok: false; readonly message: string };
 
 /**
- * Posts a `.vigilia-theme` package to the host and answers where it landed.
+ * Posts a `.yunari-theme` package to the host and answers where it landed.
  *
  * Every refusal is the host's own words — the reader's for a package it will
  * not read, the store's for a write it would not take — because the reason is

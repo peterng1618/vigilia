@@ -5,12 +5,12 @@ import type { Page } from "@playwright/test";
  *
  * A canvas exposes no elements, spans or computed style, so behaviour is read
  * through the scene handle the player already exposes for diagnostics
- * (`window.vigilia`). Only plain values cross the boundary — a Fabric object
+ * (`window.yunari`). Only plain values cross the boundary — a Fabric object
  * would not survive it.
  */
 
 type HandleWindow = typeof window & {
-  vigilia: { handle: Record<string, unknown> };
+  yunari: { handle: Record<string, unknown> };
 };
 
 /**
@@ -40,7 +40,7 @@ export async function sceneProperty(
         get(key: string): unknown;
         getObjects?(): readonly Obj[];
       };
-      const { handle } = (window as unknown as HandleWindow).vigilia;
+      const { handle } = (window as unknown as HandleWindow).yunari;
       const adapter = handle["adapter"] as {
         objectFor(nodeId: string): Obj | undefined;
       };
@@ -76,7 +76,7 @@ export async function sceneBounds(
       getObjects?(): readonly Obj[];
       getBoundingRect?: () => { right: number; width: number };
     };
-    const { handle } = (window as unknown as HandleWindow).vigilia;
+    const { handle } = (window as unknown as HandleWindow).yunari;
     const canvas = handle["canvas"] as { getObjects(): readonly Obj[] };
     const find = (objects: readonly Obj[]): Obj | undefined => {
       for (const candidate of objects) {

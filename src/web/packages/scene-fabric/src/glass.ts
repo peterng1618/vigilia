@@ -1,4 +1,4 @@
-import { glassTreatment } from "@vigilia/renderer-core";
+import { glassTreatment } from "@yunari/renderer-core";
 import {
   Circle,
   Ellipse,

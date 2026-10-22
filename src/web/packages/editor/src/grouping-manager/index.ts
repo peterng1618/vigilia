@@ -53,7 +53,7 @@ export const GROUP_CONTEXT_EVENT = "editor:group-context-changed";
 
 /**
  * What the artboard dims to outside the entered group, and it is the layer
- * list's own value (`.vigilia-layer-row[data-context="false"]`): the two
+ * list's own value (`.yunari-layer-row[data-context="false"]`): the two
  * surfaces must not disagree about what the author can currently reach, which is
  * the rule `DESIGN.md` §7.9 states.
  */
@@ -298,7 +298,7 @@ export function createGroupingManager(
       try {
         canvas.discardActiveObject();
         const group = new Group(members);
-        // `id` is Vigilia's own persisted property, not a Fabric GroupProps key.
+        // `id` is Yunari's own persisted property, not a Fabric GroupProps key.
         group.set("id", `group-${crypto.randomUUID()}`);
         group.set("name", newObjectName("group"));
         for (const member of members) {

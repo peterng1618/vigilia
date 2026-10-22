@@ -161,8 +161,8 @@ test("the shell and the settings modal are what the drawings draw", async ({
       expected: drawingValue(MOCKUP_PATH, '[style*="width:46px"]', "gap"),
     },
     ...[
-      ".editor-shell-panel [data-vigilia-asset-import]",
-      ".editor-shell-inspector [data-vigilia-run-add]",
+      ".editor-shell-panel [data-yunari-asset-import]",
+      ".editor-shell-inspector [data-yunari-run-add]",
     ].map((selector) => ({
       selector,
       property: "padding",
@@ -212,12 +212,12 @@ test("the shell and the settings modal are what the drawings draw", async ({
   // **What it reads is a NAME, on three sides, and the row is `open` because of
   // it.** The drawn box in `current/shell.html:134` carries no class and no hook
   // — it is an anonymous inline-styled div — so the drawing side is satisfied by
-  // the `<!-- asset preview (.vigilia-asset-preview) … -->` comment at `:133`
+  // the `<!-- asset preview (.yunari-asset-preview) … -->` comment at `:133`
   // that documents it, as by any other mention in the file. And the list below is
   // **hand-written and one entry long**, so a *new* product surface reddens
   // nothing until someone adds it here — which is the class of defect the row
   // exists for. Deriving the list from the product was measured and does not
-  // construct: the panes render **73** distinct `data-vigilia-*` hooks, **5** of
+  // construct: the panes render **73** distinct `data-yunari-*` hooks, **5** of
   // them named anywhere in `editor-shell.css`, and **no checked drawing names any of
   // them** — the drawings are hand-authored HTML that names a product surface by
   // its *class*, in prose beside the box, never by a hook on a drawn element
@@ -237,7 +237,7 @@ test("the shell and the settings modal are what the drawings draw", async ({
     readonly drawingName: string;
   }[] = [
     {
-      surface: "vigilia-asset-preview",
+      surface: "yunari-asset-preview",
       component: "src/web/packages/editor/src/panes/add/file-section.tsx",
       componentUrl: new URL(
         "../../packages/editor/src/panes/add/file-section.tsx",

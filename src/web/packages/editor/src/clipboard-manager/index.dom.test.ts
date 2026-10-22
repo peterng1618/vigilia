@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import type { Binding } from "@vigilia/renderer-core";
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+import type { Binding } from "@yunari/renderer-core";
+import { YUNARI_TEXT_PROPERTY } from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   Canvas,
@@ -242,12 +242,12 @@ describe("a duplicated object carries its readings", () => {
   function boundParts(): FabricObject[] {
     const value = new Textbox("9%", { width: 100, height: 40 });
     value.set("id", "cpu-card-value");
-    value.set(VIGILIA_TEXT_PROPERTY, {
+    value.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "value", bindingId: "cpu-card-load" }],
     });
     const caption = new Textbox("Intel", { width: 100, height: 20 });
     caption.set("id", "cpu-card-caption");
-    caption.set(VIGILIA_TEXT_PROPERTY, {
+    caption.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "value", bindingId: "cpu-card-model" }],
     });
     return [value, caption];
@@ -321,7 +321,7 @@ describe("a duplicated object carries its readings", () => {
     // placeholder for a sensor sitting right there, and the copy's own binding
     // goes unread — the same defect `instantiateCard` names for an insertion.
     for (const part of copy.getObjects() as FabricObject[]) {
-      const authored = part.get(VIGILIA_TEXT_PROPERTY) as {
+      const authored = part.get(YUNARI_TEXT_PROPERTY) as {
         runs: readonly { bindingId: string }[];
       };
       const carried = written[String(part.get("id"))] ?? [];

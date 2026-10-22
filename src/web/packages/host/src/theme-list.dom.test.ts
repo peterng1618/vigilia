@@ -275,7 +275,7 @@ describe("a saved theme as one row", () => {
 });
 
 const TEMPLATES = [
-  { id: "vigilia-starter-template", name: "Starter — System dashboard" },
+  { id: "yunari-starter-template", name: "Starter — System dashboard" },
 ];
 
 /** A template is not a stored theme, so it is offered beside the stored ones

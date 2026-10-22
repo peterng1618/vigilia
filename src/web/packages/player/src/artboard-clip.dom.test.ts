@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { mountFabricScene, reviveThemeEnvelope } from "@vigilia/scene-fabric";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { mountFabricScene, reviveThemeEnvelope } from "@yunari/scene-fabric";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
  * `mountFabricScene` installs a `clipPath` sized to the artboard and paints
  * the artboard's own background. `reviveThemeEnvelope` then calls Fabric's
  * `canvas.loadFromJSON`, which sets `backgroundColor` and `clipPath` from the
- * revived document — and a Vigilia scene document carries neither, because
+ * revived document — and a Yunari scene document carries neither, because
  * both are artboard state rather than scene state. Fabric assigns `undefined`
  * to each, so the clip and the paint are both gone by the time the display
  * has its objects.

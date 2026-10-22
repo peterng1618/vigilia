@@ -23,7 +23,7 @@ is below `HAVE_CURRENT_DATA` (`background-media.ts:312`). The question this note
 show when its backdrop has no frame** — and the second question hiding behind it, whether the refusal is even
 the defect.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `last good` / `lastGood` / `previous frame` / `prevFrame` / `stale backdrop` / `keepLast` /
 `fallback frame` across every `packages/*/src`; every use of `readyState` in the repo; `notifyOnDecode`,
@@ -40,7 +40,7 @@ the media side. That asymmetry is the whole finding.
 
 ## Rung 2 — dependencies
 
-Searched: `scene-fabric`'s manifest (`@vigilia/renderer-core`, `echarts@6.1.0`, `fabric@7.4.0`), and Fabric's
+Searched: `scene-fabric`'s manifest (`@yunari/renderer-core`, `echarts@6.1.0`, `fabric@7.4.0`), and Fabric's
 own surface for anything that caches a backdrop or a media frame.
 
 Found: **nothing.** Fabric caches *object* rendering (`objectCaching`, `_cacheContext`) — which is a different

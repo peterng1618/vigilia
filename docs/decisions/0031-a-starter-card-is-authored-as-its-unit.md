@@ -28,7 +28,7 @@ Two questions had to be answered, and neither is answered by the code: **which
 module writes the key**, and **whether the ecosystem has a shape worth adopting**
 before we invent one.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `provenance` across `src/web/packages` (12 source files, 14 with
 generated `.d.ts`); `CARD_LIBRARY`, `insertGroups`, `groupRole`, `cardGroup`,

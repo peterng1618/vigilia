@@ -340,7 +340,7 @@ export function ControlSlider(
         {outOfRange === undefined ? null : (
           <p
             id={rangeNoteId}
-            data-vigilia-slider-out-of-range=""
+            data-yunari-slider-out-of-range=""
             className="w-full text-xs text-muted"
           >
             {outOfRange}

@@ -1,4 +1,4 @@
-/** Public boundary for the Vigilia editor. */
+/** Public boundary for the Yunari editor. */
 export {
   type EditorShell,
   type EditorShellOptions,

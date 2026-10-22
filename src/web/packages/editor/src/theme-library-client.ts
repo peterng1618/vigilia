@@ -3,7 +3,7 @@ import type {
   FacetRecord,
   ThemeRemix,
   ValidationIssue,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 
 /**
  * The host's library is a folder (ADR-0017), so a save carries the document

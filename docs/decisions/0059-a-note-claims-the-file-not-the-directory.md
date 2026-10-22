@@ -26,7 +26,7 @@ take, when the licence is prose a human writes and a machine matches against a
 path?* A directory is cheap to write and silently inherits to everything a later
 commit adds. A file is exact, and costs one entry per file.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `covers()`, `claimedPaths()`, `decide()`, `isWatched()`,
 `matchesDirectory()` and `WATCHLIST` in `scripts/reuse-gate.mjs`; every

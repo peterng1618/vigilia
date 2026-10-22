@@ -163,7 +163,7 @@ silence about an input is not permission for that input to break the program.
    that leaked onto a child, or a row that inherited its parent's, would be the role claiming
    something the document does not hold. Pinned in **Task 5** (the stamp is on the root alone)
    and **Task 6** (the row's answer for an unstamped group).
-2. **A unit this build does not know.** A stamp written by another Vigilia version, or by a
+2. **A unit this build does not know.** A stamp written by another Yunari version, or by a
    document this build has no library entry for, still names the unit *the document claims* —
    never resolved through `CARD_LIBRARY`, never discarded for not matching. This is the guard
    that keeps the projection from becoming a second owner of the unit vocabulary, and the
@@ -430,7 +430,7 @@ biome exit 0). One correction, and it changes what this task can claim:
 **Interfaces:**
 - Consumes: the editor preview on `http://127.0.0.1:4174/` (`playwright.config.ts` starts it;
   `baseURL` 4173 is the *player*, which is not this spec's surface), the `+` by its class and
-  accessible name, and the Add pane at `[data-vigilia-panel="add"]`.
+  accessible name, and the Add pane at `[data-yunari-panel="add"]`.
 
 **Constraints:** the run builds first — `npm run build` from `src/web/` — because Playwright
 previews built bundles and a browser result on a stale bundle is not evidence. `--workers=1`,
@@ -477,7 +477,7 @@ async function openChooser(page: Page): Promise<void> {
 
 test("the + offers units and primitives, neither greyed, neither a fallback", async ({ page }) => {
   await page.goto(EDITOR);
-  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  await expect(page.locator('[data-yunari-panel="add"]')).toBeVisible();
   await openChooser(page);
 
   const popup = page.locator(".editor-shell-menu-popup[data-open]");
@@ -491,7 +491,7 @@ test("the + offers units and primitives, neither greyed, neither a fallback", as
   // hard-coded count here is a spec that breaks on the day a card is added and
   // proves nothing on the day one is dropped.
   await openPane(page, "Insert");
-  const pane = page.locator('[data-vigilia-panel="add"]');
+  const pane = page.locator('[data-yunari-panel="add"]');
   expect(await groupsOf(popup)).toEqual(await groupsOf(pane));
   for (const heading of ["Card", "Shape", "Chart"]) {
     await expect(pane.getByRole("group", { name: heading })).toBeVisible();
@@ -516,7 +516,7 @@ test("a card inserted from the + arrives as a unit the tree can name", async ({ 
 
   await openPane(page, "Layers");
   await expect(
-    page.locator('[data-vigilia-layer="card-group-time-card"] .vigilia-layer-role'),
+    page.locator('[data-yunari-layer="card-group-time-card"] .yunari-layer-role'),
   ).toHaveText("Clock");
 });
 ```
@@ -608,7 +608,7 @@ are the evidence** — a rung that found nothing is recorded as having found not
 the one this plan cannot pre-answer: run the queries and record what they show, including a
 dead end. Rungs 1–3 are already measured and should be recorded as such:
 
-- **Rung 1 — Vigilia.** Searched `provenance` across `src/web/packages` (12 files), plus
+- **Rung 1 — Yunari.** Searched `provenance` across `src/web/packages` (12 files), plus
   `CARD_LIBRARY`, `insertGroups`, `groupRole`, `cardGroup`, `ShapeKind` label ownership.
   Found: the stamp is written on the insert path only (`card-library.ts:250`), the starter's
   builders write none, `layer-tree.ts:280-291` documents that as deliberate, and
@@ -635,7 +635,7 @@ dead end. Rungs 1–3 are already measured and should be recorded as such:
   decision:
 
 ```
-cd D:/git-repos/vigilia
+cd D:/git-repos/yunari
 printf '{"tool_input":{"file_path":"src/web/packages/editor/src/editor-shell/layer-tree.ts"}}' | node scripts/reuse-gate.mjs ; echo "exit=$?"
 ```
 
@@ -892,7 +892,7 @@ starter and on a copy**, and not by inventing a second meaning.
 
 - [ ] **Step 5: Extend `composition-panel.spec.ts`** — the file that owns the row's role and
       whose registered capture this change alters. Two rendered cases: on the untouched
-      starter, `[data-vigilia-layer="group-cpu-card"] .vigilia-layer-role` reads `CPU`; after
+      starter, `[data-yunari-layer="group-cpu-card"] .yunari-layer-role` reads `CPU`; after
       inserting a Clock card from the `+`, there are two rows naming the unit with different
       ids — the copy's own and the starter's, which has not lost its stamp. Rebuild first and
       read the JSON report:
@@ -958,7 +958,7 @@ are the limit. Findings this plan did not fix ride its commits as trailers.
 
 ```
 cd src/web
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "carries the document's binding" --workers=1
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "carries the document's binding" --workers=1
 ```
 
       Expected: the capture is re-taken on the bundle Task 6 built, and the image is inspected

@@ -28,7 +28,7 @@ against built bundles for the geometry, which is what the requirement is actuall
 Non-goals (`:498-504`) and the Acceptance list (`:506-543`) before the first task**, because
 they are the only text that bounds this plan: plan 8 has no section of its own. The nearest
 prose is `:176-182`, about the crop notice staying honest, and that work has landed (the
-`vigiliaBleeds` mark, `host-bleed.spec.ts`). This plan changes no copy and no counting.
+`yunariBleeds` mark, `host-bleed.spec.ts`). This plan changes no copy and no counting.
 
 ---
 
@@ -44,10 +44,10 @@ than `main.ts` at 22:25) and against the real host on its own port. **A task tha
 of this has misread the plan.**
 
 1. **Four strips, and one of the four the requirement names does not exist.**
-   - the **crop notice** — `main.ts:551-574`, `#vigilia-crop`, `data-vigilia-crop`, top;
-   - the **availability notice** — `main.ts:496-519`, `#vigilia-availability`,
-     `data-vigilia-availability`, top;
-   - the **connection banner** — `main.ts:616-648`, `#vigilia-connection`, bottom;
+   - the **crop notice** — `main.ts:551-574`, `#yunari-crop`, `data-yunari-crop`, top;
+   - the **availability notice** — `main.ts:496-519`, `#yunari-availability`,
+     `data-yunari-availability`, top;
+   - the **connection banner** — `main.ts:616-648`, `#yunari-connection`, bottom;
    - the **scaffold banner** — `main.ts:577-584`, bottom, **and it carries no `id` and no
      data attribute at all**, so no test can address it. It is the synthetic-data disclosure,
      and it appears on every fixture theme because every fixture runs the fake source.
@@ -56,10 +56,10 @@ of this has misread the plan.**
      diagnostic surface"). It costs **zero** pixels, and this plan does not give it any. The
      same is true of `reportRepaintError` (`:122-124`) and `reportFontError` (`:131-133`).
 2. **The two strips that are stacked are stacked by hand, in one column.**
-   `topNotices()` (`main.ts:529-540`) builds `#vigilia-notices`,
+   `topNotices()` (`main.ts:529-540`) builds `#yunari-notices`,
    `position:fixed;left:0;right:0;top:0;z-index:9;display:flex;flex-direction:column`, and the
    comment states the reason it is a column rather than two fixed strips: §97 wants a data gap
-   and a composition gap to look different, not to hide one another. **`#vigilia-notices` is
+   and a composition gap to look different, not to hide one another. **`#yunari-notices` is
    referenced by nothing but `main.ts:530`** — no test, no doc (grepped, whole repo).
 3. **The artboard is contained with letterbox bars, and its fit is `renderer-core`'s.**
    `computeArtboardTransform` (`renderer-core/src/artboard.ts:46-117`) returns `scale`,
@@ -113,13 +113,13 @@ of this has misread the plan.**
     `position:absolute; inset:0` (`:104-122`) — it is the whole display only because the host
     it is put into happens to be `inset:0` itself. Its jsdom test mounts it on `document.body`
     directly (`load-failure.dom.test.ts:11`), which is the shape it must keep.
-11. **The size gate has room.** `npm run size -w @vigilia/player` reports **295.7 KB gzip of a
+11. **The size gate has room.** `npm run size -w @yunari/player` reports **295.7 KB gzip of a
     400 KB budget** (CSS 0.0 of 40). This plan moves code between files in one bundle and adds
     one CSS rule.
-12. **`#vigilia-crop` and `#vigilia-connection` are the selectors the browser suite already
+12. **`#yunari-crop` and `#yunari-connection` are the selectors the browser suite already
     reads**, and they are the contract this plan must not break:
-    `host-bleed.spec.ts:31` (`[data-vigilia-crop]`), `host-player.spec.ts:442, :456, :515,
-    :767, :837, :957, :983, :1192-1205, :1434` (`#vigilia-connection`).
+    `host-bleed.spec.ts:31` (`[data-yunari-crop]`), `host-player.spec.ts:442, :456, :515,
+    :767, :837, :957, :983, :1192-1205, :1434` (`#yunari-connection`).
 13. **`player/src` has no owner row for its chrome.** `docs/architecture/ownership.md` carries
     two player concepts (the rows beside `player/src/theme-loader.ts`), both about preferences.
     The document's own *Known ownership gaps* section names "stale-reading visual treatment
@@ -136,16 +136,16 @@ Reproducible, and worth re-running before the first task if anything looks wrong
 ```bash
 cd src/web
 npx vite preview packages/player --port 4199 --strictPort --host 127.0.0.1   # background
-node packages/host/bin/vigilia.js --no-browser --port 4188 \
+node packages/host/bin/yunari.js --no-browser --port 4188 \
   --app-dir <the gitignored src/web/.e2e-host-app>                            # background
 # then drive each URL with Playwright at 390x844 and 844x390 and read
-# `getBoundingClientRect()` per body child plus `window.vigilia.handle.transform()`.
+# `getBoundingClientRect()` per body child plus `window.yunari.handle.transform()`.
 ```
 
 The `e2e-*` themes in `.e2e-host-app` are seeded by `tests/e2e/global-setup.ts`
 (`seedHostTheme()` in `host-theme.ts:706`); `e2e-missing-sensor` binds one key no provider on
 this PC reports, which is what raises the availability strip, and `e2e-hosted` binds a clock,
-which raises nothing. **`window.vigilia.handle.transform()` is a diagnostics handle
+which raises nothing. **`window.yunari.handle.transform()` is a diagnostics handle
 (`main.ts:517`, `exposeForDiagnostics`; the method itself is `scene-fabric/src/scene.ts:166`) and
 is legitimate to read in a test** — `host-player.spec.ts` reads the same
 object for `batchCount`.
@@ -261,7 +261,7 @@ requirements implicitly include this section.
 - **Persist authored state only.** Every string, attribute and element this plan adds is
   transient display chrome. Nothing written here may reach a theme, a sample, or a saved
   document (§67).
-- **The display bundle budget (§47)** stays under the gate: `npm run size -w @vigilia/player`
+- **The display bundle budget (§47)** stays under the gate: `npm run size -w @yunari/player`
   (295.7 KB gzip of 400 today; the change is a move within one bundle plus one CSS rule).
 
 ---
@@ -330,7 +330,7 @@ one is pinned by a test in the task that owns the code** — the task is named i
   adds no primitive library and no interactive control at all** — a band and a strip are two
   `div`s, so there is no ruling to inherit and no decision note owed (below).
 - **The host's own pages are not the phone.** `host/public/library.html`, `settings.html`,
-  `theme-list.js` and `vigilia-page.css` have their own chrome, and nothing here touches them.
+  `theme-list.js` and `yunari-page.css` have their own chrome, and nothing here touches them.
 - **The editor's device lens does not preview the chrome.** See **Q4**.
 - **No copy change.** Every sentence a strip shows stays `ui-copy.ts`'s, unchanged, and the two
   §97 treatments (amber for a data gap, slate for a composition gap) stay distinct.
@@ -375,9 +375,9 @@ proved in Phase 2, and no task in this phase may claim it.**
     string }): HTMLElement` — replaces any element with `input.id`, appends the new one, returns
     it
   - `removeStrip(id: string): void`
-  - the two band selectors: `#vigilia-chrome-top` / `#vigilia-chrome-bottom`, each carrying
-    `data-vigilia-chrome="top" | "bottom"`
-  - the strip marker every strip gets: `data-vigilia-chrome-strip`
+  - the two band selectors: `#yunari-chrome-top` / `#yunari-chrome-bottom`, each carrying
+    `data-yunari-chrome="top" | "bottom"`
+  - the strip marker every strip gets: `data-yunari-chrome-strip`
 
 **Constraints.** `index.html` also feeds the built bundle, so `vite build` is what makes the new
 layout visible; nothing here needs a browser to be *written*, but nothing here may be *claimed*
@@ -402,8 +402,8 @@ function skeleton(): void {
   document.body.replaceChildren();
   for (const side of ["top", "bottom"] as const) {
     const band = document.createElement("div");
-    band.id = `vigilia-chrome-${side}`;
-    band.dataset["vigiliaChrome"] = side;
+    band.id = `yunari-chrome-${side}`;
+    band.dataset["yunariChrome"] = side;
     document.body.append(band);
     if (side === "top") {
       const host = document.createElement("div");
@@ -414,18 +414,18 @@ function skeleton(): void {
 }
 
 function stripsIn(side: "top" | "bottom"): HTMLElement[] {
-  return [...chromeBand(side).querySelectorAll<HTMLElement>("[data-vigilia-chrome-strip]")];
+  return [...chromeBand(side).querySelectorAll<HTMLElement>("[data-yunari-chrome-strip]")];
 }
 
 describe("the display's chrome", () => {
   beforeEach(skeleton);
 
   it("puts a strip in the band it names, and nowhere else", () => {
-    putStrip({ side: "top", id: "vigilia-crop", text: "1 of 2 objects", background: "#1d2230", color: "#c3cde3" });
+    putStrip({ side: "top", id: "yunari-crop", text: "1 of 2 objects", background: "#1d2230", color: "#c3cde3" });
 
     expect(stripsIn("top")).toHaveLength(1);
     expect(stripsIn("bottom")).toHaveLength(0);
-    expect(document.getElementById("vigilia-crop")?.textContent).toBe("1 of 2 objects");
+    expect(document.getElementById("yunari-crop")?.textContent).toBe("1 of 2 objects");
   });
 
   it("replaces a strip of the same kind rather than stacking it", () => {
@@ -433,11 +433,11 @@ describe("the display's chrome", () => {
     // connection banner changes as the transport moves: one kind of notice is
     // one strip, which each writer used to arrange by removing the old element
     // by hand.
-    putStrip({ side: "top", id: "vigilia-crop", text: "first", background: "#1d2230", color: "#c3cde3" });
-    putStrip({ side: "top", id: "vigilia-crop", text: "second", background: "#1d2230", color: "#c3cde3" });
+    putStrip({ side: "top", id: "yunari-crop", text: "first", background: "#1d2230", color: "#c3cde3" });
+    putStrip({ side: "top", id: "yunari-crop", text: "second", background: "#1d2230", color: "#c3cde3" });
 
-    expect(document.querySelectorAll("#vigilia-crop")).toHaveLength(1);
-    expect(document.getElementById("vigilia-crop")?.textContent).toBe("second");
+    expect(document.querySelectorAll("#yunari-crop")).toHaveLength(1);
+    expect(document.getElementById("yunari-crop")?.textContent).toBe("second");
   });
 
   it("leaves an empty band empty, so a quiet display costs no room", () => {
@@ -449,12 +449,12 @@ describe("the display's chrome", () => {
   });
 
   it("keeps the order the strips were put in, so the two gaps stay legible apart", () => {
-    putStrip({ side: "top", id: "vigilia-availability", text: "a", background: "#3a2a00", color: "#ffce6a" });
-    putStrip({ side: "top", id: "vigilia-crop", text: "b", background: "#1d2230", color: "#c3cde3" });
+    putStrip({ side: "top", id: "yunari-availability", text: "a", background: "#3a2a00", color: "#ffce6a" });
+    putStrip({ side: "top", id: "yunari-crop", text: "b", background: "#1d2230", color: "#c3cde3" });
 
     expect(stripsIn("top").map((strip) => strip.id)).toEqual([
-      "vigilia-availability",
-      "vigilia-crop",
+      "yunari-availability",
+      "yunari-crop",
     ]);
   });
 
@@ -468,11 +468,11 @@ describe("the display's chrome", () => {
   });
 
   it("takes the empty space back when a strip is removed", () => {
-    putStrip({ side: "bottom", id: "vigilia-connection", text: "Lost the host.", background: "#003a4a", color: "#7fdce9" });
-    removeStrip("vigilia-connection");
+    putStrip({ side: "bottom", id: "yunari-connection", text: "Lost the host.", background: "#003a4a", color: "#7fdce9" });
+    removeStrip("yunari-connection");
 
     expect(stripsIn("bottom")).toHaveLength(0);
-    expect(document.getElementById("vigilia-connection")).toBeNull();
+    expect(document.getElementById("yunari-connection")).toBeNull();
   });
 });
 ```
@@ -514,7 +514,7 @@ export type ChromeSide = "top" | "bottom";
  *  for `#artboard`. */
 export function chromeBand(side: ChromeSide): HTMLElement {
   const band = document.querySelector<HTMLElement>(
-    `[data-vigilia-chrome="${side}"]`,
+    `[data-yunari-chrome="${side}"]`,
   );
   if (band === null) {
     throw new Error(`The display has no ${side} chrome band.`);
@@ -542,7 +542,7 @@ export function putStrip(input: {
 
   const strip = document.createElement("div");
   strip.id = input.id;
-  strip.dataset["vigiliaChromeStrip"] = "";
+  strip.dataset["yunariChromeStrip"] = "";
   strip.textContent = input.text;
   strip.style.cssText =
     `${stripInset(input.side)};text-align:center;` +
@@ -602,7 +602,7 @@ favicon link — is unchanged. Replace the `<style>` block and the body:
         display: flex;
         flex-direction: column;
       }
-      [data-vigilia-chrome] {
+      [data-yunari-chrome] {
         flex: 0 0 auto;
       }
       /* Artboard host. The renderer applies one uniform transform to all
@@ -618,9 +618,9 @@ favicon link — is unchanged. Replace the `<style>` block and the body:
 
 ```html
   <body>
-    <div id="vigilia-chrome-top" data-vigilia-chrome="top"></div>
+    <div id="yunari-chrome-top" data-yunari-chrome="top"></div>
     <div id="artboard"></div>
-    <div id="vigilia-chrome-bottom" data-vigilia-chrome="bottom"></div>
+    <div id="yunari-chrome-bottom" data-yunari-chrome="bottom"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 ```
@@ -649,7 +649,7 @@ in this task writes into them.
 > regression tests.** The Global Constraints require every such task to say, in its own steps,
 > how the fix was disabled and what failed; Task 1.2's Steps 1-7 contain no such step, so its
 > executor supplied two of its own (dropping `putStrip`'s `removeStrip`, and dropping the
-> scaffold banner's `data-vigilia-scaffold`) and observed `1 failed | 9 passed` for each. The
+> scaffold banner's `data-yunari-scaffold`) and observed `1 failed | 9 passed` for each. The
 > gap is in the plan, not the code. **Tasks 1.3, 2.1-2.3 and 3.x are checked for this when they
 > are dispatched**; none of them inherits the omission silently.
 
@@ -658,7 +658,7 @@ cd src/web
 npm run typecheck
 ./node_modules/.bin/biome lint ..
 npm run format:check
-npm run size -w @vigilia/player
+npm run size -w @yunari/player
 npx vite build packages/player
 ```
 
@@ -689,9 +689,9 @@ git commit -m "feat(player): one owner for the display's chrome, in a column the
   - `showAvailabilityNotice(source: SampleSource, semanticKeys: readonly string[]): void`
   - `showConnectionState(status: LiveSourceStatus, keyCount: number, detail?: string): void`
   - `showScaffoldBanner(keyCount: number, themeName: string): void`
-  - the strip identity every existing test and page already reads: `#vigilia-crop` +
-    `data-vigilia-crop`, `#vigilia-availability` + `data-vigilia-availability`,
-    `#vigilia-connection`; and, **new**, `#vigilia-scaffold` + `data-vigilia-scaffold` — the
+  - the strip identity every existing test and page already reads: `#yunari-crop` +
+    `data-yunari-crop`, `#yunari-availability` + `data-yunari-availability`,
+    `#yunari-connection`; and, **new**, `#yunari-scaffold` + `data-yunari-scaffold` — the
     scaffold banner carries no `id` and no attribute today, so nothing can address it.
 
 **Constraints.** **The words do not change.** Every sentence stays the one `ui-copy.ts` supplies
@@ -700,7 +700,7 @@ and every colour stays the one it is today (availability `#3a2a00`/`#ffce6a`, cr
 scaffold `#4a2c00`/`#ffc14d`). One visible property does normalise, and the executor should say
 so in the commit rather than discover it in a capture: the scaffold and connection strips used
 `letter-spacing: 0.04em` and now share the strips' single template at **`0.02em`** — one strip
-style, one owner. `#vigilia-notices` (the hand-built top column, `main.ts:529-540`) is
+style, one owner. `#yunari-notices` (the hand-built top column, `main.ts:529-540`) is
 **retired**, because the top band is that column; nothing but `main.ts:530` referenced it.
 
 - [ ] **Step 1: Write the failing test**
@@ -720,10 +720,10 @@ describe("the strips the display is told by", () => {
     showScaffoldBanner(18, "Edge cases");
 
     expect(stripsIn("bottom").map((strip) => strip.id)).toEqual([
-      "vigilia-connection",
-      "vigilia-scaffold",
+      "yunari-connection",
+      "yunari-scaffold",
     ]);
-    expect(document.querySelector("#vigilia-scaffold")?.textContent).toBe(
+    expect(document.querySelector("#yunari-scaffold")?.textContent).toBe(
       uiCopy.syntheticData("Edge cases", 18),
     );
   });
@@ -731,7 +731,7 @@ describe("the strips the display is told by", () => {
   it("keeps the scaffold banner addressable, which it was not", () => {
     showScaffoldBanner(18, "Edge cases");
 
-    expect(document.querySelector("[data-vigilia-scaffold]")).not.toBeNull();
+    expect(document.querySelector("[data-yunari-scaffold]")).not.toBeNull();
   });
 
   it("clears the transport strip when the connection is live", () => {
@@ -756,7 +756,7 @@ describe("the strips the display is told by", () => {
 });
 ```
 
-with `import type { FabricSceneHandle } from "@vigilia/scene-fabric";` at the top of the test —
+with `import type { FabricSceneHandle } from "@yunari/scene-fabric";` at the top of the test —
 the same import `main.ts:26` uses today.
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -778,7 +778,7 @@ export function showAvailabilityNotice(
   source: SampleSource,
   semanticKeys: readonly string[],
 ): void {
-  removeStrip("vigilia-availability");
+  removeStrip("yunari-availability");
 
   const text = availabilityNoticeText(
     semanticKeys.map((key) => source.latest(key)),
@@ -787,12 +787,12 @@ export function showAvailabilityNotice(
 
   const strip = putStrip({
     side: "top",
-    id: "vigilia-availability",
+    id: "yunari-availability",
     text,
     background: "#3a2a00",
     color: "#ffce6a",
   });
-  strip.dataset["vigiliaAvailability"] = "";
+  strip.dataset["yunariAvailability"] = "";
 }
 
 /** Says what this artboard does not contain, and that it is not being shown.
@@ -803,31 +803,31 @@ export function showCropNotice(
   handle: FabricSceneHandle,
   artboard: ArtboardSize,
 ): void {
-  removeStrip("vigilia-crop");
+  removeStrip("yunari-crop");
 
   const text = cropNoticeText(sceneBoxesOf(handle.canvas.getObjects()), artboard);
   if (text === undefined) return;
 
   const strip = putStrip({
     side: "top",
-    id: "vigilia-crop",
+    id: "yunari-crop",
     text,
     background: "#1d2230",
     color: "#c3cde3",
   });
-  strip.dataset["vigiliaCrop"] = "";
+  strip.dataset["yunariCrop"] = "";
 }
 
 /** Persistent disclosure that displayed values are synthetic. */
 export function showScaffoldBanner(keyCount: number, themeName: string): void {
   const strip = putStrip({
     side: "bottom",
-    id: "vigilia-scaffold",
+    id: "yunari-scaffold",
     text: uiCopy.syntheticData(themeName, keyCount),
     background: "#4a2c00",
     color: "#ffc14d",
   });
-  strip.dataset["vigiliaScaffold"] = "";
+  strip.dataset["yunariScaffold"] = "";
 }
 
 /** Shows non-live connection states; a healthy live display needs no badge. */
@@ -837,14 +837,14 @@ export function showConnectionState(
   detail?: string,
 ): void {
   if (status === "live") {
-    removeStrip("vigilia-connection");
+    removeStrip("yunari-connection");
     return;
   }
 
   const refused = status === "refused";
   putStrip({
     side: "bottom",
-    id: "vigilia-connection",
+    id: "yunari-connection",
     text: refused
       ? uiCopy.connection.refused(detail)
       : status === "connecting"
@@ -859,8 +859,8 @@ export function showConnectionState(
 `chrome.ts`'s imports, all of them existing handles:
 
 ```ts
-import type { LiveSourceStatus, SampleSource } from "@vigilia/renderer-core";
-import { type FabricSceneHandle, sceneBoxesOf } from "@vigilia/scene-fabric";
+import type { LiveSourceStatus, SampleSource } from "@yunari/renderer-core";
+import { type FabricSceneHandle, sceneBoxesOf } from "@yunari/scene-fabric";
 import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
 import { availabilityNoticeText } from "./availability-notice.js";
 import { uiCopy } from "./ui-copy.js";
@@ -881,7 +881,7 @@ import {
 ```
 
 Remove, because after the move nothing in the file uses them — grep each before deleting rather
-than trusting this list: `type FabricSceneHandle` and `sceneBoxesOf` from the `@vigilia/scene-fabric`
+than trusting this list: `type FabricSceneHandle` and `sceneBoxesOf` from the `@yunari/scene-fabric`
 import; `type LiveSourceStatus` from the `renderer-core` import (the `onStatus` callbacks infer
 their own); the whole `./artboard-crop.js` import (`ArtboardSize` and `cropNoticeText` both go);
 the whole `./availability-notice.js` import; the whole `./ui-copy.js` import. **`type SampleSource`
@@ -955,7 +955,7 @@ git commit -m "refactor(player): the four diagnostic strips move into the chrome
 - Consumes: nothing from Tasks 1.1-1.2 directly; it exists because of the layout they create.
 - Produces: `showLoadFailure(error: unknown): void` — **the first parameter is gone**, so all
   **three** call sites must change. `loadFailureView(reason, retry): HTMLElement` and every data
-  attribute it carries (`data-vigilia-load-failure`, `-reason`, `-retry`, `-host`) are unchanged,
+  attribute it carries (`data-yunari-load-failure`, `-reason`, `-retry`, `-host`) are unchanged,
   and so is its stylesheet.
 
 **Constraints.** The page's own style is `position:absolute; inset:0` (`load-failure.ts:104-108`),
@@ -977,7 +977,7 @@ it("takes the whole display, not the row the artboard lives in", async () => {
   // to show. `showLoadFailure` is the caller that decides where.
   document.body.replaceChildren();
   const chrome = document.createElement("div");
-  chrome.dataset["vigiliaChrome"] = "top";
+  chrome.dataset["yunariChrome"] = "top";
   const host = document.createElement("div");
   host.id = "artboard";
   document.body.append(chrome, host);
@@ -985,10 +985,10 @@ it("takes the whole display, not the row the artboard lives in", async () => {
   const { showLoadFailure } = await import("./load-failure.js");
   showLoadFailure(new Error("boom"));
 
-  const view = document.querySelector<HTMLElement>("[data-vigilia-load-failure]");
+  const view = document.querySelector<HTMLElement>("[data-yunari-load-failure]");
   expect(view?.parentElement).toBe(document.body);
   expect(document.getElementById("artboard")).toBeNull();
-  expect(document.querySelector("[data-vigilia-chrome]")).toBeNull();
+  expect(document.querySelector("[data-yunari-chrome]")).toBeNull();
 });
 ```
 
@@ -1008,7 +1008,7 @@ a type error under `npm run typecheck` or a `view` that is still inside `#artboa
 export function showLoadFailure(error: unknown): void {
   // The error object, not a string of it: the stack is the part a developer
   // needs and the part `String(error)` throws away.
-  console.warn("Vigilia: theme did not load.", error);
+  console.warn("Yunari: theme did not load.", error);
   document.title = uiCopy.loadFailure.documentTitle;
   // The display's own page, not the artboard's. The artboard host is the middle
   // row of the display's column, so a page mounted in it would be a panel
@@ -1079,7 +1079,7 @@ is above or below it and the artboard is that much shorter.
 **Files:**
 - Create: `src/web/tests/e2e/player-chrome.spec.ts`
 - Create: `docs/evidence/screenshots/player-chrome-phone-chromium.png`, by running the spec with
-  `VIGILIA_CAPTURE=1` and `--workers=1`
+  `YUNARI_CAPTURE=1` and `--workers=1`
 - Modify: `docs/evidence/screenshots/README.md` — one new capture row
 
 **Interfaces:**
@@ -1096,7 +1096,7 @@ claims runs under `desktop-chromium` and `phone-chromium` (the `projects` list a
 starts (`:82-89`). Each test sets its own viewport with `page.setViewportSize`, the idiom
 `display-fabric.spec.ts:303` and `host-player.spec.ts:1241` already use, so the project's device
 does not decide the measurement.
-**Read the transform through `window.vigilia.handle.transform()`** (`main.ts:517`), typed the
+**Read the transform through `window.yunari.handle.transform()`** (`main.ts:517`), typed the
 way `host-player.spec.ts` types it — it is the same diagnostics handle that file reads for
 `batchCount`, and there is no other way to read where the renderer put the artboard.
 
@@ -1154,7 +1154,7 @@ async function chromeGeometry(
     if (host === null) throw new Error("the display has no artboard host");
     const handle = (
       window as unknown as {
-        vigilia?: {
+        yunari?: {
           handle?: {
             transform(): {
               scale: number;
@@ -1165,7 +1165,7 @@ async function chromeGeometry(
           };
         };
       }
-    ).vigilia?.handle;
+    ).yunari?.handle;
     const transform = handle?.transform();
     if (transform === undefined) throw new Error("the display has no scene");
 
@@ -1173,7 +1173,7 @@ async function chromeGeometry(
     return {
       host: hostBox,
       strips: [
-        ...document.querySelectorAll<HTMLElement>("[data-vigilia-chrome-strip]"),
+        ...document.querySelectorAll<HTMLElement>("[data-yunari-chrome-strip]"),
       ].map((strip) => ({ id: strip.id, box: box(strip) })),
       // The transform's offsets are relative to the host, the rects are not.
       painted: {
@@ -1200,7 +1200,7 @@ for (const [name, viewport] of Object.entries(PHONE)) {
   }, testInfo) => {
     await page.setViewportSize(viewport);
     await openCanvasPlayer(page, "/?theme=stress");
-    await expect(page.locator("[data-vigilia-crop]")).toBeVisible();
+    await expect(page.locator("[data-yunari-crop]")).toBeVisible();
 
     const geometry = await chromeGeometry(page, STRESS_ARTBOARD);
 
@@ -1238,7 +1238,7 @@ for (const [name, viewport] of Object.entries(PHONE)) {
 test("nothing else the display adds covers the artboard", async ({ page }) => {
   await page.setViewportSize(PHONE.landscape);
   await openCanvasPlayer(page, "/?theme=stress");
-  await expect(page.locator("[data-vigilia-crop]")).toBeVisible();
+  await expect(page.locator("[data-yunari-crop]")).toBeVisible();
 
   // The guard, not the fix: the requirement is a property of the display, and a
   // future notice appended to `document.body` with `position: fixed` would put
@@ -1271,7 +1271,7 @@ test("the load-failure page is the whole display", async ({ page }) => {
   await page.setViewportSize(PHONE.landscape);
   await page.goto("/?theme=does-not-exist");
 
-  const failure = page.locator("[data-vigilia-load-failure]");
+  const failure = page.locator("[data-yunari-load-failure]");
   await expect(failure).toBeVisible();
   const box = (await failure.boundingBox())!;
 
@@ -1301,7 +1301,7 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/player-chrome.json \
 > reads as a passed gate rather than as a step that measured nothing.
 >
 > Step 3 says the guard lists "both strips as intruders". It lists the two **bands**
-> (`vigilia-chrome-top`, `vigilia-chrome-bottom`): the guard inspects `document.body`'s children,
+> (`yunari-chrome-top`, `yunari-chrome-bottom`): the guard inspects `document.body`'s children,
 > the bands are those children, and the strips are inside them. The guard fails correctly; only
 > the described shape was off. And Step 4's "6 tests" is **8** — four tests × two projects.
 
@@ -1316,8 +1316,8 @@ Revert **only** Task 1.1's `#artboard` rule in `index.html` to `position: absolu
 (keeping `flex: 1 1 auto` out), rebuild the player, and re-run the same command. Expected: the
 two viewport tests fail on the **host** assertion and on the **artboard** assertion, and
 `nothing else the display adds covers the artboard` fails with the two **bands** listed as
-intruders — the guard reads `document.body`'s children, so it sees `vigilia-chrome-top` and
-`vigilia-chrome-bottom`, not the strips inside them.
+intruders — the guard reads `document.body`'s children, so it sees `yunari-chrome-top` and
+`yunari-chrome-bottom`, not the strips inside them.
 **A break that does not fail is a finding about the test, not a passing test** — if the
 prescribed break leaves the suite green, find a break that does fail, observe it, and report
 what the prescribed one actually did. Restore the rule and rebuild before Step 4.
@@ -1343,7 +1343,7 @@ the failure page) × **two projects**. The plan said 6 and the arithmetic was wr
 
 ```bash
 cd src/web
-VIGILIA_CAPTURE=1 npx playwright test tests/e2e/player-chrome.spec.ts \
+YUNARI_CAPTURE=1 npx playwright test tests/e2e/player-chrome.spec.ts \
   --project=phone-chromium --grep "landscape" --workers=1
 ```
 
@@ -1420,7 +1420,7 @@ test("a viewport the artboard exactly fills still keeps the strip off it", async
   // nowhere for it to have gone instead.
   await page.setViewportSize(SQUARE_ON_SCREEN);
   await openCanvasPlayer(page, "/?theme=stress");
-  await expect(page.locator("[data-vigilia-crop]")).toBeVisible();
+  await expect(page.locator("[data-yunari-crop]")).toBeVisible();
 
   const geometry = await chromeGeometry(page, STRESS_ARTBOARD);
 
@@ -1444,7 +1444,7 @@ test("a cover artboard, whose painted box is larger than its viewport, is not co
   await openCanvasPlayer(page, "/?theme=portrait-cover");
 
   const geometry = await chromeGeometry(page, POSTER); // see below
-  const strip = await page.locator("[data-vigilia-chrome-strip]").first();
+  const strip = await page.locator("[data-yunari-chrome-strip]").first();
   await expect(strip).toBeVisible();
 
   expect(geometry.painted.h).toBeGreaterThan(geometry.host.h);
@@ -1600,7 +1600,7 @@ test("a strip that arrives after the fit takes its room then", async ({ page }) 
   // source fabricates a reading for every key it is asked for — the opposite of
   // a gap. The availability notice is raised on the **live** path only:
   // `main.ts:221` sits inside `if (fake === undefined)`, and `main.ts:356` is
-  // inside the live block. A fake-fed display raises `#vigilia-scaffold` at
+  // inside the live block. A fake-fed display raises `#yunari-scaffold` at
   // mount instead (`main.ts:206`), which is a strip that arrives *with* the fit
   // rather than after it — so the locator below would poll for 30 s and then
   // fail on a display that is working correctly.
@@ -1608,7 +1608,7 @@ test("a strip that arrives after the fit takes its room then", async ({ page }) 
   await page.goto(`${HOST}/?theme=${HOST_MISSING_THEME_ID}&data=live`);
   await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
 
-  await expect(page.locator("[data-vigilia-availability]")).toBeVisible({
+  await expect(page.locator("[data-yunari-availability]")).toBeVisible({
     timeout: 30_000,
   });
 
@@ -1631,7 +1631,7 @@ test("two strips at once leave the artboard more than half the phone", async ({ 
   //
   // **Rewritten 2026-10-08 after the prescribed version was measured
   // unreachable, and the finding is worth more than the test.** It aborted
-  // `**/ws` and waited for `[data-vigilia-availability]`, but a gap needs a
+  // `**/ws` and waited for `[data-yunari-availability]`, but a gap needs a
   // *sample* to be named: `availabilityNoticeText` returns `undefined` while
   // every reading is `undefined` (`availability-notice.ts:38-40` — "what keeps
   // the strip quiet before the first batch"), and a refused socket never
@@ -1652,8 +1652,8 @@ test("two strips at once leave the artboard more than half the phone", async ({ 
   await page.setViewportSize(PHONE.portrait);
   await page.goto(`${HOST}/?theme=${HOST_BLEED_THEME_ID}&data=live`);
 
-  await expect(page.locator("[data-vigilia-crop]")).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator("#vigilia-connection")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("[data-yunari-crop]")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("#yunari-connection")).toBeVisible({ timeout: 30_000 });
 
   const geometry = await chromeGeometry(page, { width: 640, height: 360 });
   const chrome = geometry.strips.reduce((total, strip) => total + strip.box.h, 0);
@@ -1692,7 +1692,7 @@ test("a display with nothing to say is a display unchanged", async ({ page }) =>
     await page.setViewportSize(viewport);
     await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, { timeout: 20_000 });
 
     await expect
       .poll(async () => {
@@ -1716,8 +1716,8 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/host-chrome.json \
 > **Corrected 2026-10-08, before this task was dispatched: the expectations below describe the
 > pre-Phase-1 layout and none of them can happen.** Phase 1 is committed (`8cb99931`, `bd6e1e29`,
 > `66ee3414`), so the availability strip no longer covers the top of the artboard, and
-> `document.body` has **three** children — `vigilia-chrome-top`, `#artboard`,
-> `vigilia-chrome-bottom` — not one. **This is the same defect Task 2.1's Step 2 carried**, where a
+> `document.body` has **three** children — `yunari-chrome-top`, `#artboard`,
+> `yunari-chrome-bottom` — not one. **This is the same defect Task 2.1's Step 2 carried**, where a
 > step asking for an impossible red run was read as a passed gate. **The red run this task needs
 > is Step 3's break.** Report the actual counts either way, and report which of the three were
 > green.
@@ -1744,9 +1744,9 @@ Re-add `position: fixed; left: 0; right: 0; top: 0; z-index: 9` to the availabil
 > the first time in this plan that a prescribed break has.** Recorded here so Task 3.2 reports a
 > measurement rather than a claim:
 >
-> - `position: fixed` on the availability strip: **test 1 fails alone**, `vigilia-availability over
+> - `position: fixed` on the availability strip: **test 1 fails alone**, `yunari-availability over
 >   the artboard`, overlap **31611.67 px²** (844 × ~37.5). Tests 2 and 3 green.
-> - `min-height: 70vh` on `#vigilia-chrome-top`: **test 2 fails** on `host.h > 422`, received
+> - `min-height: 70vh` on `#yunari-chrome-top`: **test 2 fails** on `host.h > 422`, received
 >   **207.61** — the band, 590.8 at 844 tall, plus the connection strip — and **test 3 goes with
 >   it** on `toEqual([390, 844, 0])`. Test 1 stays green, because it asserts only that the painted
 >   box is shorter than the viewport and that no strip overlaps it.
@@ -1763,7 +1763,7 @@ Re-add `position: fixed; left: 0; right: 0; top: 0; z-index: 9` to the availabil
 > *satisfied* by a fixed strip, because a collapsed band makes the host the full viewport.
 >
 > **If test 2's ceiling assertion is to be proven rather than assumed, the break for it is a band
-> given a height** — `min-height: 70vh` on `#vigilia-chrome-top` in `index.html` drops `host.h` to
+> given a height** — `min-height: 70vh` on `#yunari-chrome-top` in `index.html` drops `host.h` to
 > ~254 and fails `host.h > 422` while leaving `chrome` (the sum of *strip* heights) small. Perform
 > it if you want that assertion live, and **say which breaks you performed and what each one
 > actually failed** — a break whose description does not match its result is the defect this plan
@@ -1774,7 +1774,7 @@ Re-add `position: fixed; left: 0; right: 0; top: 0; z-index: 9` to the availabil
 > needed.** Task 2.2 performed the equivalent breaks on the preview spec and observed:
 >
 > - **The crop-strip break reaches only the tests whose theme raises a crop strip.** `portrait-cover`
->   raises none (only `vigilia-scaffold`), so a break inside `showCropNotice` cannot fail a cover
+>   raises none (only `yunari-scaffold`), so a break inside `showCropNotice` cannot fail a cover
 >   test. The equivalent here is narrower than it looks: both themes do raise the availability
 >   strip, because both now carry `&data=live` — but only test 1's assertion is reached by it, for
 >   the centring reason given above. **Which tests a break reaches is a measurement, not a
@@ -1886,8 +1886,8 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/player-chrome-host-close.json \
 
 Why these four and no more: `display-fabric.spec.ts` owns the player's visible behaviour
 including the fit modes and the load-failure page (`:663-687`);
-`host-bleed.spec.ts` is the existing reader of `[data-vigilia-crop]`; `host-player.spec.ts` is
-the existing reader of `#vigilia-connection` in **eleven** places (`grep -c`, corrected 2026-10-08
+`host-bleed.spec.ts` is the existing reader of `[data-yunari-crop]`; `host-player.spec.ts` is
+the existing reader of `#yunari-connection` in **eleven** places (`grep -c`, corrected 2026-10-08
 from a remembered nine); and `host-media.spec.ts:408`
 screenshots `#artboard` itself, so it is the one spec that could notice the host changing from
 an absolutely-positioned overlay into a row. Names to expect in the failures and not to fix
@@ -1910,7 +1910,7 @@ Playwright 1.63.0 trace-teardown `ENOENT`.
 
 ```bash
 cd src/web
-VIGILIA_CAPTURE=1 npx playwright test tests/e2e/host-player.spec.ts \
+YUNARI_CAPTURE=1 npx playwright test tests/e2e/host-player.spec.ts \
   --project=desktop-host --grep "plays the reference composition" --workers=1
 ```
 
@@ -1951,7 +1951,7 @@ corrects.
 > `c145598a`. Both registered captures were **re-taken rather than merely inspected**, because
 > the copies on disk predated Phase 1 and a stale capture is not evidence of anything:
 > `player-reference` now shows the amber availability strip in its own band above an artboard
-> whose top edge — the `VIGILIA` wordmark — is no longer under it, and `publish-loop-live` shows
+> whose top edge — the `YUNARI` wordmark — is no longer under it, and `publish-loop-live` shows
 > the connection strip in the bottom band with the artboard clear of it. Both PNGs were opened
 > and read, not judged by size.
 >
@@ -2004,7 +2004,7 @@ is a duplicate of another, and none is covered by a test that only counts object
   say it is unproven on a notched device. It is the plan's one unverifiable change.
 - **No test measures how a *reader* experiences the resize** when a strip appears on a live
   display. Task 2.3 proves the fit changes; nothing proves it is not jarring, and that is **Q2**.
-- **`window.vigilia.handle.transform()` is a development handle**, so the geometry tests read the
+- **`window.yunari.handle.transform()` is a development handle**, so the geometry tests read the
   renderer's intent rather than its paint. The `painted` box is arithmetic on that transform; a
   renderer that reported a transform it did not paint would pass. The guard test in Task 2.1 and
   the capture in its Step 5 are the two things that see actual pixels, and neither reads the

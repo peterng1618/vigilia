@@ -1,4 +1,4 @@
-import type { AssetReference } from "@vigilia/renderer-core";
+import type { AssetReference } from "@yunari/renderer-core";
 
 interface LoadedFontFace {
   readonly load: () => Promise<unknown>;

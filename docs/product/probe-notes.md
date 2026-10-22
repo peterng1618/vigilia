@@ -13,7 +13,7 @@ handler at all. A native file chooser is worse: a script cannot observe it.
 Measured on `File > Release package`: dismissed, it looked inert. With a
 `page.on("dialog")` handler it prompts **"Release bump: major, minor or patch"**
 (default `patch`), and answering `patch` downloads
-`vigilia-demo-dashboard.vigilia-theme`. `File > Import package` opens a file
+`yunari-demo-dashboard.yunari-theme`. `File > Import package` opens a file
 chooser the same way. The sibling `Save package` has neither, which is exactly
 why comparing the three made the working ones look broken.
 

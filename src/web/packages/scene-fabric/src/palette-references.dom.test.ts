@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import { defaultGaugeSettings } from "@vigilia/renderer-core";
+import { defaultGaugeSettings } from "@yunari/renderer-core";
 import { type FabricObject, Group, Rect, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
-import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
-import { VIGILIA_PAINT_PROPERTY } from "./object-paint.js";
+import { YunariChart, type YunariChartOptions } from "./chart-object.js";
+import { YUNARI_TEXT_PROPERTY } from "./fabric-text.js";
+import { YUNARI_PAINT_PROPERTY } from "./object-paint.js";
 import {
   objectPaletteReferences,
   reassignObjectPaletteReferences,
@@ -20,7 +20,7 @@ import {
  * from two different walks is how a token gets removed from under a live
  * object.
  *
- * jsdom is here for the chart case only: `new VigiliaChart` builds a canvas
+ * jsdom is here for the chart case only: `new YunariChart` builds a canvas
  * element, so a node-environment file cannot construct one.
  */
 
@@ -28,26 +28,26 @@ const REF = "palette.accent" as const;
 
 function painted(id: string, ref: string = REF): Rect {
   const shape = new Rect({ id, width: 10, height: 10 });
-  shape.set(VIGILIA_PAINT_PROPERTY, { fill: ref });
+  shape.set(YUNARI_PAINT_PROPERTY, { fill: ref });
   return shape;
 }
 
 function typed(id: string, ref: string = REF): Textbox {
   const text = new Textbox("label", { id, width: 40, height: 20 });
-  text.set(VIGILIA_TEXT_PROPERTY, {
+  text.set(YUNARI_TEXT_PROPERTY, {
     runs: [{ text: "label", style: { color: { ref } } }],
   });
   return text;
 }
 
-function gauged(id: string, ref: string = REF): VigiliaChart {
-  return new VigiliaChart({
+function gauged(id: string, ref: string = REF): YunariChart {
+  return new YunariChart({
     id,
     family: "gauge",
     settings: { ...defaultGaugeSettings, progress: { ref } },
     width: 10,
     height: 10,
-  } as VigiliaChartOptions);
+  } as YunariChartOptions);
 }
 
 /** The ids the same walk reports, sorted so order is never the assertion. */
@@ -60,7 +60,7 @@ function referencedBy(objects: readonly FabricObject[]): readonly string[] {
 describe("where a palette token is referenced", () => {
   it("reports one object per object, however many references it holds", () => {
     const panel = new Rect({ id: "panel", width: 10, height: 10 });
-    panel.set(VIGILIA_PAINT_PROPERTY, {
+    panel.set(YUNARI_PAINT_PROPERTY, {
       fill: REF,
       stroke: REF,
       shadowColor: REF,
@@ -97,7 +97,7 @@ describe("where a palette token is referenced", () => {
 
   it("names the run a text reference sits in", () => {
     const text = new Textbox("a b", { id: "text", width: 40, height: 20 });
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [
         { text: "a", style: { color: { ref: "palette.other" } } },
         { text: " b", style: { color: { ref: REF } } },
@@ -111,7 +111,7 @@ describe("where a palette token is referenced", () => {
 
   it("finds a chart, whose tokens live in settings rather than paint", () => {
     // A gauge is a canvas object like any other, but it names its tokens in
-    // `settings.track`/`progress` and carries no `vigiliaPaint` at all. A walk
+    // `settings.track`/`progress` and carries no `yunariPaint` at all. A walk
     // that only reads paint and runs calls this token dead while a chart is
     // visibly painted with it — the exact false negative this panel exists to
     // prevent.
@@ -133,7 +133,7 @@ describe("where a palette token is referenced", () => {
 
   it("does not count a run that merely has a colour", () => {
     const text = new Textbox("a", { id: "text", width: 40, height: 20 });
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ text: "a", style: { color: { kind: "solid" } } }],
     });
 

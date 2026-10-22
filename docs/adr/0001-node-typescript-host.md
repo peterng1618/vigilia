@@ -4,13 +4,13 @@
 
 ## Context
 
-Vigilia's browser contracts and application code are TypeScript. Earlier .NET
+Yunari's browser contracts and application code are TypeScript. Earlier .NET
 host scaffolding was never built or required by the product.
 
 ## Decision
 
 The PC host is Node/TypeScript in the existing workspace. The published CLI is
-`vigilia-dashboard`; plain `vigilia` on npm is unrelated. Vigilia requires no
+`yunari-dashboard`; plain `yunari` on npm is unrelated. Yunari requires no
 .NET or Python runtime.
 
 ## Consequences

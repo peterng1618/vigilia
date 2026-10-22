@@ -22,7 +22,7 @@ for a value nobody may change.
 The Tokens pane's colour field is refused for the opposite reason: the author
 just typed something the engine will not paint, and the field has to stay
 editable so they can type a different one. `paint-list.tsx:259-263` renders that
-refusal as a bare `<p data-vigilia-palette-error>` — a sibling of the field,
+refusal as a bare `<p data-yunari-palette-error>` — a sibling of the field,
 associated with nothing. No `aria-invalid`, no `aria-describedby`, no id. A
 screen-reader user types an unpaintable colour and the refusal is silent.
 
@@ -30,7 +30,7 @@ The non-obvious part is that **the control set already has the channel, once**,
 and the shape the ecosystem settled on is the shape it already uses. The work is
 to make it a member of the set rather than to invent it.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** `components/ui/` for every refusal-shaped prop and its readers
 (`refused`, `disabled`, `hint`, `describedById`, `isBlocked`, `describedBy`);

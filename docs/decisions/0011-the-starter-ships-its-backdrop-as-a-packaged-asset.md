@@ -29,10 +29,10 @@ works on screen, and it is a defect:
   (`thumbnail-capture.ts`) and every measurement path — the glass budget, the
   e2e probes. A remote image silently breaks thumbnails and makes the glass
   unmeasurable, and every one of those guards reads pixels.
-- Vigilia is local-first. A starter that needs a CDN to look right is a
+- Yunari is local-first. A starter that needs a CDN to look right is a
   demonstration of the product failing offline.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `renderer-core/src/theme/document.ts` (`Artboard.backgroundMedia`,
 `AssetReference`, `AssetLicense`, `ASSET_PATH_PATTERN`),

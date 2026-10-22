@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **The catalogue repo is `peterng1618/vigilia-store`**, public. `index.json` is at its root on `main`; items are `catalogue/<id>/`. The index URL is `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json` and thumbnails are joined against `https://cdn.jsdelivr.net/gh/peterng1618/vigilia-store@main/`.
+- **The catalogue repo is `peterng1618/yunari-store`**, public. `index.json` is at its root on `main`; items are `catalogue/<id>/`. The index URL is `https://raw.githubusercontent.com/peterng1618/yunari-store/main/index.json` and thumbnails are joined against `https://cdn.jsdelivr.net/gh/peterng1618/yunari-store@main/`.
 - **No new dependency.** `renderer-core` keeps `echarts` as its only one, and it gains **no network code** — `fetch` is called from `store-mode/`, in the editor.
 - **`renderer-core` stays Fabric-free and DOM-free.**
 - **Persist authored state only.** The catalogue listing is derived on read; nothing about it is stored, and no ECharts option or view state enters any file.
@@ -92,7 +92,7 @@ export function parseCatalogueIndex(
 
 ## Task 2: The generator, as a command on the host binary
 
-**Amended 2026-10-21, before dispatch** — the original version put the generator in `scripts/*.mjs` and was unbuildable. `@vigilia/renderer-core`'s `exports` points at `./src/index.ts`, the package has no build, and `packages/host/bin/vigilia.js`'s own docblock states the exact reason a plain Node script cannot import it: *"Node can strip types but cannot resolve `renderer-core`'s bundler-style `.js` specifiers from source."* CI runs `npm ci` then `npm run gate` with no build between, so a script importing the package would fail `gates:self-test` on a clean checkout. **The host is the one Node runtime here that is built and can import it**, and `run(argv)` is already its CLI entry.
+**Amended 2026-10-21, before dispatch** — the original version put the generator in `scripts/*.mjs` and was unbuildable. `@yunari/renderer-core`'s `exports` points at `./src/index.ts`, the package has no build, and `packages/host/bin/yunari.js`'s own docblock states the exact reason a plain Node script cannot import it: *"Node can strip types but cannot resolve `renderer-core`'s bundler-style `.js` specifiers from source."* CI runs `npm ci` then `npm run gate` with no build between, so a script importing the package would fail `gates:self-test` on a clean checkout. **The host is the one Node runtime here that is built and can import it**, and `run(argv)` is already its CLI entry.
 
 **Files:**
 - Create: `src/web/packages/host/src/catalogue/build-index.ts`
@@ -100,10 +100,10 @@ export function parseCatalogueIndex(
 - Modify: `src/web/packages/host/src/main.ts` (one line at the top of `run`, plus the import)
 
 **Interfaces:**
-- `catalogueIndexOf(items: readonly CatalogueItem[], generatedAt: string): CatalogueIndex` — pure, using `facetRecordOf` and `CatalogueIndex` from `@vigilia/renderer-core`. `CatalogueItem` is `{ readonly id: string; readonly item: unknown; readonly theme: unknown }` — what the walk read, not yet validated.
+- `catalogueIndexOf(items: readonly CatalogueItem[], generatedAt: string): CatalogueIndex` — pure, using `facetRecordOf` and `CatalogueIndex` from `@yunari/renderer-core`. `CatalogueItem` is `{ readonly id: string; readonly item: unknown; readonly theme: unknown }` — what the walk read, not yet validated.
 - `buildCatalogueIndexCommand(argv: readonly string[]): Promise<number | undefined>` — returns `undefined` unless `argv[0]` is `--build-catalogue-index`, so `run` falls through to `parseArgs` untouched and **no option parser changes**.
 - `run()` gains, as its first statement: `const catalogue = await buildCatalogueIndexCommand(argv); if (catalogue !== undefined) return catalogue;`
-- CLI: `node packages/host/bin/vigilia.js --build-catalogue-index <catalogueDir> --out <file> --generated-at <ISO>`.
+- CLI: `node packages/host/bin/yunari.js --build-catalogue-index <catalogueDir> --out <file> --generated-at <ISO>`.
 
 **`--generated-at` is required and never `Date.now()`.** A generator that stamps the clock produces a different file every run, which makes the Action's diff dirty on every push and the output untestable. The Action passes the catalogue commit's own timestamp.
 
@@ -117,7 +117,7 @@ export function parseCatalogueIndex(
 
 **Not a subagent task.** Creating a public repository is an outward-facing action, authorised by the user on 2026-10-21 for exactly this.
 
-- [ ] **Step 1: Create `peterng1618/vigilia-store` as public**, with a `README.md` saying what the repo is, `catalogue/.gitkeep`, and the workflow below.
+- [ ] **Step 1: Create `peterng1618/yunari-store` as public**, with a `README.md` saying what the repo is, `catalogue/.gitkeep`, and the workflow below.
 - [ ] **Step 2: The Action**, `.github/workflows/index.yml` — regenerates `index.json` on every push to `main` that touches `catalogue/**`, checking out **this** app repo at a pinned commit (the spec's own choice, `:510-512`):
 
 ```yaml
@@ -136,7 +136,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: peterng1618/vigilia
+          repository: peterng1618/yunari
           ref: <the pinned commit>
           path: app
       - uses: actions/setup-node@v4
@@ -147,18 +147,18 @@ jobs:
       - run: npm run build
         working-directory: app/src/web
       - run: |
-          node app/src/web/packages/host/bin/vigilia.js \
+          node app/src/web/packages/host/bin/yunari.js \
             --build-catalogue-index catalogue --out index.json \
             --generated-at "$(git log -1 --format=%cI)"
       - run: |
-          git config user.name  "vigilia-index"
-          git config user.email "vigilia-index@users.noreply.github.com"
+          git config user.name  "yunari-index"
+          git config user.email "yunari-index@users.noreply.github.com"
           git add index.json
           git diff --cached --quiet || git commit -m "chore(index): regenerate"
           git push
 ```
 
-- [ ] **Step 3: Push, and read the raw URL back** — `curl -sS -o /dev/null -w '%{http_code}\n' https://raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json` must answer `200`, and the body must be an index with zero entries. An empty catalogue is the honest starting state; items arrive with phase E.
+- [ ] **Step 3: Push, and read the raw URL back** — `curl -sS -o /dev/null -w '%{http_code}\n' https://raw.githubusercontent.com/peterng1618/yunari-store/main/index.json` must answer `200`, and the body must be an index with zero entries. An empty catalogue is the honest starting state; items arrive with phase E.
 - [ ] **Step 4: Record the pinned commit and the raw URL in the ledger**, because the Action's `ref` is a fact nothing else carries.
 
 ## Task 4: The online source

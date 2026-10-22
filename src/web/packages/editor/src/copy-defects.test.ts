@@ -88,7 +88,7 @@ async function runReadingNote(
 ): Promise<string> {
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });
-  object.set("vigiliaText", {
+  object.set("yunariText", {
     align: "left",
     runs: [{ kind: "value", bindingId: "clock-time" }],
   });
@@ -123,7 +123,7 @@ async function runReadingNote(
   const root = createRoot(host);
   await act(async () => root.render(createElement(RunEditor, { runs, edits })));
   const text =
-    host.querySelector("[data-vigilia-run-binding]")?.textContent?.trim() ?? "";
+    host.querySelector("[data-yunari-run-binding]")?.textContent?.trim() ?? "";
   await act(async () => root.unmount());
   host.remove();
   return text;
@@ -136,7 +136,7 @@ async function runReadingNote(
 function unsetSettingWord(): string {
   const field = settingsField(
     {
-      property: "vigilia-test.optional",
+      property: "yunari-test.optional",
       label: "Optional setting",
       kind: "select",
       section: "content",
@@ -188,7 +188,7 @@ interface AbsentReading {
  * label and `artboard-fields.tsx:159` falls back to the `""` id, which
  * `resolutionOptions()` answers with that `CUSTOM` option — and
  * `artboard-panel.dom.test.ts` asserts the control's value is `""` for such a
- * board (`choiceOf("[data-vigilia-artboard-resolution]")`), so the word is already
+ * board (`choiceOf("[data-yunari-artboard-resolution]")`), so the word is already
  * owned and already asserted and this net has nothing to add. The unread host and
  * the saved document are also rendered and asserted by their own files.
  *
@@ -281,7 +281,7 @@ it("states a missing reading as a gap rather than a zero or a dash", async () =>
  * it — **and the boundary of that claim, stated rather than implied.**
  *
  * **Proven here:** `uiCopy.publish.start`, the header control's word, against
- * the control that opens the surface (`[data-vigilia-publish]`, present and
+ * the control that opens the surface (`[data-yunari-publish]`, present and
  * enabled); and the `⌘⇧P` chord, printed from the live table, against the
  * `publish.surface` binding the table owns. The chord is the case the brief
  * flags: plan 2 drew the button alone and plan 5 bound `publish.surface`, so the
@@ -337,7 +337,7 @@ it("maps the publish surface's capability strings to controls that can run them"
   // is on the bar and pressable. A disabled control would leave the word a claim
   // about an act nothing can perform — the whole defect, not a cosmetic one.
   const trigger = host.querySelector<HTMLButtonElement>(
-    "[data-vigilia-publish]",
+    "[data-yunari-publish]",
   );
   expect(trigger).not.toBeNull();
   expect(trigger?.disabled).toBe(false);
@@ -346,7 +346,7 @@ it("maps the publish surface's capability strings to controls that can run them"
   // The chord is printed only because the table binds the act it prints: the
   // chip is empty the moment `publish.surface` is unbound, and what it prints is
   // the live table's own label, so a rebind reaches it.
-  const chip = host.querySelector("[data-vigilia-publish-chord]");
+  const chip = host.querySelector("[data-yunari-publish-chord]");
   expect(chip?.textContent).not.toBe("");
   expect(chip?.textContent).toBe(shortcutLabel("publish.surface"));
   expect(

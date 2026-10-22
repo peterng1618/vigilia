@@ -20,11 +20,11 @@ async function artboardRect(page: Page): Promise<ArtboardRect> {
   return page.evaluate(() =>
     (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { viewport: { artboardScreenRect(): ArtboardRect } };
         };
       }
-    ).vigiliaEditorBridge.editor.viewport.artboardScreenRect(),
+    ).yunariEditorBridge.editor.viewport.artboardScreenRect(),
   );
 }
 
@@ -36,7 +36,7 @@ export async function sceneToClient(
 ): Promise<{ x: number; y: number }> {
   const rect = await artboardRect(page);
   const box = (await page
-    .locator("#vigilia-fabric-editor canvas.upper-canvas")
+    .locator("#yunari-fabric-editor canvas.upper-canvas")
     .boundingBox())!;
   const scale = rect.width / sceneWidth;
   return { x: box.x + rect.left + x * scale, y: box.y + rect.top + y * scale };
@@ -83,11 +83,11 @@ export async function readSceneObject<T>(
       };
       const objects = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: { canvas: { getObjects(): readonly SceneObject[] } };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas.getObjects();
+      ).yunariEditorBridge.editor.canvas.getObjects();
 
       const find = (
         candidates: readonly SceneObject[],
@@ -177,7 +177,7 @@ export async function objectHandleScenePoint(
  */
 export async function expandLayer(page: Page, groupId: string): Promise<void> {
   const twisty = page.locator(
-    `[data-vigilia-layer="${groupId}"] button[aria-expanded]`,
+    `[data-yunari-layer="${groupId}"] button[aria-expanded]`,
   );
   if ((await twisty.getAttribute("aria-expanded")) === "true") return;
   await twisty.click();
@@ -207,12 +207,12 @@ export async function enterLayer(page: Page, groupId: string): Promise<void> {
     page.evaluate(() =>
       (
         window as unknown as {
-          vigiliaEditorBridge: { groupContext(): readonly string[] };
+          yunariEditorBridge: { groupContext(): readonly string[] };
         }
-      ).vigiliaEditorBridge.groupContext(),
+      ).yunariEditorBridge.groupContext(),
     );
   if ((await entered()).includes(groupId)) return;
-  const row = page.locator(`[data-vigilia-layer="${groupId}"]`);
+  const row = page.locator(`[data-yunari-layer="${groupId}"]`);
   // **Leave before arriving.** A hover to the point the pointer already rests
   // on is a no-op: Chromium fires no `mouseover` when the hit target does not
   // change, so the row never becomes the attended one and the entry control is
@@ -223,7 +223,7 @@ export async function enterLayer(page: Page, groupId: string): Promise<void> {
   // the arrival a real transition, which is what a pointer does.
   await page.mouse.move(0, 0);
   await row.hover();
-  await row.locator("[data-vigilia-layer-entry]").click();
+  await row.locator("[data-yunari-layer-entry]").click();
   await expect.poll(entered).toContain(groupId);
 }
 
@@ -293,11 +293,11 @@ export async function clearSceneX(
       };
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: { canvas: { getObjects(): SceneObject[] } };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const canvas = bridge.editor.canvas;
 
       // Every root and its parts, in the order `collectSnapSources` offers them.
@@ -356,7 +356,7 @@ export async function clearSceneX(
 }
 
 /**
- * A visual-review capture, written only under `VIGILIA_CAPTURE=1`.
+ * A visual-review capture, written only under `YUNARI_CAPTURE=1`.
  *
  * **An optional `scope` photographs one element rather than the viewport.** The
  * inspector column is taller than a 1280×720 fold and its own scroller clips the
@@ -380,7 +380,7 @@ export async function captureVisualReview(
   scope?: Locator,
   ground?: string,
 ): Promise<void> {
-  if (process.env["VIGILIA_CAPTURE"] === undefined) return;
+  if (process.env["YUNARI_CAPTURE"] === undefined) return;
   // The shipping default, not whatever Playwright's `colorScheme` happens to be,
   // and the same move `design-language.spec.ts`'s "The drawing's own ground"
   // capture already makes to pin graphite. A capture that chose through the
@@ -397,7 +397,7 @@ export async function captureVisualReview(
     );
   }
   const directory =
-    process.env["VIGILIA_CAPTURE_DIR"] ?? "../../docs/evidence/screenshots";
+    process.env["YUNARI_CAPTURE_DIR"] ?? "../../docs/evidence/screenshots";
   const filename = `${name}-${testInfo.project.name}.png`;
   const path = `${directory}/${filename}`;
   const screenshot =
@@ -433,7 +433,7 @@ export async function chooseAssetFile(
   file: LocalFile,
 ): Promise<void> {
   const chooser = page.waitForEvent("filechooser");
-  await page.locator(`[data-vigilia-asset-${control}]`).click();
+  await page.locator(`[data-yunari-asset-${control}]`).click();
   await (await chooser).setFiles(file);
 }
 

@@ -12,7 +12,7 @@ describe("display settings", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-display-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-display-"));
   });
 
   afterEach(async () => {

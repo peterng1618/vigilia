@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import type { Artboard } from "@vigilia/renderer-core";
-import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
+import type { Artboard } from "@yunari/renderer-core";
+import { YUNARI_PAINT_PROPERTY } from "@yunari/scene-fabric";
 import { Canvas, Group, Rect, Shadow } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { paletteTokenUsage, reassignPaletteToken } from "./index.js";
@@ -9,7 +9,7 @@ describe("reassignPaletteToken", () => {
   it("rewrites canvas paint refs, artboard refs and drops the palette entry", () => {
     const canvas = new Canvas(document.createElement("canvas"));
     const shape = new Rect({ id: "panel" });
-    shape.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.old" });
+    shape.set(YUNARI_PAINT_PROPERTY, { fill: "palette.old" });
     canvas.add(shape);
     const artboard: Artboard = {
       width: 100,
@@ -29,7 +29,7 @@ describe("reassignPaletteToken", () => {
       "new",
     );
 
-    expect(shape.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.new" });
+    expect(shape.get(YUNARI_PAINT_PROPERTY)).toEqual({ fill: "palette.new" });
     expect(result.artboard.background).toEqual({ ref: "palette.new" });
     expect(result.palette).toEqual({ new: palette.new });
     expect(result.from).toBe("palette.old");
@@ -41,7 +41,7 @@ describe("reassignPaletteToken", () => {
     const panel = new Rect({ id: "panel" });
     panel.set("stroke", "#9fc7e52b");
     panel.set("shadow", new Shadow({ color: "#9fc7e52b", blur: 12 }));
-    panel.set(VIGILIA_PAINT_PROPERTY, {
+    panel.set(YUNARI_PAINT_PROPERTY, {
       fill: "palette.old",
       stroke: "palette.old",
       shadowColor: "palette.old",
@@ -58,7 +58,7 @@ describe("reassignPaletteToken", () => {
     // A panel carries three authored references, and a deleted token that
     // reached only the fill would leave a border and a shadow pointing at a
     // token the palette no longer has.
-    expect(panel.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(panel.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.new",
       stroke: "palette.new",
       shadowColor: "palette.new",
@@ -98,7 +98,7 @@ describe("reassignPaletteToken", () => {
     // the assertion is that the reported set is emptied by the delete itself.
     const canvas = new Canvas(document.createElement("canvas"));
     const inner = new Rect({ id: "inner" });
-    inner.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.old" });
+    inner.set(YUNARI_PAINT_PROPERTY, { fill: "palette.old" });
     const group = new Group([inner]);
     canvas.add(group);
     const palette = {

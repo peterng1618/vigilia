@@ -30,9 +30,9 @@ import {
   isGlassTreatment,
   MAX_GLASS_BLUR_RADIUS,
   supportsGlass,
-  VIGILIA_GLASS_PROPERTY,
+  YUNARI_GLASS_PROPERTY,
 } from "./glass.js";
-import { isObjectName, VIGILIA_NAME_PROPERTY } from "./object-name.js";
+import { isObjectName, YUNARI_NAME_PROPERTY } from "./object-name.js";
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
 const MAX_SCENE_DEPTH = MAX_NODE_DEPTH + 8;
@@ -73,7 +73,7 @@ export function validateFabricThemeEnvelope(
     return fail(
       "newer-schema-version",
       "/schemaVersion",
-      `This theme was made with a newer version of Vigilia (schema ${version}). Update Vigilia to open it.`,
+      `This theme was made with a newer version of Yunari (schema ${version}). Update Yunari to open it.`,
     );
   }
   if (version !== SUPPORTED_SCHEMA_VERSION) {
@@ -386,10 +386,10 @@ function sceneTypeReferences(
   const visit = (object: unknown, path: string): void => {
     if (!isRecord(object)) return;
     if (isTextObject(object)) {
-      const authored = isRecord(object["vigiliaText"])
-        ? object["vigiliaText"]
+      const authored = isRecord(object["yunariText"])
+        ? object["yunariText"]
         : undefined;
-      textBox(authored?.["box"], `${path}/vigiliaText/box`, issues);
+      textBox(authored?.["box"], `${path}/yunariText/box`, issues);
       const runs =
         authored !== undefined && Array.isArray(authored["runs"])
           ? authored["runs"]
@@ -398,7 +398,7 @@ function sceneTypeReferences(
         issues.push(
           issue(
             "unresolved-global-ref",
-            `${path}/vigiliaText`,
+            `${path}/yunariText`,
             "Text objects need authored runs with typePreset and palette references.",
           ),
         );
@@ -413,7 +413,7 @@ function sceneTypeReferences(
             issues.push(
               issue(
                 "unresolved-global-ref",
-                `${path}/vigiliaText/runs/${index}/typePreset`,
+                `${path}/yunariText/runs/${index}/typePreset`,
                 "Text runs must reference an existing type preset.",
               ),
             );
@@ -426,7 +426,7 @@ function sceneTypeReferences(
             issues.push(
               issue(
                 "wrong-type",
-                `${path}/vigiliaText/runs/${index}/style`,
+                `${path}/yunariText/runs/${index}/style`,
                 "Text run style must be an object.",
               ),
             );
@@ -435,7 +435,7 @@ function sceneTypeReferences(
           if (style !== undefined)
             unknownKeys(
               style,
-              `${path}/vigiliaText/runs/${index}/style`,
+              `${path}/yunariText/runs/${index}/style`,
               ["color"],
               "A text run style",
               issues,
@@ -450,7 +450,7 @@ function sceneTypeReferences(
             issues.push(
               issue(
                 "unresolved-global-ref",
-                `${path}/vigiliaText/runs/${index}/style/color`,
+                `${path}/yunariText/runs/${index}/style/color`,
                 "Text runs must reference an existing palette token for colour.",
               ),
             );
@@ -576,8 +576,8 @@ function scenePaintReferences(
       : undefined;
   const visit = (object: unknown, path: string): void => {
     if (!isRecord(object)) return;
-    const refs = isRecord(object["vigiliaPaint"])
-      ? object["vigiliaPaint"]
+    const refs = isRecord(object["yunariPaint"])
+      ? object["yunariPaint"]
       : undefined;
     for (const property of ["fill", "stroke", "shadowColor"] as const) {
       if (!hasResolvedPaint(object, property)) continue;
@@ -588,7 +588,7 @@ function scenePaintReferences(
           issue(
             "unresolved-global-ref",
             `${path}/${property}`,
-            `${property} must reference an existing palette token through vigiliaPaint.`,
+            `${property} must reference an existing palette token through yunariPaint.`,
           ),
         );
         continue;
@@ -683,7 +683,7 @@ function chartSettingsReferences(
       : undefined;
   const visit = (object: unknown, path: string): void => {
     if (!isRecord(object)) return;
-    if (object["type"] === "VigiliaChart")
+    if (object["type"] === "YunariChart")
       chartSettings(object, path, palette, issues);
     if (Array.isArray(object["objects"]))
       object["objects"].forEach((child, index) =>
@@ -1382,13 +1382,13 @@ function objectGlass(
   path: string,
   issues: ValidationIssue[],
 ): void {
-  const treatment = value[VIGILIA_GLASS_PROPERTY];
+  const treatment = value[YUNARI_GLASS_PROPERTY];
   if (treatment === undefined) return;
   if (typeof value["type"] === "string" && !supportsGlass(value["type"])) {
     issues.push(
       issue(
         "invalid-enum",
-        `${path}/${VIGILIA_GLASS_PROPERTY}`,
+        `${path}/${YUNARI_GLASS_PROPERTY}`,
         `A ${value["type"]} cannot carry a glass treatment.`,
       ),
     );
@@ -1398,7 +1398,7 @@ function objectGlass(
     issues.push(
       issue(
         "invalid-fabric-scene",
-        `${path}/${VIGILIA_GLASS_PROPERTY}`,
+        `${path}/${YUNARI_GLASS_PROPERTY}`,
         `A glass treatment must be exactly { blurRadius }, a number from 0 to ${MAX_GLASS_BLUR_RADIUS} artboard units.`,
       ),
     );
@@ -1415,12 +1415,12 @@ function objectName(
   path: string,
   issues: ValidationIssue[],
 ): void {
-  const name = value[VIGILIA_NAME_PROPERTY];
+  const name = value[YUNARI_NAME_PROPERTY];
   if (name === undefined || isObjectName(name)) return;
   issues.push(
     issue(
       "invalid-fabric-scene",
-      `${path}/${VIGILIA_NAME_PROPERTY}`,
+      `${path}/${YUNARI_NAME_PROPERTY}`,
       "An object name must be a non-blank string, so the layer list has something to show.",
     ),
   );

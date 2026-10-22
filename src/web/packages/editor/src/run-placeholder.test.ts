@@ -1,4 +1,4 @@
-import type { Binding, PlanTextSegment, TextRun } from "@vigilia/renderer-core";
+import type { Binding, PlanTextSegment, TextRun } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { runPlaceholder, toAuthoringSegments } from "./run-placeholder.js";
 

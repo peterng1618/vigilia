@@ -23,7 +23,7 @@ may fall: a survivor costs a ticket and a deleted live symbol costs the product,
 so a test that takes a barrel export is disclosed rather than allowed to hide
 it, and the bias stays on detection.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scripts/dead-code-sweep.mjs` for every consumer of a name
 (`productionImporters`, `testImporters`, `barrelRoutes`, `ownBarrel`, the

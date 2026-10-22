@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
+import { readThemePackage, writeThemePackage } from "@yunari/theme-package";
 import { chooseIn, typeIntoControl } from "./control-set.js";
 import { captureVisualReview, clientOfScene } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
@@ -53,13 +53,13 @@ function activeId(page: Page): Promise<string | undefined> {
     () =>
       (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: { getActiveObject(): { id?: string } | undefined };
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas.getActiveObject()?.id,
+      ).yunariEditorBridge.editor.canvas.getActiveObject()?.id,
   );
 }
 
@@ -128,7 +128,7 @@ async function clearOfHandles(
       };
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getObjects(): SceneLike[];
@@ -145,7 +145,7 @@ async function clearOfHandles(
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const object = find(bridge.editor.canvas.getObjects());
       if (object === undefined)
         throw new Error(`no object with id ${objectId}`);
@@ -190,7 +190,7 @@ function treatmentOf(page: Page, id: string): unknown {
   ).then(
     (envelope) =>
       envelope.scene.objects.find((object) => object["id"] === id)?.[
-        "vigiliaGlass"
+        "yunariGlass"
       ],
   );
 }
@@ -203,8 +203,8 @@ test.describe("authoring frosted glass through the inspector", () => {
     await openFixture(page);
     await selectAuthoringPanel(page);
 
-    const enabled = page.locator("[data-vigilia-glass-enabled]");
-    const blur = page.locator("[data-vigilia-glass-blur]");
+    const enabled = page.locator("[data-yunari-glass-enabled]");
+    const blur = page.locator("[data-yunari-glass-blur]");
     await expect(enabled).toBeVisible();
     // Off to start: the panel carries no treatment, so there is no radius to
     // change and no box that would accept an edit and apply none.
@@ -253,10 +253,10 @@ test.describe("authoring frosted glass through the inspector", () => {
     await openFixture(page);
     await selectAuthoringPanel(page);
 
-    const enabled = page.locator("[data-vigilia-glass-enabled]");
+    const enabled = page.locator("[data-yunari-glass-enabled]");
     await enabled.focus();
     await page.keyboard.press("Space");
-    const blur = page.locator("[data-vigilia-glass-blur]");
+    const blur = page.locator("[data-yunari-glass-blur]");
 
     // The slider only exists when the field is bounded at both ends, so its
     // presence is what proves the ceiling reached the field rather than the
@@ -296,17 +296,17 @@ test.describe("authoring frosted glass through the inspector", () => {
     await openFixture(page);
     await selectAuthoringPanel(page);
 
-    const enabled = page.locator("[data-vigilia-glass-enabled]");
+    const enabled = page.locator("[data-yunari-glass-enabled]");
     await enabled.focus();
     await page.keyboard.press("Space");
-    const blur = page.locator("[data-vigilia-glass-blur]");
+    const blur = page.locator("[data-yunari-glass-blur]");
     await expect(blur).toHaveAttribute("type", "range");
 
     // The well beside the track: the one place a value is shown, and the one
     // place a draft lives. It is named by the track's own hook with `-well`
     // appended — two elements under one name would be a locator that cannot say
     // which one it means.
-    const well = page.locator("[data-vigilia-glass-blur-well]");
+    const well = page.locator("[data-yunari-glass-blur-well]");
     await expect(well).toBeVisible();
     // **The number the enable wrote, not whatever the field happens to show**:
     // `glass.ts`'s `DEFAULT_GLASS_BLUR_RADIUS` is 16, and an assertion that
@@ -351,13 +351,9 @@ test.describe("authoring frosted glass through the inspector", () => {
     desktop(testInfo.project.name);
     await openFixture(page);
     await selectAuthoringPanel(page);
-    await page.locator("[data-vigilia-glass-enabled]").focus();
+    await page.locator("[data-yunari-glass-enabled]").focus();
     await page.keyboard.press("Space");
-    await typeIntoControl(
-      page,
-      page.locator("[data-vigilia-glass-blur]"),
-      "24",
-    );
+    await typeIntoControl(page, page.locator("[data-yunari-glass-blur]"), "24");
 
     // **Redo.** An edit an author can undo and get back is an edit the document
     // actually holds; a control whose history is one-way is a different promise.
@@ -367,22 +363,20 @@ test.describe("authoring frosted glass through the inspector", () => {
     // that input's own undo, not the scene's. The radius box is the last control
     // in the panel, so Tab leaves focus on it, and the undo has to be aimed
     // somewhere real.
-    await page.locator("[data-vigilia-glass-enabled]").focus();
+    await page.locator("[data-yunari-glass-enabled]").focus();
     // Two entries, so two steps: the enable wrote one and the radius another.
     await page.keyboard.press("Control+z");
-    await expect(page.locator("[data-vigilia-glass-blur]")).toHaveValue("16");
+    await expect(page.locator("[data-yunari-glass-blur]")).toHaveValue("16");
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
       blurRadius: 16,
     });
     await page.keyboard.press("Control+z");
-    await expect(
-      page.locator("[data-vigilia-glass-enabled]"),
-    ).not.toBeChecked();
+    await expect(page.locator("[data-yunari-glass-enabled]")).not.toBeChecked();
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toBeUndefined();
     await page.keyboard.press("Control+y");
     await page.keyboard.press("Control+y");
-    await expect(page.locator("[data-vigilia-glass-enabled]")).toBeChecked();
-    await expect(page.locator("[data-vigilia-glass-blur]")).toHaveValue("24");
+    await expect(page.locator("[data-yunari-glass-enabled]")).toBeChecked();
+    await expect(page.locator("[data-yunari-glass-blur]")).toHaveValue("24");
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
       blurRadius: 24,
     });
@@ -402,8 +396,8 @@ test.describe("authoring frosted glass through the inspector", () => {
     // treatment has to survive, with the backdrop still visible behind it. The
     // palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-palette-token]", "edge");
-    const colour = page.locator("[data-vigilia-palette-color]");
+    await chooseIn(page, "[data-yunari-palette-token]", "edge");
+    const colour = page.locator("[data-yunari-palette-color]");
     await colour.fill("rgb(200 220 255)");
     await colour.press("Tab");
     await expect(colour).toHaveValue("rgb(200 220 255)");
@@ -424,7 +418,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     // History restores drop Fabric's selection, so the panel is clicked again
     // before the dock is asked to act — which is what an author does too.
     await selectAuthoringPanel(page);
-    const dock = page.locator("[data-vigilia-canvas-toolbar]");
+    const dock = page.locator("[data-yunari-canvas-toolbar]");
     await dock.getByRole("button", { name: "Duplicate" }).click();
     const after = (await saveEnvelope(page)) as {
       scene: { objects: ReadonlyArray<Record<string, unknown>> };
@@ -437,7 +431,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     }): number =>
       envelope.scene.objects.filter(
         (object) =>
-          (object["vigiliaGlass"] as { blurRadius?: number } | undefined)
+          (object["yunariGlass"] as { blurRadius?: number } | undefined)
             ?.blurRadius === 24,
       ).length;
     expect(at(before)).toBe(1);
@@ -455,14 +449,10 @@ test.describe("authoring frosted glass through the inspector", () => {
     await openFixture(page);
     await selectAuthoringPanel(page);
 
-    const enabled = page.locator("[data-vigilia-glass-enabled]");
+    const enabled = page.locator("[data-yunari-glass-enabled]");
     await enabled.focus();
     await page.keyboard.press("Space");
-    await typeIntoControl(
-      page,
-      page.locator("[data-vigilia-glass-blur]"),
-      "24",
-    );
+    await typeIntoControl(page, page.locator("[data-yunari-glass-blur]"), "24");
     assertBlur(
       await readGlass(page, { id: AUTHORING_PANEL_ID, band: BAND }),
       "editor, before grouping",
@@ -473,7 +463,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     await page.keyboard.down("Shift");
     await page.mouse.click(neighbour.x, neighbour.y);
     await page.keyboard.up("Shift");
-    const dock = page.locator("[data-vigilia-canvas-toolbar]");
+    const dock = page.locator("[data-yunari-canvas-toolbar]");
     await dock.getByRole("button", { name: "Group", exact: true }).click();
 
     // The grouping itself is asserted, because "the blur still reads" would
@@ -483,7 +473,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     const placement = await page.evaluate((id) => {
       const canvas = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getObjects(): Array<{
@@ -494,7 +484,7 @@ test.describe("authoring frosted glass through the inspector", () => {
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       const top = canvas.getObjects().filter((o) => o.get("id") === id).length;
       let inGroup = false;
       for (const object of canvas.getObjects()) {

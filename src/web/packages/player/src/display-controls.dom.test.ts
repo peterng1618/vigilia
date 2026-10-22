@@ -19,12 +19,12 @@ import { uiCopy } from "./ui-copy.js";
  * not this file's.
  */
 
-const BAR = "[data-vigilia-controls]";
-const SHADE = "[data-vigilia-dimmer]";
-const SAY = "[data-vigilia-controls-say]";
-const FULLSCREEN = "[data-vigilia-fullscreen]";
-const AWAKE = "[data-vigilia-keep-awake]";
-const DIM = "[data-vigilia-dim]";
+const BAR = "[data-yunari-controls]";
+const SHADE = "[data-yunari-dimmer]";
+const SAY = "[data-yunari-controls-say]";
+const FULLSCREEN = "[data-yunari-fullscreen]";
+const AWAKE = "[data-yunari-keep-awake]";
+const DIM = "[data-yunari-dim]";
 
 let controls: DisplayControls | undefined;
 
@@ -134,7 +134,7 @@ describe("the fullscreen control", () => {
     const screen = withFullscreen();
     controls = mountDisplayControls();
     const button = part<HTMLButtonElement>(FULLSCREEN);
-    expect(button.dataset["vigiliaUnavailable"]).toBeUndefined();
+    expect(button.dataset["yunariUnavailable"]).toBeUndefined();
 
     button.click();
     await Promise.resolve();
@@ -154,7 +154,7 @@ describe("the fullscreen control", () => {
     // mode) rather than leaving the reader with a control that does nothing.
     controls = mountDisplayControls();
     const button = part<HTMLButtonElement>(FULLSCREEN);
-    expect(button.dataset["vigiliaUnavailable"]).toBeDefined();
+    expect(button.dataset["yunariUnavailable"]).toBeDefined();
     expect(button.getAttribute("aria-description")).toBe(
       uiCopy.controls.fullscreen.unavailable,
     );
@@ -242,13 +242,13 @@ describe("the keep-awake control", () => {
     await vi.waitFor(() => expect(lock.request).toHaveBeenCalledTimes(1));
     expect(lock.request).toHaveBeenCalledWith("screen");
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(button.dataset["vigiliaWaiting"]).toBeUndefined();
+    expect(button.dataset["yunariWaiting"]).toBeUndefined();
 
     // The API releases the lock whenever the page is hidden, and this is that
     // release. What must not survive it is a control claiming a lock it lost.
     setVisibility("hidden");
     lock.sentinels[0]?.fireRelease();
-    expect(button.dataset["vigiliaWaiting"]).toBeDefined();
+    expect(button.dataset["yunariWaiting"]).toBeDefined();
     // Holding nothing, and saying so: `aria-pressed` follows the lock, not the
     // reader's intent, which is what the whole control is about.
     expect(button.getAttribute("aria-pressed")).toBe("false");
@@ -258,7 +258,7 @@ describe("the keep-awake control", () => {
     setVisibility("visible");
     await vi.waitFor(() => expect(lock.request).toHaveBeenCalledTimes(2));
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(button.dataset["vigiliaWaiting"]).toBeUndefined();
+    expect(button.dataset["yunariWaiting"]).toBeUndefined();
   });
 
   it("reports nothing held, and says why, when the browser refused the request", async () => {
@@ -275,7 +275,7 @@ describe("the keep-awake control", () => {
     await vi.waitFor(() => expect(lock.request).toHaveBeenCalledTimes(1));
 
     expect(button.getAttribute("aria-pressed")).toBe("false");
-    expect(button.dataset["vigiliaWaiting"]).toBeDefined();
+    expect(button.dataset["yunariWaiting"]).toBeDefined();
     expect(part(SAY).textContent).toBe(uiCopy.controls.keepAwake.refused);
     expect(uiCopy.controls.keepAwake.refused).toMatch(/not being held/);
   });
@@ -305,7 +305,7 @@ describe("the keep-awake control", () => {
     // API either, which is why this is the default state in this file.
     controls = mountDisplayControls();
     const button = part<HTMLButtonElement>(AWAKE);
-    expect(button.dataset["vigiliaUnavailable"]).toBeDefined();
+    expect(button.dataset["yunariUnavailable"]).toBeDefined();
     // Told, and still operable: `aria-disabled` here would say the control does
     // nothing, and explaining itself is what it does.
     expect(button.getAttribute("aria-disabled")).toBeNull();

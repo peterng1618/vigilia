@@ -1,4 +1,4 @@
-import type { FabricPalette } from "@vigilia/renderer-core";
+import type { FabricPalette } from "@yunari/renderer-core";
 
 /**
  * The tokens a palette lists, in the order the document declares them.

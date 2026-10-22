@@ -1,4 +1,4 @@
-import type { ThemeRemix } from "@vigilia/renderer-core";
+import type { ThemeRemix } from "@yunari/renderer-core";
 import { createElement, useState } from "react";
 import {
   type ControlOption,
@@ -233,16 +233,16 @@ export function ThemeLibraryChooser({
               theme", and a label repeating it printed twice over the control. */}
           <ControlSelect
             label={uiCopy.library.themeField}
-            data={{ "data-vigilia-library-theme": "" }}
+            data={{ "data-yunari-library-theme": "" }}
             value={selected}
             options={libraryOptions(templates, own)}
             onChange={setSelected}
           />
-          <div className="vigilia-dialog-actions">
+          <div className="yunari-dialog-actions">
             <button
               type="button"
               className={ACTION_BUTTON}
-              data-vigilia-library-remix=""
+              data-yunari-library-remix=""
               // Disabled rather than absent, as the delete is: a template has
               // no catalogue parent, and neither has a theme made here, so
               // there is nothing to credit. The kind is read as well as the
@@ -255,7 +255,7 @@ export function ThemeLibraryChooser({
             <button
               type="button"
               className={ACTION_BUTTON}
-              data-vigilia-library-duplicate=""
+              data-yunari-library-duplicate=""
               // The mirror of the remix: a theme the host records no catalogue
               // origin for can still be copied, but the copy has no parent to
               // name. A template has no document at all, so neither applies.
@@ -268,7 +268,7 @@ export function ThemeLibraryChooser({
               <button
                 type="button"
                 className={ACTION_BUTTON}
-                data-vigilia-library-delete=""
+                data-yunari-library-delete=""
                 // Disabled rather than absent for a template: the control is one
                 // that exists and says what it would do, instead of appearing
                 // and vanishing as the selection moves.
@@ -281,7 +281,7 @@ export function ThemeLibraryChooser({
             <button
               type="button"
               className={ACTION_BUTTON}
-              data-vigilia-library-cancel=""
+              data-yunari-library-cancel=""
               onClick={settle.dismiss}
             >
               {uiCopy.library.cancel}
@@ -289,7 +289,7 @@ export function ThemeLibraryChooser({
             <button
               type="button"
               className={ACTION_BUTTON}
-              data-vigilia-library-open=""
+              data-yunari-library-open=""
               onClick={open}
             >
               {uiCopy.library.open}
@@ -306,7 +306,7 @@ export function ThemeLibraryChooser({
           <p
             className="editor-shell-dialog-status"
             role="status"
-            data-vigilia-library-status=""
+            data-yunari-library-status=""
             hidden={status === undefined}
           >
             {status}
@@ -324,11 +324,11 @@ export function ThemeLibraryChooser({
           <p className="editor-shell-dialog-lead">
             {confirmWords(confirming, confirmEntry?.name)}
           </p>
-          <div className="vigilia-dialog-actions">
+          <div className="yunari-dialog-actions">
             <button
               type="button"
               className={ACTION_BUTTON}
-              data-vigilia-library-cancel=""
+              data-yunari-library-cancel=""
               onClick={() => setConfirming(undefined)}
             >
               {uiCopy.library.cancel}
@@ -336,7 +336,7 @@ export function ThemeLibraryChooser({
             <button
               type="button"
               className={ACTION_BUTTON}
-              data-vigilia-library-delete-confirm=""
+              data-yunari-library-delete-confirm=""
               onClick={() => void remove(confirming)}
             >
               {DELETE_LABEL}
@@ -398,7 +398,7 @@ export function ThemeConflict({
       label={CONFLICT_LEAD_TEXT}
     >
       <p className="editor-shell-dialog-lead">{CONFLICT_LEAD_TEXT}</p>
-      <div className="vigilia-dialog-actions">
+      <div className="yunari-dialog-actions">
         {(
           [
             ["reload", uiCopy.library.conflict.reload],
@@ -409,7 +409,7 @@ export function ThemeConflict({
             key={choice}
             type="button"
             className={ACTION_BUTTON}
-            {...{ [`data-vigilia-library-${choice}`]: "" }}
+            {...{ [`data-yunari-library-${choice}`]: "" }}
             onClick={() => settle.close(choice)}
           >
             {label}
@@ -418,7 +418,7 @@ export function ThemeConflict({
         <button
           type="button"
           className={ACTION_BUTTON}
-          data-vigilia-library-cancel=""
+          data-yunari-library-cancel=""
           onClick={settle.dismiss}
         >
           {uiCopy.library.conflict.cancel}

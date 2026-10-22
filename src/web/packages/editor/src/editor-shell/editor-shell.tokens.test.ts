@@ -96,16 +96,16 @@ const SOURCE_TOKENS = [
 describe("shell token stylesheet", () => {
   /** The defect this exists to prevent.
    *
-   *  A `var(--vigilia-x)` naming a token no declaration in scope provides is
+   *  A `var(--yunari-x)` naming a token no declaration in scope provides is
    *  invalid at computed-value time: the declaration using it is dropped whole
    *  rather than falling back. That is invisible in review and in jsdom — jsdom
    *  does not resolve custom properties, so a jsdom assertion would pass
    *  whatever the cascade does. The browser half is
    *  `tests/e2e/shell-appearance.spec.ts`; this half checks only that no
    *  reference can resolve to a single palette's declaration. */
-  it("declares every referenced --vigilia-* token on :root", () => {
+  it("declares every referenced --yunari-* token on :root", () => {
     const onRoot = declared(rootBlocks());
-    const referenced = [...css.matchAll(/var\((--vigilia-[a-z-]+)/g)].flatMap(
+    const referenced = [...css.matchAll(/var\((--yunari-[a-z-]+)/g)].flatMap(
       (match) => (match[1] === undefined ? [] : [match[1]]),
     );
 
@@ -121,13 +121,13 @@ describe("shell token stylesheet", () => {
    *  `[data-shell-palette="x"]` are the same node and the cascade picks between
    *  them by source order alone. A base block written *after* a palette block
    *  therefore silently wins — which is what happened the first time:
-   *  `--vigilia-control-bg` sat below the palettes, so graphite's dark control
+   *  `--yunari-control-bg` sat below the palettes, so graphite's dark control
    *  surface never applied and the shell stayed editorial cream. */
   it("puts the :root control tokens before the palette blocks overriding them", () => {
     const base = rootBlocks().find((block) =>
-      block.body.includes("--vigilia-control-bg"),
+      block.body.includes("--yunari-control-bg"),
     );
-    expect(base, "no :root block declares --vigilia-control-bg").toBeDefined();
+    expect(base, "no :root block declares --yunari-control-bg").toBeDefined();
     expect(
       base?.at ?? Number.MAX_SAFE_INTEGER,
       "the :root control block must precede the palette blocks, or the base wins",
@@ -231,7 +231,7 @@ describe("shell token stylesheet", () => {
     // `light`'s block kept its own, which is the drift this case exists to see.
     const companions: ReadonlySet<string> = new Set([
       "--shell-display",
-      "--vigilia-control-bg",
+      "--yunari-control-bg",
     ]);
     expect(
       declarations(base),
@@ -277,7 +277,7 @@ describe("shell token stylesheet", () => {
       // `:root`'s control block until `vg-357` restated them here.
       inheritsNothing(
         palette,
-        ["--vigilia-control-bg"],
+        ["--yunari-control-bg"],
         ":root's control block",
       );
     }
@@ -420,7 +420,7 @@ describe("shell token stylesheet", () => {
    *  by nothing today), so this names the mechanism rather than a list. Without
    *  `static` the unreferenced ones were emitted nowhere — measured in the built
    *  bundle, where only `--spacing`, `--radius-sm|md` and `--text-xs|sm`
-   *  survived — which is the same resolves-to-nothing defect the `--vigilia-*`
+   *  survived — which is the same resolves-to-nothing defect the `--yunari-*`
    *  block had, arrived at through the door that was supposed to fix it. */
   it("keeps the unreferenced scale tokens in the bundle", () => {
     expect(css).toMatch(/^[ \t]*@theme[ \t]+static[ \t]*\{/m);
@@ -643,16 +643,16 @@ describe("shell token stylesheet", () => {
       // Task 20.3, `vg-312`: a per-palette flag no `var()` read.
       "--shell-flat",
       // Task 20.7, `vg-552`: the control block's ten unread declarations.
-      "--vigilia-text",
-      "--vigilia-panel-bg",
-      "--vigilia-panel-border",
-      "--vigilia-control-border",
-      "--vigilia-input-bg",
-      "--vigilia-muted",
-      "--vigilia-selection-bg",
-      "--vigilia-accent",
-      "--vigilia-accent-dim",
-      "--vigilia-guide",
+      "--yunari-text",
+      "--yunari-panel-bg",
+      "--yunari-panel-border",
+      "--yunari-control-border",
+      "--yunari-input-bg",
+      "--yunari-muted",
+      "--yunari-selection-bg",
+      "--yunari-accent",
+      "--yunari-accent-dim",
+      "--yunari-guide",
     ] as const;
     // Comments carry `:` and `;`, so a prose mention of a retired name reads as a
     // declaration to the regexes below. They are blanked rather than removed, so

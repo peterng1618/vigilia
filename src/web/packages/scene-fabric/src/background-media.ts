@@ -1,4 +1,4 @@
-import type { Artboard, AssetReference } from "@vigilia/renderer-core";
+import type { Artboard, AssetReference } from "@yunari/renderer-core";
 import type { BackdropMedia, DeviceRect } from "./glass.js";
 
 export interface BackgroundMediaSource {
@@ -54,7 +54,7 @@ export function mountBackgroundMedia(
   options: BackgroundMediaOptions,
 ): BackgroundMediaHandle {
   const layer = document.createElement("div");
-  layer.dataset["vigiliaBackgroundMedia"] = "";
+  layer.dataset["yunariBackgroundMedia"] = "";
   layer.style.cssText =
     "position:absolute;inset:0;overflow:hidden;pointer-events:none;";
   options.host.prepend(layer);

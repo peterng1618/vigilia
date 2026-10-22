@@ -369,7 +369,7 @@ describe("the new-document chooser", () => {
     const pending = open();
     await act(async () => {
       document
-        .querySelector<HTMLButtonElement>("[data-vigilia-new-document-cancel]")
+        .querySelector<HTMLButtonElement>("[data-yunari-new-document-cancel]")
         ?.click();
     });
 
@@ -398,7 +398,7 @@ describe("the new-document chooser", () => {
     // caught. The four dialogs each had their own copy and one had already
     // drifted, which is the divergence this reads for.
     const button = document.querySelector<HTMLButtonElement>(
-      "[data-vigilia-new-document-create]",
+      "[data-yunari-new-document-create]",
     );
     if (button === null) throw new Error("no create button");
     expect(button.className).toContain("px-[var(--space-12)]");
@@ -464,7 +464,7 @@ async function pointerDown(target: Element): Promise<void> {
  *  otherwise lend its options to whatever is read next. */
 async function openControl(marker: string): Promise<readonly Element[]> {
   const trigger = document.querySelector<HTMLElement>(
-    `[data-vigilia-new-document-${marker}]`,
+    `[data-yunari-new-document-${marker}]`,
   );
   if (trigger === null) throw new Error(`no ${marker} control`);
   await click(trigger);
@@ -487,7 +487,7 @@ async function openControl(marker: string): Promise<readonly Element[]> {
 async function chooseIn(marker: string, id: string): Promise<void> {
   const options = await openControl(marker);
   const option = options.find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+    (candidate) => candidate.getAttribute("data-yunari-option") === id,
   );
   if (option === undefined) throw new Error(`no option ${id} in ${marker}`);
   await pointerDown(option);
@@ -498,7 +498,7 @@ async function chooseIn(marker: string, id: string): Promise<void> {
 /** Opens a control and reports its option ids, in the order offered. */
 async function optionIds(marker: string): Promise<string[]> {
   return (await openControl(marker)).map(
-    (option) => option.getAttribute("data-vigilia-option") ?? "",
+    (option) => option.getAttribute("data-yunari-option") ?? "",
   );
 }
 
@@ -508,14 +508,14 @@ async function optionName(
 ): Promise<string | undefined> {
   const options = await openControl(marker);
   return options
-    .find((option) => option.getAttribute("data-vigilia-option") === id)
+    .find((option) => option.getAttribute("data-yunari-option") === id)
     ?.textContent?.trim();
 }
 
 async function optionDisabled(marker: string, id: string): Promise<boolean> {
   const options = await openControl(marker);
   const option = options.find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+    (candidate) => candidate.getAttribute("data-yunari-option") === id,
   );
   return (
     option?.getAttribute("aria-disabled") === "true" ||
@@ -545,25 +545,25 @@ function leadingPerGroup(): string[] {
     (group) =>
       group
         .querySelector<HTMLElement>('[role="option"]')
-        ?.getAttribute("data-vigilia-option") ?? "",
+        ?.getAttribute("data-yunari-option") ?? "",
   );
 }
 
 /** The value a control commits, read off the element that prints it. */
 function read(marker: string): string {
   const trigger = document.querySelector<HTMLElement>(
-    `[data-vigilia-new-document-${marker}]`,
+    `[data-yunari-new-document-${marker}]`,
   );
   return (
     trigger
-      ?.querySelector("[data-vigilia-value]")
-      ?.getAttribute("data-vigilia-value") ?? ""
+      ?.querySelector("[data-yunari-value]")
+      ?.getAttribute("data-yunari-value") ?? ""
   );
 }
 
 function customQuestion(): HTMLElement {
   const custom = document.querySelector<HTMLElement>(
-    "[data-vigilia-new-document-custom]",
+    "[data-yunari-new-document-custom]",
   );
   if (custom === null) throw new Error("the chooser has no Custom question");
   return custom;
@@ -572,14 +572,13 @@ function customQuestion(): HTMLElement {
 /** What the readout says. */
 function size(): string {
   return (
-    document.querySelector("[data-vigilia-new-document-size]")?.textContent ??
-    ""
+    document.querySelector("[data-yunari-new-document-size]")?.textContent ?? ""
   );
 }
 
 function create(): void {
   document
-    .querySelector<HTMLButtonElement>("[data-vigilia-new-document-create]")
+    .querySelector<HTMLButtonElement>("[data-yunari-new-document-create]")
     ?.click();
 }
 
@@ -588,7 +587,7 @@ function create(): void {
  *  then a blur, which is what commits the draft. */
 async function type(marker: string, text: string): Promise<void> {
   const input = document.querySelector<HTMLInputElement>(
-    `[data-vigilia-new-document-${marker}]`,
+    `[data-yunari-new-document-${marker}]`,
   );
   if (input === null) throw new Error(`no ${marker} field`);
   await act(async () => {

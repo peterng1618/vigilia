@@ -396,7 +396,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="display:grid"]',
     mockupProperty: "grid-template-columns",
     comparator: "count",
-    productSelector: '[aria-labelledby="vigilia-settings-palette"]',
+    productSelector: '[aria-labelledby="yunari-settings-palette"]',
     designLanguageSection:
       "§5 rule 7 leaves the grid to the drawing, which draws three columns; no section names a column count",
     surface: "settings",
@@ -407,7 +407,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector:
       '[style*="border:1px solid var(--edge);border-radius:8px;padding:8px;background:var(--panel2)"]',
     mockupProperty: "border-radius",
-    productSelector: "[data-vigilia-palette-choice]",
+    productSelector: "[data-yunari-palette-choice]",
     designLanguageSection:
       "§3 radius table — a card in a grid is `--radius-lg`; §5's choice row is the licence spec `:469-477` withdraws",
     surface: "settings",
@@ -586,7 +586,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector:
       '[style*="display:flex;align-items:center;gap:16px;padding:4px 6px;border-radius:6px"]',
     mockupProperty: "border-radius",
-    productSelector: ".editor-shell-keyboard [data-vigilia-shortcut-row]",
+    productSelector: ".editor-shell-keyboard [data-yunari-shortcut-row]",
     designLanguageSection:
       "§3 radius table — `--radius-md` 6px is 'Controls, menu rows, small tiles' and a binding row is a row; `--radius-sm` 4px is 'Swatches, inline chips, the slider thumb's container'",
     surface: "settings-keyboard",
@@ -619,7 +619,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector:
       '[style*="flex:0 0 auto;border:1px solid var(--edge);border-radius:6px"]',
     mockupProperty: "border-radius",
-    productSelector: '[data-vigilia-shortcut-reset="file.new"]',
+    productSelector: '[data-yunari-shortcut-reset="file.new"]',
     designLanguageSection:
       "§3 radius table — `--radius-md` 6px is 'Controls, menu rows, small tiles', and a button is a control; the dialog's own Close already takes it",
     surface: "settings-keyboard",
@@ -630,7 +630,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector:
       '[style*="margin-left:auto;border:1px solid var(--edge);border-radius:6px"]',
     mockupProperty: "border-radius",
-    productSelector: "[data-vigilia-shortcut-reset-all]",
+    productSelector: "[data-yunari-shortcut-reset-all]",
     designLanguageSection:
       "§3 radius table — `--radius-md` 6px is 'Controls'; the same value the per-row action takes, one act being one control",
     surface: "settings-keyboard",
@@ -641,7 +641,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector:
       '[style*="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px"]',
     mockupProperty: "border-radius",
-    productSelector: '[data-vigilia-shortcut-arm="file.new"]',
+    productSelector: '[data-yunari-shortcut-arm="file.new"]',
     designLanguageSection:
       "§5 — 'Icon button — A 26–30px square at `--radius-md`, glyph only'",
     surface: "settings-keyboard",
@@ -652,7 +652,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector:
       '[style*="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:4px 0"]',
     mockupProperty: "gap",
-    productSelector: "[data-vigilia-about] dl > div",
+    productSelector: "[data-yunari-about] dl > div",
     designLanguageSection:
       "§5 rule 2 — 'Read-only rows are label + mono value, baseline-aligned, right-aligned'",
     surface: "settings-about",

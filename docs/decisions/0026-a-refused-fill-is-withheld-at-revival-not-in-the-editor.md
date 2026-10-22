@@ -26,11 +26,11 @@ document the editor and the phone disagree about. The plan's own position is tha
 *the device is a lens on the document*, which presupposes the two agree about what
 the document is.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: what `reviveScene` already does after `loadFromJSON` (commit `ebe00eae`,
 `persist.ts:110-128`); every `applyObjectPalettePaints` call site; whether the
-player has any paint path of its own (`grep vigiliaPaint player/src` → nothing);
+player has any paint path of its own (`grep yunariPaint player/src` → nothing);
 `adapter.ts` for any paint resolution (zero references); `paintPropertyFor`,
 `applyObjectPalettePaints`, `reassignObjectPaletteReferences`, `paintRefs`;
 `hasResolvedPaint` in the envelope validator.
@@ -62,7 +62,7 @@ Found: **there is no `Arc`**, and the docs agree independently — the
 Path, Polyline, FabricImage) and `Arc` is absent. `grep -rlw Arc` over the whole
 `dist/` finds one hit, in `util/path/index.d.ts`, and it is `fromArcToBeziers` — a
 utility, not a shape. `CIRCLE_PROPS` already serialises the two angles, so a sweep
-round-trips through Fabric's own serializer with no Vigilia-side parsing. **No new
+round-trips through Fabric's own serializer with no Yunari-side parsing. **No new
 dependency is warranted: the primitive is two properties Fabric already has.**
 
 ## Rung 3 — platform
@@ -143,7 +143,7 @@ editor's paint pass was tried first and was wrong in a way only a phone could sh
 
 Three things follow, and each was a defect before it was a decision:
 
-1. **The authored reference is kept.** `vigiliaPaint` is in
+1. **The authored reference is kept.** `yunariPaint` is in
    `SCENE_PERSISTED_PROPERTIES`, so deleting the key writes into the next save —
    data loss, not a tidy-up. Refusing a fill is not deleting it.
 2. **The editor's paint-pass branch stays, and it is load-bearing for the render

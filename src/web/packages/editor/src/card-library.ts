@@ -2,11 +2,11 @@ import {
   type Binding,
   createWidgetIdAllocator,
   type FabricGlobals,
-  VIGILIA_NAME_PROPERTY,
   type WidgetIssue,
   type WidgetProvenance,
-} from "@vigilia/renderer-core";
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+  YUNARI_NAME_PROPERTY,
+} from "@yunari/renderer-core";
+import { YUNARI_TEXT_PROPERTY } from "@yunari/scene-fabric";
 import { type FabricObject, Group, util } from "fabric/es";
 import {
   resolveCardToken,
@@ -463,7 +463,7 @@ function copyObject(
   context: CopyContext,
   isRoot: boolean,
 ): ObjectJson {
-  const authored = object[VIGILIA_TEXT_PROPERTY];
+  const authored = object[YUNARI_TEXT_PROPERTY];
   const children = childrenOf(object);
 
   return {
@@ -473,7 +473,7 @@ function copyObject(
       : {}),
     ...(isRoot ? rootOf(object, context) : {}),
     ...(isRecord(authored)
-      ? { [VIGILIA_TEXT_PROPERTY]: copyText(authored, context) }
+      ? { [YUNARI_TEXT_PROPERTY]: copyText(authored, context) }
       : {}),
     ...(children.length === 0
       ? {}
@@ -491,7 +491,7 @@ function rootOf(
   return {
     // The copy answers to the unit's name, so a tree of two CPU cards reads as
     // two CPU cards; the id beside the name is what tells them apart.
-    [VIGILIA_NAME_PROPERTY]: context.label,
+    [YUNARI_NAME_PROPERTY]: context.label,
     left: numberAt(object, "left") + context.offset.x,
     top: numberAt(object, "top") + context.offset.y,
     provenance: context.provenance,

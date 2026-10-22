@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope, FacetRecord } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope, FacetRecord } from "@yunari/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import { bootTheme } from "./boot-theme.js";
 import {
@@ -224,7 +224,7 @@ describe("the editor on a URL that names a theme", () => {
     const client = clientOpening(content);
     client.list = vi.fn(async () => [
       {
-        id: "vigilia-starter-template",
+        id: "yunari-starter-template",
         name: "Starter — System dashboard",
         facets: FACETS,
       },
@@ -278,7 +278,7 @@ describe("the editor on a URL that names nothing", () => {
         updatedAt: "2026-10-01T09:00:00.000Z",
         facets: FACETS,
       },
-      { id: "vigilia-starter-template", name: "Starter", facets: FACETS },
+      { id: "yunari-starter-template", name: "Starter", facets: FACETS },
     ]);
 
     const opened = openedContent(await bootTheme("", client));
@@ -326,7 +326,7 @@ describe("the editor on a URL that names nothing", () => {
     // So the round trip that survives is the one this file's other describe
     // pins: a URL that names NOTHING resumes the author's own most recent save,
     // because closing the tab and coming back is the ordinary case and the
-    // store is single-author (`~/.vigilia/themes/` under `os.homedir()`, loopback
+    // store is single-author (`~/.yunari/themes/` under `os.homedir()`, loopback
     // host, no account). A URL that names something and cannot have it is a
     // different question, and it is answered with nothing.
     const client = clientOpening(content);

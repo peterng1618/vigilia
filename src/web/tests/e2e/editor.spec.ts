@@ -5,11 +5,8 @@ import {
   type TestInfo,
   test,
 } from "@playwright/test";
-import {
-  type FabricThemeEnvelope,
-  facetRecordOf,
-} from "@vigilia/renderer-core";
-import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
+import { type FabricThemeEnvelope, facetRecordOf } from "@yunari/renderer-core";
+import { readThemePackage, writeThemePackage } from "@yunari/theme-package";
 import { installFixedClock } from "./clock.js";
 import {
   choiceOf,
@@ -80,7 +77,7 @@ const LISTED_THEME_FACETS = facetRecordOf(LISTED_THEME);
  *  does (`vg-211`). */
 async function insertShape(page: Page, name: string): Promise<void> {
   await page
-    .locator('[data-vigilia-add-group="shape"]')
+    .locator('[data-yunari-add-group="shape"]')
     .getByRole("button", { name, exact: true })
     .click();
 }
@@ -120,13 +117,13 @@ async function activeId(page: Page): Promise<string | undefined> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: { getActiveObject(): { id?: string } | undefined };
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     return bridge.editor.canvas.getActiveObject()?.id;
   });
 }
@@ -154,7 +151,7 @@ async function activeGeometry(page: Page): Promise<{
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: {
               getActiveObject():
@@ -173,7 +170,7 @@ async function activeGeometry(page: Page): Promise<{
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     const active = bridge.editor.canvas.getActiveObject();
     if (active === undefined) throw new Error("no active object");
     return {
@@ -191,7 +188,7 @@ async function activeGeometry(page: Page): Promise<{
  * list because the applied guides are not exposed through the bridge — which is
  * exactly why a regression that stops painting them would otherwise pass: the
  * geometry assertions cannot see a missing guide, and captures only run under
- * `VIGILIA_CAPTURE`. The colour is `GUIDE_COLOR` (#3D8BF4). */
+ * `YUNARI_CAPTURE`. The colour is `GUIDE_COLOR` (#3D8BF4). */
 async function guidePixelsAtSceneX(
   page: Page,
   sceneX: number,
@@ -207,14 +204,14 @@ async function guidePixelsAtSceneX(
       });
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: { viewport: { artboardScreenRect(): ArtboardRect } };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const rect = bridge.editor.viewport.artboardScreenRect();
       const element = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.upper-canvas",
+        "#yunari-fabric-editor canvas.upper-canvas",
       );
       const context = element?.getContext("2d");
       if (element === null || context === null || context === undefined)
@@ -264,7 +261,7 @@ async function inkReachOf(page: Page, id: string): Promise<number> {
       });
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               viewport: {
                 artboardScreenRect(): {
@@ -283,14 +280,14 @@ async function inkReachOf(page: Page, id: string): Promise<number> {
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const object = bridge.editor.canvas
         .getObjects()
         .find((candidate) => candidate.id === objectId);
       if (object === undefined) return -1;
       const view = bridge.editor.viewport.artboardScreenRect();
       const element = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.lower-canvas",
+        "#yunari-fabric-editor canvas.lower-canvas",
       );
       const context = element?.getContext("2d");
       if (element === null || context === null || context === undefined)
@@ -357,7 +354,7 @@ async function pixelAtObjectCentre(
       };
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               viewport: {
                 artboardScreenRect(): {
@@ -373,7 +370,7 @@ async function pixelAtObjectCentre(
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const find = (
         candidates: readonly SceneNode[],
       ): SceneNode | undefined => {
@@ -388,7 +385,7 @@ async function pixelAtObjectCentre(
       if (object === undefined)
         throw new Error(`no object with id ${objectId}`);
       const element = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.lower-canvas",
+        "#yunari-fabric-editor canvas.lower-canvas",
       );
       const context = element?.getContext("2d");
       if (element === null || context === null || context === undefined)
@@ -430,7 +427,7 @@ async function resizeRightHandleTo(
     ([fx, fy, tx, ty]) => {
       const c = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getScenePoint(e: { clientX: number; clientY: number }): {
@@ -440,7 +437,7 @@ async function resizeRightHandleTo(
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       return (
         c.getScenePoint({ clientX: tx!, clientY: ty! }).x -
         c.getScenePoint({ clientX: fx!, clientY: fy! }).x
@@ -485,7 +482,7 @@ async function scaleActiveSelection(page: Page, factor: number): Promise<void> {
   await page.evaluate((value) => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: {
               getActiveObject():
@@ -499,7 +496,7 @@ async function scaleActiveSelection(page: Page, factor: number): Promise<void> {
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     const active = bridge.editor.canvas.getActiveObject();
     if (active === undefined) throw new Error("no active object");
     active.set({ scaleX: value, scaleY: value });
@@ -510,7 +507,7 @@ async function scaleActiveSelection(page: Page, factor: number): Promise<void> {
 
 /**
  * One named object's own box and scale, plus the authored box the product
- * stored — the two halves every `vigiliaText.box` claim compares.
+ * stored — the two halves every `yunariText.box` claim compares.
  *
  * Read from the object rather than from a saved document because the question is
  * what the live canvas holds mid-edit; the round-trip half of the case reads the
@@ -536,11 +533,11 @@ async function textBoxState(
     };
     const objects = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): readonly Obj[] } };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    ).yunariEditorBridge.editor.canvas.getObjects();
     const find = (list: readonly Obj[]): Obj | undefined => {
       for (const candidate of list) {
         if (candidate.id === objectId) return candidate;
@@ -551,7 +548,7 @@ async function textBoxState(
     };
     const object = find(objects);
     if (object === undefined) throw new Error(`no object with id ${objectId}`);
-    const authored = object.get("vigiliaText") as
+    const authored = object.get("yunariText") as
       | { box?: { width?: number } }
       | undefined;
     return {
@@ -622,11 +619,11 @@ async function rotationHandleClientPoint(
     };
     const objects = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: { canvas: { getObjects(): readonly Obj[] } };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    ).yunariEditorBridge.editor.canvas.getObjects();
     const find = (list: readonly Obj[]): Obj | undefined => {
       for (const candidate of list) {
         if (candidate.id === objectId) return candidate;
@@ -643,7 +640,7 @@ async function rotationHandleClientPoint(
       throw new Error(`${objectId} has no rotation control`);
     }
     const canvas = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.upper-canvas",
+      "#yunari-fabric-editor canvas.upper-canvas",
     );
     if (canvas === null) throw new Error("the upper canvas is missing");
     const box = canvas.getBoundingClientRect();
@@ -656,7 +653,7 @@ async function activeAngle(page: Page): Promise<number> {
   return page.evaluate(() => {
     const active = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: {
               getActiveObject(): { angle?: number } | undefined;
@@ -664,7 +661,7 @@ async function activeAngle(page: Page): Promise<number> {
           };
         };
       }
-    ).vigiliaEditorBridge.editor.canvas.getActiveObject();
+    ).yunariEditorBridge.editor.canvas.getActiveObject();
     if (active === undefined) throw new Error("no active object");
     return active.angle ?? 0;
   });
@@ -741,7 +738,7 @@ async function dragActiveSelection(
     ([fx, fy, tx, ty]) => {
       const c = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getScenePoint(e: { clientX: number; clientY: number }): {
@@ -752,7 +749,7 @@ async function dragActiveSelection(
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       const a = c.getScenePoint({ clientX: fx!, clientY: fy! });
       const b = c.getScenePoint({ clientX: tx!, clientY: ty! });
       return b.x - a.x;
@@ -809,13 +806,13 @@ async function geometryPairBoxes(page: Page): Promise<{
   return page.evaluate(() => {
     const input = (key: string): HTMLInputElement => {
       const field = document.querySelector<HTMLInputElement>(
-        `[data-vigilia-geometry="${key}"]`,
+        `[data-yunari-geometry="${key}"]`,
       );
       if (field === null) throw new Error(`no ${key} geometry field`);
       return field;
     };
     const rowOf = (element: Element): HTMLElement => {
-      const row = element.closest("[data-vigilia-pair]");
+      const row = element.closest("[data-yunari-pair]");
       if (row === null) throw new Error("a geometry input has no paired row");
       return row as HTMLElement;
     };
@@ -839,9 +836,9 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // Selecting through the layer row, not a canvas click: the stage
     // letterboxes the artboard, so a scene coordinate is not a stable page one.
-    await page.locator('[data-vigilia-layer="wordmark"]').click();
+    await page.locator('[data-yunari-layer="wordmark"]').click();
     await openPosition(page);
-    await expect(page.locator('[data-vigilia-geometry="width"]')).toBeVisible();
+    await expect(page.locator('[data-yunari-geometry="width"]')).toBeVisible();
 
     // "One line" is the two inputs sharing a top, not a row-height threshold:
     // a row that wrapped and a row that did not both satisfy a loose height.
@@ -858,7 +855,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page.locator('[data-vigilia-layer="wordmark"]').click();
+    await page.locator('[data-yunari-layer="wordmark"]').click();
 
     const isOpen = (id: string): Promise<boolean> => sectionExpanded(page, id);
 
@@ -867,7 +864,7 @@ test.describe("Fabric editor route", () => {
     // it: the section an object is usually selected *for* is not one to hide
     // behind a disclosure, and the default is now the same for every question.
     await expect(
-      page.locator('[data-vigilia-section="position"]'),
+      page.locator('[data-yunari-section="position"]'),
     ).toBeVisible();
     expect(await isOpen("position")).toBe(true);
     // **Two questions, not four, because the wordmark is a text run.** A text
@@ -882,14 +879,14 @@ test.describe("Fabric editor route", () => {
     }
     await expect(
       page.locator(
-        '[data-vigilia-section="position"] [data-vigilia-section-count]',
+        '[data-yunari-section="position"] [data-yunari-section-count]',
       ),
     ).not.toHaveText("0");
 
     // The geometry it was always made of is inside it, with no click needed to
     // reach it — which is the whole of what item 13 asks for.
-    await expect(page.locator('[data-vigilia-geometry="left"]')).toBeVisible();
-    await expect(page.locator('[data-vigilia-geometry="width"]')).toBeVisible();
+    await expect(page.locator('[data-yunari-geometry="left"]')).toBeVisible();
+    await expect(page.locator('[data-yunari-geometry="width"]')).toBeVisible();
   });
 
   test("keeps the drag marquee drawn while the pointer rests", async ({
@@ -901,7 +898,7 @@ test.describe("Fabric editor route", () => {
     // The scene has to be mounted before a gesture means anything: hit-testing
     // an empty canvas finds nothing empty, because nothing is on it yet.
     await expect(page.locator("#status-message")).toHaveText("Editor ready");
-    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.waitForFunction(() => "yunariEditorBridge" in window);
 
     // Fabric draws the marquee onto the context rather than into the scene, so
     // the only way to see it is to read back the pixels a repaint erases. The
@@ -909,7 +906,7 @@ test.describe("Fabric editor route", () => {
     const marqueeSum = async (): Promise<number> =>
       page.evaluate(() => {
         const canvas = document.querySelector(
-          "#vigilia-fabric-editor canvas.upper-canvas",
+          "#yunari-fabric-editor canvas.upper-canvas",
         ) as HTMLCanvasElement | null;
         const context = canvas?.getContext("2d");
         if (canvas === null || context === null || context === undefined) {
@@ -932,12 +929,12 @@ test.describe("Fabric editor route", () => {
     // found by hit-testing rather than guessed.
     const points = await page.evaluate(() => {
       const canvas = document.querySelector(
-        "#vigilia-fabric-editor canvas.upper-canvas",
+        "#yunari-fabric-editor canvas.upper-canvas",
       ) as HTMLCanvasElement;
       const box = canvas.getBoundingClientRect();
       const fabric = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 findTarget(e: unknown): { currentTarget?: unknown } | undefined;
@@ -945,7 +942,7 @@ test.describe("Fabric editor route", () => {
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       const candidates: { x: number; y: number }[] = [];
       for (let i = 1; i <= 8; i += 1) {
         const step = i / 9;
@@ -1012,7 +1009,7 @@ test.describe("Fabric editor route", () => {
     // Tokens pane's.
     await openPane(page, "Tokens");
     await page.getByRole("button", { name: "Add colour" }).click();
-    const field = page.locator("[data-vigilia-palette-color]");
+    const field = page.locator("[data-yunari-palette-color]");
     // The reason is the control set's own editable-invalid channel now
     // (`vg-263`): the field carries `aria-invalid` and describes itself by the
     // reason, which the pane's bare sibling `<p>` never associated.
@@ -1051,7 +1048,7 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
 
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await expect(page.locator("#status-message")).toHaveText("Editor ready");
   });
@@ -1152,15 +1149,15 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-yunari-panel="add"]')
       .getByRole("button", { name: "Text" })
       .click();
 
     const envelope = (await saveEnvelope(page)) as {
       scene: {
         objects: Array<{
-          vigiliaPaint?: { fill?: string };
-          vigiliaText?: {
+          yunariPaint?: { fill?: string };
+          yunariText?: {
             runs: Array<{
               text?: string;
               typePreset?: string;
@@ -1171,14 +1168,14 @@ test.describe("Fabric editor route", () => {
       };
     };
     const text = envelope.scene.objects.find(
-      (object) => object.vigiliaText?.runs[0]?.text === "New text",
+      (object) => object.yunariText?.runs[0]?.text === "New text",
     );
     // New content takes a token named for content, not the palette's first
     // entry, which is the artboard background and would paint the text
     // invisible.
     expect(text).toMatchObject({
-      vigiliaPaint: { fill: "palette.text" },
-      vigiliaText: {
+      yunariPaint: { fill: "palette.text" },
+      yunariText: {
         runs: [
           {
             // The largest body-role preset, which is what the editor's new-text
@@ -1201,11 +1198,11 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-yunari-panel="add"]')
       .getByRole("button", { name: "Gauge" })
       .click();
     await expect(
-      page.locator('[data-vigilia-chart-setting="thickness"]'),
+      page.locator('[data-yunari-chart-setting="thickness"]'),
     ).toBeVisible();
     await captureVisualReview(page, testInfo, "editor-chart-creation");
 
@@ -1213,7 +1210,7 @@ test.describe("Fabric editor route", () => {
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
     const chart = sceneObjects(saved.parsed.envelope)
-      .filter((object) => object["type"] === "VigiliaChart")
+      .filter((object) => object["type"] === "YunariChart")
       .at(-1);
     // A chart takes a content token for its data and a surface token for its
     // track; one token cannot serve both.
@@ -1242,11 +1239,11 @@ test.describe("Fabric editor route", () => {
 
     // Insertion selects what it inserted, so the controls belong to the new
     // panel without a second click.
-    const fill = page.locator("[data-vigilia-panel-fill]");
-    const stroke = page.locator("[data-vigilia-panel-stroke]");
-    const border = page.locator("[data-vigilia-panel-border]");
-    const radius = page.locator("[data-vigilia-panel-radius]");
-    const shadow = page.locator("[data-vigilia-panel-shadow]");
+    const fill = page.locator("[data-yunari-panel-fill]");
+    const stroke = page.locator("[data-yunari-panel-stroke]");
+    const border = page.locator("[data-yunari-panel-border]");
+    const radius = page.locator("[data-yunari-panel-radius]");
+    const shadow = page.locator("[data-yunari-panel-shadow]");
     await expect(fill).toBeVisible();
     await expect(stroke).toBeVisible();
     await expect(border).toBeVisible();
@@ -1286,7 +1283,7 @@ test.describe("Fabric editor route", () => {
     await expect.poll(() => choiceOf(fill)).not.toBe(fillBefore);
 
     // Pointer: the border token.
-    await chooseIn(page, "[data-vigilia-panel-stroke]", "palette.panelStroke");
+    await chooseIn(page, "[data-yunari-panel-stroke]", "palette.panelStroke");
 
     // Keyboard: type a radius, committing with Tab.
     await typeInto(page, radius, "24");
@@ -1298,10 +1295,8 @@ test.describe("Fabric editor route", () => {
     const shadowValues = await optionsOf(page, shadow);
     expect(shadowValues).toContain("palette.panelStroke");
     expect(shadowValues).not.toContain("palette.sparkArea");
-    await chooseIn(page, "[data-vigilia-panel-shadow]", "palette.panelStroke");
-    await expect(
-      page.locator("[data-vigilia-panel-shadow-blur]"),
-    ).toBeVisible();
+    await chooseIn(page, "[data-yunari-panel-shadow]", "palette.panelStroke");
+    await expect(page.locator("[data-yunari-panel-shadow-blur]")).toBeVisible();
 
     // Keyboard: the last edit, so the undo below is that edit and not the panel.
     await typeInto(page, border, "3");
@@ -1324,7 +1319,7 @@ test.describe("Fabric editor route", () => {
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
     const panel = sceneObjects(saved.parsed.envelope).find(
-      (object) => object["vigiliaPaint"] !== undefined && object["rx"] === 24,
+      (object) => object["yunariPaint"] !== undefined && object["rx"] === 24,
     );
     // Every field the author touched survives the save as authored state: the
     // tokens stay references, and the geometry is plain Fabric.
@@ -1333,7 +1328,7 @@ test.describe("Fabric editor route", () => {
       rx: 24,
       ry: 24,
       strokeWidth: 3,
-      vigiliaPaint: {
+      yunariPaint: {
         fill: expect.stringMatching(/^palette\./),
         stroke: "palette.panelStroke",
         shadowColor: "palette.panelStroke",
@@ -1369,17 +1364,17 @@ test.describe("Fabric editor route", () => {
     // triangle were folded into their families (vg-078).
     // Reached through the group's own hook, not its heading: the heading is
     // copy, and the pane holds the file path's controls as well (`vg-211`).
-    const shapes = page.locator('[data-vigilia-add-group="shape"]');
+    const shapes = page.locator('[data-yunari-add-group="shape"]');
     await expect(shapes.getByRole("button")).toHaveCount(8);
     // Both lists are groups, so neither is orphaned under the other's legend
     // and the two "Line" buttons are told apart by the group they sit in.
     const charts = page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-yunari-panel="add"]')
       .getByRole("group", { name: "Chart" });
     await expect(charts.getByRole("button")).toHaveCount(4);
     await expect(
       page
-        .locator("[data-vigilia-add-group]")
+        .locator("[data-yunari-add-group]")
         .getByRole("button", { name: "Line", exact: true }),
     ).toHaveCount(2);
 
@@ -1387,14 +1382,14 @@ test.describe("Fabric editor route", () => {
 
     // A shape that is not a rectangle is still a shape: it carries material,
     // it has no corner radius to show, and it has a side count of its own.
-    await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
-    await expect(page.locator("[data-vigilia-panel-radius]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-panel-fill]")).toBeVisible();
+    await expect(page.locator("[data-yunari-panel-radius]")).toHaveCount(0);
     // The side count is geometry, and Position opens with every other question
     // now that item 13 reversed the column's closed default. The call stays
     // because this case does not care about the disclosure either way, and
     // `openPosition` opens a closed section and no-ops on an open one.
     await openPosition(page);
-    const sides = page.locator("[data-vigilia-shape-sides]");
+    const sides = page.locator("[data-yunari-shape-sides]");
     await expect(sides).toBeVisible();
     await typeInto(page, sides, "5");
     await expect(sides).toHaveValue("5");
@@ -1409,7 +1404,7 @@ test.describe("Fabric editor route", () => {
     // The material the author did not touch is still a palette reference, so
     // the document stays reassignable — and it is the card token, because a
     // polygon filled with the scene's own backdrop is not a shape at all.
-    expect(polygon?.["vigiliaPaint"]).toEqual({ fill: "palette.panel" });
+    expect(polygon?.["yunariPaint"]).toEqual({ fill: "palette.panel" });
   });
 
   test("reassigns an authored panel's fill, stroke and shadow before deleting a token", async ({
@@ -1423,8 +1418,8 @@ test.describe("Fabric editor route", () => {
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
     const panelId = (await activeId(page)) ?? "";
-    const stroke = page.locator("[data-vigilia-panel-stroke]");
-    const shadow = page.locator("[data-vigilia-panel-shadow]");
+    const stroke = page.locator("[data-yunari-panel-stroke]");
+    const shadow = page.locator("[data-yunari-panel-shadow]");
     await chooseIn(page, stroke, "palette.text");
     await chooseIn(page, shadow, "palette.text");
     // The picker prints the token's name, so the choice is readable before the
@@ -1437,9 +1432,9 @@ test.describe("Fabric editor route", () => {
     await openPane(page, "Tokens");
     // The Tokens pane's choosers are Base UI selects now, so a choice is a
     // click into an opened listbox rather than a native `selectOption`.
-    await chooseIn(page, "[data-vigilia-palette-token]", "text");
-    await chooseIn(page, "[data-vigilia-palette-replacement]", "dim");
-    await page.locator("[data-vigilia-palette-delete]").click();
+    await chooseIn(page, "[data-yunari-palette-token]", "text");
+    await chooseIn(page, "[data-yunari-palette-replacement]", "dim");
+    await page.locator("[data-yunari-palette-delete]").click();
 
     const envelope = (await saveEnvelope(page)) as {
       globals: { palette: Record<string, unknown> };
@@ -1453,7 +1448,7 @@ test.describe("Fabric editor route", () => {
       (object) => object["id"] === panelId,
     );
     expect(panel).toBeDefined();
-    expect(panel?.["vigiliaPaint"]).toEqual({
+    expect(panel?.["yunariPaint"]).toEqual({
       fill: "palette.panel",
       stroke: "palette.dim",
       shadowColor: "palette.dim",
@@ -1467,7 +1462,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     // The card is a rectangle carrying the treatment, a two-run reading and a
@@ -1485,19 +1480,19 @@ test.describe("Fabric editor route", () => {
     //
     // **Click the row's own body, not its centre.** Once a row is entered and
     // attended it draws its state controls over the right two thirds of itself
-    // — on this row `.vigilia-layer-state` spans x 155-277 of 58-279 — and the
+    // — on this row `.yunari-layer-state` spans x 155-277 of 58-279 — and the
     // element at the row's centre is the `Leave group-cpu-card` button. A
     // centre click therefore leaves the group instead of selecting the row,
     // and the part row this test needs next is gone. An author aiming at a row
     // aims at its name for the same reason.
     await page
-      .locator('[data-vigilia-layer="group-cpu-card"]')
+      .locator('[data-yunari-layer="group-cpu-card"]')
       .click({ position: { x: 30, y: 13 } });
     await expect.poll(() => activeId(page)).toBe("group-cpu-card");
-    await page.locator('[data-vigilia-layer="cpu-card"]').click();
+    await page.locator('[data-yunari-layer="cpu-card"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card");
-    const enabled = page.locator("[data-vigilia-glass-enabled]");
-    const blur = page.locator("[data-vigilia-glass-blur]");
+    const enabled = page.locator("[data-yunari-glass-enabled]");
+    const blur = page.locator("[data-yunari-glass-blur]");
     await expect(enabled).toBeChecked();
     // The card's own authored radius, read back through the control: 40 is the
     // value that dissolves the sunset's structure behind the glass, so a
@@ -1513,7 +1508,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const bridge = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: {
                   getObjects(): Array<{ get(name: string): unknown }>;
@@ -1521,7 +1516,7 @@ test.describe("Fabric editor route", () => {
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         // Groups descended: the reading is painted on a part of the card, and
         // a search of the root list answered `undefined` for an object the
         // editor was visibly rendering a number into.
@@ -1592,7 +1587,7 @@ test.describe("Fabric editor route", () => {
       bindings?: Record<string, ReadonlyArray<{ semanticKey: string }>>;
     };
     const card = sceneObject(reopened, "cpu-card");
-    expect(card?.["vigiliaGlass"]).toEqual({ blurRadius: 40 });
+    expect(card?.["yunariGlass"]).toEqual({ blurRadius: 40 });
     // Both halves of the card still read the same key after the round trip.
     expect(reopened.bindings?.["cpu-card-value"]).toEqual([
       expect.objectContaining({ semanticKey: "cpu.load" }),
@@ -1614,7 +1609,7 @@ test.describe("Fabric editor route", () => {
     // what an author gets rather than a hand-placed shape.
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await openPane(page, "Add");
@@ -1678,7 +1673,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await captureVisualReview(page, testInfo, "editor");
@@ -1793,7 +1788,7 @@ test.describe("Fabric editor route", () => {
     await expect(popup).toBeHidden();
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await selectStarterChart(page);
-    const dock = page.locator("[data-vigilia-canvas-toolbar]");
+    const dock = page.locator("[data-yunari-canvas-toolbar]");
     await dock.getByRole("button", { name: "Duplicate" }).hover();
     const tooltip = page.locator(".editor-shell-tooltip");
     await expect(tooltip).toBeVisible();
@@ -1829,7 +1824,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     // By id rather than by Fabric's class tag, and through the card rather than
     // around it: the starter's icons are paths *inside* their cards, so a search
@@ -1838,20 +1833,20 @@ test.describe("Fabric editor route", () => {
     // defines for reaching a part, and it opens the card in the layer tree on
     // the way — so the icon is selected the way an author selects it.
     await enterLayer(page, "group-cpu-card");
-    await page.locator('[data-vigilia-layer="cpu-card-icon"]').click();
+    await page.locator('[data-yunari-layer="cpu-card-icon"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card-icon");
 
-    const control = page.locator("[data-vigilia-glass-enabled]");
+    const control = page.locator("[data-yunari-glass-enabled]");
     // Withheld, not refused: the control the section carried is absent, so there
     // is no operable-looking switch left to hunt for.
     await expect(control).toHaveCount(0);
-    await expect(page.locator("[data-vigilia-glass-blur]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-glass-blur]")).toHaveCount(0);
 
     // The words the author meets instead, under the subject the column names.
     // Read off the hook the block publishes rather than a spelled control id:
     // the claim is that the reason is on screen and is the one named for this
     // kind, which holds whatever the column mints ids as.
-    const reason = page.locator("[data-vigilia-glass-refusal]");
+    const reason = page.locator("[data-yunari-glass-refusal]");
     await expect(reason).toBeVisible();
     await expect(reason).toContainText("Path");
   });
@@ -1865,16 +1860,16 @@ test.describe("Fabric editor route", () => {
     await selectStarterChart(page);
     await chooseIn(
       page,
-      '[data-vigilia-binding="ram-gauge-percent"]',
+      '[data-yunari-binding="ram-gauge-percent"]',
       "ram.used",
     );
     const precision = page.locator(
-      '[data-vigilia-binding-field="ram-gauge-percent.precision"]',
+      '[data-yunari-binding-field="ram-gauge-percent.precision"]',
     );
     await precision.fill("2");
     await precision.press("Tab");
     await expect(precision).toHaveValue("2");
-    const progressPaint = page.locator('[data-vigilia-chart-paint="progress"]');
+    const progressPaint = page.locator('[data-yunari-chart-paint="progress"]');
     await progressPaint.scrollIntoViewIfNeeded();
     await expect(progressPaint).toBeVisible();
 
@@ -1893,13 +1888,13 @@ test.describe("Fabric editor route", () => {
     // the card merely opened in the tree, a row click still selects the card,
     // which has no run controls.
     await enterLayer(page, "group-time-card");
-    await page.locator('[data-vigilia-layer="time"]').click();
-    const source = page.locator('[data-vigilia-run-source="0"]');
+    await page.locator('[data-yunari-layer="time"]').click();
+    const source = page.locator('[data-yunari-run-source="0"]');
     await expect(source).toBeVisible();
     // The run's pickers are plan 1's selects now, so what they show is the label
     // of the choice rather than the value behind it: `time.now` reads `Time`.
     expect(await choiceOf(source)).toBe("Time");
-    const format = page.locator('[data-vigilia-run-format="0"]');
+    const format = page.locator('[data-yunari-run-format="0"]');
     await expect(format).toBeVisible();
     // The starter clock's own tokens, so the reading below is one this test can
     // compute rather than one it wrote.
@@ -1909,16 +1904,16 @@ test.describe("Fabric editor route", () => {
     // has to change the reading rather than only the envelope: the control is
     // rebuilt from what was written, and the preview follows it. A zone names
     // itself, so its value and its label are the same string.
-    const zone = page.locator('[data-vigilia-run-zone="0"]');
+    const zone = page.locator('[data-yunari-run-zone="0"]');
     expect(await choiceOf(zone)).toBe("Follow the display");
-    await chooseIn(page, '[data-vigilia-run-zone="0"]', "Asia/Tokyo");
+    await chooseIn(page, '[data-yunari-run-zone="0"]', "Asia/Tokyo");
     expect(await choiceOf(zone)).toBe("Asia/Tokyo");
     await expect
       .poll(
         async () => {
           const shown = (
             await page
-              .locator('[data-vigilia-run-format-preview="0"]')
+              .locator('[data-yunari-run-format-preview="0"]')
               .textContent()
           )?.trim();
           const tokyo = await page.evaluate(() => {
@@ -1951,7 +1946,7 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The gauge is a part of the RAM card, so the card is opened first.
     await expandLayer(page, "group-ram-card");
-    const layer = page.locator('[data-vigilia-layer="ram-gauge"]');
+    const layer = page.locator('[data-yunari-layer="ram-gauge"]');
     await expect(layer).toBeVisible();
     await layer.click();
     // The **card** is what carries the selection marker, not the row that was
@@ -1960,7 +1955,7 @@ test.describe("Fabric editor route", () => {
     // on the part would pin the opposite of the rule, and the part's own row
     // is still here to be styled and renamed.
     await expect(
-      page.locator('[data-vigilia-layer="group-ram-card"]'),
+      page.locator('[data-yunari-layer="group-ram-card"]'),
     ).toHaveAttribute("aria-selected", "true");
     // One dense line per layer: the row's own controls, not the old six text
     // buttons. The pointer rests on the row, so both are drawn — visibility and
@@ -1980,17 +1975,17 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The artboard panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await page.locator("[data-vigilia-artboard-width]").fill("1000");
-    await page.locator("[data-vigilia-artboard-width]").press("Tab");
-    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.bars");
-    await expect(page.locator("[data-vigilia-artboard-width]")).toHaveValue(
+    await page.locator("[data-yunari-artboard-width]").fill("1000");
+    await page.locator("[data-yunari-artboard-width]").press("Tab");
+    await chooseIn(page, "[data-yunari-artboard-background]", "palette.bars");
+    await expect(page.locator("[data-yunari-artboard-width]")).toHaveValue(
       "1000",
     );
     // The committed reference, read off the control's own hook: the paint
     // chooser is plan 1's select now — a button, whose `.value` is always "".
     await expect(
-      page.locator("[data-vigilia-artboard-background] [data-vigilia-value]"),
-    ).toHaveAttribute("data-vigilia-value", "palette.bars");
+      page.locator("[data-yunari-artboard-background] [data-yunari-value]"),
+    ).toHaveAttribute("data-yunari-value", "palette.bars");
 
     await captureVisualReview(page, testInfo, "editor-artboard");
   });
@@ -2018,7 +2013,7 @@ test.describe("Fabric editor route", () => {
       /Invalid theme/,
     );
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
   });
 
@@ -2071,7 +2066,7 @@ test.describe("Fabric editor route", () => {
       scene: { version: "7.4.0", objects: [] },
     });
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await captureVisualReview(page, testInfo, "editor-artboard-gradient");
@@ -2085,8 +2080,8 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-palette-token]", "background");
-    const color = page.locator("[data-vigilia-palette-color]");
+    await chooseIn(page, "[data-yunari-palette-token]", "background");
+    const color = page.locator("[data-yunari-palette-color]");
     await color.fill("rgb(16 32 48)");
     await color.press("Tab");
     await expect(color).toHaveValue("rgb(16 32 48)");
@@ -2113,18 +2108,18 @@ test.describe("Fabric editor route", () => {
     // reason. The board's one paint is `background`, so it is pointed at `bars`
     // here through the Document pane.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.bars");
+    await chooseIn(page, "[data-yunari-artboard-background]", "palette.bars");
     // The palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-palette-token]", "bars");
-    await chooseIn(page, "[data-vigilia-palette-replacement]", "panel");
+    await chooseIn(page, "[data-yunari-palette-token]", "bars");
+    await chooseIn(page, "[data-yunari-palette-replacement]", "panel");
     await captureVisualReview(page, testInfo, "editor-palette-reassignment");
-    await page.locator("[data-vigilia-palette-delete]").click();
+    await page.locator("[data-yunari-palette-delete]").click();
     // The row is the token's own well in the list, so a deletion takes the
     // whole row with it — the same fact `option[value="bars"]` stated about
     // the native chooser it used to be.
     await expect(
-      page.locator('[data-vigilia-palette-token-row="bars"]'),
+      page.locator('[data-yunari-palette-token-row="bars"]'),
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {
@@ -2143,9 +2138,9 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-palette-token]", "chartTrack");
-    await chooseIn(page, "[data-vigilia-palette-replacement]", "bars");
-    await page.locator("[data-vigilia-palette-delete]").click();
+    await chooseIn(page, "[data-yunari-palette-token]", "chartTrack");
+    await chooseIn(page, "[data-yunari-palette-replacement]", "bars");
+    await page.locator("[data-yunari-palette-delete]").click();
 
     const envelope = (await saveEnvelope(page)) as {
       globals: { palette: Record<string, unknown> };
@@ -2177,18 +2172,18 @@ test.describe("Fabric editor route", () => {
     );
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
+    await chooseIn(page, "[data-yunari-type-preset]", "36-500");
     // Read the option the panel offers rather than typing an id: the picker's
     // rows come from the generated catalogue, so a literal here pins one
     // revision of it.
-    const [faceId] = await optionsOf(page, "[data-vigilia-font-face]");
-    await chooseIn(page, "[data-vigilia-font-face]", faceId!);
-    await page.locator("[data-vigilia-font-apply]").click();
-    const size = page.locator("[data-vigilia-type-size]");
+    const [faceId] = await optionsOf(page, "[data-yunari-font-face]");
+    await chooseIn(page, "[data-yunari-font-face]", faceId!);
+    await page.locator("[data-yunari-font-apply]").click();
+    const size = page.locator("[data-yunari-type-size]");
     await size.fill("34");
     await size.press("Tab");
     await expect(size).toHaveValue("34");
-    const letterSpacing = page.locator("[data-vigilia-type-letter-spacing]");
+    const letterSpacing = page.locator("[data-yunari-type-letter-spacing]");
     await letterSpacing.fill("0.25");
     await letterSpacing.press("Tab");
 
@@ -2196,7 +2191,7 @@ test.describe("Fabric editor route", () => {
     await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
     // Reopening a package remounts the shell, so the pane is shut again.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
+    await chooseIn(page, "[data-yunari-type-preset]", "36-500");
     const reopened = (await saveEnvelope(page)) as {
       globals: {
         typePresets: {
@@ -2218,7 +2213,7 @@ test.describe("Fabric editor route", () => {
       trioRole: "heading",
     });
     await page
-      .locator("[data-vigilia-type-letter-spacing]")
+      .locator("[data-yunari-type-letter-spacing]")
       .scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-type-preset");
   });
@@ -2238,8 +2233,8 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
-    const tracking = page.locator("[data-vigilia-type-letter-spacing]");
+    await chooseIn(page, "[data-yunari-type-preset]", "36-500");
+    const tracking = page.locator("[data-yunari-type-letter-spacing]");
 
     await tracking.fill("0");
     await tracking.press("Tab");
@@ -2264,8 +2259,8 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
-    const face = page.locator("[data-vigilia-font-face]");
+    await chooseIn(page, "[data-yunari-type-preset]", "36-500");
+    const face = page.locator("[data-yunari-font-face]");
     await face.scrollIntoViewIfNeeded();
     await expect(face).toBeVisible();
     await expect(
@@ -2304,16 +2299,16 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await chooseIn(page, "[data-vigilia-type-preset]", "20-400");
-    await chooseIn(page, "[data-vigilia-type-replacement]", "24-400");
-    await page.locator("[data-vigilia-type-delete]").scrollIntoViewIfNeeded();
+    await chooseIn(page, "[data-yunari-type-preset]", "20-400");
+    await chooseIn(page, "[data-yunari-type-replacement]", "24-400");
+    await page.locator("[data-yunari-type-delete]").scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-type-reassignment");
-    await page.locator("[data-vigilia-type-delete]").click();
+    await page.locator("[data-yunari-type-delete]").click();
     // The row is the preset's own resolution line in the list, so a deletion
     // takes the whole row with it — the same fact `option[value="20-400"]`
     // stated about the native chooser it used to be.
     await expect(
-      page.locator('[data-vigilia-type-preset-row="20-400"]'),
+      page.locator('[data-yunari-type-preset-row="20-400"]'),
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {
@@ -2321,14 +2316,14 @@ test.describe("Fabric editor route", () => {
       scene: {
         objects: Array<{
           id?: string;
-          vigiliaText?: { runs: Array<{ typePreset?: string }> };
+          yunariText?: { runs: Array<{ typePreset?: string }> };
         }>;
       };
     };
     expect(envelope.globals.typePresets["20-400"]).toBeUndefined();
     expect(
       (
-        sceneObject(envelope, "cpu-card-title")?.["vigiliaText"] as
+        sceneObject(envelope, "cpu-card-title")?.["yunariText"] as
           | { runs: ReadonlyArray<{ typePreset?: string }> }
           | undefined
       )?.runs[0]?.typePreset,
@@ -2355,7 +2350,7 @@ test.describe("Fabric editor route", () => {
     await expect(
       page.locator('[role="dialog"]', { hasText: "Choose an artboard size" }),
     ).toBeVisible();
-    await page.locator("[data-vigilia-new-document-create]").click();
+    await page.locator("[data-yunari-new-document-create]").click();
     await expect(
       page.locator('[role="dialog"]', {
         hasText: "Save changes before opening another theme?",
@@ -2434,9 +2429,9 @@ test.describe("Fabric editor route", () => {
     // The list is opened as well, because the two groups are the chooser's whole
     // design point and the stub is only visible through them: the product's
     // template under `Templates`, the author's own under `Your themes`.
-    await chooser.locator("[data-vigilia-library-theme]").click();
+    await chooser.locator("[data-yunari-library-theme]").click();
     await expect(
-      page.locator('[role="option"][data-vigilia-option="graphite-desk"]'),
+      page.locator('[role="option"][data-yunari-option="graphite-desk"]'),
     ).toBeVisible();
 
     await captureVisualReview(page, testInfo, "editor-library-chooser");
@@ -2459,7 +2454,7 @@ test.describe("Fabric editor route", () => {
     await page.mouse.dblclick(centre.x, centre.y);
     await expect.poll(() => activeId(page)).toBe("ram-gauge");
     await expect(
-      page.locator('[data-vigilia-chart-setting="thickness"]'),
+      page.locator('[data-yunari-chart-setting="thickness"]'),
     ).toBeVisible();
   });
 
@@ -2471,10 +2466,10 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The artboard panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-vigilia-background-media-fit]", "display");
-    await page.locator("[data-vigilia-artboard-width]").fill("1000");
-    await page.locator("[data-vigilia-artboard-width]").press("Tab");
-    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.bars");
+    await chooseIn(page, "[data-yunari-background-media-fit]", "display");
+    await page.locator("[data-yunari-artboard-width]").fill("1000");
+    await page.locator("[data-yunari-artboard-width]").press("Tab");
+    await chooseIn(page, "[data-yunari-artboard-background]", "palette.bars");
 
     const envelope = (await saveEnvelope(page)) as {
       artboard: {
@@ -2508,13 +2503,13 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await openPane(page, "Document");
     await page.waitForSelector(
-      "[data-vigilia-artboard-fit-mode], [data-vigilia-background-media-fit]",
+      "[data-yunari-artboard-fit-mode], [data-yunari-background-media-fit]",
     );
 
-    await expect(page.locator("[data-vigilia-artboard-fit-mode]")).toHaveCount(
+    await expect(page.locator("[data-yunari-artboard-fit-mode]")).toHaveCount(
       0,
     );
-    const mediaFit = page.locator("[data-vigilia-background-media-fit]");
+    const mediaFit = page.locator("[data-yunari-background-media-fit]");
     const settingsPanel = page.locator("section", {
       has: mediaFit,
     });
@@ -2524,10 +2519,10 @@ test.describe("Fabric editor route", () => {
     // read off the hook the control commits through rather than `.value`: it is
     // plan 1's select, and a button's `.value` is always "".
     expect(labels).toContain("Media fit");
-    const chosen = mediaFit.locator("[data-vigilia-value]");
-    await expect(chosen).toHaveAttribute("data-vigilia-value", "theme");
-    await chooseIn(page, "[data-vigilia-background-media-fit]", "display");
-    await expect(chosen).toHaveAttribute("data-vigilia-value", "display");
+    const chosen = mediaFit.locator("[data-yunari-value]");
+    await expect(chosen).toHaveAttribute("data-yunari-value", "theme");
+    await chooseIn(page, "[data-yunari-background-media-fit]", "display");
+    await expect(chosen).toHaveAttribute("data-yunari-value", "display");
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {
@@ -2537,11 +2532,11 @@ test.describe("Fabric editor route", () => {
     await selectStarterChart(page);
     await chooseIn(
       page,
-      '[data-vigilia-binding="ram-gauge-percent"]',
+      '[data-yunari-binding="ram-gauge-percent"]',
       "ram.used",
     );
     const precision = page.locator(
-      '[data-vigilia-binding-field="ram-gauge-percent.precision"]',
+      '[data-yunari-binding-field="ram-gauge-percent.precision"]',
     );
     await precision.fill("2");
     await precision.press("Tab");
@@ -2573,7 +2568,7 @@ test.describe("Fabric editor route", () => {
     // tells the two apart. A gauge's paints are not per-series, which is why the
     // family has to be the one whose `palette` field repeats with the series.
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-yunari-panel="add"]')
       .getByRole("group", { name: "Chart" })
       .getByRole("button", { name: "Line", exact: true })
       .click();
@@ -2581,7 +2576,7 @@ test.describe("Fabric editor route", () => {
 
     // The key carries the index — `palette.0` — which is the token the original
     // DOM read named, `[stroke, palette.0]` before and `[]` after.
-    const seriesPaint = page.locator('[data-vigilia-chart-paint="palette.0"]');
+    const seriesPaint = page.locator('[data-yunari-chart-paint="palette.0"]');
     await expect
       .poll(() => seriesPaint.count(), {
         message: "a new line chart offers a series colour to choose",
@@ -2590,7 +2585,7 @@ test.describe("Fabric editor route", () => {
 
     // And the gesture that emptied it: binding the first series must leave the
     // control in place rather than take it away.
-    await chooseIn(page, "[data-vigilia-chart-binding-add]", "cpu.load");
+    await chooseIn(page, "[data-yunari-chart-binding-add]", "cpu.load");
     // The paint first, because that is the reported symptom and the binding row
     // is downstream of it: with the bug in place the whole panel content goes,
     // so asserting the row first would report the crash rather than the loss.
@@ -2599,7 +2594,7 @@ test.describe("Fabric editor route", () => {
         message: "binding a series leaves the chart's series colour offered",
       })
       .toBeGreaterThan(0);
-    await expect(page.locator("[data-vigilia-binding]")).toHaveCount(1);
+    await expect(page.locator("[data-yunari-binding]")).toHaveCount(1);
   });
 
   test("persists selected chart paint as a palette reference", async ({
@@ -2611,7 +2606,7 @@ test.describe("Fabric editor route", () => {
     await selectStarterChart(page);
     await chooseIn(
       page,
-      '[data-vigilia-chart-paint="progress"]',
+      '[data-yunari-chart-paint="progress"]',
       "palette.chartTrack",
     );
 
@@ -2680,8 +2675,8 @@ test.describe("Fabric editor route", () => {
             originX: "left",
             originY: "top",
             fill: ACCENT_PAINT,
-            vigiliaPaint: { fill: "palette.ink" },
-            vigiliaText: {
+            yunariPaint: { fill: "palette.ink" },
+            yunariText: {
               runs: [
                 {
                   kind: "literal",
@@ -2710,7 +2705,7 @@ test.describe("Fabric editor route", () => {
             window as unknown as Record<string, unknown>,
           ).find(
             ([key, value]) =>
-              key.startsWith("vigilia-fabric-editor-") &&
+              key.startsWith("yunari-fabric-editor-") &&
               (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } })
                 .canvas.upperCanvasEl?.isConnected,
           )?.[1] as
@@ -2731,7 +2726,7 @@ test.describe("Fabric editor route", () => {
           window as unknown as Record<string, unknown>,
         ).find(
           ([key, value]) =>
-            key.startsWith("vigilia-fabric-editor-") &&
+            key.startsWith("yunari-fabric-editor-") &&
             (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas
               .upperCanvasEl?.isConnected,
         )?.[1] as
@@ -2763,7 +2758,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const coverage = [
           ...document.querySelectorAll<HTMLCanvasElement>(
-            "#vigilia-fabric-editor canvas",
+            "#yunari-fabric-editor canvas",
           ),
         ].map((canvas) => {
           const pixels = canvas
@@ -2788,7 +2783,7 @@ test.describe("Fabric editor route", () => {
           window as unknown as Record<string, unknown>,
         ).find(
           ([key, value]) =>
-            key.startsWith("vigilia-fabric-editor-") &&
+            key.startsWith("yunari-fabric-editor-") &&
             (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas
               .upperCanvasEl?.isConnected,
         )?.[1] as
@@ -2821,14 +2816,14 @@ test.describe("Fabric editor route", () => {
 
     const envelope = (await saveEnvelope(page)) as {
       scene: {
-        objects: Array<{ id?: string; text?: string; vigiliaText?: unknown }>;
+        objects: Array<{ id?: string; text?: string; yunariText?: unknown }>;
       };
     };
     const text = envelope.scene.objects.find(
       (object) => object.id === "cpu-label",
     );
     expect(text?.text).toBe("CPU —");
-    expect(text?.vigiliaText).toEqual(
+    expect(text?.yunariText).toEqual(
       expect.objectContaining({
         runs: expect.arrayContaining([
           expect.objectContaining({ bindingId: "load" }),
@@ -2857,7 +2852,7 @@ test.describe("Fabric editor route", () => {
 
     await setThemePackage(page, envelope);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await setThemePackage(
@@ -2867,7 +2862,7 @@ test.describe("Fabric editor route", () => {
     );
     await expect(page.locator("#status")).toContainText("incompatible");
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
   });
 
@@ -2877,16 +2872,16 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page.locator('[data-vigilia-layer="wordmark"]').click();
+    await page.locator('[data-yunari-layer="wordmark"]').click();
 
     // Driven through the control, not the bridge: reaching into the page would
     // prove the bridge works, not that an author can name anything.
-    const name = page.locator("[data-vigilia-name]");
+    const name = page.locator("[data-yunari-name]");
     await expect(name).toBeVisible();
     await name.fill("Brand mark");
     await name.press("Tab");
 
-    await expect(page.locator('[data-vigilia-layer="wordmark"]')).toContainText(
+    await expect(page.locator('[data-yunari-layer="wordmark"]')).toContainText(
       "Brand mark",
     );
 
@@ -2907,7 +2902,7 @@ test.describe("Fabric editor route", () => {
     // The reopened document's own layer list must carry the name, not just the
     // bytes: a reader that never loaded the property would pass the assertion
     // above.
-    await expect(page.locator('[data-vigilia-layer="wordmark"]')).toContainText(
+    await expect(page.locator('[data-yunari-layer="wordmark"]')).toContainText(
       "Brand mark",
     );
   });
@@ -2932,13 +2927,13 @@ test.describe("Fabric editor route", () => {
 
     // A scene with no name on the object still opens, still shows its id, and
     // still accepts a name typed into the same control.
-    await expect(page.locator('[data-vigilia-layer="panel"]')).toContainText(
+    await expect(page.locator('[data-yunari-layer="panel"]')).toContainText(
       "panel",
     );
-    await page.locator('[data-vigilia-layer="panel"]').click();
-    await page.locator("[data-vigilia-name]").fill("Card");
-    await page.locator("[data-vigilia-name]").press("Tab");
-    await expect(page.locator('[data-vigilia-layer="panel"]')).toContainText(
+    await page.locator('[data-yunari-layer="panel"]').click();
+    await page.locator("[data-yunari-name]").fill("Card");
+    await page.locator("[data-yunari-name]").press("Tab");
+    await expect(page.locator('[data-yunari-layer="panel"]')).toContainText(
       "Card",
     );
   });
@@ -2989,8 +2984,8 @@ test.describe("Fabric editor route", () => {
     // input directly is the route this finding is about: it stays green while
     // the feature is unreachable, so it proves nothing.
     await openPane(page, "Add");
-    await expect(page.locator("[data-vigilia-asset-import]")).toBeVisible();
-    await expect(page.locator("[data-vigilia-asset-replace]")).toBeVisible();
+    await expect(page.locator("[data-yunari-asset-import]")).toBeVisible();
+    await expect(page.locator("[data-yunari-asset-replace]")).toBeVisible();
     await chooseAssetFile(page, "import", {
       name: "logo.png",
       mimeType: "image/png",
@@ -3003,7 +2998,7 @@ test.describe("Fabric editor route", () => {
     // open, and the import that adds the row is asynchronous, so a read of what
     // it prints opens the popup each turn.
     const listedAssets = (): ReturnType<typeof optionPairs> =>
-      optionPairs(page, "[data-vigilia-asset-select]");
+      optionPairs(page, "[data-yunari-asset-select]");
     const importedCount = async (fragment: string): Promise<number> =>
       (await listedAssets()).filter((option) => option.label.includes(fragment))
         .length;
@@ -3017,7 +3012,7 @@ test.describe("Fabric editor route", () => {
     // the starter's own backdrop — so a bare "replace" here would rewrite that
     // one. Saying which asset is meant keeps the test independent of
     // declaration order.
-    await chooseIn(page, "[data-vigilia-asset-select]", "logo");
+    await chooseIn(page, "[data-yunari-asset-select]", "logo");
     // **A different extension is refused, and this is now pinned as one.**
     // `replace` keeps the declared path and its bytes in step, so swapping a
     // `.png` for `.svg` would leave the package claiming `.png` over SVG bytes.
@@ -3043,12 +3038,12 @@ test.describe("Fabric editor route", () => {
     // bytes, everything bound to it re-pointed. **Reselected first**, because a
     // refused replace clears the selection and the geometry below reads the
     // active object.
-    await chooseIn(page, "[data-vigilia-asset-select]", "logo");
+    await chooseIn(page, "[data-yunari-asset-select]", "logo");
     // **A PNG that actually decodes, and that is the whole fix.** The previous
     // fixture was 50 bytes of a truncated PNG — `libpng` rejects it outright —
     // so the *reopened* document had no image object and the tail of this test
     // read that as a broken round trip. It was not one: the saved envelope
-    // demonstrably carries `vigiliaAsset: { assetId: "logo", kind: "image" }`
+    // demonstrably carries `yunariAsset: { assetId: "logo", kind: "image" }`
     // and no `src`, which is exactly right, and Fabric then drops the object
     // because `fromURL` cannot decode bytes that are not an image. Measured on
     // the editor at this revision: with the truncated bytes the reopen holds 60
@@ -3082,8 +3077,8 @@ test.describe("Fabric editor route", () => {
     // they were pointing at. The committed id is read off the hook `Select.Value`
     // prints it with — the native element's `.value` in the only place it is.
     await expect(
-      page.locator("[data-vigilia-asset-select] [data-vigilia-value]"),
-    ).toHaveAttribute("data-vigilia-value", "logo");
+      page.locator("[data-yunari-asset-select] [data-yunari-value]"),
+    ).toHaveAttribute("data-yunari-value", "logo");
     // What the round trip owes is the one declaration, re-pointed at the new
     // file, and the object still bound to it.
     await expect(assetReferences(page)).resolves.toEqual([
@@ -3102,7 +3097,7 @@ test.describe("Fabric editor route", () => {
           window as unknown as Record<string, unknown>,
         ).find(
           ([key, value]) =>
-            key.startsWith("vigilia-fabric-editor-") &&
+            key.startsWith("yunari-fabric-editor-") &&
             (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas
               .upperCanvasEl?.isConnected,
         )?.[1] as {
@@ -3122,7 +3117,7 @@ test.describe("Fabric editor route", () => {
           .getObjects()
           .find(
             (object) =>
-              (object.get("vigiliaAsset") as { assetId?: string } | undefined)
+              (object.get("yunariAsset") as { assetId?: string } | undefined)
                 ?.assetId === "logo",
           );
         if (image !== undefined) editor.canvas.setActiveObject(image);
@@ -3175,7 +3170,7 @@ test.describe("Fabric editor route", () => {
     await openPane(page, "Add");
     // The declared-asset library is the Add pane's foot now, not a pane of its
     // own, so what is scrolled to is the section's own import control.
-    await page.locator("[data-vigilia-asset-import]").scrollIntoViewIfNeeded();
+    await page.locator("[data-yunari-asset-import]").scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-assets");
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
@@ -3186,13 +3181,13 @@ test.describe("Fabric editor route", () => {
     expect(saved.parsed.envelope.scene.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          vigiliaAsset: { assetId: "logo", kind: "image" },
+          yunariAsset: { assetId: "logo", kind: "image" },
         }),
       ]),
     );
     await openThemeFromStore(page, storedThemeOfPackage(saved.bytes));
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await expect(assetReferences(page)).resolves.toContainEqual({
       assetId: "logo",
@@ -3216,15 +3211,15 @@ test.describe("Fabric editor route", () => {
     });
     // The artboard's own panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-vigilia-background-asset]", "hero");
-    await chooseIn(page, "[data-vigilia-background-media-fit]", "display");
+    await chooseIn(page, "[data-yunari-background-asset]", "hero");
+    await chooseIn(page, "[data-yunari-background-media-fit]", "display");
     // The chosen asset, read off the hook the control commits through: it is a
     // plan-1 select, so there is no `select` element to ask `.value`.
     await expect(
-      page.locator("[data-vigilia-background-asset] [data-vigilia-value]"),
-    ).toHaveAttribute("data-vigilia-value", "hero");
+      page.locator("[data-yunari-background-asset] [data-yunari-value]"),
+    ).toHaveAttribute("data-yunari-value", "hero");
     await page
-      .locator("[data-vigilia-background-asset]")
+      .locator("[data-yunari-background-asset]")
       .scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-background-media");
 
@@ -3276,7 +3271,7 @@ test.describe("Fabric editor route", () => {
             scaleY: 0.8,
             angle: 30,
             fill: ACCENT_PAINT,
-            vigiliaPaint: { fill: "palette.accent" },
+            yunariPaint: { fill: "palette.accent" },
             originX: "left",
             originY: "top",
           },
@@ -3368,7 +3363,7 @@ test.describe("Fabric editor route", () => {
                 width: 30,
                 height: 30,
                 fill: ACCENT_PAINT,
-                vigiliaPaint: { fill: "palette.accent" },
+                yunariPaint: { fill: "palette.accent" },
                 originX: "left",
                 originY: "top",
               },
@@ -3382,7 +3377,7 @@ test.describe("Fabric editor route", () => {
             width: 30,
             height: 30,
             fill: ACCENT_PAINT,
-            vigiliaPaint: { fill: "palette.accent" },
+            yunariPaint: { fill: "palette.accent" },
             originX: "left",
             originY: "top",
           },
@@ -3395,7 +3390,7 @@ test.describe("Fabric editor route", () => {
     const rect = await page.evaluate(() => {
       const b = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               viewport: {
                 artboardScreenRect(): {
@@ -3408,14 +3403,14 @@ test.describe("Fabric editor route", () => {
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       return b.editor.viewport.artboardScreenRect();
     });
     // `rect` is canvas-relative, so the canvas box offset is added here. The
     // local form stays because the call site destructures a tuple; the poll for
     // `active === "child"` below is what stops a click on nothing from passing.
     const canvasBox = (await page
-      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .locator("#yunari-fabric-editor canvas.upper-canvas")
       .boundingBox())!;
     const at = (x: number, y: number): [number, number] => [
       canvasBox.x + rect.left + (x / 320) * rect.width,
@@ -3430,7 +3425,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const b = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: {
                   getActiveObject(): { id?: string } | undefined;
@@ -3442,7 +3437,7 @@ test.describe("Fabric editor route", () => {
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         const canvas = b.editor.canvas;
         const group = canvas.getObjects().find((object) => object.id === "grp");
         return {
@@ -3464,7 +3459,7 @@ test.describe("Fabric editor route", () => {
     // not. `data-context` is the attribute the stylesheet keys on, and the computed
     // opacity is the only thing that shows the rule matches the row it should.
     const rowStyle = (id: string) =>
-      page.locator(`[data-vigilia-layer="${id}"]`).evaluate((node) => {
+      page.locator(`[data-yunari-layer="${id}"]`).evaluate((node) => {
         const style = getComputedStyle(node);
         return {
           context: node.getAttribute("data-context"),
@@ -3508,13 +3503,13 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const b = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: { getActiveObject(): unknown; getObjects(): unknown[] };
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         return b.editor.canvas
           .getObjects()
           .includes(b.editor.canvas.getActiveObject());
@@ -3551,7 +3546,7 @@ test.describe("Fabric editor route", () => {
     const inside = await sceneToClient(page, 320, 55, 55);
     await page.mouse.dblclick(inside.x, inside.y);
 
-    // **0.45, the layer list's own dim** (`.vigilia-layer-row[data-context="false"]`,
+    // **0.45, the layer list's own dim** (`.yunari-layer-row[data-context="false"]`,
     // read on the row in the case above): the two surfaces must not disagree
     // about what the author can reach. The canvas is at DPR 1 under Playwright,
     // so an opaque fill at 0.45 reads as 115 of 255.
@@ -3604,7 +3599,7 @@ test.describe("Fabric editor route", () => {
       };
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             capture(): string | undefined;
             editor: {
               canvas: { getObjects(): ProbeObject[] };
@@ -3619,7 +3614,7 @@ test.describe("Fabric editor route", () => {
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const find = (
         candidates: readonly ProbeObject[],
       ): ProbeObject | undefined => {
@@ -3635,7 +3630,7 @@ test.describe("Fabric editor route", () => {
       const object = find(bridge.editor.canvas.getObjects());
       if (object === undefined) throw new Error("no object with id outside");
       const element = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.lower-canvas",
+        "#yunari-fabric-editor canvas.lower-canvas",
       );
       const context = element?.getContext("2d");
       if (element === null || context === null || context === undefined)
@@ -3727,7 +3722,7 @@ test.describe("Fabric editor route", () => {
             window as unknown as Record<string, unknown>,
           ).find(
             ([key, value]) =>
-              key.startsWith("vigilia-fabric-editor-") &&
+              key.startsWith("yunari-fabric-editor-") &&
               (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } })
                 .canvas.upperCanvasEl?.isConnected,
           )?.[1] as { canvas: { getObjects(): SceneNode[] } } | undefined;
@@ -3815,7 +3810,7 @@ test.describe("Fabric editor route", () => {
             originY: "top" as const,
             selectable: false,
             evented: false,
-            vigiliaPaint: { fill: "palette.plate" },
+            yunariPaint: { fill: "palette.plate" },
           },
           {
             type: "Rect" as const,
@@ -3827,7 +3822,7 @@ test.describe("Fabric editor route", () => {
             fill: "palette.ink",
             originX: "left" as const,
             originY: "top" as const,
-            vigiliaPaint: { fill: "palette.ink" },
+            yunariPaint: { fill: "palette.ink" },
           },
         ],
       },
@@ -3842,7 +3837,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const editor = Object.entries(
           window as unknown as Record<string, unknown>,
-        ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+        ).find(([key]) => key.startsWith("yunari-fabric-editor-"))?.[1] as
           | { canvas: { getObjects(): Array<{ get(n: string): unknown }> } }
           | undefined;
         const object = editor?.canvas
@@ -3862,7 +3857,7 @@ test.describe("Fabric editor route", () => {
         ([clientX, clientY]: readonly [number, number]) => {
           const editor = Object.entries(
             window as unknown as Record<string, unknown>,
-          ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+          ).find(([key]) => key.startsWith("yunari-fabric-editor-"))?.[1] as
             | {
                 canvas: {
                   getScenePoint(e: {
@@ -3891,7 +3886,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const editor = Object.entries(
           window as unknown as Record<string, unknown>,
-        ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+        ).find(([key]) => key.startsWith("yunari-fabric-editor-"))?.[1] as
           | {
               canvas: {
                 getActiveObject(): { get(name: string): unknown } | undefined;
@@ -3953,7 +3948,7 @@ test.describe("Fabric editor route", () => {
     );
 
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
   });
 
@@ -3966,7 +3961,7 @@ test.describe("Fabric editor route", () => {
     await page.evaluate(() => {
       const editor = Object.entries(
         window as unknown as Record<string, unknown>,
-      ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+      ).find(([key]) => key.startsWith("yunari-fabric-editor-"))?.[1] as
         | {
             canvas: {
               item(
@@ -3993,7 +3988,7 @@ test.describe("Fabric editor route", () => {
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
   });
 
@@ -4006,7 +4001,7 @@ test.describe("Fabric editor route", () => {
     await page.evaluate(() => {
       const editor = Object.entries(
         window as unknown as Record<string, unknown>,
-      ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+      ).find(([key]) => key.startsWith("yunari-fabric-editor-"))?.[1] as
         | {
             canvas: {
               item(
@@ -4035,7 +4030,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     // **The card, not the frosted panel inside it.** A card is a group, and a
@@ -4085,7 +4080,7 @@ test.describe("Fabric editor route", () => {
     // draft back.
     await answerDialogIfShown(page, "Discard");
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     const dragCard = await objectRect(page, "ram-card");
     const dragSelect = await sceneToClient(
@@ -4115,7 +4110,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     // Select the RAM card by clicking its top strip, above every child. A
@@ -4169,7 +4164,7 @@ test.describe("Fabric editor route", () => {
     // The user-visible half of "a guide with no snap": nothing was applied, so
     // no guide may be painted. Asserted on the pixels, because the geometry
     // assertions above cannot see a guide and a capture only exists under
-    // VIGILIA_CAPTURE — a regression that painted unconditionally would pass
+    // YUNARI_CAPTURE — a regression that painted unconditionally would pass
     // them all.
     expect(raw.guidePixels).toBe(0);
 
@@ -4186,7 +4181,7 @@ test.describe("Fabric editor route", () => {
     // the canvas below is not there to be asserted.
     await answerDialogIfShown(page, "Discard");
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await page.mouse.click(select.x, select.y);
 
@@ -4209,7 +4204,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await selectTwoLabels(page);
@@ -4242,7 +4237,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await selectTwoLabels(page);
@@ -4292,7 +4287,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await openPane(page, "Add");
@@ -4301,7 +4296,7 @@ test.describe("Fabric editor route", () => {
     expect(id, "insertion selects the object it inserted").toBeDefined();
 
     const grab = await rotationHandleClientPoint(page, id!);
-    const readout = page.locator(".vigilia-angle-indicator");
+    const readout = page.locator(".yunari-angle-indicator");
 
     /** What the readout says and where it sits, read while the pointer is down
      *  and still — the readout is repainted by `object:rotating` alone. */
@@ -4376,7 +4371,7 @@ test.describe("Fabric editor route", () => {
    * check `vg-233` and `vg-370` are each waiting on.
    *
    * **`vg-233`** is a units question in `text-manager`'s resize path: it wrote
-   * `target.width * scaleX` into `vigiliaText.box`, while the shared writer's own
+   * `target.width * scaleX` into `yunariText.box`, while the shared writer's own
    * comment says the scaled value "would grow the box on every pass" and
    * `boxFrom` multiplies by `scaleX` again when it reads. Read together, the
    * stored box and the object's own width agree under either write — `assertBox`
@@ -4408,7 +4403,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     // The starter's own wordmark, through the canvas click `selectTwoLabels`
@@ -4494,7 +4489,7 @@ test.describe("Fabric editor route", () => {
       })}`,
     );
     // **The arm this case exists for, and the only one that can see the defect.**
-    // `vigiliaText.box` is the object's size *before* `scaleX`: `assertBox`
+    // `yunariText.box` is the object's size *before* `scaleX`: `assertBox`
     // divides the stored number by the scale to get Fabric's `width`, and
     // `boxFrom` multiplies it back for the clip and the placement. A resize that
     // stores `width * scaleX` therefore hands the next pass a box that many units
@@ -4528,7 +4523,7 @@ test.describe("Fabric editor route", () => {
       (object) => object["id"] === textId,
     );
     const persistedBox = (
-      persisted?.["vigiliaText"] as { box?: { width?: number } } | undefined
+      persisted?.["yunariText"] as { box?: { width?: number } } | undefined
     )?.box?.width;
     expect(
       persistedBox,
@@ -4593,14 +4588,14 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+    const canvas = page.locator("#yunari-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
 
     // Select the performance card's title; the dock anchors to the canvas
     // bottom and shows only the actions this selection can run.
     const centre = await sceneToClient(page, STARTER_WIDTH, 200, 545);
     await page.mouse.click(centre.x, centre.y);
-    const dock = page.locator("[data-vigilia-canvas-toolbar]");
+    const dock = page.locator("[data-yunari-canvas-toolbar]");
     await expect(dock).toHaveAttribute("data-visible", "true");
     await expect(dock.getByRole("button", { name: "Duplicate" })).toBeVisible();
     // **A group can be ungrouped**, and a click on a card selects the card. The
@@ -4617,9 +4612,9 @@ test.describe("Fabric editor route", () => {
     // alone. The absence is asserted rather than merely left out of the capture,
     // because the failure mode of a move like this is two surfaces answering one
     // question.
-    const toolbar = page.locator("[data-vigilia-canvas-toolbar]");
+    const toolbar = page.locator("[data-yunari-canvas-toolbar]");
     await expect(toolbar).toBeVisible();
-    await expect(toolbar.locator("[data-vigilia-arrange-action]")).toHaveCount(
+    await expect(toolbar.locator("[data-yunari-arrange-action]")).toHaveCount(
       0,
     );
 
@@ -4632,7 +4627,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+    const canvas = page.locator("#yunari-fabric-editor canvas.upper-canvas");
     await expect(canvas).toBeVisible();
     await selectStarterChart(page);
 
@@ -4643,7 +4638,7 @@ test.describe("Fabric editor route", () => {
     // comparison is about that set on both surfaces.
     const dockNames = (
       await page
-        .locator("[data-vigilia-canvas-toolbar] button")
+        .locator("[data-yunari-canvas-toolbar] button")
         .evaluateAll((buttons) =>
           buttons.map((button) => button.getAttribute("aria-label") ?? ""),
         )
@@ -4680,7 +4675,7 @@ test.describe("Fabric editor route", () => {
     expect(itemNames).not.toContain("Align left");
 
     // §4's mark has to **paint**, not merely be present. `vg-226`'s failure was
-    // exactly that gap: both surfaces carried `data-vigilia-destructive` and only
+    // exactly that gap: both surfaces carried `data-yunari-destructive` and only
     // the dock resolved to `--hot`, because the colour came from a rule scoped to
     // the dock and the popup is portalled outside it. No vitest case can settle
     // it — jsdom has no cascade, so it can prove the attribute and never which
@@ -4695,8 +4690,8 @@ test.describe("Fabric editor route", () => {
         return control === null ? null : getComputedStyle(control).color;
       };
       const popup = document.querySelector('[aria-label="Canvas actions"]');
-      const dock = document.querySelector("[data-vigilia-canvas-toolbar]");
-      const footer = document.querySelector("[data-vigilia-layer-actions]");
+      const dock = document.querySelector("[data-yunari-canvas-toolbar]");
+      const footer = document.querySelector("[data-yunari-layer-actions]");
       return {
         menuDelete: popup === null ? null : colourOf(popup, "Delete"),
         menuDuplicate: popup === null ? null : colourOf(popup, "Duplicate"),
@@ -4737,7 +4732,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const active = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: {
                   getActiveObject():
@@ -4747,7 +4742,7 @@ test.describe("Fabric editor route", () => {
               };
             };
           }
-        ).vigiliaEditorBridge.editor.canvas.getActiveObject();
+        ).yunariEditorBridge.editor.canvas.getActiveObject();
         if (active?.left === undefined || active.top === undefined) {
           throw new Error(
             "The test needs an active object with an origin point.",
@@ -4781,18 +4776,18 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     // Read the camera through its own accessor: `viewport.zoom()` is the owner
-    // of zoom (Task 1), and `window.vigiliaEditorBridge` is the page handle
+    // of zoom (Task 1), and `window.yunariEditorBridge` is the page handle
     // Plan B Task 4 established. Reaching into `canvas.getZoom()` through a
     // debug-key scan reads a different owner and breaks when the handle moves.
     const readZoom = () =>
       page.evaluate(() =>
         (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: { viewport: { zoom(): number } };
             };
           }
-        ).vigiliaEditorBridge.editor.viewport.zoom(),
+        ).yunariEditorBridge.editor.viewport.zoom(),
       );
     // Clamping is the camera's own contract, so the transform is read through
     // the same bridge the zoom is: a debug-key scan would read whichever
@@ -4801,16 +4796,16 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() =>
         (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: { canvas: { viewportTransform: number[] } };
             };
           }
-        ).vigiliaEditorBridge.editor.canvas.viewportTransform.slice(4, 6),
+        ).yunariEditorBridge.editor.canvas.viewportTransform.slice(4, 6),
       );
 
     const fitted = await readZoom();
     await page
-      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .locator("#yunari-fabric-editor canvas.upper-canvas")
       .hover({ position: { x: 200, y: 200 } });
     // Control is required: a plain wheel pans (Step 1 pins that), so wheeling
     // without it asserts the opposite of the unit contract and can only pass by
@@ -4832,11 +4827,11 @@ test.describe("Fabric editor route", () => {
       () =>
         (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: { canvas: { viewportTransform: number[] } };
             };
           }
-        ).vigiliaEditorBridge.editor.canvas.viewportTransform,
+        ).yunariEditorBridge.editor.canvas.viewportTransform,
     );
     // The pan is clamped, so the transform saturates rather than running away.
     // Asserting only finiteness would pass for an unclamped transform — which is
@@ -4862,7 +4857,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "desktop surface");
 
     await page.goto(EDITOR);
-    const readout = page.locator("[data-vigilia-zoom]");
+    const readout = page.locator("[data-yunari-zoom]");
     await expect(readout).toBeVisible();
     // Read the camera, not the canvas: `ViewportManager` owns zoom, so only the
     // camera can tell a readout that stopped following it from one that works.
@@ -4870,11 +4865,11 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() =>
         (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: { viewport: { zoom(): number } };
             };
           }
-        ).vigiliaEditorBridge.editor.viewport.zoom(),
+        ).yunariEditorBridge.editor.viewport.zoom(),
       );
     const percent = async (): Promise<number> =>
       Number((await readout.textContent())?.replace("%", ""));
@@ -4893,7 +4888,7 @@ test.describe("Fabric editor route", () => {
 
     // A wheel without the modifier pans too — only ctrl-wheel zooms.
     await page
-      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .locator("#yunari-fabric-editor canvas.upper-canvas")
       .hover({ position: { x: 200, y: 200 } });
     await page.keyboard.down("Control");
     await page.mouse.wheel(0, -400);
@@ -4924,7 +4919,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const bridge = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: {
                   getActiveObject(): { getObjects?(): unknown[] } | undefined;
@@ -4936,7 +4931,7 @@ test.describe("Fabric editor route", () => {
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         const active = bridge.editor.canvas.getActiveObject();
         return {
           selected:
@@ -4963,7 +4958,7 @@ test.describe("Fabric editor route", () => {
     const rect = await page.evaluate(() => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               viewport: {
                 artboardScreenRect(): {
@@ -4976,11 +4971,11 @@ test.describe("Fabric editor route", () => {
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       return bridge.editor.viewport.artboardScreenRect();
     });
     const canvasBox = (await page
-      .locator("#vigilia-fabric-editor canvas.upper-canvas")
+      .locator("#yunari-fabric-editor canvas.upper-canvas")
       .boundingBox())!;
     // Artboard point -> client point. The scale is uniform and derived from the
     // rect, so this mapping is correct whatever the artboard's aspect:
@@ -5069,10 +5064,10 @@ test.describe("Fabric editor route", () => {
     // that was `vg-461` (item 4)**: the drop slots admitted only the slot the row
     // came from, so entering or leaving a group was refused by construction
     // rather than by a rule. The half below asserts the membership change now.
-    // `vigiliaPaint` and `globals.palette` are not decoration: a literal `fill`
+    // `yunariPaint` and `globals.palette` are not decoration: a literal `fill`
     // with no paint ref is `unresolved-global-ref` and `setThemePackage` asserts
     // `writeThemePackage` returned ok, so a fixture without them fails before the
-    // editor opens. Copied from the `movable.vigilia-theme` fixture at `:1322`.
+    // editor opens. Copied from the `movable.yunari-theme` fixture at `:1322`.
     const paint = {
       palette: {
         none: {
@@ -5093,7 +5088,7 @@ test.describe("Fabric editor route", () => {
       width: 40,
       height: 40,
       fill: ACCENT_PAINT,
-      vigiliaPaint: { fill: "palette.accent" },
+      yunariPaint: { fill: "palette.accent" },
       originX: "left",
       originY: "top",
     });
@@ -5128,9 +5123,9 @@ test.describe("Fabric editor route", () => {
 
     const panelOrder = (): Promise<(string | null)[]> =>
       page
-        .locator("[data-vigilia-layer]")
+        .locator("[data-yunari-layer]")
         .evaluateAll((rows) =>
-          rows.map((row) => row.getAttribute("data-vigilia-layer")),
+          rows.map((row) => row.getAttribute("data-yunari-layer")),
         );
     // The panel paints topmost-first, so its row order is the reverse of the
     // serialized paint order. Compare the pair's *relative* order, never an
@@ -5149,8 +5144,8 @@ test.describe("Fabric editor route", () => {
 
     // Same parent: drop alpha on beta's row.
     await page
-      .locator('[data-vigilia-layer="alpha"]')
-      .dragTo(page.locator('[data-vigilia-layer="beta"]'));
+      .locator('[data-yunari-layer="alpha"]')
+      .dragTo(page.locator('[data-yunari-layer="beta"]'));
     const afterPanel = await panelOrder();
     expect(afterPanel).not.toEqual(beforePanel);
 
@@ -5168,8 +5163,8 @@ test.describe("Fabric editor route", () => {
     // two orders are identical. What the panel is asked is only that the row
     // survived the drop.
     await page
-      .locator('[data-vigilia-layer="child"]')
-      .dragTo(page.locator('[data-vigilia-layer="alpha"]'));
+      .locator('[data-yunari-layer="child"]')
+      .dragTo(page.locator('[data-yunari-layer="alpha"]'));
     const moved = await saveEnvelope(page);
     // The group's own children, which `idsIn` does not reach: it reads the top
     // level only, and the whole point of this half is the level the child is on.
@@ -5213,9 +5208,9 @@ test.describe("Fabric editor route", () => {
     await page.evaluate(() => {
       (
         window as unknown as {
-          vigiliaEditorBridge: { selectLayer(id: string): void };
+          yunariEditorBridge: { selectLayer(id: string): void };
         }
-      ).vigiliaEditorBridge.selectLayer("time-rule");
+      ).yunariEditorBridge.selectLayer("time-rule");
     });
     // **World, not group-local.** `selectLayer` selects the owning group, so the
     // nudge moves the card and `time-rule`'s own `left` — its position inside
@@ -5243,13 +5238,13 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const b = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: { getActiveObjects(): Array<{ id?: string }> };
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         return b.editor.canvas.getActiveObjects().map((object) => object.id);
       });
 
@@ -5261,7 +5256,7 @@ test.describe("Fabric editor route", () => {
     // The row is opened from the tree rather than the canvas because a card's
     // parts are shut by default, and `time-rule` is inside one.
     await expandLayer(page, "group-time-card");
-    await page.locator('[data-vigilia-layer="time-rule"]').dblclick();
+    await page.locator('[data-yunari-layer="time-rule"]').dblclick();
     const rename = page.locator('input[aria-label^="Rename"]');
     await expect(rename).toBeFocused();
     await rename.press("Control+a");
@@ -5296,7 +5291,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate(() => {
         const b = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: {
                   getObjects(): Array<{ id?: string }>;
@@ -5305,16 +5300,16 @@ test.describe("Fabric editor route", () => {
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         return b.editor.canvas.getObjects().map((object) => object.id);
       });
     const selectThroughBridge = (id: string): Promise<void> =>
       page.evaluate((layerId) => {
         (
           window as unknown as {
-            vigiliaEditorBridge: { selectLayer(id: string): void };
+            yunariEditorBridge: { selectLayer(id: string): void };
           }
-        ).vigiliaEditorBridge.selectLayer(layerId);
+        ).yunariEditorBridge.selectLayer(layerId);
       }, id);
 
     /**
@@ -5389,7 +5384,7 @@ test.describe("Fabric editor route", () => {
       page.evaluate((id) => {
         const b = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 canvas: {
                   getObjects(): Array<{ id?: string; left?: number }>;
@@ -5397,7 +5392,7 @@ test.describe("Fabric editor route", () => {
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         return b.editor.canvas.getObjects().find((object) => object.id === id)
           ?.left;
       }, subject);
@@ -5505,7 +5500,7 @@ function groupDimEnvelope(): Parameters<
               width: 30,
               height: 30,
               fill: ACCENT_PAINT,
-              vigiliaPaint: { fill: "palette.accent" },
+              yunariPaint: { fill: "palette.accent" },
               originX: "left",
               originY: "top",
             },
@@ -5519,7 +5514,7 @@ function groupDimEnvelope(): Parameters<
           width: 30,
           height: 30,
           fill: ACCENT_PAINT,
-          vigiliaPaint: { fill: "palette.accent" },
+          yunariPaint: { fill: "palette.accent" },
           originX: "left",
           originY: "top",
         },
@@ -5590,7 +5585,7 @@ async function clientOfStarterGauge(
  */
 async function selectStarterChart(page: Page): Promise<void> {
   await enterLayer(page, "group-ram-card");
-  await page.locator('[data-vigilia-layer="ram-gauge"]').click();
+  await page.locator('[data-yunari-layer="ram-gauge"]').click();
   // The precondition this helper never had: a wrong selection used to surface
   // as a confusing timeout in the lookup below, so name the failure here.
   await expect
@@ -5599,7 +5594,7 @@ async function selectStarterChart(page: Page): Promise<void> {
         () =>
           (
             window as unknown as {
-              vigiliaEditorBridge: {
+              yunariEditorBridge: {
                 editor: {
                   canvas: {
                     getActiveObject(): { id?: string } | undefined;
@@ -5607,13 +5602,13 @@ async function selectStarterChart(page: Page): Promise<void> {
                 };
               };
             }
-          ).vigiliaEditorBridge.editor.canvas.getActiveObject()?.id ?? null,
+          ).yunariEditorBridge.editor.canvas.getActiveObject()?.id ?? null,
       ),
     )
     .toBe("ram-gauge");
   // A chart's own fields are in the column with the selection, not another tab.
   await expect(
-    page.locator('[data-vigilia-chart-setting="thickness"]'),
+    page.locator('[data-yunari-chart-setting="thickness"]'),
   ).toBeVisible();
 }
 
@@ -5630,7 +5625,7 @@ async function assetReferences(page: Page): Promise<unknown[]> {
       window as unknown as Record<string, unknown>,
     ).find(
       ([key, value]) =>
-        key.startsWith("vigilia-fabric-editor-") &&
+        key.startsWith("yunari-fabric-editor-") &&
         (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } }).canvas
           .upperCanvasEl?.isConnected,
     )?.[1] as
@@ -5655,7 +5650,7 @@ async function assetReferences(page: Page): Promise<unknown[]> {
     ): void => {
       for (const object of objects) {
         if (object.get("type") === "image")
-          found.push(object.get("vigiliaAsset"));
+          found.push(object.get("yunariAsset"));
         visit(
           (object.getObjects?.() ?? []) as readonly {
             get(name: string): unknown;

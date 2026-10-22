@@ -15,7 +15,7 @@ describe("the active theme", () => {
   let store: ReturnType<typeof createActiveThemeStore>;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-active-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-active-"));
     store = createActiveThemeStore(dir);
   });
 

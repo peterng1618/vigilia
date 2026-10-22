@@ -4,7 +4,7 @@ import {
   type ChartOption,
   type LineOption,
   toEngineOption,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import * as echarts from "echarts/core";
 import { classRegistry, FabricObject } from "fabric/es";
 import "./chart-engine.js";
@@ -37,7 +37,7 @@ export function withoutEngineAnimation(option: ChartOption): ChartOption {
 }
 
 /** `option` and `renderScale` are runtime-only and never persisted. */
-export type VigiliaChartOptions = ChartContent &
+export type YunariChartOptions = ChartContent &
   Record<string, unknown> & {
     readonly width: number;
     readonly height: number;
@@ -45,8 +45,8 @@ export type VigiliaChartOptions = ChartContent &
     readonly renderScale?: number;
   };
 
-export class VigiliaChart extends FabricObject {
-  public static override type = "VigiliaChart";
+export class YunariChart extends FabricObject {
+  public static override type = "YunariChart";
 
   public static override customProperties: string[] = [
     ...CHART_SERIALISED_KEYS,
@@ -61,7 +61,7 @@ export class VigiliaChart extends FabricObject {
   };
 
   public static override getDefaults(): Record<string, unknown> {
-    return { ...super.getDefaults(), ...VigiliaChart.ownDefaults };
+    return { ...super.getDefaults(), ...YunariChart.ownDefaults };
   }
 
   /** Field initializer would overwrite values assigned by `setOptions`. */
@@ -79,10 +79,10 @@ export class VigiliaChart extends FabricObject {
 
   private _disposed = false;
 
-  public constructor(options: VigiliaChartOptions) {
+  public constructor(options: YunariChartOptions) {
     // Match Fabric subclass order: base defaults, subclass defaults, caller options.
     super();
-    Object.assign(this, VigiliaChart.ownDefaults);
+    Object.assign(this, YunariChart.ownDefaults);
     this.setOptions(options);
 
     if (!(this.width > 0) || !(this.height > 0)) {
@@ -347,4 +347,4 @@ function freezeDeep<T>(value: T): T {
 }
 
 // Use Fabric's inherited revival so clip paths/gradients are enlivened correctly.
-classRegistry.setClass(VigiliaChart);
+classRegistry.setClass(YunariChart);

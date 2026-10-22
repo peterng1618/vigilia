@@ -1,4 +1,4 @@
-import { createBatch, SAMPLE_EVENT } from "@vigilia/renderer-core";
+import { createBatch, SAMPLE_EVENT } from "@yunari/renderer-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createEditorSource } from "./live-source.js";
 

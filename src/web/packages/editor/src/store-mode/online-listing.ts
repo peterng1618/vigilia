@@ -1,4 +1,4 @@
-import type { CatalogueRefusal } from "@vigilia/renderer-core";
+import type { CatalogueRefusal } from "@yunari/renderer-core";
 import { useEffect, useState } from "react";
 import { withInstalledVersions } from "./install-state.js";
 import type { StoreItem } from "./local-source.js";

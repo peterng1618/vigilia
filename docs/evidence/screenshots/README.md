@@ -5,13 +5,13 @@ Visual evidence from built bundles; **not** cross-platform pixel baselines.
 ```bash
 cd src/web
 npm run build
-npm run build:fixture -w @vigilia/editor
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<selected capture title>" --workers=1
+npm run build:fixture -w @yunari/editor
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<selected capture title>" --workers=1
 ```
 
 **A capture that sits beside a drawing is a copy of the file the action wrote, and nothing in the
 repo makes that copy.** Every action writes `<name>-<project>.png` into this directory — the
-`VIGILIA_CAPTURE_DIR` default — and nowhere else; the file beside the drawing is those bytes under
+`YUNARI_CAPTURE_DIR` default — and nowhere else; the file beside the drawing is those bytes under
 the drawings' own name. Refreshing one is therefore two steps, and the second is manual:
 
 ```bash
@@ -214,7 +214,7 @@ catalogue's thumbnails or their CDN.
 The capture is the whole page, so the Devices and Display sections (including
 the units choice) are evidence from the same file.
 
-Mechanics ported from the retired editor fork need captures only when Vigilia
+Mechanics ported from the retired editor fork need captures only when Yunari
 changes their rendered outcome. Keep this table aligned with the specs that
 carry the captures: `src/web/tests/e2e/editor.spec.ts`,
 `reference-theme.spec.ts`, `glass-authoring.spec.ts`,

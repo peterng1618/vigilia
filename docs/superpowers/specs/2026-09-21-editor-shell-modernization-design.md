@@ -5,7 +5,7 @@
 ## Goal
 
 Replace the editor's vertical panel stack with a responsive authoring shell
-while preserving the imperative Fabric editor and all existing Vigilia actions.
+while preserving the imperative Fabric editor and all existing Yunari actions.
 
 ## Scope
 

@@ -1,4 +1,4 @@
-# Vigilia — authoring a dashboard, not a canvas
+# Yunari — authoring a dashboard, not a canvas
 
 - **Status:** draft
 - **Supersedes:** [frontend redesign — one design, four surfaces](2026-10-02-frontend-redesign-design.md)
@@ -6,7 +6,7 @@
 
 ## The position
 
-**Vigilia is an editor for a phone display that happens to use Fabric.**
+**Yunari is an editor for a phone display that happens to use Fabric.**
 
 Every decision below follows from that one. Not "a canvas editor with a good default
 theme" — the display is what the interface is organised around.
@@ -26,7 +26,7 @@ creating a new preset, you have to resize first. It will remember the dimension.
 the widget's size on the launcher, then build the preset to fit it. Even the preset format
 carries it — `$si(swidth)$` reads the screen width.
 
-Vigilia has the opposite: the artboard panel offers `Ratio: Custom`, `Orientation: Custom`,
+Yunari has the opposite: the artboard panel offers `Ratio: Custom`, `Orientation: Custom`,
 `Resolution: Custom`. Three "Custom"s as the starting state. The design becomes coherent if
 the **first** thing an author picks is what this is for — *Phone landscape · Phone portrait
 · Wall panel* — and the artboard arrives sized. Custom stays available and stays one click
@@ -37,7 +37,7 @@ its largest child, and the documented workaround is *"add a transparent shape as
 and give that shape the dimensions you want the group to have."*
 
 That workaround is telling: a container that has no size of its own cannot be laid out
-deliberately. Vigilia's cards already have the right answer sitting in them — **the
+deliberately. Yunari's cards already have the right answer sitting in them — **the
 frosted panel *is* the card's box.** Grouping the starter should therefore make the panel
 the group's explicit size, not the largest child. A confirmation from outside, arrived at
 independently.
@@ -256,7 +256,7 @@ library built on `instantiateWidget`. A theme the author built from loose shapes
 every one of those shapes selectable, movable and individually styled, and the panel below
 is designed for that case as much as for the card case.
 
-**Blast radius, stated up front.** The starter envelope id `vigilia-demo-dashboard` is
+**Blast radius, stated up front.** The starter envelope id `yunari-demo-dashboard` is
 referenced by `editor.spec.ts`, the host fixtures and the captured evidence. Rebuilding it
 changes geometry, so screenshots and byte-stability fixtures move. That is the cost of
 fixing the model, and it is cheaper than carrying a wrong model forever. `AGENTS.md`'s

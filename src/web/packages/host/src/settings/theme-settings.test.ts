@@ -16,7 +16,7 @@ describe("theme answers", () => {
   let store: ReturnType<typeof createThemeSettingsStore>;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-theme-answers-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-theme-answers-"));
     store = createThemeSettingsStore(dir);
   });
 

@@ -20,7 +20,7 @@ import { loadHostedTheme, ThemeLoadError } from "./theme-loader.js";
 /** What a dev server or proxy answers a theme request with when no host is
  *  running: its own index page, HTML, at 200. */
 const HOST_NOT_RUNNING = () =>
-  new Response("<!doctype html>\n<html><body>Vigilia</body></html>", {
+  new Response("<!doctype html>\n<html><body>Yunari</body></html>", {
     status: 200,
     headers: { "content-type": "text/html; charset=utf-8" },
   });
@@ -38,7 +38,7 @@ async function reasonShownFor(
   }
   return (
     document.body.querySelector<HTMLElement>(
-      "[data-vigilia-load-failure-reason]",
+      "[data-yunari-load-failure-reason]",
     )?.textContent ?? ""
   );
 }
@@ -84,10 +84,10 @@ describe("the reason a display shows when the host does not answer with a theme"
       "This display has nothing to show",
     );
     expect(
-      host.querySelector("[data-vigilia-load-failure-retry]"),
+      host.querySelector("[data-yunari-load-failure-retry]"),
     ).not.toBeNull();
     expect(
-      host.querySelector("[data-vigilia-load-failure-host]"),
+      host.querySelector("[data-yunari-load-failure-host]"),
     ).not.toBeNull();
   });
 

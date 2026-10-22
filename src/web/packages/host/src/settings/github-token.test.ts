@@ -19,7 +19,7 @@ describe("github token", () => {
   let store: ReturnType<typeof createGithubTokenStore>;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-github-token-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-github-token-"));
     store = createGithubTokenStore(dir);
   });
 

@@ -25,7 +25,7 @@ the last open clause — *"Inspect editor and real player at target size, anothe
 fitted viewport and different DPR, including grouped/rotated/overlapping panels
 and changing media"* — is proved by pixels on both mounts. Changing media on the
 player, the part blocked on
-[#3](https://github.com/peterng1618/vigilia/issues/3), is closed in
+[#3](https://github.com/peterng1618/yunari/issues/3), is closed in
 `task-12d-report.md`: a packaged video decodes on the player and the glass over
 it tracks the current frame, swapping a theme's background asset at runtime
 replaces what the display shows by pixel count, and the paired-display session
@@ -152,7 +152,7 @@ it level immediately (delta 32.2) and it keeps tracking thereafter. A repaint co
 **0.51 ms mean / 0.6 ms p95** against a 33.3 ms budget at 30 fps.
 
 The cause is structural: `mountBackgroundMedia` prepends a
-`div[data-vigilia-background-media]` **below** the canvas, so a `<video>` there is
+`div[data-yunari-background-media]` **below** the canvas, so a `<video>` there is
 not a Fabric object. Fabric sees no change, nothing calls `requestRenderAll`, and
 the panel keeps a still frame of a moving background. **Task 5 must invalidate on
 the media element's frame cadence** — `requestVideoFrameCallback` where available —
@@ -241,7 +241,7 @@ validation/schema/barrel; `scene-fabric/src/persist.ts`, `object-paint.ts` and
 shared registration lifecycle. Test owners include envelope/persistence suites
 and theme-package validation tests.
 
-**Contract:** Use one optional object treatment named `vigiliaGlass` containing
+**Contract:** Use one optional object treatment named `yunariGlass` containing
 `blurRadius` in artboard units; absence means off and zero has no blur. Ordinary
 fill remains palette-backed tint; radius/opacity/stroke/shadow use native object
 properties. Extend the existing paint-reference owner for shadow color rather
@@ -312,7 +312,7 @@ no DOM overlay scene, second editable tree or pixel-streaming transport.
   text stays sharp; tint-only fallback must report failure and cannot pass.
   **Amended 2026-09-27:** the blur half is proved here, in the **editor** mount —
   the only mount whose media loads, since the player's is blocked by
-  [vigilia#3](https://github.com/peterng1618/vigilia/issues/3). The **foreground-text
+  [yunari#3](https://github.com/peterng1618/yunari/issues/3). The **foreground-text
   half moves to Task 11**, where the missing font is in scope; this container renders
   `FROST` as a dash, so the sharp-foreground assertion cannot be made here at all.
   The media *scale* and vertical placement are proved in real pixels; the
@@ -526,7 +526,7 @@ existing workspace commands with focused files, for example
 exists at execution time; otherwise name the actual test created under its owner.
 For browser work, rebuild affected bundles and use
 `npm run test:e2e -- tests/e2e/reference-theme.spec.ts --workers=1` after the new
-spec exists. Capture with `VIGILIA_CAPTURE=1` and only registered affected actions;
+spec exists. Capture with `YUNARI_CAPTURE=1` and only registered affected actions;
 inspect images before staging. Do not infer real-host coverage from Vite preview.
 
 ## Review and execution handoff

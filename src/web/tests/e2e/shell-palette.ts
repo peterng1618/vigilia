@@ -33,7 +33,7 @@ export type Palette = (typeof PALETTES)[number];
 export async function openShell(page: Page): Promise<void> {
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 }
 

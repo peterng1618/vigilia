@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 import type { ArtboardSize } from "./artboard-presets.js";
 import {
   clockCard,
@@ -28,13 +28,13 @@ import { starterBackdrop } from "./starter-backdrop.js";
  * the library API the way an author's own themes are.
  */
 export const STARTER_TEMPLATE = {
-  id: "vigilia-starter-template",
+  id: "yunari-starter-template",
   name: "Starter — System dashboard",
 } as const;
 
 /** The id the reference theme was saved under while documents carried shared
     literals. Documents now mint their own; this records the retired name. */
-export const STARTER_ENVELOPE_ID = "vigilia-demo-dashboard";
+export const STARTER_ENVELOPE_ID = "yunari-demo-dashboard";
 
 /**
  * The reference composition, kept whole so it can be reached as what it now is
@@ -48,7 +48,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
     id: crypto.randomUUID(),
     metadata: {
       name: "System dashboard",
-      author: "Vigilia",
+      author: "Yunari",
       description:
         "The reference composition: a clock, two usage cards, two memory rings, a performance chart and stacked storage and network panels.",
       // The editor's own copy is English, so a new theme starts where its
@@ -192,7 +192,7 @@ export function createNewFabricTheme(): FabricThemeEnvelope {
         // into the text the author edits and the reading a screen reader gets.
         // Neither is a card, and making everything a group would be the cage
         // this document is written to avoid.
-        label("wordmark", 118, 56, 460, 40.68, "VIGILIA", 36, "text", "500"),
+        label("wordmark", 118, 56, 460, 40.68, "YUNARI", 36, "text", "500"),
         label(
           "strapline",
           120,
@@ -270,7 +270,7 @@ export function createBlankFabricTheme(
     id: crypto.randomUUID(),
     metadata: {
       name: "New theme",
-      author: "Vigilia",
+      author: "Yunari",
       description: "",
       themeLanguage: "en",
     },

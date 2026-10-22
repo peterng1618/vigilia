@@ -5,7 +5,7 @@
   "question": "At one authored blur radius, does a Circle's frost read stronger than a Rect's?",
   "ruling": "RULED 2026-10-14: MEASURE FIRST. Drive the real scene, read the frost over a Circle and a Rect at the same value, and let the number answer whether an area-equalisation is wanted.",
   "method": {
-    "bundle": "npm run build, then npm run build:fixture -w @vigilia/editor; served by vite preview on 127.0.0.1:4174",
+    "bundle": "npm run build, then npm run build:fixture -w @yunari/editor; served by vite preview on 127.0.0.1:4174",
     "driver": "a standalone Playwright script outside the repo, driving the editor's own UI in Chromium (1280x720, DPR 1)",
     "scene": "a theme package opened through the editor's own file input: artboard 1672x941, the starter photograph as the only backdrop (backgroundMedia fit cover), no scene objects",
     "authoring": "Add pane -> Shape -> Rectangle, and Add pane -> Shape -> Ellipse; nothing else. No position and no size was edited - both are exactly what the Add pane makes, at the Add pane's own cascade placement",

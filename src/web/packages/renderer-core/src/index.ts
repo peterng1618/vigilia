@@ -321,7 +321,7 @@ export {
   glassTreatment,
   MAX_GLASS_BLUR_RADIUS,
   supportsGlass,
-  VIGILIA_GLASS_PROPERTY,
+  YUNARI_GLASS_PROPERTY,
 } from "./theme/glass.js";
 // The reader and the property name are the external contract; the guard and
 // the bound stay inside the package, where the validator and its tests live.
@@ -333,7 +333,7 @@ export {
   isObjectName,
   MAX_OBJECT_NAME_LENGTH,
   objectName,
-  VIGILIA_NAME_PROPERTY,
+  YUNARI_NAME_PROPERTY,
 } from "./theme/object-name.js";
 export type { PaletteTokenOption } from "./theme/palette-tokens.js";
 export { paletteTokenOptions } from "./theme/palette-tokens.js";

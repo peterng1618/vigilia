@@ -110,7 +110,7 @@ the sync check holds them together afterwards.
 
 ```yaml
 ---
-name: Vigilia
+name: Yunari
 description: The editor's visual language — the one normative design document.
 version: alpha
 spacing:            # --space-* — the steps a surface may write

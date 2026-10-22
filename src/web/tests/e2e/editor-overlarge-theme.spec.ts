@@ -29,7 +29,7 @@ import { expect, test } from "@playwright/test";
  */
 
 const PORT = 4237;
-const APP_DIR = path.join(os.tmpdir(), "vigilia-overlarge-theme-app");
+const APP_DIR = path.join(os.tmpdir(), "yunari-overlarge-theme-app");
 const THEMES_DIR = path.join(APP_DIR, "themes");
 const HOST = `http://127.0.0.1:${PORT}`;
 
@@ -71,7 +71,7 @@ function startHost(): ChildProcess {
   const child = spawn(
     "node",
     [
-      "packages/host/bin/vigilia.js",
+      "packages/host/bin/yunari.js",
       "--no-browser",
       "--port",
       String(PORT),
@@ -123,13 +123,13 @@ test("a stored theme past the size bound is reported, not opened as success", as
   // The over-large document did not open: what is mounted is the template. The
   // bridge is the reader the header chip uses, so this is the product's own
   // answer to "which document is open", not a probe.
-  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+  await page.waitForFunction(() => "yunariEditorBridge" in window);
   const documentName = await page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: { snapshot(): { documentName?: string } };
+        yunariEditorBridge?: { snapshot(): { documentName?: string } };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     return bridge?.snapshot().documentName;
   });
   expect(documentName).toBe(TEMPLATE_NAME);

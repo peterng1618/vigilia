@@ -5,7 +5,7 @@ import type {
   PlanNode,
   PlanTextLayout,
   PlanTextSegment,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { Canvas, Rect, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
@@ -13,7 +13,7 @@ import {
   buildText,
   refreshBoundText,
   textGaps,
-  VIGILIA_TEXT_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
 } from "./fabric-text.js";
 
 /**
@@ -285,7 +285,7 @@ describe("a layout change an author makes", () => {
       authored,
     );
     object.set("id", "label");
-    object.set(VIGILIA_TEXT_PROPERTY, {
+    object.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "literal", text: "short" }],
       verticalAlign: "top",
     });
@@ -294,7 +294,7 @@ describe("a layout change an author makes", () => {
 
     const top = object.top;
 
-    object.set(VIGILIA_TEXT_PROPERTY, {
+    object.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "literal", text: "short" }],
       verticalAlign: "bottom",
     });
@@ -342,7 +342,7 @@ describe("what one text pass costs", () => {
       box(),
     ) as Textbox;
     object.set("id", "label");
-    object.set(VIGILIA_TEXT_PROPERTY, {
+    object.set(YUNARI_TEXT_PROPERTY, {
       runs: [{ kind: "literal", text: "CPU 48%" }],
       align: "left",
     });

@@ -156,11 +156,11 @@ mount and goes stale when the palette changes.
 
 **Commit:** `feat(editor): a pane bar replaces the rail`
 
-### Task 2: Scale tokens, and `--vigilia-*` that resolve
+### Task 2: Scale tokens, and `--yunari-*` that resolve
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css` — `:root`, the
-  `--vigilia-*` block, and the new scale block
+  `--yunari-*` block, and the new scale block
 - Test: `src/web/tests/e2e/shell-appearance.spec.ts` (new)
 
 **Interfaces:**
@@ -172,7 +172,7 @@ mount and goes stale when the palette changes.
   will use.
 
 **Constraints:** the twelve `--shell-*` colour tokens are the one layer that already
-works and are untouched. The `--vigilia-*` block moves from
+works and are untouched. The `--yunari-*` block moves from
 `[data-shell-palette="editorial"]` to `:root`, with `editorial` keeping only what it
 actually overrides — today it redeclares values identical to `--shell-*`, and that
 redundancy is what the move removes. **Resolve `scripts/reuse-gate.mjs` before the
@@ -210,7 +210,7 @@ move must preserve that.
 **Verification:**
 - Browser, and **only** the browser. jsdom does not resolve custom properties, so a
   jsdom test here would pass vacuously and must not be written: with each of the six
-  palettes applied, every element styled from a `--vigilia-*` token has a non-empty
+  palettes applied, every element styled from a `--yunari-*` token has a non-empty
   computed colour. Today five of the six resolve to nothing — assert the failing case
   first, then watch it pass.
 - Browser: a fresh profile with no `localStorage` renders the editorial palette.
@@ -218,7 +218,7 @@ move must preserve that.
   only by an accent ring. Screenshot all six side by side and compare — the eye is the
   instrument here, and a computed-value assertion cannot tell a cream chip from an
   ember one.
-- Static: no `--vigilia-` reference in the file resolves to a declaration scoped to a
+- Static: no `--yunari-` reference in the file resolves to a declaration scoped to a
   single palette attribute.
 
 **Commit:** `feat(editor): scale tokens, and every palette resolves`
@@ -322,7 +322,7 @@ Rendered observation in a real browser (§33). Each item names what was seen.
   another pane and revealed, is still there.
 - The shell palette is reachable from the header, repaints without a reload, survives a
   reload, and is legible under all six palettes.
-- Under each of the six palettes, every element styled from a `--vigilia-*` token has a
+- Under each of the six palettes, every element styled from a `--yunari-*` token has a
   non-empty computed colour.
 - The popover's groups equal `insertGroups()` read from the owner, and a shape `Line` and
   a chart `Line` are two distinct rows.

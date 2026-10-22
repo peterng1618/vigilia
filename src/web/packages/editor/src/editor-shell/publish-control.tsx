@@ -32,7 +32,7 @@ import type { PublishSurfaceStore } from "./shell-stores.js";
  * one.
  */
 /** The one control that carries the warning, so a fixed id is the whole address. */
-const WARNING_ID = "vigilia-publish-warning";
+const WARNING_ID = "yunari-publish-warning";
 
 /** When the code stops being the answer, in the reader's own clock: the host
  *  answers an instant, and an instant is not what a person reads. A value the
@@ -147,7 +147,7 @@ export function PublishControl({
       <Popover.Trigger
         type="button"
         className="editor-shell-primary"
-        data-vigilia-publish=""
+        data-yunari-publish=""
       >
         {uiCopy.publish.start}
         {/* §7.1's mark, and plan 2 left it off because there was nothing to
@@ -157,7 +157,7 @@ export function PublishControl({
         {chord === "" ? null : (
           <kbd
             className="editor-shell-primary-key"
-            data-vigilia-publish-chord=""
+            data-yunari-publish-chord=""
             aria-label={shortcutSpokenLabel("publish.surface")}
           >
             {chord}
@@ -179,7 +179,7 @@ export function PublishControl({
             <button
               type="button"
               className="editor-shell-publish-toggle"
-              data-vigilia-host-switch=""
+              data-yunari-host-switch=""
               aria-pressed={open}
               aria-describedby={WARNING_ID}
               disabled={pending !== undefined}
@@ -229,7 +229,7 @@ export function PublishControl({
                     </span>
                     <span
                       className="editor-shell-publish-code"
-                      data-vigilia-pair-code=""
+                      data-yunari-pair-code=""
                     >
                       {code.code}
                     </span>

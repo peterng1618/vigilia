@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
@@ -58,7 +58,7 @@ async function open(page: Page, withMedia: boolean): Promise<void> {
   await openThemeFromStore(page, storedThemeOfPackage(fixture(withMedia)));
   // Match set: the scene just opened is the one measured. A stale editor would
   // still have the media layer the no-media open is supposed to have dropped.
-  await expect(page.locator("[data-vigilia-background-media] img")).toHaveCount(
+  await expect(page.locator("[data-yunari-background-media] img")).toHaveCount(
     withMedia ? 1 : 0,
   );
   if (!withMedia) return;
@@ -67,14 +67,14 @@ async function open(page: Page, withMedia: boolean): Promise<void> {
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return image !== null && image.complete && image.naturalWidth > 0;
     },
     null,
     { timeout: 20_000 },
   );
-  await expect(page.locator("[data-vigilia-background-media] img")).toHaveCount(
+  await expect(page.locator("[data-yunari-background-media] img")).toHaveCount(
     1,
   );
 }
@@ -95,7 +95,7 @@ async function curve(
     // barrier in `open()`, not this lookup.
     const key =
       Object.keys(scope).find((candidate) =>
-        candidate.startsWith("vigilia-fabric-editor"),
+        candidate.startsWith("yunari-fabric-editor"),
       ) ?? "";
     const editor = (
       scope[key ?? ""] as
@@ -120,7 +120,7 @@ async function curve(
     // scene the product actually renders.
     const panels = editor
       .getObjects()
-      .filter((object) => object["vigiliaGlass"] !== undefined);
+      .filter((object) => object["yunariGlass"] !== undefined);
     if (panels.length === 0 || panels[0] === undefined)
       throw new Error("the fixture has no glass panel");
     const panel = panels[0];
@@ -139,7 +139,7 @@ async function curve(
 
     const measured: Array<{ radius: number; cost: number }> = [];
     for (const radius of [0, 16, 48]) {
-      panel.set("vigiliaGlass", { blurRadius: radius });
+      panel.set("yunariGlass", { blurRadius: radius });
       editor.renderAll();
       const withGlass = time(9, 50);
       editor.remove(...panels);

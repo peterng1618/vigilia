@@ -14,7 +14,7 @@ import {
   SEMANTIC_KEYS,
   type SettingsFieldDescriptor,
   settingsFieldsFor,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
 import { uiCopy } from "../ui-copy.js";
 import type {
@@ -39,8 +39,8 @@ import type {
  *
  * Ids and datasets are what they were when the panel rendered these controls
  * into a Data tab, so every spec, screenshot and driver selector that addressed
- * `vigilia-chart-setting-*`, `vigilia-chart-binding-*` and
- * `vigilia-chart-paint-*` still addresses the same control.
+ * `yunari-chart-setting-*`, `yunari-chart-binding-*` and
+ * `yunari-chart-paint-*` still addresses the same control.
  */
 
 /** Everything the controls read, gathered by the owner so the column restates
@@ -153,7 +153,7 @@ function semanticKeyOptions(): readonly ChartOptionView[] {
  */
 function aspectView(target: ChartFieldTarget): ChartAspectView {
   return {
-    id: "vigilia-chart-aspect",
+    id: "yunari-chart-aspect",
     label: "Aspect ratio",
     value: target.aspect === undefined ? "" : String(target.aspect),
     options: ASPECT_RATIOS.map((ratio) => ({
@@ -187,7 +187,7 @@ function seriesFields(target: ChartFieldTarget): ChartSeriesFieldsView {
   const { bindings, content } = target;
   const full = bindings.length >= MAX_BINDINGS[content.family];
   return {
-    id: "vigilia-chart-series",
+    id: "yunari-chart-series",
     label: uiCopy.inspectorFields.runSeries,
     // The prompt is the chooser's own first entry, as it was when this was a
     // `<select>`: the value is consumed by the click that makes it, so the
@@ -233,7 +233,7 @@ function settingRows(
     // dies on reopen.
     const path = field.path ?? [field.property];
     const value = readSetting(content.settings, path);
-    const id = `vigilia-chart-setting-${field.property}`;
+    const id = `yunari-chart-setting-${field.property}`;
 
     if (field.kind === "number") {
       const bound = ceilingOf(field, drawnEdge);
@@ -338,7 +338,7 @@ function paintRow(
   const key = index === undefined ? property : `${property}.${index}`;
   const ref = isPaletteReference(value) ? value.ref : "";
   return {
-    id: `vigilia-chart-paint-${key.replaceAll(".", "-")}`,
+    id: `yunari-chart-paint-${key.replaceAll(".", "-")}`,
     key,
     label: index === undefined ? label : `${label} ${index + 1}`,
     property,

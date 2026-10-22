@@ -44,7 +44,7 @@ function DiagramGlyph({
 }): React.JSX.Element {
   return (
     <svg
-      data-vigilia-card-diagram=""
+      data-yunari-card-diagram=""
       aria-hidden
       width={size}
       height={size}

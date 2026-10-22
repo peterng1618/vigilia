@@ -179,7 +179,7 @@ git commit -m "feat(theme-package): semver arithmetic restricted to the document
 - [ ] **Step 1: Write the failing tests**
 
 Add to `version-ladder.test.ts`, importing `envelopeKeysFor` from
-`@vigilia/renderer-core` and a base envelope helper:
+`@yunari/renderer-core` and a base envelope helper:
 
 ```ts
 describe("classifyThemeChange", () => {
@@ -341,8 +341,8 @@ git commit -m "feat(theme-package): grade content changes as patch, structure ch
 **Files:**
 - Modify: `src/web/packages/editor/src/new-fabric-theme.ts`
 - Modify: `src/web/packages/editor/src/new-fabric-theme.test.ts`
-- Modify: any test asserting the old document ids (grep `vigilia-new-theme` and
-  `vigilia-demo-dashboard`)
+- Modify: any test asserting the old document ids (grep `yunari-new-theme` and
+  `yunari-demo-dashboard`)
 
 **Interfaces:**
 - Produces: `createNewFabricTheme()` and `createBlankFabricTheme(size)` return a
@@ -951,8 +951,8 @@ git commit -m "feat(store): the catalogue CI re-derives a submission's version f
 ### Task 5.2: The catalogue's workflows
 
 **Files:**
-- Modify (other repo): `C:\tmp\vigilia-store\.github\workflows\validate.yml`
-- Modify (other repo): `C:\tmp\vigilia-store\.github\workflows\auto-merge.yml`
+- Modify (other repo): `C:\tmp\yunari-store\.github\workflows\validate.yml`
+- Modify (other repo): `C:\tmp\yunari-store\.github\workflows\auto-merge.yml`
 
 **Interfaces:**
 - Consumes: the `validate-item` flags and behaviours from 5.1.
@@ -965,10 +965,10 @@ In the loop, pass the two flags when the base commit holds the item:
 if git cat-file -e "$base:catalogue/$id/item.json" 2>/dev/null; then
   git show "$base:catalogue/$id/item.json" > "$previous_item"
   git show "$base:catalogue/$id/$id.zip" > "$previous_package"
-  node app/src/web/packages/host/bin/vigilia.js validate-item "$dir" \
+  node app/src/web/packages/host/bin/yunari.js validate-item "$dir" \
     --previous-item "$previous_item" --previous-package "$previous_package"
 else
-  node app/src/web/packages/host/bin/vigilia.js validate-item "$dir"
+  node app/src/web/packages/host/bin/yunari.js validate-item "$dir"
 fi
 ```
 
@@ -985,12 +985,12 @@ import it.
 
 `validate.yml`'s `ref:` becomes the commit at which Task 5.1 landed — the
 validator behaviour this workflow calls. Build the host first, and run
-`vigilia validate-item` against one fixture directory locally to prove the pin's
+`yunari validate-item` against one fixture directory locally to prove the pin's
 command still exists.
 
 - [ ] **Step 4: Prove it with a pull request**
 
-Open a PR against `peterng1618/vigilia-store` from a UUID-named directory with a
+Open a PR against `peterng1618/yunari-store` from a UUID-named directory with a
 correct bump, watch `validate` and `auto-merge`, then open a second PR that
 under-claims its bump and watch `validate` refuse it. **Pushing and opening a PR
 are external actions: confirm with the user before the push**, and report both
@@ -999,7 +999,7 @@ runs' conclusions.
 - [ ] **Step 5: Commit**
 
 The store repo commits in its own tree; this repo's `STATUS.md` records the pin
-and the two runs. Nothing in `D:\git-repos\vigilia` changes in this task except
+and the two runs. Nothing in `D:\git-repos\yunari` changes in this task except
 `STATUS.md`.
 
 ### Task 5.3: Verification, evidence and close
@@ -1025,7 +1025,7 @@ known blocker (`vg-626`, `vg-402`), not worked around.
 Rebuild, then run `npx playwright test tests/e2e/editor-rail.spec.ts --workers=1`
 to a file with the exit code read directly. Register and capture the submit
 version line and the remix credit if they are new actions, with
-`VIGILIA_CAPTURE=1 --workers=1`; inspect the images before staging them.
+`YUNARI_CAPTURE=1 --workers=1`; inspect the images before staging them.
 
 - [ ] **Step 3: Red-proofs**
 

@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // The editor package cannot type-check `node:fs`, so this is the one suite where
 // the store's listing and the mount's pick are in the same program — and the
@@ -120,7 +120,7 @@ describe("ThemeStore", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-theme-store-test-"),
+      path.join(os.tmpdir(), "yunari-theme-store-test-"),
     );
   });
 
@@ -320,7 +320,7 @@ describe("ThemeStore", () => {
           id: "loop",
           kind: "video",
           path: "assets/loop.webm",
-          license: { name: "CC0", attribution: "Vigilia test fixture." },
+          license: { name: "CC0", attribution: "Yunari test fixture." },
         },
       ],
     };
@@ -466,7 +466,7 @@ describe("ThemeStore", () => {
             id: "loop",
             kind: "video",
             path: "assets/loop.webm",
-            license: { name: "CC0", attribution: "Vigilia test fixture." },
+            license: { name: "CC0", attribution: "Yunari test fixture." },
           },
         ],
       },
@@ -586,7 +586,7 @@ describe("ThemeStore", () => {
     });
     if (!written.ok) throw new Error(written.message);
     await fs.writeFile(
-      path.join(tmpDir, "old-archive.vigilia-theme"),
+      path.join(tmpDir, "old-archive.yunari-theme"),
       written.bytes,
     );
 
@@ -911,7 +911,7 @@ describe("ThemeStore crash recovery", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-theme-recovery-test-"),
+      path.join(os.tmpdir(), "yunari-theme-recovery-test-"),
     );
   });
 
@@ -1097,7 +1097,7 @@ describe("ThemeStore asset reuse", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-theme-reuse-test-"),
+      path.join(os.tmpdir(), "yunari-theme-reuse-test-"),
     );
   });
 
@@ -1331,7 +1331,7 @@ describe("ThemeStore partial saves", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-theme-partial-test-"),
+      path.join(os.tmpdir(), "yunari-theme-partial-test-"),
     );
     store = createThemeStore(tmpDir);
   });
@@ -1594,7 +1594,7 @@ describe("ThemeStore concurrent saves", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-theme-conflict-test-"),
+      path.join(os.tmpdir(), "yunari-theme-conflict-test-"),
     );
     store = createThemeStore(tmpDir);
   });
@@ -1785,7 +1785,7 @@ describe("ThemeStore asset bounds", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-theme-bounds-test-"),
+      path.join(os.tmpdir(), "yunari-theme-bounds-test-"),
     );
     store = createThemeStore(tmpDir);
   });
@@ -2003,7 +2003,7 @@ describe("ThemeStore remove", () => {
   let store: ThemeStore;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-theme-remove-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-theme-remove-"));
     trashed = [];
     store = createThemeStore(tmpDir, {
       // Stands in for the platform's trash: moves the folder somewhere else,
@@ -2043,9 +2043,9 @@ describe("ThemeStore remove", () => {
   });
 
   it("takes only the one theme, when the library root holds what is not a theme", async () => {
-    // A real `~/.vigilia/themes/` is not a folder of themes and nothing else.
+    // A real `~/.yunari/themes/` is not a folder of themes and nothing else.
     // Measured on this machine before the change: three theme folders, a
-    // `.retired-` scratch folder, three `.vigilia-theme` archives left by the
+    // `.retired-` scratch folder, three `.yunari-theme` archives left by the
     // pre-ADR-0017 store, and `active-theme.json` — settings, in the library.
     await store.write("living-room", save("living-room", "Living Room"));
     await store.write("cpu-only", save("cpu-only", "CPU only"));
@@ -2053,10 +2053,7 @@ describe("ThemeStore remove", () => {
       path.join(tmpDir, "active-theme.json"),
       '{"id":"living-room"}\n',
     );
-    await fs.writeFile(
-      path.join(tmpDir, "cpu-only.vigilia-theme"),
-      "not a zip",
-    );
+    await fs.writeFile(path.join(tmpDir, "cpu-only.yunari-theme"), "not a zip");
     await fs.mkdir(path.join(tmpDir, ".retired-abc.cpu-only"), {
       recursive: true,
     });
@@ -2075,7 +2072,7 @@ describe("ThemeStore remove", () => {
       ".retired-abc.cpu-only",
       "active-theme.json",
       "cpu-only",
-      "cpu-only.vigilia-theme",
+      "cpu-only.yunari-theme",
     ]);
     expect(trashed).toEqual([path.join(tmpDir, "living-room")]);
   });

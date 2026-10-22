@@ -42,7 +42,7 @@ export interface ThemeChooserOptions {
   readonly onError?: (message: string) => void;
 }
 
-const STRIP_ID = "vigilia-theme-chooser";
+const STRIP_ID = "yunari-theme-chooser";
 
 /** The host's refusal text when there is one, because it says which refusal
  *  this was; the fallback only covers an empty body. */
@@ -127,7 +127,7 @@ export function createThemeChooser(input: ThemeChooserOptions): {
   label.textContent = `${uiCopy.chooser.label} `;
 
   const select = document.createElement("select");
-  select.dataset["vigiliaThemeSelect"] = "";
+  select.dataset["yunariThemeSelect"] = "";
   select.setAttribute("aria-label", uiCopy.chooser.label);
   label.append(select);
 
@@ -140,7 +140,7 @@ export function createThemeChooser(input: ThemeChooserOptions): {
     background: "#14161c",
     color: "#e8ecf3",
   });
-  strip.dataset["vigiliaThemeChooser"] = "";
+  strip.dataset["yunariThemeChooser"] = "";
 
   let disposed = false;
 

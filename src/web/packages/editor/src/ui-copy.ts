@@ -12,8 +12,8 @@ import {
   DASHBOARD_THEME_KIND,
   type Orientation,
   type SemanticFamily,
-} from "@vigilia/renderer-core";
-import type { VersionLevel } from "@vigilia/theme-package";
+} from "@yunari/renderer-core";
+import type { VersionLevel } from "@yunari/theme-package";
 import type { DisplayLensId } from "./display-lens.js";
 import type { AssignableGroup } from "./host-settings-mode/client.js";
 import type { ShortcutPrefix } from "./shortcut-manager/display.js";
@@ -91,7 +91,7 @@ const glassRefusals: Readonly<Record<string, string>> = {
   IText:
     "Text is not a panel, and there is no surface behind a glyph to frost.",
   Image: "An image is not a panel, and there is nothing behind it to frost.",
-  VigiliaChart:
+  YunariChart:
     "A chart is not a panel, and there is nothing behind a plotted series to frost.",
   ActiveSelection:
     "Frosted glass applies to one shape at a time — select the shape you want to frost.",
@@ -108,7 +108,7 @@ const glassRefusals: Readonly<Record<string, string>> = {
 export const glassRefusalKinds: readonly string[] = Object.keys(glassRefusals);
 
 export const uiCopy = {
-  brand: "Vigilia",
+  brand: "Yunari",
   /** The rail's four slots. A slot's word is both its tooltip and its
    *  accessible name: the slot is icon-only, so it has no text of its own, and
    *  a glyph stored as a translatable string would be announced as a word and
@@ -142,7 +142,7 @@ export const uiCopy = {
      *  say which fact each row is, and the release fact's *label* is the
      *  Document pane's own word (`panels.releaseVersion`), reused rather than
      *  respelled so one fact keeps one word (§9). */
-    aboutProvenance: "Vigilia, a dashboard theme editor.",
+    aboutProvenance: "Yunari, a dashboard theme editor.",
     aboutProductVersion: "Product version",
     aboutSchemaVersion: "Schema version",
     /** §7's Appearance tab. `palette` is the name the header chip's trigger

@@ -112,7 +112,7 @@ describe("the host's own windows", () => {
   let displays: DisplayStore;
 
   beforeEach(async () => {
-    directory = await mkdtemp(path.join(os.tmpdir(), "vigilia-launcher-"));
+    directory = await mkdtemp(path.join(os.tmpdir(), "yunari-launcher-"));
     displays = createDisplayStore(directory);
   });
 
@@ -381,7 +381,7 @@ describe("registerHostAutostart", () => {
     });
 
     try {
-      const outcome = await registerHostAutostart("vigilia");
+      const outcome = await registerHostAutostart("yunari");
 
       expect(outcome.ok).toBe(false);
       expect(outcome.message).toContain("darwin");

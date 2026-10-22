@@ -63,7 +63,7 @@ function Inspector({
   const { view } = published;
   if (view.subject === undefined) {
     return (
-      <p className="m-0 text-sm text-muted" data-vigilia-nothing-selected="">
+      <p className="m-0 text-sm text-muted" data-yunari-nothing-selected="">
         {uiCopy.inspectorFields.nothingSelected}
       </p>
     );
@@ -83,7 +83,7 @@ function Inspector({
           )}
           <span
             className="text-md font-semibold text-text"
-            data-vigilia-subject-name=""
+            data-yunari-subject-name=""
           >
             {view.subject.name}
           </span>
@@ -95,7 +95,7 @@ function Inspector({
       {view.locked ? (
         <p
           className="m-0 mt-[var(--space-12)] text-sm text-muted"
-          data-vigilia-locked=""
+          data-yunari-locked=""
         >
           {uiCopy.inspectorFields.locked}
         </p>

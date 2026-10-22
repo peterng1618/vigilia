@@ -72,13 +72,13 @@ function tileCount(pane: HTMLElement): number {
 
 function cardTile(pane: HTMLElement, cardId: string): HTMLButtonElement {
   return pane.querySelector<HTMLButtonElement>(
-    `[data-vigilia-panel-card="${cardId}"]`,
+    `[data-yunari-panel-card="${cardId}"]`,
   )!;
 }
 
 function shapeTile(pane: HTMLElement, kind: string): HTMLButtonElement {
   return pane.querySelector<HTMLButtonElement>(
-    `[data-vigilia-panel-add="${kind}"]`,
+    `[data-yunari-panel-add="${kind}"]`,
   )!;
 }
 
@@ -105,7 +105,7 @@ describe("the Add pane's insert surface", () => {
     // heading above a group is copy. A hook derived from the heading would move
     // the day an author's copy did — which is the one thing it exists to stop.
     const scopes = [...pane.querySelectorAll("fieldset")].map((group) =>
-      group.getAttribute("data-vigilia-add-group"),
+      group.getAttribute("data-yunari-add-group"),
     );
     expect(scopes).toEqual(
       insertGroups()
@@ -116,7 +116,7 @@ describe("the Add pane's insert surface", () => {
 
     // And the shapes section — the one the row is about — is reachable by the
     // hook while still carrying its heading.
-    const shapes = pane.querySelector('[data-vigilia-add-group="shape"]');
+    const shapes = pane.querySelector('[data-yunari-add-group="shape"]');
     expect(shapes?.querySelector("legend")?.textContent).toBe(
       uiCopy.panels.shapes,
     );
@@ -137,7 +137,7 @@ describe("the Add pane's insert surface", () => {
     // A primitive's tile is its kind — a shape glyph, never a card diagram.
     expect(cardTile(pane, CPU_CARD).querySelector("svg")).not.toBeNull();
     expect(
-      shapeTile(pane, "rect").querySelector("[data-vigilia-card-diagram]"),
+      shapeTile(pane, "rect").querySelector("[data-yunari-card-diagram]"),
     ).toBeNull();
   });
 
@@ -150,7 +150,7 @@ describe("the Add pane's insert surface", () => {
     // absence cannot — a tile drawing nothing at all passed it.
     const drawn = [
       ...pane.querySelectorAll<HTMLButtonElement>("button"),
-    ].filter((tile) => !tile.classList.contains("vigilia-add-text"));
+    ].filter((tile) => !tile.classList.contains("yunari-add-text"));
 
     // Derived from the owner, so a primitive or family added there is required to
     // be drawn here rather than being skipped by a count nobody moved.

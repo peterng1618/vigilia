@@ -42,7 +42,7 @@ cover-cropped into a 400×400 device box asks for source rect
 `(-300, -150, 800, 400)` — **entirely outside a 200×100 source**, so the
 sampler draws nothing at all where the element draws the whole image.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched every `object-fit` / `objectFit` / `"cover"` / `"contain"` occurrence
 outside `node_modules` and `dist`.

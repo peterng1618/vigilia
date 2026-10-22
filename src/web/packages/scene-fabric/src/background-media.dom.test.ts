@@ -26,19 +26,19 @@ describe("background media", () => {
     });
 
     const image = host.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     expect(image?.src).toBe("blob:hero");
     expect(image?.style.objectFit).toBe("cover");
     expect(
-      host.firstElementChild?.hasAttribute("data-vigilia-background-media"),
+      host.firstElementChild?.hasAttribute("data-yunari-background-media"),
     ).toBe(true);
     expect(host.lastElementChild).toBe(canvas);
 
     handle.destroy();
 
     expect(disposed).toBe(true);
-    expect(host.querySelector("[data-vigilia-background-media]")).toBeNull();
+    expect(host.querySelector("[data-yunari-background-media]")).toBeNull();
   });
 
   it("mounts muted looping video media", () => {
@@ -55,7 +55,7 @@ describe("background media", () => {
     });
 
     const video = host.querySelector<HTMLVideoElement>(
-      "[data-vigilia-background-media] video",
+      "[data-yunari-background-media] video",
     );
     expect(video?.src).toBe("blob:loop");
     expect(video?.style.objectFit).toBe("cover");
@@ -119,7 +119,7 @@ describe("background media", () => {
       resolveAsset: () => ({ url: "blob:hero" }),
     });
     const layer = host.querySelector<HTMLElement>(
-      "[data-vigilia-background-media]",
+      "[data-yunari-background-media]",
     );
     const boxes = {
       artboard: { left: 10, top: 20, width: 800, height: 400 },
@@ -188,9 +188,7 @@ describe("background media", () => {
     expect(errors).toEqual([
       'Background media asset "missing" is not declared by this theme.',
     ]);
-    expect(
-      host.querySelector("[data-vigilia-background-media] img"),
-    ).toBeNull();
+    expect(host.querySelector("[data-yunari-background-media] img")).toBeNull();
 
     // A declared-but-unreadable asset reports too, rather than no-opping.
     handle.update({
@@ -416,7 +414,7 @@ describe("background media as a glass backdrop", () => {
       },
     });
     const image = host.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     expect(image, "the layer mounted an image").not.toBeNull();
     expect(frames, "nothing to report before the bytes land").toBe(0);
@@ -449,7 +447,7 @@ describe("background media as a glass backdrop", () => {
       },
     });
     const image = host.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     handle.destroy();
     image?.dispatchEvent(new Event("load"));
@@ -479,7 +477,7 @@ describe("background media as a glass backdrop", () => {
       resolveAsset: () => ({ url: "blob:other" }),
     });
     const swapped = host.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     swapped?.dispatchEvent(new Event("load"));
     expect(frames, "the replacement image reports its own decode").toBe(1);

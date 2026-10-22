@@ -423,7 +423,7 @@ gate on launching the backend.
 4. Flip the catalogue origin in the client, rebuild, and smoke-test: index,
    thumbnail, install, download counter, favourite, Mine, unpublish and
    republish.
-5. Archive `peterng1618/vigilia-store` and disable its workflows. No redirect
+5. Archive `peterng1618/yunari-store` and disable its workflows. No redirect
    from the old URLs is built and no dual read is attempted.
 
 The imported item's `downloads` and `favorites` start at zero. The GitHub

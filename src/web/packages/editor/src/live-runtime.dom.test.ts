@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+import { YUNARI_TEXT_PROPERTY } from "@yunari/scene-fabric";
 import { Canvas, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { LiveRuntime } from "./live-runtime.js";
@@ -51,7 +51,7 @@ describe("LiveRuntime", () => {
         },
       ],
     };
-    text.set(VIGILIA_TEXT_PROPERTY, authored);
+    text.set(YUNARI_TEXT_PROPERTY, authored);
     canvas.add(text);
 
     const runtime = new LiveRuntime({
@@ -81,7 +81,7 @@ describe("LiveRuntime", () => {
     });
 
     expect(text.text).toBe("CPU @cpu.load");
-    expect(text.get(VIGILIA_TEXT_PROPERTY)).toEqual(authored);
+    expect(text.get(YUNARI_TEXT_PROPERTY)).toEqual(authored);
     await canvas.dispose();
   });
 
@@ -99,7 +99,7 @@ describe("LiveRuntime", () => {
         },
       ],
     };
-    text.set(VIGILIA_TEXT_PROPERTY, authored);
+    text.set(YUNARI_TEXT_PROPERTY, authored);
     canvas.add(text);
 
     const runtime = new LiveRuntime({
@@ -124,7 +124,7 @@ describe("LiveRuntime", () => {
     });
 
     expect(text.text).toBe("CPU 48%");
-    expect(text.get(VIGILIA_TEXT_PROPERTY)).toEqual(authored);
+    expect(text.get(YUNARI_TEXT_PROPERTY)).toEqual(authored);
     await canvas.dispose();
   });
 
@@ -137,7 +137,7 @@ describe("LiveRuntime", () => {
         { kind: "value" as const, bindingId: "load" },
       ],
     };
-    text.set(VIGILIA_TEXT_PROPERTY, authored);
+    text.set(YUNARI_TEXT_PROPERTY, authored);
     canvas.add(text);
 
     const runtime = new LiveRuntime({
@@ -150,7 +150,7 @@ describe("LiveRuntime", () => {
     runtime.setRunDisplay("tokens");
 
     // The mode is editor transient state: authored content is untouched.
-    expect(text.get(VIGILIA_TEXT_PROPERTY)).toEqual(authored);
+    expect(text.get(YUNARI_TEXT_PROPERTY)).toEqual(authored);
     expect(runtime.runDisplay).toBe("tokens");
     await canvas.dispose();
   });
@@ -182,7 +182,7 @@ describe("LiveRuntime tick", () => {
     // A value run is what makes the sample pass read a source at all; a
     // literal-only object is resolved entirely from authored content, so
     // counting `latest` calls against one would count nothing.
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs:
         options.bindings === undefined
           ? [{ kind: "literal", text: "CPU --" }]
@@ -279,7 +279,7 @@ describe("LiveRuntime tick", () => {
     let clock = 0;
     const canvas = new Canvas(document.createElement("canvas"));
     const text = new Textbox("CPU --", { id: "cpu-label" });
-    text.set(VIGILIA_TEXT_PROPERTY, {
+    text.set(YUNARI_TEXT_PROPERTY, {
       runs: [
         { kind: "literal", text: "CPU " },
         { kind: "value", bindingId: "load" },

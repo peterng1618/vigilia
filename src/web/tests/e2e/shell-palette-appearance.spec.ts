@@ -256,7 +256,7 @@ test.describe("shell palettes", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     // With no emulation Playwright's `colorScheme` is light, so the shell
-    // resolves `light`. The assertion exists because moving the `--vigilia-*`
+    // resolves `light`. The assertion exists because moving the `--yunari-*`
     // block onto `:root` could have broken the fresh-profile first paint: a
     // base that carries neither the resolved palette's values nor the
     // attribute renders the wrong palette before anything applies. Each test
@@ -292,7 +292,7 @@ test.describe("shell palettes", () => {
    *  palette in the set — so a fresh profile flashed cream and then snapped to
    *  graphite. `vg-357` was the same frame painted with the right palette and
    *  three of its tokens coming from somewhere else: the dark base carried
-   *  graphite's colours and left `--shell-display` and `--vigilia-control-bg`
+   *  graphite's colours and left `--shell-display` and `--yunari-control-bg`
    *  to the bare root, so a dark OS's first frame took
    *  the editorial display face and control paper.
    *
@@ -337,7 +337,7 @@ test.describe("shell palettes", () => {
             "--shell-backdrop",
             "--shell-text",
             "--shell-display",
-            "--vigilia-control-bg",
+            "--yunari-control-bg",
           ]
             .map((name) => token(element, name))
             .join(" ");

@@ -8,9 +8,9 @@
 
 **The user's question, 2026-10-21:** *"How do we prevent agents from saving scratch files &
 folders from all over the places?"* — asked while a cleanup found **264 MB of agent scratch at
-the root of `D:\`** (`scratch/` 46M, `tmp/` 28M, `vigilia-tester/` 182M, and `vigilia-pass/`,
-`vigilia-scratch/`, `vigilia-proof/`, `vigilia-baseline-12d/`, `tmp-vigilia-final/`,
-`vigil-redesign/`, `vigilia-agent-labels/`, `tmp-host.json`, `tmp-vt-report.json`) and **560 MB
+the root of `D:\`** (`scratch/` 46M, `tmp/` 28M, `yunari-tester/` 182M, and `yunari-pass/`,
+`yunari-scratch/`, `yunari-proof/`, `yunari-baseline-12d/`, `tmp-yunari-final/`,
+`vigil-redesign/`, `yunari-agent-labels/`, `tmp-host.json`, `tmp-vt-report.json`) and **560 MB
 under `C:\tmp`** (130 directories, 2279 entries) — beside in-tree residue: 22 orphan
 `.claude/worktrees/agent-*` directories, `src/web/.agent-scratch/` (13M, the directory `vg-368`
 was filed about) and two `.playwright-mcp/`.
@@ -36,7 +36,7 @@ So the problem is not carelessness. It is that **nothing in the loop says where 
 allowed to go**, and every mechanism meant to clean up afterwards asked git — which cannot see
 the thing that was left.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `.gitignore` (96 lines), every walker that measures the tree (`dead-code-sweep.mjs`,
 `dead-selectors.mjs`, `design-md.mjs`, `docs/architecture/manager-census.md`), the register for
@@ -117,10 +117,10 @@ that nobody ran one.
 
 Measured during the cleanup this decision came from, on this box:
 
-- `D:\` root: 264 MB of agent scratch in eleven entries, the largest `vigilia-tester/` at 182 MB
+- `D:\` root: 264 MB of agent scratch in eleven entries, the largest `yunari-tester/` at 182 MB
   and `scratch/` at 46 MB; deleted, leaving the user's own directories untouched.
-- `C:\tmp`: 560 MB, 130 directories, 2279 entries — `vigilia-drain/` 182M, `shallow-full/` 60M,
-  `vigilia-walkthrough/` 57M, `t4rev/` 38M, `shallow-probe/` 24M.
+- `C:\tmp`: 560 MB, 130 directories, 2279 entries — `yunari-drain/` 182M, `shallow-full/` 60M,
+  `yunari-walkthrough/` 57M, `t4rev/` 38M, `shallow-probe/` 24M.
 - `.claude/worktrees/`: 23 leftovers — 22 `agent-*` directories holding **0 regular files** and
   144 junctions between them (2.2 MB), which is the git-shaped cleanup's own signature, plus a
   seat's `.task252-scratch/` (10 files, 342 KB of build and e2e logs) and one npm-ci log, which
@@ -175,14 +175,14 @@ Two details the implementation settled that the decision above did not:
 ## Verified, and what is not
 
 - **The refusal**: the exact hook command, fed the three payload shapes on stdin — a write to
-  `D:\vigilia-tester\probe.mjs` exit 2, a write to a tracked source file exit 0, and a Bash
+  `D:\yunari-tester\probe.mjs` exit 2, a write to a tracked source file exit 0, and a Bash
   redirect to `/tmp/full.json` exit 2. `/tmp` is the case worth having: it is the relative-path
   mechanism from the problem statement, refused before it can create `D:\tmp`.
 - **The sweep**: `npm run scratch:check` was red on this tree before the cleanup (3 stray
   entries, 23 dead worktrees) and green after it, which is the reading that shows it can fail.
 - **The cleanup it drove**: `.playwright-mcp/` and `src/web/.playwright-mcp/` (session debris,
   deleted), `src/web/.agent-scratch/` (13 MB — `vg-368`'s directory, **relocated** to
-  `C:\tmp\vigilia-residue-2026-10-21\` per that row's ruling, not deleted), the 22 junction-only
+  `C:\tmp\yunari-residue-2026-10-21\` per that row's ruling, not deleted), the 22 junction-only
   worktree skeletons and one seat's npm-ci log. `node_modules` verified intact afterwards.
 - **The gate**: `npm run gate` reaches the new step and reads it green, then exits 1 at
   `design:check` — the pre-existing `vg-626` red (remainder 20, ceiling 19), unchanged by this

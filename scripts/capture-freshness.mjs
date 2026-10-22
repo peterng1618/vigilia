@@ -241,7 +241,7 @@ function selfTest() {
   const registry = DEFAULT_MANIFEST;
   const row = (sha, file = "README.md", twin = "shell.html") =>
     `| \`${file}\` | \`${twin}\` | \`${sha}\` | \`${registry}\` |`;
-  const dir = mkdtempSync(join(tmpdir(), "vigilia-capture-freshness-"));
+  const dir = mkdtempSync(join(tmpdir(), "yunari-capture-freshness-"));
   const cases = [];
   const write = (name, text) => {
     const path = join(dir, name);

@@ -129,7 +129,7 @@ function Group(props: {
 }): React.JSX.Element {
   return (
     <section
-      data-vigilia-host-section={props.testId}
+      data-yunari-host-section={props.testId}
       className="flex flex-col gap-[var(--space-8)]"
     >
       <h2 className="m-0 text-2xs font-semibold tracking-[0.11em] text-muted uppercase">
@@ -169,7 +169,7 @@ export interface HostStatusLine {
  * The Host mode's region, and nothing in any other mode.
  *
  * **The mode is a prop rather than state read here**, exactly as
- * `StoreModeRegion` takes it: the shell renders one `[data-vigilia-mode-region]`
+ * `StoreModeRegion` takes it: the shell renders one `[data-yunari-mode-region]`
  * section for every non-editor mode and hands each region the mode it is in, so
  * a region that drew itself in a mode it does not own would be the second
  * surface in one section.
@@ -443,7 +443,7 @@ function HostSettings(props: {
     // **No status strip of its own.** §7.6's bar is the shell's, drawn once as a
     // sibling of every mode's region, and this mode's line reaches it through
     // `onStatus` rather than through a second bar stacked on top of it.
-    <div data-vigilia-host-region="" className="flex min-h-0 flex-1 flex-col">
+    <div data-yunari-host-region="" className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-[var(--space-24)] overflow-y-auto p-[var(--space-24)]">
         <div className="flex max-w-[var(--host-settings-measure)] flex-col gap-[var(--space-24)]">
           <Group
@@ -474,14 +474,14 @@ function HostSettings(props: {
                     <Toggle
                       key={display.id}
                       value={display.id}
-                      data-vigilia-host-display={display.id}
+                      data-yunari-host-display={display.id}
                       className="flex items-center gap-[var(--space-12)] rounded-lg border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-8)] text-left data-[pressed]:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                     >
                       <span className="min-w-0 flex-1 text-xs text-text">
                         {display.label}
                       </span>
                       <span
-                        data-vigilia-host-display-theme=""
+                        data-yunari-host-display-theme=""
                         className={`flex-none text-xs ${own === null ? "text-faint" : "text-muted"}`}
                       >
                         {shown === null
@@ -494,7 +494,7 @@ function HostSettings(props: {
                           read as a choice this display made. */}
                       {own === null && shown !== null ? (
                         <span
-                          data-vigilia-host-display-follows=""
+                          data-yunari-host-display-follows=""
                           className="flex-none text-2xs text-faint"
                         >
                           {uiCopy.hostSettings.displays.follows}
@@ -542,9 +542,9 @@ function HostSettings(props: {
                   return (
                     <ControlSelect
                       key={group}
-                      id={`vigilia-host-device-${group}`}
+                      id={`yunari-host-device-${group}`}
                       label={groupQuestion(devices, group)}
-                      data={{ "data-vigilia-host-device-group": group }}
+                      data={{ "data-yunari-host-device-group": group }}
                       value={devices.assigned[group] ?? ""}
                       options={choices}
                       onChange={(id) =>
@@ -581,9 +581,9 @@ function HostSettings(props: {
             {preferences === undefined ? null : (
               <>
                 <ControlSelect
-                  id="vigilia-host-time-zone"
+                  id="yunari-host-time-zone"
                   label={uiCopy.hostSettings.display.timeZone}
-                  data={{ "data-vigilia-host-time-zone": "" }}
+                  data={{ "data-yunari-host-time-zone": "" }}
                   value={preferences.settings.timeZone ?? ""}
                   // This PC's own zone is the default and the most common
                   // answer, so it comes first and is the empty value the route
@@ -607,9 +607,9 @@ function HostSettings(props: {
                   }
                 />
                 <ControlSelect
-                  id="vigilia-host-measurement"
+                  id="yunari-host-measurement"
                   label={uiCopy.hostSettings.display.measurement}
-                  data={{ "data-vigilia-host-measurement": "" }}
+                  data={{ "data-yunari-host-measurement": "" }}
                   value={preferences.settings.measurement ?? "metric"}
                   options={[
                     { id: "metric", name: uiCopy.hostSettings.display.metric },
@@ -651,9 +651,9 @@ function HostSettings(props: {
               {asked.map((group) => (
                 <ControlSelect
                   key={group}
-                  id={`vigilia-host-answer-${group}`}
+                  id={`yunari-host-answer-${group}`}
                   label={uiCopy.hostSettings.devices.groups[group]}
-                  data={{ "data-vigilia-host-answer": group }}
+                  data={{ "data-yunari-host-answer": group }}
                   value={questions.answers[group] ?? ""}
                   options={[
                     // This PC's own choice is the default, so most themes need
@@ -688,7 +688,7 @@ function NameRow(props: {
   readonly value: string;
   readonly onCommit: (name: string) => void;
 }): React.JSX.Element {
-  const ids = useControlIds(`vigilia-host-name-${props.device.id}`);
+  const ids = useControlIds(`yunari-host-name-${props.device.id}`);
   const [draft, setDraft] = useState(props.value);
 
   // The stored name is what the field shows: the host trims it and caps it at
@@ -706,7 +706,7 @@ function NameRow(props: {
         <input
           id={ids.control}
           type="text"
-          data-vigilia-host-name={props.device.id}
+          data-yunari-host-name={props.device.id}
           placeholder={uiCopy.hostSettings.devices.namePlaceholder}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}

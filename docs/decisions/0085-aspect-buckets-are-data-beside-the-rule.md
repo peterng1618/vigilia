@@ -15,7 +15,7 @@ order silently decides which bucket wins when two are close. The set has to stay
 cheap to extend, and extending it must not quietly re-file a neighbour's
 artboards.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `facet-record.ts` (`AspectBucket`, `ASPECT_BUCKETS`, `aspectOf`,
 `ASPECT_TOLERANCE`), `renderer-core/src/index.ts`'s exports, `artboard-presets.ts`

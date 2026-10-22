@@ -1,4 +1,4 @@
-import type { TypePreset } from "@vigilia/renderer-core";
+import type { TypePreset } from "@yunari/renderer-core";
 import { GENERATED_FACES, GENERATED_TRIOS } from "./font-trios.generated.js";
 
 export type FontTrioRole = "heading" | "body" | "mono";

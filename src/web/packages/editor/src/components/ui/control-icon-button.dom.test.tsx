@@ -218,7 +218,7 @@ describe("an icon-only control's name and its tooltip", () => {
     // The dock, the rail, a layer row and the font picker each render a bare
     // `<button>` rather than `ControlIconButton`: a dock action is a glass
     // control of its own size, a rail slot carries `aria-pressed`, a row
-    // control sits directly in `.vigilia-layer-state` so the stylesheet can ask
+    // control sits directly in `.yunari-layer-state` so the stylesheet can ask
     // the slot how much room beside the key it needs, and the star's label
     // changes with its pressed state. All take the same owner of the pairing,
     // and one of each is named here so a bespoke button cannot quietly stop at
@@ -227,9 +227,9 @@ describe("an icon-only control's name and its tooltip", () => {
     const mounted = mountFleet();
     const bespoke = [
       "[data-rail-slot]",
-      "[data-vigilia-canvas-toolbar] button",
-      "[data-vigilia-layer-entry]",
-      "[data-vigilia-font-favorite]",
+      "[data-yunari-canvas-toolbar] button",
+      "[data-yunari-layer-entry]",
+      "[data-yunari-font-favorite]",
     ];
     for (const selector of bespoke) {
       const control = mounted.querySelector<HTMLElement>(selector);
@@ -261,7 +261,7 @@ describe("the control set's own icon button", () => {
     const container = mount(
       <ControlIconButton
         label="Delete layer"
-        describedById="vigilia-pane-note"
+        describedById="yunari-pane-note"
         refused="the layer is locked"
         onClick={vi.fn()}
       >
@@ -279,21 +279,21 @@ describe("the control set's own icon button", () => {
     expect(
       (button.getAttribute("aria-describedby") ?? "").split(" "),
       "the note and the refusal are not both on the button",
-    ).toEqual(["vigilia-pane-note", reason?.id]);
+    ).toEqual(["yunari-pane-note", reason?.id]);
 
     // And the note alone is still the description: it is not a field the
     // refusal happens to carry.
     const bare = mount(
       <ControlIconButton
         label="Duplicate layer"
-        describedById="vigilia-pane-note"
+        describedById="yunari-pane-note"
         onClick={vi.fn()}
       >
         <Glyph icon={STACK_GLYPH} size={15} />
       </ControlIconButton>,
     );
     expect(bare.querySelector("button")?.getAttribute("aria-describedby")).toBe(
-      "vigilia-pane-note",
+      "yunari-pane-note",
     );
   });
 });

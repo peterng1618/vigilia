@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import {
   clearSceneX,
   clientOfScene,
@@ -57,7 +57,7 @@ function rect(
     width,
     height: 80,
     fill: SNAPPING_ACCENT,
-    vigiliaPaint: { fill: "palette.accent" },
+    yunariPaint: { fill: "palette.accent" },
     originX: "left",
     originY: "top",
   };
@@ -80,8 +80,8 @@ function source(
       text: "TEXT",
       fontSize: 32,
       fill: SNAPPING_ACCENT,
-      vigiliaPaint: { fill: "palette.accent" },
-      vigiliaText: {
+      yunariPaint: { fill: "palette.accent" },
+      yunariText: {
         runs: [
           {
             kind: "literal",
@@ -148,7 +148,7 @@ async function activeObjectId(page: Page): Promise<unknown> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: {
               getActiveObject(): { get(name: string): unknown } | undefined;
@@ -156,7 +156,7 @@ async function activeObjectId(page: Page): Promise<unknown> {
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     return bridge.editor.canvas.getActiveObject()?.get("id");
   });
 }
@@ -169,7 +169,7 @@ async function objectRect(page: Page, id: string): Promise<Rect> {
   return page.evaluate((objectId) => {
     const editor = Object.entries(
       window as unknown as Record<string, unknown>,
-    ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
+    ).find(([key]) => key.startsWith("yunari-fabric-editor-"))?.[1] as
       | {
           canvas: {
             getObjects(): Array<{
@@ -208,7 +208,7 @@ async function guideRowsAtSceneX(
       );
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               viewport: {
                 artboardScreenRect(): {
@@ -221,10 +221,10 @@ async function guideRowsAtSceneX(
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const rect = bridge.editor.viewport.artboardScreenRect();
       const canvas = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.upper-canvas",
+        "#yunari-fabric-editor canvas.upper-canvas",
       );
       const context = canvas?.getContext("2d");
       if (
@@ -355,7 +355,7 @@ async function liveZoom(page: Page): Promise<number> {
   return page.evaluate(() => {
     const editor = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: {
               getZoom?(): number;
@@ -371,7 +371,7 @@ async function liveZoom(page: Page): Promise<number> {
           };
         };
       }
-    ).vigiliaEditorBridge.editor;
+    ).yunariEditorBridge.editor;
     return editor.canvas.getZoom?.() ?? editor.canvas.viewportTransform[0];
   });
 }
@@ -401,7 +401,7 @@ async function sceneTravel(
     ]) => {
       const canvas = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getScenePoint(event: { clientX: number; clientY: number }): {
@@ -411,7 +411,7 @@ async function sceneTravel(
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas;
+      ).yunariEditorBridge.editor.canvas;
       return (
         canvas.getScenePoint({ clientX: end.x, clientY: end.y }).x -
         canvas.getScenePoint({ clientX: start.x, clientY: start.y }).x
@@ -554,9 +554,9 @@ test("layer-panel object actions match canvas dock", async ({
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
   await openFixture(page, "shape");
-  const panel = page.locator('[data-vigilia-panel="layers"]');
-  const footer = panel.locator("[data-vigilia-layer-actions]");
-  const dock = page.locator("[data-vigilia-canvas-toolbar]");
+  const panel = page.locator('[data-yunari-panel="layers"]');
+  const footer = panel.locator("[data-yunari-layer-actions]");
+  const dock = page.locator("[data-yunari-canvas-toolbar]");
   await expect(panel).toBeVisible();
   await expect(footer).toBeVisible();
   await expect(dock).toBeVisible();
@@ -572,10 +572,10 @@ test("layer-panel object actions match canvas dock", async ({
     buttons.map((button) => ({
       label: button.getAttribute("aria-label") ?? "",
       disabled: (button as HTMLButtonElement).disabled,
-      destructive: button.hasAttribute("data-vigilia-destructive"),
+      destructive: button.hasAttribute("data-yunari-destructive"),
       // The **paint**, not the attribute. `vg-226`'s failure class is the mark
       // present and the paint wrong, and it is invisible to a `disabled` read:
-      // `[data-vigilia-destructive]` is unlayered and outranks the `text-faint`
+      // `[data-yunari-destructive]` is unlayered and outranks the `text-faint`
       // a blocked control computes, so a dead Delete painted `--hot` while the
       // other eleven painted `--faint`. Nothing but a computed colour sees it.
       colour: getComputedStyle(button).color,
@@ -598,7 +598,7 @@ test("layer-panel object actions match canvas dock", async ({
   await expectActiveTarget(page);
   expect(
     await footer.evaluate(
-      (element) => element.closest("[data-vigilia-layer]") === null,
+      (element) => element.closest("[data-yunari-layer]") === null,
     ),
   ).toBe(true);
   const panelBox = (await panel.boundingBox())!;
@@ -1062,7 +1062,7 @@ async function dragCardTo(
   page: Page,
   rawLeft: number,
 ): Promise<{ left: number; guideRows: number }> {
-  await page.locator('[data-vigilia-layer="right-card"]').click();
+  await page.locator('[data-yunari-layer="right-card"]').click();
   const before = await sceneObjectRect(page, "right-card");
   const from = await sceneToClient(
     page,
@@ -1090,7 +1090,7 @@ async function resizeLooseShapeTo(
   page: Page,
   rawRight: number,
 ): Promise<{ right: number; guideRows: number }> {
-  await page.locator('[data-vigilia-layer="mover"]').click();
+  await page.locator('[data-yunari-layer="mover"]').click();
   const corner = await objectHandleScenePoint(page, "mover", "br");
   const from = await sceneToClient(page, NESTED_ARTBOARD, corner.x, corner.y);
   const target = await sceneToClient(page, NESTED_ARTBOARD, rawRight, corner.y);

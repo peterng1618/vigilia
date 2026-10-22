@@ -15,7 +15,7 @@ export const DEFAULT_PAGE_SIZE: PageSize = 12;
  *  theme envelope, never authored document state. The key is namespaced the way
  *  `editor-shell/palette.ts` namespaces its own, so the two preferences cannot
  *  collide and a viewer's choice is one entry in the shell's storage. */
-const storageKey = "vigilia.editor.store-page-size";
+const storageKey = "yunari.editor.store-page-size";
 
 /** One viewer's page size. */
 export interface PageSizePreference {

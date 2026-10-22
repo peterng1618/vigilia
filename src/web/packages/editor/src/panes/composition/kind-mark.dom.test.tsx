@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CHART_FAMILIES } from "@vigilia/renderer-core";
+import { CHART_FAMILIES } from "@yunari/renderer-core";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
@@ -59,15 +59,15 @@ function lucideClass(icon: LucideIcon): string | null {
 /** The one glyph an arm drew, in the arm's own slot. */
 function armGlyph(mark: LayerMark): string | null | undefined {
   return render(mark)
-    .querySelector<SVGElement>(`[data-vigilia-layer-mark="${mark.kind}"] svg`)
+    .querySelector<SVGElement>(`[data-yunari-layer-mark="${mark.kind}"] svg`)
     ?.getAttribute("class");
 }
 
 it("gives a group a generic glyph, and nothing it could not know", () => {
   const host = render({ kind: "group" });
-  const slot = host.querySelector<HTMLElement>(".vigilia-layer-mark");
+  const slot = host.querySelector<HTMLElement>(".yunari-layer-mark");
   const glyph = host.querySelector<SVGElement>(
-    '[data-vigilia-layer-mark="group"]',
+    '[data-yunari-layer-mark="group"]',
   );
 
   // The group's own arm drew, and it drew a glyph rather than nothing — the
@@ -93,7 +93,7 @@ it("gives a group a generic glyph, and nothing it could not know", () => {
   } as unknown as LayerMark;
   const plantedHost = render(planted);
   expect(
-    plantedHost.querySelector('[data-vigilia-layer-mark="group"]')?.outerHTML,
+    plantedHost.querySelector('[data-yunari-layer-mark="group"]')?.outerHTML,
   ).toBe(glyph?.outerHTML);
 });
 
@@ -103,7 +103,7 @@ it("draws a text row as the vocabulary's T, and never the object's words", () =>
   // row's name does not. The kind's glyph is what belongs in the slot.
   const host = render({ kind: "text" });
   const glyph = host.querySelector<SVGElement>(
-    '[data-vigilia-layer-mark="text"] svg',
+    '[data-yunari-layer-mark="text"] svg',
   );
 
   expect(glyph).not.toBeNull();
@@ -111,7 +111,7 @@ it("draws a text row as the vocabulary's T, and never the object's words", () =>
   // Nothing is drawn beside the glyph: no specimen, and no `title` carrying the
   // words either — a tooltip only a pointer can reach is not where a row says
   // what it holds.
-  const slot = host.querySelector<HTMLElement>(".vigilia-layer-mark");
+  const slot = host.querySelector<HTMLElement>(".yunari-layer-mark");
   expect(slot?.textContent).toBe("");
   expect(slot?.querySelector("[title]")).toBeNull();
 });
@@ -121,12 +121,12 @@ it("gives each kind a mark that says which kind it is", () => {
   // would pass a case that only checked the arms it happens to get right.
   expect(
     render({ kind: "chart", family: "gauge" })
-      .querySelector('[data-vigilia-layer-mark="chart"] svg')
+      .querySelector('[data-yunari-layer-mark="chart"] svg')
       ?.getAttribute("class"),
   ).toContain("lucide-gauge");
   expect(
     render({ kind: "chart", family: "line" })
-      .querySelector('[data-vigilia-layer-mark="chart"] svg')
+      .querySelector('[data-yunari-layer-mark="chart"] svg')
       ?.getAttribute("class"),
   ).toContain("lucide-chart-line");
   // A shape wears its own primitive's glyph, from the vocabulary: the two shapes
@@ -154,7 +154,7 @@ it("gives each kind a mark that says which kind it is", () => {
   // A group draws the generic stack glyph, never a diagram of what it holds.
   expect(
     render({ kind: "group" }).querySelector(
-      '[data-vigilia-layer-mark="group"] svg',
+      '[data-yunari-layer-mark="group"] svg',
     ),
   ).not.toBeNull();
 });
@@ -233,13 +233,13 @@ it("draws the mark the projection named, and never walks the group's children", 
   for (const mark of ARMS) {
     const host = render(mark);
     expect(
-      host.querySelector(`[data-vigilia-layer-mark="${mark.kind}"]`),
+      host.querySelector(`[data-yunari-layer-mark="${mark.kind}"]`),
       `the ${mark.kind} arm drew its own treatment`,
     ).not.toBeNull();
   }
 
   // A group whose mark was handed a member's own treatment data must still draw
-  // one mark, and it must be the group's: a descendant's `data-vigilia-layer-mark`
+  // one mark, and it must be the group's: a descendant's `data-yunari-layer-mark`
   // appearing here would be the mark walking the children.
   const planted = render({
     kind: "group",
@@ -248,9 +248,9 @@ it("draws the mark the projection named, and never walks the group's children", 
       { kind: "shape", shape: "wedge" },
     ],
   } as unknown as LayerMark);
-  expect(planted.querySelectorAll("[data-vigilia-layer-mark]")).toHaveLength(1);
+  expect(planted.querySelectorAll("[data-yunari-layer-mark]")).toHaveLength(1);
   expect(
-    planted.querySelector('[data-vigilia-layer-mark="group"]'),
+    planted.querySelector('[data-yunari-layer-mark="group"]'),
   ).not.toBeNull();
 });
 
@@ -260,10 +260,10 @@ it("keeps every arm inside one fixed-width slot, so names stay in one column", (
   // would let two rows disagree about where the name begins.
   for (const mark of ARMS) {
     const host = render(mark);
-    const slots = host.querySelectorAll(".vigilia-layer-mark");
+    const slots = host.querySelectorAll(".yunari-layer-mark");
     expect(slots, `one slot for the ${mark.kind} arm`).toHaveLength(1);
     expect(
-      slots[0]?.querySelector(`[data-vigilia-layer-mark="${mark.kind}"]`),
+      slots[0]?.querySelector(`[data-yunari-layer-mark="${mark.kind}"]`),
       `the ${mark.kind} treatment sits inside the slot`,
     ).not.toBeNull();
   }
@@ -278,10 +278,8 @@ it("keeps every arm inside one fixed-width slot, so names stay in one column", (
     ),
     "utf8",
   );
-  const at = css.indexOf("\n.vigilia-layer-mark {");
-  expect(at, ".vigilia-layer-mark is not in the stylesheet").toBeGreaterThan(
-    -1,
-  );
+  const at = css.indexOf("\n.yunari-layer-mark {");
+  expect(at, ".yunari-layer-mark is not in the stylesheet").toBeGreaterThan(-1);
   const declarations = css.slice(at, css.indexOf("}", at));
   expect(declarations).toMatch(/flex:\s*0 0 \d+px/);
 });

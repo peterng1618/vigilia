@@ -18,7 +18,7 @@ import { chooseIn } from "./control-set.js";
 /** The editor preview every editor spec in this suite drives, named outright.
  *
  *  Relative (`"/"`) would resolve against `baseURL`, which is 4173 — the
- *  *player* — and the whole file would wait for `#vigilia-fabric-editor` that
+ *  *player* — and the whole file would wait for `#yunari-fabric-editor` that
  *  is not there. That is what an exclusion list would have papered over
  *  instead: the spec would stay out of the default gate rather than join it. */
 const EDITOR = "http://127.0.0.1:4174/";
@@ -61,8 +61,8 @@ type Measured = {
 /** The camera's own geometry, plus the stage it is measured against. */
 async function measure(page: Page): Promise<Measured> {
   return page.evaluate(() => {
-    const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-      .vigiliaEditorBridge;
+    const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+      .yunariEditorBridge;
     const screen = bridge.editor.viewport.displayScreenRect();
     if (screen === undefined) {
       throw new Error(
@@ -70,7 +70,7 @@ async function measure(page: Page): Promise<Measured> {
       );
     }
     const canvas = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.lower-canvas",
+      "#yunari-fabric-editor canvas.lower-canvas",
     );
     if (canvas === null) throw new Error("no lower canvas in the editor");
     const box = canvas.getBoundingClientRect();
@@ -107,17 +107,17 @@ async function freezeClock(page: Page): Promise<void> {
 
 /** Picks a display through the stage's own control, by its visible name. */
 async function chooseDisplay(page: Page, name: string): Promise<void> {
-  await page.locator("[data-vigilia-zoom]").click();
+  await page.locator("[data-yunari-zoom]").click();
   await page.getByRole("menuitemradio", { name }).click();
 }
 
 /** The chooser's display control, by the hook the control itself carries. It is
  *  a `ControlSelect` now, so the list is a Base UI popup rather than a native
  *  `<select>` — `chooseIn` scopes to the popup the trigger's own `aria-controls`
- *  names. **Not a bare `[data-vigilia-option]` lookup**: the display list and
+ *  names. **Not a bare `[data-yunari-option]` lookup**: the display list and
  *  the ratio list are both keyed by aspect ratio, so an unscoped `9:19.5`
  *  resolves to two rows once either has been opened. */
-const CHOOSER_DISPLAY = "[data-vigilia-new-document-display]";
+const CHOOSER_DISPLAY = "[data-yunari-new-document-display]";
 
 /** Where each menu label sits, in page px, measured on the live menu.
  *
@@ -142,7 +142,7 @@ async function labelOffsets(page: Page): Promise<Record<string, number>> {
 
 /** Opens the display menu on the trigger, leaving the current choice ticked. */
 async function openMenu(page: Page): Promise<void> {
-  await page.locator("[data-vigilia-zoom]").click();
+  await page.locator("[data-yunari-zoom]").click();
   await expect(page.getByRole("menu")).toBeVisible();
 }
 
@@ -151,11 +151,11 @@ test.describe("the stage looks through a display", () => {
     // Before the navigation: see `freezeClock`.
     await freezeClock(page);
     await page.goto(EDITOR);
-    await expect(page.locator("#vigilia-fabric-editor")).toBeVisible();
+    await expect(page.locator("#yunari-fabric-editor")).toBeVisible();
     await page.waitForFunction(
       () =>
-        (window as unknown as { vigiliaEditorBridge?: unknown })
-          .vigiliaEditorBridge !== undefined,
+        (window as unknown as { yunariEditorBridge?: unknown })
+          .yunariEditorBridge !== undefined,
     );
     // The starter paints asynchronously (fonts, images); a read before it has
     // finished is a read of an empty canvas.
@@ -210,7 +210,7 @@ test.describe("the stage looks through a display", () => {
     expect(
       await page.evaluate(() => {
         const frame = document.querySelector<HTMLElement>(
-          "[data-vigilia-display-screen]",
+          "[data-yunari-display-screen]",
         );
         if (frame === null || frame.hidden) return undefined;
         return (
@@ -237,7 +237,7 @@ test.describe("the stage looks through a display", () => {
     const chooser = page.locator('[role="dialog"]');
     await expect(chooser).toBeVisible();
     await chooseIn(page, CHOOSER_DISPLAY, "9:19.5");
-    await chooser.locator("[data-vigilia-new-document-create]").click();
+    await chooser.locator("[data-yunari-new-document-create]").click();
     // New asks in two steps, chooser first. **The second is answered only if it
     // comes**: a `New` mounts a fresh session whose baseline is the document it
     // just made, so a fresh editor is not dirty and nothing prompts. Measured on
@@ -261,7 +261,7 @@ test.describe("the stage looks through a display", () => {
     expect(
       await page.evaluate(() => {
         const frame = document.querySelector<HTMLElement>(
-          "[data-vigilia-display-screen]",
+          "[data-yunari-display-screen]",
         );
         if (frame === null || frame.hidden) return undefined;
         return {
@@ -314,11 +314,11 @@ test.describe("the stage looks through a display", () => {
       await page.evaluate(() => {
         const artboard = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: { artboard(): { width: number; height: number } };
             };
           }
-        ).vigiliaEditorBridge.editor.artboard();
+        ).yunariEditorBridge.editor.artboard();
         // The dimensions only: the artboard also carries its background and
         // bar colours, and this is about the shape the display derived.
         return { width: artboard.width, height: artboard.height };
@@ -336,8 +336,8 @@ test.describe("the stage looks through a display", () => {
     const read = () =>
       page.evaluate(() => {
         const artboard = (
-          window as unknown as { vigiliaEditorBridge: Bridge }
-        ).vigiliaEditorBridge.editor.artboard();
+          window as unknown as { yunariEditorBridge: Bridge }
+        ).yunariEditorBridge.editor.artboard();
         return { width: artboard.width, height: artboard.height };
       });
 
@@ -346,7 +346,7 @@ test.describe("the stage looks through a display", () => {
     for (const name of ["9:19.5", "16:9", "Fit"]) {
       // Every entry is a radio: Fit is "no display" and the three lenses are
       // displays, so they are one fact with four values, not two controls.
-      await page.locator("[data-vigilia-zoom]").click();
+      await page.locator("[data-yunari-zoom]").click();
       await page.getByRole("menuitemradio", { name }).click();
       // The lens frames what the author wrote; it never rewrites it (§57).
       expect(await read(), `after choosing ${name}`).toEqual(STARTER);
@@ -380,15 +380,15 @@ test.describe("the stage looks through a display", () => {
     // Six genuinely different framings, not one zoom relabelled six times.
     expect(new Set(seen.map((row) => row.aspect.toFixed(2))).size).toBe(6);
 
-    await page.locator("[data-vigilia-zoom]").click();
+    await page.locator("[data-yunari-zoom]").click();
     await page.getByRole("menuitemradio", { name: "Fit" }).click();
     // Fit is one click away and is the whole window again — no screen drawn
     // around a display the author did not choose.
     expect(
       await page.evaluate(() =>
         (
-          window as unknown as { vigiliaEditorBridge: Bridge }
-        ).vigiliaEditorBridge.editor.viewport.displayScreenRect(),
+          window as unknown as { yunariEditorBridge: Bridge }
+        ).yunariEditorBridge.editor.viewport.displayScreenRect(),
       ),
       "Fit has no screen to draw",
     ).toBeUndefined();
@@ -396,7 +396,7 @@ test.describe("the stage looks through a display", () => {
     // task and two browser specs pin it, so a display must not take it over —
     // and the default is a display, so it would have gone on open.
     expect(
-      await page.locator("[data-vigilia-zoom]").textContent(),
+      await page.locator("[data-yunari-zoom]").textContent(),
       "and the trigger still reads the camera's scale",
     ).toMatch(/^\d+%$/);
   });
@@ -426,7 +426,7 @@ test.describe("the stage looks through a display", () => {
     const chooser = page.locator('[role="dialog"]');
     await expect(chooser).toBeVisible();
     await chooseIn(page, CHOOSER_DISPLAY, "9:19.5");
-    await chooser.locator("[data-vigilia-new-document-create]").click();
+    await chooser.locator("[data-yunari-new-document-create]").click();
     const prompt = page.locator('[role="dialog"]');
     await prompt
       .waitFor({ state: "visible", timeout: 3_000 })
@@ -484,14 +484,14 @@ test.describe("the stage looks through a display", () => {
     // The control asserting a camera state that is not true. `reset` clears the
     // lens and parks the camera at 1:1, and a tick derived from the lens alone
     // then reads that as Fit — the whole stage framed, which it is not.
-    await page.locator("[data-vigilia-zoom]").click();
+    await page.locator("[data-yunari-zoom]").click();
     await page.getByRole("menuitem", { name: "100 %" }).click();
 
     const camera = () =>
       page.evaluate(() => {
         const bridge = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: {
                 viewport: {
                   zoom(): number;
@@ -501,7 +501,7 @@ test.describe("the stage looks through a display", () => {
               };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         return {
           zoom: bridge.editor.viewport.zoom(),
           fitted: bridge.editor.viewport.isFitted(),
@@ -542,7 +542,7 @@ test.describe("the stage looks through a display", () => {
     // What the shape has to hold is that it stays *bare* — no well, no chevron,
     // because §5 draws the chevron on a well and the readout has none — while
     // staying the control, which is what the click at the end says.
-    const readout = page.locator("[data-vigilia-zoom]");
+    const readout = page.locator("[data-yunari-zoom]");
     const shape = await readout.evaluate((node) => {
       const style = getComputedStyle(node);
       return {
@@ -586,11 +586,11 @@ test.describe("the stage looks through a display", () => {
       page.evaluate(() => {
         const bridge = (
           window as unknown as {
-            vigiliaEditorBridge: {
+            yunariEditorBridge: {
               editor: { canvas: { toObject(properties: string[]): unknown } };
             };
           }
-        ).vigiliaEditorBridge;
+        ).yunariEditorBridge;
         return JSON.stringify(
           bridge.editor.canvas.toObject([
             "id",
@@ -630,7 +630,7 @@ test.describe("the stage looks through a display", () => {
     await page.evaluate(() => {
       const bridge = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getObjects(): { set(values: Record<string, unknown>): void }[];
@@ -638,7 +638,7 @@ test.describe("the stage looks through a display", () => {
             };
           };
         }
-      ).vigiliaEditorBridge;
+      ).yunariEditorBridge;
       const card = bridge.editor.canvas.getObjects()[0];
       card?.set({ left: 999 });
     });
@@ -662,7 +662,7 @@ test.describe("the stage looks through a display", () => {
     await page
       .locator('.editor-shell-rail button[aria-label="Document"]')
       .click();
-    const field = page.locator("[data-vigilia-theme-name]");
+    const field = page.locator("[data-yunari-theme-name]");
     await expect(field).toBeVisible();
     await field.fill(
       "System dashboard — living-room wall panel, bedside and hallway",

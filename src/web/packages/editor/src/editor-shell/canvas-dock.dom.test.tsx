@@ -164,21 +164,21 @@ describe("the canvas dock's one half", () => {
     const container = await mount(bridgeOverSelection(0, false));
 
     expect(
-      container.querySelectorAll("[data-vigilia-canvas-toolbar] button").length,
+      container.querySelectorAll("[data-yunari-canvas-toolbar] button").length,
     ).toBe(0);
   });
 
   it("carries no arrange action, whatever the selection is", async () => {
     const one = await mount(bridgeOverSelection(1, true));
     expect(
-      one.querySelectorAll("[data-vigilia-arrange-action]").length,
+      one.querySelectorAll("[data-yunari-arrange-action]").length,
       "one object",
     ).toBe(0);
     // The dock is still the surface for this selection, so its absence above is
     // the arrange half's and not the whole row's.
     expect(
       one
-        .querySelector("[data-vigilia-canvas-toolbar]")
+        .querySelector("[data-yunari-canvas-toolbar]")
         ?.getAttribute("data-visible"),
     ).toBe("true");
 
@@ -187,7 +187,7 @@ describe("the canvas dock's one half", () => {
     unmount();
     const two = await mount(bridgeOverSelection(2, true));
     expect(
-      two.querySelectorAll("[data-vigilia-arrange-action]").length,
+      two.querySelectorAll("[data-yunari-arrange-action]").length,
       "two objects",
     ).toBe(0);
     // And the object half is drawn on the same mount, so the row is not simply
@@ -203,7 +203,7 @@ describe("the canvas dock's one half", () => {
     const container = await mount(bridgeOverSelection(1, true));
     const marked = [
       ...container.querySelectorAll<HTMLButtonElement>(
-        "[data-vigilia-canvas-toolbar] button[data-vigilia-destructive]",
+        "[data-yunari-canvas-toolbar] button[data-yunari-destructive]",
       ),
     ];
     expect(marked.map((button) => button.getAttribute("aria-label"))).toEqual([

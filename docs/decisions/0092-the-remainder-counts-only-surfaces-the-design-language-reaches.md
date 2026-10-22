@@ -15,7 +15,7 @@ instrument exists to refuse. Converting the file would invent a player token
 surface that does not exist. The ratchet was measuring files it could never
 gate.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `docs/decisions/0040`, the remainder section of `vg-426`, `vg-626`,
 `scripts/design-tokens.gated.json`, and the twenty files the failing run names.

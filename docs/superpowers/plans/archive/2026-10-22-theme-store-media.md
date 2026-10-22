@@ -196,7 +196,7 @@ and the route `POST /api/themes/normalize-video`, body `{ bytesBase64, fit? }`, 
 - [ ] **Step 2: Run it, confirm it fails.**
 - [ ] **Step 3: Implement** the control in the row's existing action group, using the pane's existing busy/refused shape. Copy: `Normalize video`, `Normalizing…`, and `Use the normalized copy` as the press that replaces. **Never replace without that press** — the master stays until the author says otherwise.
 - [ ] **Step 4: Run the DOM tests; they pass.**
-- [ ] **Step 5: Browser claim** — build (`npm run build`), then one Playwright claim in `tests/e2e/editor-rail.spec.ts` with `/api/themes/normalize-video` routed to a stubbed answer: the control appears for a video asset, the press shows the refusal sentence, and the press with a good answer replaces and the preview re-renders. Register the capture row in `docs/evidence/screenshots/README.md`, then take it with `VIGILIA_CAPTURE=1 --workers=1` and **look at it**.
+- [ ] **Step 5: Browser claim** — build (`npm run build`), then one Playwright claim in `tests/e2e/editor-rail.spec.ts` with `/api/themes/normalize-video` routed to a stubbed answer: the control appears for a video asset, the press shows the refusal sentence, and the press with a good answer replaces and the preview re-renders. Register the capture row in `docs/evidence/screenshots/README.md`, then take it with `YUNARI_CAPTURE=1 --workers=1` and **look at it**.
 - [ ] **Step 6: Run the gate components individually**, write the exit codes into the report, commit.
 
 ---

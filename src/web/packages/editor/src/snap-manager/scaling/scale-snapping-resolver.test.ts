@@ -16,7 +16,7 @@ import {
 } from "./scale-snapping-resolver.js";
 
 // The fork's own fixture helpers, reproduced verbatim in defaults but inlined
-// here because Vigilia's tests build their fixtures in-file. Keeping the
+// here because Yunari's tests build their fixtures in-file. Keeping the
 // fork's `width: 100`, `height: 100`, `zoom: 1` and `fixedAnchor` at
 // `(left, top)` is what keeps its asserted numbers valid.
 

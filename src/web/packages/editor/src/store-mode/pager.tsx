@@ -28,7 +28,7 @@ import { uiCopy } from "../ui-copy.js";
 
 /** The well's id, named rather than minted: the region has one pager and a
  *  driver reaches the size well by name. */
-const PAGE_SIZE_ID = "vigilia-store-page-size";
+const PAGE_SIZE_ID = "yunari-store-page-size";
 
 /** The well's list, in `pageSizes`' own order. Each entry is labelled with its
  *  own number — the sizes are data — and `all` with the table's word for it,
@@ -120,8 +120,8 @@ function PageNumber(props: {
   return (
     <button
       type="button"
-      id={`vigilia-store-page-${page}`}
-      data-vigilia-store-page={page}
+      id={`yunari-store-page-${page}`}
+      data-yunari-store-page={page}
       aria-label={uiCopy.store.pager.page(page)}
       aria-current={current ? "page" : undefined}
       onClick={() => onPage(page)}
@@ -142,7 +142,7 @@ function PageNumber(props: {
 function PageGap(): React.JSX.Element {
   return (
     <span
-      data-vigilia-store-page-gap=""
+      data-yunari-store-page-gap=""
       aria-hidden
       className="inline-flex size-[26px] flex-none items-center justify-center text-sm text-muted"
     >
@@ -162,7 +162,7 @@ export function Pager(props: {
 
   return (
     <div
-      data-vigilia-store-pager=""
+      data-yunari-store-pager=""
       className="flex flex-none items-center gap-[var(--space-12)] border-t border-edge px-[var(--space-16)] py-[var(--space-8)]"
     >
       {/* §5's select, and the drawing's 76px well. **The label sits beside the
@@ -171,11 +171,11 @@ export function Pager(props: {
           and the 76px well — 158px, the three values each already fixed, and the
           one width this row needs rather than a 76px column that wraps the well
           to a second line and makes the bar 61px against the drawing's 43. */}
-      <span data-vigilia-store-page-row="" className="w-[158px] flex-none">
+      <span data-yunari-store-page-row="" className="w-[158px] flex-none">
         <ControlSelect
           id={PAGE_SIZE_ID}
           label={uiCopy.store.pager.perPage}
-          data={{ "data-vigilia-store-page-size": "" }}
+          data={{ "data-yunari-store-page-size": "" }}
           value={String(size)}
           options={PAGE_SIZE_OPTIONS}
           onChange={(id) => {
@@ -190,9 +190,9 @@ export function Pager(props: {
       <span className="flex-1" />
       <span className="flex items-center gap-[var(--space-4)]">
         <ControlIconButton
-          id="vigilia-store-page-previous"
+          id="yunari-store-page-previous"
           label={uiCopy.store.pager.previous}
-          data={{ "data-vigilia-store-page-previous": "" }}
+          data={{ "data-yunari-store-page-previous": "" }}
           disabled={current <= 1}
           onClick={() => onPage(current - 1)}
         >
@@ -213,9 +213,9 @@ export function Pager(props: {
           ),
         )}
         <ControlIconButton
-          id="vigilia-store-page-next"
+          id="yunari-store-page-next"
           label={uiCopy.store.pager.next}
-          data={{ "data-vigilia-store-page-next": "" }}
+          data={{ "data-yunari-store-page-next": "" }}
           disabled={current >= total}
           onClick={() => onPage(current + 1)}
         >

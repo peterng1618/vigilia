@@ -12,7 +12,7 @@
 ## The problem
 
 The reference target shows a coloured halo around chart lines and bars that
-Vigilia does not draw. The question was whether the installed ECharts can deliver
+Yunari does not draw. The question was whether the installed ECharts can deliver
 it through the existing chart settings surface, cheaply, without touching what
 the player bundle cares about.
 
@@ -23,7 +23,7 @@ line chart already has, and itself an editable control — is a backing-pixel un
 with the identical behaviour.** So this note is a consistency decision, not a
 correctness one, and the difference matters to anyone reading it later.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `grep -rn "shadowBlur|shadowColor|shadow" packages/*/src/`.
 
@@ -62,7 +62,7 @@ pass, no shader and no effects stack.
 zrender's `ctx.dpr` is ECharts' own device ratio, and
 `scene-fabric/src/chart-object.ts:247` passes `devicePixelRatio: 1` — so
 `ctx.dpr * x` is `x`, and the number reaches the canvas backing unmodified.
-Vigilia's scaling happens one level out: the backing canvas is
+Yunari's scaling happens one level out: the backing canvas is
 `width × height × renderScale` (`chart-object.ts:_backingSize`) and Fabric
 downscales it at draw. So the authored value is in **backing pixels** because of
 the backing canvas's size, not because of any multiplier the engine applied.
@@ -202,7 +202,7 @@ percent — and it is the one length every **line** chart has. The starter's
 sparklines (scale 2.000) and its trend chart (1.532) both author `2` today, and
 get the same 1.305× scale-dependent treatment a glow would.
 
-That weakens any claim that Vigilia has no backing-pixel lengths: it has one.
+That weakens any claim that Yunari has no backing-pixel lengths: it has one.
 It also removes a distinction an earlier draft of this note leaned on — that a
 tuned setting deserves a stable unit more than a constant nobody retypes. That
 distinction does not survive contact with the source: `lineWidth` is itself a
@@ -222,12 +222,12 @@ is worth doing for `lineWidth` first.
 local background across the CPU sparkline, is a tight 1–2 px shoulder:
 `x=470: [5,8,11,4,12,99,126,35,17,22,18,18,18]`, `x=530: [6,7,5,0,28,128,143,61,25,38,37,33,31]`
 — peak 126–143, one pixel out 35–61, background by two pixels out. Current
-Vigilia rendering produces a 2 px core with **no** shoulder at all. A native
+Yunari rendering produces a 2 px core with **no** shoulder at all. A native
 `shadowBlur` between 2 and 4 does reproduce that shoulder.
 
 Both sides of that comparison sit outside the composed player: the target
 transect is measured from the reference PNG, and the current-rendering transect
-from Chromium driving ECharts directly. Neither is a Vigilia player mount. Since
+from Chromium driving ECharts directly. Neither is a Yunari player mount. Since
 the skip changes no rendering, no composed measurement is owed — but the two
 transects are comparable as *engine output*, not as composed frames.
 

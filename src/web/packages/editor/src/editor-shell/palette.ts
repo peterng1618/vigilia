@@ -14,7 +14,7 @@ export type ShellPalette = (typeof shellPalettes)[number];
 /** The graphite look is the shell's default. */
 export const DEFAULT_SHELL_PALETTE: ShellPalette = "graphite";
 
-const storageKey = "vigilia.editor.shell-palette";
+const storageKey = "yunari.editor.shell-palette";
 
 function isShellPalette(value: string | null): value is ShellPalette {
   return value !== null && shellPalettes.includes(value as ShellPalette);

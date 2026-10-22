@@ -10,7 +10,7 @@
 Phase D of `2026-10-12-theme-store-design.md` gives each catalogue item an
 Install action. The item's `packageUrl` points at a `.zip` — a release asset
 (option A) or a file in the catalogue repo (option B) — and something has to
-fetch it before `@vigilia/theme-package`'s reader and `ThemeStore` can write it.
+fetch it before `@yunari/theme-package`'s reader and `ThemeStore` can write it.
 
 The shape worth solving is **acquiring a remote binary whose address comes from
 a remote document**. The URL is data, not code: it arrives inside `index.json`,
@@ -20,7 +20,7 @@ made an outbound third-party request, the runtime the product prefers (the
 browser, per 0088) is measured to be unable to, and the reader that will consume
 the bytes enforces a 64 MiB cap only *after* they are in memory.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every `fetch(` under `packages/host/src`, `packages/theme-package/src`
 and `packages/renderer-core/src`; `MAX_ARCHIVE_BYTES`; any redirect handling;
@@ -151,7 +151,7 @@ One new file (`themes/download.ts`) and its test; Task 3 adds the route
 allowlist is `github.com`, `objects.githubusercontent.com`,
 `release-assets.githubusercontent.com` and `raw.githubusercontent.com` — the
 hosts options A and B can legitimately produce. `MAX_ARCHIVE_BYTES` is exported
-from `@vigilia/theme-package` so the downloader and the reader hold **one
+from `@yunari/theme-package` so the downloader and the reader hold **one
 number**. `timeoutMs` defaults to 60 000.
 
 **What is not built:** retry, resume (`Range`), checksum verification, caching

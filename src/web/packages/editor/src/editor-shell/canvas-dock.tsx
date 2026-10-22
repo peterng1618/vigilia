@@ -99,7 +99,7 @@ export function CanvasDock({
       className="editor-shell-dock editor-glass"
       role="toolbar"
       aria-label={uiCopy.canvasToolbar.label}
-      data-vigilia-canvas-toolbar=""
+      data-yunari-canvas-toolbar=""
       // The surface derives its own visibility: it is present as soon as a
       // document is, and the object half appears on it as the selection becomes
       // eligible — the absent half is an empty row, not an absent surface.

@@ -38,7 +38,7 @@ Where a plan has not landed a piece this plan consumes, say so in the first comm
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled. No licence headers; comments are 1–3 lines and explain *why*. 500 lines is a signal and 800 is a stop.
 - Run from `src/web/`; the scripts are `package.json`'s. Stage explicit paths; never `git add -A`. Conventional Commit titles.
 - **`tests/e2e/` belongs to no tsconfig (`vg-192`)**, so a bad locator there is caught by nothing but running the spec. `tests/e2e/` is also absent from the design-tokens watchlist (tests are excluded), so a gated list never names one.
-- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `VIGILIA_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
+- **Playwright previews built bundles.** Rebuild after any source change and after reverting a deliberate break. `YUNARI_CAPTURE=1` and `--workers=1` for any capture; capture only actions registered in `docs/evidence/screenshots/README.md`.
 - **A new test must be shown to fail when the behaviour it guards is disabled**, before it is trusted. Every task below states its red proof.
 - **The register.** No row is closed by this plan unless the census adjudicates it: `vg-181` (the copy table states its contract twice, in one owner) and `vg-182` (an Escape display cap nothing can reach) are read in Task 1 and the ruling recorded there. `vg-182`'s cause is not established and it stays open. `vg-172`, `vg-185`, `vg-192` and `vg-199` stay open. Grep `docs/product/backlog-archive.jsonl` before filing anything: `vg-024` (locked is a filled lock), `vg-092` (icon fill flooding), `vg-183` (pictographs in the copy table), `vg-103` and `vg-108` (unassociated fields) are already `verified` and are not re-filed.
 
@@ -405,7 +405,7 @@ it("leaves the React surfaces with no copy of their own", () => {
   const owned = new Set(copy());
   expect(spokenIn(root).filter((text) => !owned.has(text))).toEqual([]);
   // A surface that rendered nothing would satisfy the line above by being absent.
-  for (const surface of ["[data-vigilia-rail]", "[data-vigilia-canvas-toolbar]", …])
+  for (const surface of ["[data-yunari-rail]", "[data-yunari-canvas-toolbar]", …])
     expect(spokenIn(root.querySelector(surface)!).length).toBeGreaterThan(0);
 });
 ```
@@ -548,7 +548,7 @@ Commit the gated list with the counts and the three red proofs, and state which 
 
 **Outcome:** A written ledger, in this plan file's `## Acceptance ledger` section, of every item in the spec's Acceptance section: met or not met, with the evidence for each — and the four items no single plan owns checked **by observation on a rebuilt bundle**, not by citing a plan.
 
-**Owning symbols/landmarks:** the spec's *Acceptance* section; the registered captures in `docs/evidence/screenshots/README.md`; the counts Task 7 recorded; plan 2's rail and `PublishIndicator`; plan 5's settings surface; `shell-appearance.spec.ts`'s `shell-palette-` capture; the display-lens outline `[data-vigilia-display-screen]`.
+**Owning symbols/landmarks:** the spec's *Acceptance* section; the registered captures in `docs/evidence/screenshots/README.md`; the counts Task 7 recorded; plan 2's rail and `PublishIndicator`; plan 5's settings surface; `shell-appearance.spec.ts`'s `shell-palette-` capture; the display-lens outline `[data-yunari-display-screen]`.
 
 **Files:**
 - Modify: nothing under `packages/editor/src/**` unless an item's evidence is a check that does not exist — in which case the check is added in the surface's own test file
@@ -580,7 +580,7 @@ Observed in the browser on a rebuilt bundle: each of Composition, Add, Tokens an
 
 - [ ] **Step 4: The stage draws no device frame**
 
-Observed: the artboard sits on the stage with no bezel, notch or frame, and with a display lens chosen the one outline is `[data-vigilia-display-screen]` — a screen rect at 1px, hidden under Fit, which is the lens's own marking and not a device. Say which of the two the observation saw, because "no frame" reported from a Fit capture has not looked at the case that could show one.
+Observed: the artboard sits on the stage with no bezel, notch or frame, and with a display lens chosen the one outline is `[data-yunari-display-screen]` — a screen rect at 1px, hidden under Fit, which is the lens's own marking and not a device. Say which of the two the observation saw, because "no frame" reported from a Fit capture has not looked at the case that could show one.
 
 - [ ] **Step 5: Six palettes distinguishable by surface**
 
@@ -624,7 +624,7 @@ The capture opens the state the mockup draws (plan 2's capture does: the Add slo
 ```bash
 cd src/web
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
 ```
 
 Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking.
@@ -749,7 +749,7 @@ rather than in a commit body that could only be corrected by rewriting history.
 14. **met** — The stage draws no device frame: `editor-display.spec.ts` → 10
     passed, every case with a lens chosen (the case that could show a frame); Fit
     is the explicit case at `:356` (`displayScreenRect()` is undefined). The one
-    outline is `[data-vigilia-display-screen]`, `border: 1px`
+    outline is `[data-yunari-display-screen]`, `border: 1px`
     (`editor-shell.css:2357`), hidden when no screen is drawn
     (`editor-shell.ts:549`); no bezel or notch exists in the source.
 15. **met** — Six palettes are distinguishable by surface: the registered

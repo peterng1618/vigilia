@@ -45,7 +45,7 @@ export type BindingRefusal =
   | { readonly kind: "unprintable" }
   | { readonly kind: "unbindable" };
 
-const storageKey = "vigilia.editor.shortcut-overrides";
+const storageKey = "yunari.editor.shortcut-overrides";
 
 /** What a key event reports when only a modifier is down. None of these can be
  *  a chord: a modifier qualifies a key, it is not one. */

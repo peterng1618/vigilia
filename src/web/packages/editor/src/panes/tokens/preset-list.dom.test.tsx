@@ -238,7 +238,7 @@ async function openControl(control: string): Promise<readonly Element[]> {
 async function chooseIn(control: string, id: string): Promise<void> {
   const options = await openControl(control);
   const option = options.find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+    (candidate) => candidate.getAttribute("data-yunari-option") === id,
   );
   if (option === undefined) throw new Error(`no option ${id} in ${control}`);
   await pointerDown(option);
@@ -249,7 +249,7 @@ async function chooseIn(control: string, id: string): Promise<void> {
 /** A preset's resolution value span, by the row that carries the preset's id. */
 function resolutionLine(host: HTMLElement, id: string): HTMLElement {
   const value = host.querySelector<HTMLElement>(
-    `[data-vigilia-type-preset-row="${id}"] [data-vigilia-type-preset-resolution]`,
+    `[data-yunari-type-preset-row="${id}"] [data-yunari-type-preset-resolution]`,
   );
   if (value === null) throw new Error(`no resolution line for ${id}`);
   return value;
@@ -298,7 +298,7 @@ const firstDeclaredPresetId = Object.keys(withNumbers)[0]!;
  *  not tell the two apart. */
 function binding(host: HTMLElement): HTMLElement {
   const found = host.querySelector<HTMLElement>(
-    "[data-vigilia-type-preset-binding]",
+    "[data-yunari-type-preset-binding]",
   );
   if (found === null) throw new Error("the list states no binding");
   return found;
@@ -421,11 +421,11 @@ it("opens the chooser on the preset the selection is set in, and stays browseabl
   await act(async () => selection.set("24-400", true));
   const chooser = (): string | null | undefined =>
     host
-      .querySelector("[data-vigilia-type-preset] [data-vigilia-value]")
-      ?.getAttribute("data-vigilia-value");
+      .querySelector("[data-yunari-type-preset] [data-yunari-value]")
+      ?.getAttribute("data-yunari-value");
   expect(chooser()).toBe("24-400");
 
-  await chooseIn("[data-vigilia-type-preset]", "body");
+  await chooseIn("[data-yunari-type-preset]", "body");
 
   expect(chooser()).toBe("body");
   expect(binding(host).textContent).toContain(withNumbers["24-400"]!.name);
@@ -434,7 +434,7 @@ it("opens the chooser on the preset the selection is set in, and stays browseabl
 it("drops an optional field when the author empties it, rather than writing an empty string", async () => {
   const { change } = await mount(withWeight);
 
-  await commitField("[data-vigilia-type-weight]", "");
+  await commitField("[data-yunari-type-weight]", "");
 
   const committed = change.mock.calls[0]?.[0] as TypePresets;
   expect(Object.keys(committed)).toEqual(["body", "caption"]);
@@ -450,7 +450,7 @@ it("drops an optional field when the author empties it, rather than writing an e
 it("drops an optional number when the author clears it", async () => {
   const { change } = await mount(withWeight);
 
-  await commitField("[data-vigilia-type-line-height]", "");
+  await commitField("[data-yunari-type-line-height]", "");
 
   const committed = change.mock.calls[0]?.[0] as TypePresets;
   expect(committed.body?.value).not.toHaveProperty("lineHeight");
@@ -473,7 +473,7 @@ it("drops an optional letter spacing when the author clears it", async () => {
     },
   });
 
-  await commitField("[data-vigilia-type-letter-spacing]", "");
+  await commitField("[data-yunari-type-letter-spacing]", "");
 
   // The whole value, so a clear that committed nothing at all is red here too.
   expect((change.mock.calls[0]?.[0] as TypePresets).body?.value).toEqual({
@@ -487,25 +487,25 @@ it("drops an optional letter spacing when the author clears it", async () => {
 it("refuses an empty name or family", async () => {
   const { change } = await mount(withWeight);
 
-  await commitField("[data-vigilia-type-name]", "");
+  await commitField("[data-yunari-type-name]", "");
   expect(change).not.toHaveBeenCalled();
 
   // Whitespace is empty after the trim the rule applies, so it is refused too;
   // a family of `"   "` would be a name no renderer can resolve.
-  await commitField("[data-vigilia-type-family]", "   ");
+  await commitField("[data-yunari-type-family]", "   ");
   expect(change).not.toHaveBeenCalled();
 });
 
 it("refuses a size that is not a positive number", async () => {
   const { change } = await mount(withWeight);
 
-  await commitField("[data-vigilia-type-size]", "0");
+  await commitField("[data-yunari-type-size]", "0");
   expect(change).not.toHaveBeenCalled();
 
-  await commitField("[data-vigilia-type-size]", "abc");
+  await commitField("[data-yunari-type-size]", "abc");
   expect(change).not.toHaveBeenCalled();
 
-  await commitField("[data-vigilia-type-size]", "18");
+  await commitField("[data-yunari-type-size]", "18");
   expect((change.mock.calls[0]?.[0] as TypePresets).body?.value.size).toBe(18);
 });
 
@@ -517,7 +517,7 @@ it("refuses to delete the last preset, because nothing is left to reassign to", 
   );
 
   const remove1 = host.querySelector<HTMLButtonElement>(
-    "[data-vigilia-type-delete]",
+    "[data-yunari-type-delete]",
   );
   expect(remove1).toHaveProperty("disabled", true);
   await click(remove1!);
@@ -529,17 +529,17 @@ it("offers every other preset as the replacement, and deletes through the port",
   const { host } = await mount(withWeight, { onDelete: remove });
 
   const deleteControl = host.querySelector<HTMLButtonElement>(
-    "[data-vigilia-type-delete]",
+    "[data-yunari-type-delete]",
   );
   expect(deleteControl).toHaveProperty("disabled", false);
 
-  const options = await openControl("[data-vigilia-type-replacement]");
+  const options = await openControl("[data-yunari-type-replacement]");
   expect(
-    options.map((option) => option.getAttribute("data-vigilia-option")),
+    options.map((option) => option.getAttribute("data-yunari-option")),
   ).toEqual(["caption"]);
 
   const caption = options.find(
-    (option) => option.getAttribute("data-vigilia-option") === "caption",
+    (option) => option.getAttribute("data-yunari-option") === "caption",
   )!;
   await pointerDown(caption);
   await click(caption, 1);
@@ -556,16 +556,16 @@ it("runs the face preview, the face adoption and the trio adoption through the p
   // rather than the list's first row.
   const face = catalogFaces()[1]!;
 
-  await chooseIn("[data-vigilia-font-face]", face.id);
-  await click(host.querySelector("[data-vigilia-font-preview]")!);
+  await chooseIn("[data-yunari-font-face]", face.id);
+  await click(host.querySelector("[data-yunari-font-preview]")!);
   expect(fontActions.preview.mock.calls).toEqual([[face]]);
 
-  await click(host.querySelector("[data-vigilia-font-apply]")!);
+  await click(host.querySelector("[data-yunari-font-apply]")!);
   expect(fontActions.applyFace.mock.calls).toEqual([["body", face]]);
 
   const trio = fontTrios()[1]!;
-  await chooseIn("[data-vigilia-font-trio]", trio.id);
-  await click(host.querySelector("[data-vigilia-font-trio-apply]")!);
+  await chooseIn("[data-yunari-font-trio]", trio.id);
+  await click(host.querySelector("[data-yunari-font-trio-apply]")!);
   expect(fontActions.applyTrio.mock.calls).toEqual([[trio.id]]);
 });
 
@@ -577,8 +577,8 @@ it("names the two adoption controls Font face and Font trio", async () => {
 
   expect(uiCopy.panels.fontFace).toBe("Font face");
   expect(uiCopy.panels.fontTrioAdopt).toBe("Font trio");
-  expect(controlName(host, "[data-vigilia-font-face]")).toBe("Font face");
-  expect(controlName(host, "[data-vigilia-font-trio]")).toBe("Font trio");
+  expect(controlName(host, "[data-yunari-font-face]")).toBe("Font face");
+  expect(controlName(host, "[data-yunari-font-trio]")).toBe("Font trio");
 });
 
 it("preserves packaged face metadata when editing size", async () => {
@@ -597,7 +597,7 @@ it("preserves packaged face metadata when editing size", async () => {
     },
   });
 
-  await commitField("[data-vigilia-type-size]", "18");
+  await commitField("[data-yunari-type-size]", "18");
 
   expect(change).toHaveBeenLastCalledWith({
     body: {
@@ -618,7 +618,7 @@ it("preserves packaged face metadata when editing size", async () => {
 it("adds a preset under the first free id", async () => {
   const { host, change } = await mount(withWeight);
 
-  await click(host.querySelector("[data-vigilia-type-preset-add]")!);
+  await click(host.querySelector("[data-yunari-type-preset-add]")!);
 
   const added = change.mock.calls[0]?.[0] as TypePresets;
   expect(added.type).toEqual({

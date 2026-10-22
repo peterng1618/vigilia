@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://vigilia.local/schema/theme-document/2.json",
-  "title": "Vigilia Fabric theme envelope",
-  "description": "The published Vigilia theme format. Fabric owns scene geometry and object state; Vigilia owns the versioned semantic envelope.",
+  "$id": "https://yunari.local/schema/theme-document/2.json",
+  "title": "Yunari Fabric theme envelope",
+  "description": "The published Yunari theme format. Fabric owns scene geometry and object state; Yunari owns the versioned semantic envelope.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "fabricVersion", "id", "artboard", "scene"],
@@ -151,7 +151,7 @@
       }
     },
     "fabricScene": {
-      "description": "Fabric JSON. Vigilia validates object identity, nesting bounds and JSON safety before revival.",
+      "description": "Fabric JSON. Yunari validates object identity, nesting bounds and JSON safety before revival.",
       "type": "object", "required": ["version", "objects"],
       "properties": {
         "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
@@ -162,12 +162,12 @@
     "fabricObject": {
       "type": "object",
       "properties": {
-        "vigiliaGlass": { "$ref": "#/$defs/glassTreatment" },
+        "yunariGlass": { "$ref": "#/$defs/glassTreatment" },
         "name": { "$ref": "#/$defs/objectName" }
       },
       "allOf": [
         {
-          "if": { "required": ["vigiliaGlass"] },
+          "if": { "required": ["yunariGlass"] },
           "then": {
             "properties": {
               "type": {

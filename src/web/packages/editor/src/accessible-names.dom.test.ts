@@ -325,7 +325,7 @@ describe("editor panels", () => {
 
   it("names the release version, which no form control owns", () => {
     const { root } = mountPanels();
-    const version = root.querySelector("[data-vigilia-theme-version]")!;
+    const version = root.querySelector("[data-yunari-theme-version]")!;
     expect(accessibleName(version)).toBe("Release version");
   });
 
@@ -625,14 +625,14 @@ function mountSettings(): void {
  */
 function mountSelectionInspector(root: HTMLElement): void {
   const text = new Textbox("", { id: "clock-label" });
-  text.set("vigiliaText", {
+  text.set("yunariText", {
     align: "centre",
     verticalAlign: "middle",
     box: { width: 140, height: 27 },
     runs: [{ kind: "value", bindingId: "clock-time" }],
   });
   const shape = new Rect({ left: 0, top: 0, width: 40, height: 20 });
-  shape.set("vigiliaGlass", { blurRadius: 16 });
+  shape.set("yunariGlass", { blurRadius: 16 });
 
   for (const selection of [text, shape]) {
     const canvas = new Canvas(document.createElement("canvas"));
@@ -679,7 +679,7 @@ function identity(element: HTMLElement): string {
  *  discrete event, which React commits before the next line. */
 function selectPaletteToken(root: HTMLElement, id: string): void {
   const token = root.querySelector<HTMLElement>(
-    `[data-vigilia-palette-token-row="${id}"]`,
+    `[data-yunari-palette-token-row="${id}"]`,
   );
   if (token === null) throw new Error(`no token row for "${id}"`);
   token.click();

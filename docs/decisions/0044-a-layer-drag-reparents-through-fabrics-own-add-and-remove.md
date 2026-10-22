@@ -22,7 +22,7 @@ the fit of its members, and a naive `_objects.splice` would leave paint and
 serialization agreeing only by accident. Nothing throws when that is wrong — the
 scene just renders, or reloads, in a different place.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `grouping-manager` (`group`, `ungroup`, `enterGroup`), `layer-manager`
 (`bringToFront`/`bringForward`/…), `layer-tree.ts` (`ownerOf`, `pathTo`,
@@ -150,7 +150,7 @@ in `bridge.dom.test.ts`:
 
 | Probe | Reading |
 |---|---|
-| Reparent a root `VigiliaChart` into a group **with the scene adapter installed** | `moveLayer` returned true, the chart was in the group, and `chart.disposed` went false → true: `canvas.remove` fires `object:removed`, the adapter disposes it (`scene-fabric/src/adapter.ts:62`), and the disposed object is then inserted |
+| Reparent a root `YunariChart` into a group **with the scene adapter installed** | `moveLayer` returned true, the chart was in the group, and `chart.disposed` went false → true: `canvas.remove` fires `object:removed`, the adapter disposes it (`scene-fabric/src/adapter.ts:62`), and the disposed object is then inserted |
 | `groupingManager.group()` over an `ActiveSelection` holding a chart, adapter installed | The member is disposed the same way — the same defect in the other caller of `canvas.remove`, and it is why the fix is not "always order the writes differently" |
 | After a reparent into a group at `angle: 24, scaleX: 1.4` | A surviving child's cached `getBoundingRect().left` was `74.496` while its recomputed box was `−28.858`; a `setCoords()` on every member of both collections brings the cache and the transform back into agreement |
 | Dropping on an empty group | `layerDrop`/`moveLayer` both answered true and the group stayed empty, because the destination is the anchor's parent — a group whose last child was dragged out could never be refilled |

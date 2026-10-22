@@ -56,7 +56,7 @@ describe("createInspectorRoot", () => {
     // The key survives the type word's removal: it is the object's own fact,
     // not the kind the glyph now draws.
     expect(host.textContent).toContain("cpu.load");
-    expect(host.querySelector("[data-vigilia-nothing-selected]")).toBeNull();
+    expect(host.querySelector("[data-yunari-nothing-selected]")).toBeNull();
     root.destroy();
   });
 
@@ -72,7 +72,7 @@ describe("createInspectorRoot", () => {
     );
 
     expect(
-      host.querySelector("[data-vigilia-subject-name]")?.previousElementSibling
+      host.querySelector("[data-yunari-subject-name]")?.previousElementSibling
         ?.outerHTML,
       "the header draws no glyph of the subject's kind before its name",
     ).toBe(glyphMarkup(KIND_GLYPHS.text));
@@ -95,7 +95,7 @@ describe("createInspectorRoot", () => {
     );
 
     expect(host.querySelector("svg")).toBeNull();
-    expect(host.querySelector("[data-vigilia-subject-name]")?.textContent).toBe(
+    expect(host.querySelector("[data-yunari-subject-name]")?.textContent).toBe(
       "Selection",
     );
     root.destroy();
@@ -114,7 +114,7 @@ describe("createInspectorRoot", () => {
     // The *element*, not the text: an unguarded span saying nothing would leave
     // `textContent` where it is, and the header would still hold an empty line
     // under the name.
-    const block = host.querySelector("[data-vigilia-subject-name]")
+    const block = host.querySelector("[data-yunari-subject-name]")
       ?.parentElement?.parentElement;
     expect(
       block?.children,
@@ -130,7 +130,7 @@ describe("createInspectorRoot", () => {
     root.publish(view({ subject: undefined }), edits);
 
     expect(
-      host.querySelector("[data-vigilia-nothing-selected]")?.textContent,
+      host.querySelector("[data-yunari-nothing-selected]")?.textContent,
     ).toBe(uiCopy.inspectorFields.nothingSelected);
     root.destroy();
   });
@@ -142,9 +142,9 @@ describe("createInspectorRoot", () => {
     root.publish(view({ locked: true }), edits);
 
     // The hook is the locator contract (vg-148): the e2e spec finds the note by
-    // `[data-vigilia-locked]`, so losing it would leave that spec passing on a
+    // `[data-yunari-locked]`, so losing it would leave that spec passing on a
     // stale locator while the column stopped saying anything.
-    expect(host.querySelector("[data-vigilia-locked]")?.textContent).toBe(
+    expect(host.querySelector("[data-yunari-locked]")?.textContent).toBe(
       uiCopy.inspectorFields.locked,
     );
     root.destroy();
@@ -156,7 +156,7 @@ describe("createInspectorRoot", () => {
 
     root.publish(view(), edits);
 
-    expect(host.querySelector("[data-vigilia-locked]")).toBeNull();
+    expect(host.querySelector("[data-yunari-locked]")).toBeNull();
     root.destroy();
   });
 

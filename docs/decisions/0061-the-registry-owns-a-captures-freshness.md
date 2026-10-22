@@ -20,14 +20,14 @@ a capture whose surface paths have commits after that sha.
 The shape of the problem is therefore: **given a committed image and no
 deterministic way to re-produce it, what can say it is out of date?** Re-shooting
 is the one thing ruled out — it needs built bundles, one worker and
-`VIGILIA_CAPTURE=1`, and the row's own second measurement says the periodic
+`YUNARI_CAPTURE=1`, and the row's own second measurement says the periodic
 re-shoot is the load rather than the fix.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `docs/evidence/screenshots/README.md` and `docs/design/mockups/README.md`
 (the two registries), `src/web/tests/e2e/editor-canvas.ts` (`captureVisualReview`,
-`VIGILIA_CAPTURE`, `VIGILIA_CAPTURE_DIR`), `.github/workflows/visual-evidence.yml`,
+`YUNARI_CAPTURE`, `YUNARI_CAPTURE_DIR`), `.github/workflows/visual-evidence.yml`,
 every `scripts/*.mjs` for a check over the captures directory, `src/web/tests/e2e/frame-diff.ts`
 and `glass-probe.ts` (the repo's existing pixel measures), `mockup-values.ts`'s
 `currentDrawings`, and `grep -rn "evidence/screenshots"` over `src/`, `scripts/`,

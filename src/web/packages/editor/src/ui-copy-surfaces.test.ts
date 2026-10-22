@@ -36,7 +36,7 @@
  * portals to `body`, so its sentence and its group headings were outside the net
  * as well, and a literal in either stayed green.
  */
-import type { FacetRecord } from "@vigilia/renderer-core";
+import type { FacetRecord } from "@yunari/renderer-core";
 import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -345,7 +345,7 @@ it("reads the store mode's words, which the editor's walk never reached", async 
     // The item's own surface, opened from the cell the way a person opens it:
     // the modal portals to `body`, so it is read there.
     withOne.openItem();
-    if (document.querySelector("[data-vigilia-store-item]") === null) {
+    if (document.querySelector("[data-yunari-store-item]") === null) {
       throw new Error("the item's own surface did not open");
     }
     const modal = saidIn(document.body);
@@ -464,7 +464,7 @@ async function mountStoreShell(themes: readonly ThemeLibraryEntry[]): Promise<{
   return {
     region: () => {
       const found = document.querySelector<HTMLElement>(
-        "[data-vigilia-mode-region='themes']",
+        "[data-yunari-mode-region='themes']",
       );
       if (found === null) throw new Error("the store mode rendered no region");
       return found;
@@ -473,14 +473,14 @@ async function mountStoreShell(themes: readonly ThemeLibraryEntry[]): Promise<{
       // The cell's own surface: the `open` action loads a document rather than
       // opening this modal, so the walk reaches the item the way a person does.
       const open = document.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-cell-surface]",
+        "[data-yunari-store-cell-surface]",
       );
       if (open === null) throw new Error("the gallery drew no cell to open");
       act(() => open.click());
     },
     openFacet: (facetId: string) => {
       const trigger = document.querySelector<HTMLButtonElement>(
-        `[data-vigilia-facet='${facetId}']`,
+        `[data-yunari-facet='${facetId}']`,
       );
       if (trigger === null)
         throw new Error(`the region drew no ${facetId} facet`);
@@ -488,7 +488,7 @@ async function mountStoreShell(themes: readonly ThemeLibraryEntry[]): Promise<{
     },
     popover: () => {
       const found = document.querySelector<HTMLElement>(
-        "[data-vigilia-facet-popup]",
+        "[data-yunari-facet-popup]",
       );
       if (found === null) throw new Error("no facet popover is open");
       return found;
@@ -590,10 +590,10 @@ const LANDED_SURFACES = [
   ".editor-shell-menubar",
   ".editor-shell-stage",
   ".editor-shell-rail",
-  "[data-vigilia-canvas-toolbar]",
+  "[data-yunari-canvas-toolbar]",
   ".editor-shell-panel",
   ".editor-shell-settings",
-  "[data-vigilia-section]",
+  "[data-yunari-section]",
   '[data-testid="colour-picker"]',
 ] as const;
 
@@ -766,11 +766,11 @@ async function mountLandedSurfaces(): Promise<{
     new Textbox("", { id: "clock-label" }) as FabricObject,
     new Rect({ left: 0, top: 0, width: 40, height: 20 }) as FabricObject,
   ]) {
-    selection.set("vigiliaText", {
+    selection.set("yunariText", {
       align: "centre",
       runs: [{ kind: "value", bindingId: "clock-time" }],
     });
-    selection.set("vigiliaGlass", { blurRadius: 16 });
+    selection.set("yunariGlass", { blurRadius: 16 });
     const canvas = new Canvas(document.createElement("canvas"));
     canvas.add(selection);
     canvas.setActiveObject(selection);

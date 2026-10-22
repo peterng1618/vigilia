@@ -72,17 +72,17 @@ function render(withScene = true): HTMLElement {
 /** The figure the row for a token prints. */
 const figure = (id: string): string =>
   document
-    .querySelector(`[data-vigilia-palette-token-row="${id}"]`)
-    ?.querySelector("[data-vigilia-palette-usage]")?.textContent ?? "";
+    .querySelector(`[data-yunari-palette-token-row="${id}"]`)
+    ?.querySelector("[data-yunari-palette-usage]")?.textContent ?? "";
 
 /** The whole row, which carries the token's own name beside the figure. */
 const row = (id: string): HTMLElement =>
   document.querySelector<HTMLElement>(
-    `[data-vigilia-palette-token-row="${id}"]`,
+    `[data-yunari-palette-token-row="${id}"]`,
   )!;
 
 const users = (): HTMLElement | null =>
-  document.querySelector("[data-vigilia-palette-users]");
+  document.querySelector("[data-yunari-palette-users]");
 
 describe("palette token usage", () => {
   it("names how many objects a token is linked to, per token", () => {

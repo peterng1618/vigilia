@@ -14,7 +14,7 @@ import { isDesktopSurface } from "./surface.js";
  *
  * The figure is `scene-fabric`'s own count over the scene the panel re-reads, so
  * the assertion is on the number the author sees rather than on the event that
- * produced it: `[data-vigilia-artboard-note]`'s text, not a `fire` spy.
+ * produced it: `[data-yunari-artboard-note]`'s text, not a `fire` spy.
  *
  * **The second assertion is the ruling's cost.** The subscription recomputes per
  * frame, which is real work on a gesture that already paints one, so the frame
@@ -88,13 +88,13 @@ async function startSampling(page: Page): Promise<void> {
       canvas: Canvas;
       handler: (() => void) | undefined;
     }
-    const w = window as unknown as { __vigiliaDrag?: Sampler };
+    const w = window as unknown as { __yunariDrag?: Sampler };
     const original = window.requestAnimationFrame.bind(window);
     const canvas = (
       window as unknown as {
-        vigiliaEditorBridge: { editor: { canvas: Canvas } };
+        yunariEditorBridge: { editor: { canvas: Canvas } };
       }
-    ).vigiliaEditorBridge.editor.canvas;
+    ).yunariEditorBridge.editor.canvas;
     const sampler: Sampler = {
       repaint: [],
       recompute: [],
@@ -133,7 +133,7 @@ async function startSampling(page: Page): Promise<void> {
         (slot === 0 ? sampler.repaint : sampler.recompute).push(took);
       });
     };
-    w.__vigiliaDrag = sampler;
+    w.__yunariDrag = sampler;
   });
 }
 
@@ -141,7 +141,7 @@ async function stopSampling(page: Page): Promise<DragSample> {
   return page.evaluate(() => {
     const sampler = (
       window as unknown as {
-        __vigiliaDrag: {
+        __yunariDrag: {
           repaint: number[];
           recompute: number[];
           moves: number;
@@ -154,7 +154,7 @@ async function stopSampling(page: Page): Promise<DragSample> {
           handler: (() => void) | undefined;
         };
       }
-    ).__vigiliaDrag;
+    ).__yunariDrag;
     window.requestAnimationFrame = sampler.original;
     sampler.canvas.fire = sampler.originalFire;
     if (sampler.handler !== undefined) {
@@ -193,21 +193,21 @@ test.describe("the artboard panel's crop figure", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await expect(page.locator("#vigilia-fabric-editor")).toBeVisible();
+    await expect(page.locator("#yunari-fabric-editor")).toBeVisible();
     await page.waitForFunction(
       () =>
-        (window as unknown as { vigiliaEditorBridge?: unknown })
-          .vigiliaEditorBridge !== undefined,
+        (window as unknown as { yunariEditorBridge?: unknown })
+          .yunariEditorBridge !== undefined,
     );
     // The starter paints asynchronously; a read before it has finished is a read
     // of an empty canvas.
     await page.waitForTimeout(1500);
     await openPane(page, "Document");
 
-    const note = page.locator("[data-vigilia-artboard-note]");
+    const note = page.locator("[data-yunari-artboard-note]");
     await expect(note).toBeVisible();
     const boardWidth = Number(
-      await page.locator("[data-vigilia-artboard-width]").inputValue(),
+      await page.locator("[data-yunari-artboard-width]").inputValue(),
     );
     expect(boardWidth, "the board is the starter's own width").toBeGreaterThan(
       0,

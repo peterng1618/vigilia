@@ -18,7 +18,7 @@ describe("theme origins", () => {
   let store: ReturnType<typeof createThemeOriginsStore>;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-theme-origins-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-theme-origins-"));
     store = createThemeOriginsStore(dir);
   });
 

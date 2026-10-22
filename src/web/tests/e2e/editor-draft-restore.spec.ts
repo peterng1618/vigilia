@@ -32,7 +32,7 @@ const EDITOR = "http://127.0.0.1:4174/";
 
 /** The draft's own key, as `draft-store.ts` writes it. Read here rather than
  *  imported: the editor's public barrel exports the shell, not its storage. */
-const DRAFT_KEY = "vigilia.editor.draft";
+const DRAFT_KEY = "yunari.editor.draft";
 
 /** The name the prompt and the report both have to carry, so the author can
  *  tell which of their documents did not come back. */
@@ -93,13 +93,13 @@ test("a refused draft restore is reported, and the report names its fate", async
 
   // The boot opened the document it would have, and the draft is still in the
   // slot: a refusal is not a discard.
-  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+  await page.waitForFunction(() => "yunariEditorBridge" in window);
   const documentName = await page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: { snapshot(): { documentName?: string } };
+        yunariEditorBridge?: { snapshot(): { documentName?: string } };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     return bridge?.snapshot().documentName;
   });
   expect(documentName).toBe(TEMPLATE_NAME);
@@ -113,8 +113,8 @@ test("a refused draft restore is reported, and the report names its fate", async
   // them — the fallback — and the next autosave tick takes the single slot, so
   // the draft that could not be opened is gone from this moment on.
   await openPane(page, "Document");
-  await page.locator("[data-vigilia-artboard-width]").fill("320");
-  await page.locator("[data-vigilia-artboard-width]").blur();
+  await page.locator("[data-yunari-artboard-width]").fill("320");
+  await page.locator("[data-yunari-artboard-width]").blur();
   await page.clock.fastForward(31_000);
 
   const superseded = await page.evaluate(

@@ -96,7 +96,7 @@ test.describe("the host's secure origin", () => {
     host = spawn(
       "node",
       [
-        "packages/host/bin/vigilia.js",
+        "packages/host/bin/yunari.js",
         "--no-browser",
         "--port",
         String(PORT),

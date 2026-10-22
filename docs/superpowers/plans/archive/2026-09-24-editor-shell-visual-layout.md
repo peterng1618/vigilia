@@ -39,18 +39,18 @@ pop it.
   methods (made reachable through a façade), `ShortcutManager`-registered
   handler logic, `EditorInteraction` managers, `applyArrange`/`canArrange`,
   and panel factories. No action logic in React.
-- Panels keep their DOM contract (`root`, `data-vigilia-*` hooks, `render()`);
+- Panels keep their DOM contract (`root`, `data-yunari-*` hooks, `render()`);
   React relocates roots, never reimplements controls.
 - `ui-copy.ts` owns all visible shell copy; no remote font for the serif face.
-- New dependencies only in `@vigilia/editor`; update
+- New dependencies only in `@yunari/editor`; update
   `THIRD-PARTY-NOTICES.md` in the same change.
-- Shell palette choice is browser-local (`vigilia.editor.shell-palette`);
+- Shell palette choice is browser-local (`yunari.editor.shell-palette`);
   never touches the envelope.
 - The dock supersedes the floating toolbar; `toolbar-manager/` retires in the
   change that lands the dock, and its action set moves verbatim.
 - The bridge may grow read-only transient fields (`activeKind`); never write
   logic, never serialized.
-- Full local `npm run test:e2e` is the browser gate; `VIGILIA_CAPTURE=1
+- Full local `npm run test:e2e` is the browser gate; `YUNARI_CAPTURE=1
   --workers=1` for evidence captures, inspected before staging.
 
 ## File Structure
@@ -63,10 +63,10 @@ pop it.
 | `src/web/packages/editor/src/editor-shell/session-facade.ts` | Typed façade exposing `EditorSession` private document actions |
 | `src/web/packages/editor/src/editor-shell/shell-layout.tsx` (+ test) | React chrome: header menus, rail+pane, stage, inspector tabs, dock |
 | `src/web/packages/editor/src/editor-shell/canvas-dock.tsx` | Dock over bridge, toolbar-manager action set |
-| `src/web/packages/editor/src/editor-shell/editor-shell.css` | Editorial palette tokens + base palettes, `--vigilia-*` mapping |
+| `src/web/packages/editor/src/editor-shell/editor-shell.css` | Editorial palette tokens + base palettes, `--yunari-*` mapping |
 | `src/web/packages/editor/src/editor-session.ts` | Action façade widened (no logic moved) |
 | `src/web/packages/editor/src/editor-main.ts` | Creates shell layout + bridge around the mount cycle |
-| `src/web/packages/editor/index.html` | React mount root; `--vigilia-*` tokens drop to shell variables |
+| `src/web/packages/editor/index.html` | React mount root; `--yunari-*` tokens drop to shell variables |
 | `src/web/packages/editor/vite.config.ts`, `tsconfig.json`, `package.json` | React/Tailwind build boundary |
 | `THIRD-PARTY-NOTICES.md` | React, react-dom, @base-ui/react, tailwindcss, @tailwindcss/vite provenance |
 
@@ -101,7 +101,7 @@ under "Deviations and follow-ups".
 - [ ] Read resolved metadata for `react`, `react-dom`, `@base-ui/react`,
   `tailwindcss`, `@tailwindcss/vite` and record licence + version in
   `THIRD-PARTY-NOTICES.md` before installing.
-- [ ] `npm install -w @vigilia/editor react react-dom @base-ui/react
+- [ ] `npm install -w @yunari/editor react react-dom @base-ui/react
   tailwindcss @tailwindcss/vite` and `-D @types/react @types/react-dom`.
 - [ ] `vite.config.ts`: add `plugins: [tailwindcss()]`; keep aliases, `base`,
   build target, loopback server.
@@ -111,8 +111,8 @@ under "Deviations and follow-ups".
 - [ ] `index.html`: strip inline shell styles (they move to
   `editor-shell.css`); keep `#app` mount root and base tokens until Task 3
   remaps them.
-- [ ] Proof: `npm run typecheck -w @vigilia/editor && npm run build -w
-  @vigilia/editor` passes.
+- [ ] Proof: `npm run typecheck -w @yunari/editor && npm run build -w
+  @yunari/editor` passes.
 - [ ] Commit: `build: add editor shell UI foundation`
 
 ### Task 2 — Copy, palettes (incl. `editorial`), tokens
@@ -128,8 +128,8 @@ under "Deviations and follow-ups".
   `#f5f1e8`-family `--shell-backdrop`, near-black `--shell-text`, system serif
   stack for brand/headings, uppercase letter-spaced section labels, 1px
   near-black `--shell-edge`, no translucency needed — flat surfaces) and map
-  `#vigilia-*` index.html tokens for the editorial palette only
-  (`--vigilia-canvas-bg` stays a neutral artboard surround, not paper).
+  `#yunari-*` index.html tokens for the editorial palette only
+  (`--yunari-canvas-bg` stays a neutral artboard surround, not paper).
 - [ ] Proof: `npm test -- editor-shell/palette.test.ts` passes (tests first,
   red→green).
 - [ ] Commit: `feat: add editorial shell palette and copy`
@@ -138,10 +138,10 @@ under "Deviations and follow-ups".
 
 - [ ] Port `bridge.ts` from the stash retarget (`BridgeEditor =
   EditorInteraction`): snapshot gains `activeKind: "none" | "object" |
-  "group" | "chart"` derived from the active object type and `VigiliaChart` id
-  detection (`instanceof VigiliaChart` is unavailable to editor; detect via
+  "group" | "chart"` derived from the active object type and `YunariChart` id
+  detection (`instanceof YunariChart` is unavailable to editor; detect via
   `object.get("family") !== undefined && object.get("settings") !==
-  undefined` or the Vigilia id property used by `scene-fabric` — confirm the
+  undefined` or the Yunari id property used by `scene-fabric` — confirm the
   existing chart-object discriminator before implementing). `can`/`run`
   eligibility mirrors `toolbar-manager`'s: duplicate/lock/z-order unlocked
   only; group on multi-selection; ungroup on `Group`; arrange via
@@ -159,7 +159,7 @@ under "Deviations and follow-ups".
 - [ ] Port `bridge.dom.test.ts` + new façade delegation test (one assert per
   façade method → owner spy).
 - [ ] Proof: `npm test -- editor-shell/bridge.dom.test.ts
-  editor-session.dom.test.ts && npm run typecheck -w @vigilia/editor`.
+  editor-session.dom.test.ts && npm run typecheck -w @yunari/editor`.
 - [ ] Commit: `feat: bridge editor actions into shell`
 
 ### Task 4 — React shell chrome, rail/pane, inspector, dock; retire floating toolbar
@@ -170,7 +170,7 @@ under "Deviations and follow-ups".
     right-side primary black Save/Release button (File-menu equivalents for
     keyboard flow remain in the menu).
   - Rail buttons: Layers, Add, Assets, Settings (`aria-pressed` semantics);
-    pane shows the matching panel root (`data-vigilia-panel` values `layers`,
+    pane shows the matching panel root (`data-yunari-panel` values `layers`,
     `add`; asset panel and settings palette selector get roots in this task).
     No Theme rail entry — document panels live in the inspector.
   - Inspector: Design/Data/Style `Tabs`; no-selection → document-level panels
@@ -189,8 +189,8 @@ under "Deviations and follow-ups".
   `createSelectionToolbar` usage + `toolbar-manager/` folder and its tests;
   dock actions (branch `canvas-dock.tsx`) adopt the full toolbar-manager set:
   duplicate, lock/unlock, front/forward/backward/back, group/ungroup, delete,
-  align-left, distribute-x — same ids in `data-vigilia-*` where e2e targets
-  them (`data-vigilia-toolbar` goes; dock keeps `aria-label` "Selected object
+  align-left, distribute-x — same ids in `data-yunari-*` where e2e targets
+  them (`data-yunari-toolbar` goes; dock keeps `aria-label` "Selected object
   actions").
 - [ ] `editor-main.ts`: create layout → `mountEditorShell` into
   `layout.canvasHost` → `EditorSession` with layout-provided hosts →
@@ -198,12 +198,12 @@ under "Deviations and follow-ups".
   shell → React root stays; the existing source/refresh `select`s move into
   the View menu (Base UI `Menu` with `Menu.RadioItem`), wired to the same
   state + handlers.
-- [ ] Update `index.html` `--vigilia-*` tokens: for the editorial default,
+- [ ] Update `index.html` `--yunari-*` tokens: for the editorial default,
   point them at the shell's ink/paper variables (single source); keep the
   dark-graphite values as `[data-shell-palette="graphite"]`-family overrides
   for the other palettes.
 - [ ] Proof: `npm test -- editor-shell/ shell-layout canvas-dock bridge &&
-  npm run build -w @vigilia/editor && npm run typecheck -w @vigilia/editor`;
+  npm run build -w @yunari/editor && npm run typecheck -w @yunari/editor`;
   update `savePackage` e2e helper + file-actions-dependent tests to use the
   File menu (Task 6 runs the suite).
 - [ ] Commit: `feat: add editorial shell layout and dock`
@@ -227,7 +227,7 @@ under "Deviations and follow-ups".
   && npm run build && npm run size`.
 - [ ] `npm run test:e2e` full suite; fix any tests that targeted the removed
   file-actions section/floating toolbar via the new UI.
-- [ ] `VIGILIA_CAPTURE=1 npx playwright test tests/e2e/editor-fork.spec.ts
+- [ ] `YUNARI_CAPTURE=1 npx playwright test tests/e2e/editor-fork.spec.ts
   --grep 'shell|toolbar|save' --workers=1`; inspect captures (editorial
   default on fresh profile, palette switch, dock eligibility states, narrow
   collapse) before staging any.

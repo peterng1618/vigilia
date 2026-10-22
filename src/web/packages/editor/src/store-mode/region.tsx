@@ -3,7 +3,7 @@ import { ToggleGroup } from "@base-ui/react/toggle-group";
 import {
   type SemanticFamily,
   semanticKeysByFamily,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 import { ControlSelect } from "../components/ui/control-select.js";
@@ -72,13 +72,13 @@ const TAB_NAMES: Record<StoreTab, string> = {
 /** The halves' group id, and the stem of each segment's — §5 rule 5 wants every
  *  control to carry an id, derived from the half the way `useControlIds` derives
  *  one from the control it names. */
-const HALVES_ID = "vigilia-store-halves";
+const HALVES_ID = "yunari-store-halves";
 
 const halvesSegmentId = (tab: StoreTab): string => `${HALVES_ID}-${tab}`;
 
 /** The sort well's id, named rather than minted: the row has one sort and the
  *  browser case reaches for it by name. */
-const SORT_ID = "vigilia-store-sort";
+const SORT_ID = "yunari-store-sort";
 
 /**
  * The browser's own storage, or nothing where the accessor itself refuses — a
@@ -381,7 +381,7 @@ function Halves(props: {
   return (
     <ToggleGroup
       id={HALVES_ID}
-      data-vigilia-store-halves=""
+      data-yunari-store-halves=""
       aria-label={uiCopy.store.halves.label}
       value={[props.tab]}
       onValueChange={(next) => {
@@ -412,7 +412,7 @@ function Empty(props: {
 }): React.JSX.Element {
   return (
     <div
-      data-vigilia-store-empty=""
+      data-yunari-store-empty=""
       className="flex flex-1 flex-col items-center justify-center gap-[var(--space-8)] px-[var(--space-32)] text-center"
     >
       <p className="text-sm text-muted">{props.lead}</p>
@@ -424,7 +424,7 @@ function Empty(props: {
 }
 
 /**
- * The Themes mode's region — the surface the shell's `[data-vigilia-mode-region]`
+ * The Themes mode's region — the surface the shell's `[data-yunari-mode-region]`
  * seam was left for.
  *
  * **It renders its own header row and nothing above it.** The shell's header
@@ -626,9 +626,9 @@ function StoreRegion(props: {
   const toFirstPage = (): void => setPage(1);
 
   return (
-    <div data-vigilia-store-region="" className="flex min-h-0 flex-1 flex-col">
+    <div data-yunari-store-region="" className="flex min-h-0 flex-1 flex-col">
       <div
-        data-vigilia-store-header=""
+        data-yunari-store-header=""
         className="flex flex-none flex-wrap items-center gap-[var(--space-16)] px-[var(--space-16)] pt-[var(--space-12)]"
       >
         <Halves tab={tab} onTab={setTab} />
@@ -638,7 +638,7 @@ function StoreRegion(props: {
         <ControlWell widthClassName="w-[180px] flex-none">
           <input
             type="search"
-            data-vigilia-store-search=""
+            data-yunari-store-search=""
             aria-label={uiCopy.store.search}
             placeholder={uiCopy.store.search}
             value={query}
@@ -666,7 +666,7 @@ function StoreRegion(props: {
         <ControlSelect
           id={SORT_ID}
           label={uiCopy.store.sort.label}
-          data={{ "data-vigilia-store-sort": "" }}
+          data={{ "data-yunari-store-sort": "" }}
           value={sort[tab]}
           options={SORT_KEYS[tab]}
           onChange={(id) => {
@@ -713,13 +713,13 @@ function StoreRegion(props: {
           catalogue's fact and not the library's. */}
       {tab === "online" && online.refused.length > 0 ? (
         <ul
-          data-vigilia-store-refusals=""
+          data-yunari-store-refusals=""
           className="flex flex-none flex-col gap-[var(--space-4)] px-[var(--space-16)] pt-[var(--space-8)] text-xs text-faint"
         >
           {online.refused.map((refusal) => (
             <li
               key={`${refusal.reason}:${refusal.kind ?? ""}`}
-              data-vigilia-store-refusal=""
+              data-yunari-store-refusal=""
             >
               {uiCopy.store.catalogueRefused(refusal.kind, refusal.count)}
             </li>
@@ -774,7 +774,7 @@ function StoreRegion(props: {
           wins where both exist, which is the one state the region was already
           announcing. */}
       <span
-        data-vigilia-store-install-announcement=""
+        data-yunari-store-install-announcement=""
         role="status"
         aria-live="polite"
         className="sr-only"

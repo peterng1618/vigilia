@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelopeInput } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelopeInput } from "@yunari/renderer-core";
 
 /**
  * Pushes the document being edited to the host, at most once per burst.

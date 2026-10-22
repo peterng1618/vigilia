@@ -2,7 +2,7 @@ import type {
   PlanBox,
   PlanTextLayout,
   TextContent,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { Rect, Textbox } from "fabric/es";
 import type { PlanTextObject } from "./fabric-text.js";
 
@@ -12,14 +12,14 @@ import type { PlanTextObject } from "./fabric-text.js";
  * A `Textbox` cannot hold one: `initDimensions` widens it to its longest
  * unbreakable run and never narrows (`fabric/dist/index.mjs:18453`), and
  * `width` is one of its `textLayoutProperties` (`:18760`), so every width write
- * re-enters that. `vigiliaText.box` is therefore the owner, and everything that
+ * re-enters that. `yunariText.box` is therefore the owner, and everything that
  * reads the box — the width guard, the placement, the line capacity and the clip
  * — lives here rather than in the text pass that drives them.
  * See `docs/decisions/0003`.
  */
 
 /** Marks an object whose `set` has been guarded; a revived object is fresh. */
-const BOX_GUARD = Symbol.for("vigilia.authoredBox");
+const BOX_GUARD = Symbol.for("yunari.authoredBox");
 
 export function scaleOf(value: number): number {
   return value === 0 ? 1 : value;
@@ -71,7 +71,7 @@ function objectCentre(object: PlanTextObject): { x: number; y: number } {
 /**
  * The box the author wrote, in parent space.
  *
- * `vigiliaText.box` is scene units; Fabric's `width` is the same box before
+ * `yunariText.box` is scene units; Fabric's `width` is the same box before
  * `scaleX`. The object's `left`/`top` are the box's own corner, so they say
  * where the box is without anything having to measure the text to find out.
  */
@@ -202,7 +202,7 @@ export function writeAuthoredBoxDimension(
 ): void {
   if (!Number.isFinite(value) || value < 1) return;
 
-  const authored = object.get("vigiliaText");
+  const authored = object.get("yunariText");
   if (typeof authored !== "object" || authored === null) return;
 
   const content = authored as Record<string, unknown>;
@@ -214,7 +214,7 @@ export function writeAuthoredBoxDimension(
   // The object's own edges, unscaled: the box is the number Fabric measures
   // against, and `boxFrom` is what puts the scale back on for the clip and the
   // placement. Seeding with the scaled value would grow the box on every pass.
-  object.set("vigiliaText", {
+  object.set("yunariText", {
     ...content,
     box: {
       width: box.width ?? object.width,

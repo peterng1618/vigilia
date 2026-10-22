@@ -157,7 +157,7 @@ describe("published Fabric theme schema", () => {
           string,
           Record<string, unknown>
         >
-      )["vigiliaGlass"],
+      )["yunariGlass"],
     ).toEqual({ $ref: "#/$defs/glassTreatment" });
   });
 
@@ -177,7 +177,7 @@ describe("published Fabric theme schema", () => {
       >
     )["type"]!;
 
-    expect(published["if"]).toEqual({ required: ["vigiliaGlass"] });
+    expect(published["if"]).toEqual({ required: ["yunariGlass"] });
     expect(types["enum"]).toEqual(GLASS_TYPES);
   });
 

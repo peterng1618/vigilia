@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import {
   frost,
   solidOf,
@@ -113,8 +113,8 @@ function objectFor(
     left: card.left,
     top: CARD.top,
     id: `frosted-${card.kind}`,
-    vigiliaPaint: { fill: `palette.${fill}` },
-    ...(withGlass ? { vigiliaGlass: { blurRadius: RADIUS } } : {}),
+    yunariPaint: { fill: `palette.${fill}` },
+    ...(withGlass ? { yunariGlass: { blurRadius: RADIUS } } : {}),
   };
   if (card.kind === "Circle")
     return { ...common, type: "Circle", radius: CARD.size / 2, fill: "" };
@@ -170,7 +170,7 @@ function envelope(fill: "panel" | "frost" | "none", withGlass: boolean) {
         kind: "image" as const,
         path: "assets/backdrop.jpg",
         license: {
-          name: "Vigilia",
+          name: "Yunari",
           attribution: "Starter backdrop, shipped with the editor.",
         },
       },
@@ -214,7 +214,7 @@ async function open(
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return image !== null && image.complete && image.naturalWidth > 0;
     },
@@ -226,7 +226,7 @@ async function open(
   await page.evaluate(() => {
     const scope = window as unknown as Record<string, unknown>;
     const key = Object.keys(scope).find((c) =>
-      c.startsWith("vigilia-fabric-editor"),
+      c.startsWith("yunari-fabric-editor"),
     );
     (
       scope[key ?? ""] as { canvas: { renderAll(): void } } | undefined
@@ -263,7 +263,7 @@ async function locate(page: Page): Promise<Probes> {
     (ids) => {
       const scope = window as unknown as Record<string, unknown>;
       const key = Object.keys(scope).find((c) =>
-        c.startsWith("vigilia-fabric-editor"),
+        c.startsWith("yunari-fabric-editor"),
       );
       const canvas = (
         scope[key ?? ""] as

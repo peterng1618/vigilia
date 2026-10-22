@@ -5,7 +5,7 @@
  *
  * The panel renders plan 1's control set now, so every drive here is the one an
  * author makes — a field is typed into and blurred, a select is opened and an
- * option chosen — and every read is by a `data-vigilia-*` hook rather than by a
+ * option chosen — and every read is by a `data-yunari-*` hook rather than by a
  * native element that no longer exists. The enumeration of what the panel shows
  * lives in `panes/document/artboard-fields.dom.test.tsx`, which is the list this
  * rebuild was measured against.
@@ -15,8 +15,8 @@ import {
   MAX_ARTBOARD_DIMENSION,
   parseInstant,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
-import type { SceneBox } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import type { SceneBox } from "@yunari/scene-fabric";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
@@ -187,7 +187,7 @@ async function openControl(control: string): Promise<readonly Element[]> {
 async function chooseIn(control: string, id: string): Promise<void> {
   const options = await openControl(control);
   const option = options.find(
-    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+    (candidate) => candidate.getAttribute("data-yunari-option") === id,
   );
   if (option === undefined) throw new Error(`no option ${id} in ${control}`);
   await pointerDown(option);
@@ -200,8 +200,8 @@ async function chooseIn(control: string, id: string): Promise<void> {
 function choiceOf(control: string): string {
   return (
     document
-      .querySelector(`${control} [data-vigilia-value]`)
-      ?.getAttribute("data-vigilia-value") ?? ""
+      .querySelector(`${control} [data-yunari-value]`)
+      ?.getAttribute("data-yunari-value") ?? ""
   );
 }
 
@@ -246,7 +246,7 @@ describe("artboard panel", () => {
     const { change } = await mount();
     await draw({ width: 1280, height: 720 });
 
-    await commitField("[data-vigilia-artboard-width]", "1000");
+    await commitField("[data-yunari-artboard-width]", "1000");
 
     expect(change).toHaveBeenCalledWith({
       width: 1000,
@@ -261,7 +261,7 @@ describe("artboard panel", () => {
     const { change } = await mount();
     await draw({ width: 1280, height: 720, contentFit: "cover" });
 
-    await commitField("[data-vigilia-artboard-width]", "1000");
+    await commitField("[data-yunari-artboard-width]", "1000");
 
     expect(change).toHaveBeenLastCalledWith({
       width: 1000,
@@ -277,36 +277,36 @@ describe("artboard panel", () => {
     // nobody typed — so a width of 0 commits nothing and the box says so.
     const { change } = await mount();
     await draw({ width: 1280, height: 720 });
-    const width = field<HTMLInputElement>("[data-vigilia-artboard-width]");
+    const width = field<HTMLInputElement>("[data-yunari-artboard-width]");
 
-    await commitField("[data-vigilia-artboard-width]", "0");
+    await commitField("[data-yunari-artboard-width]", "0");
     expect(change).not.toHaveBeenCalled();
     expect(width.getAttribute("aria-invalid")).toBe("true");
 
-    await commitField("[data-vigilia-artboard-width]", "");
+    await commitField("[data-yunari-artboard-width]", "");
     expect(change).not.toHaveBeenCalled();
 
-    await commitField("[data-vigilia-artboard-width]", "not a number");
+    await commitField("[data-yunari-artboard-width]", "not a number");
     expect(change).not.toHaveBeenCalled();
 
     // A fraction, which is the one refusal the pane's own guard cannot report:
     // `isDimension` would drop the value and say nothing, so the field has to be
     // the one that says why. Without `integer` on the halves the box accepts
     // 1.5, clears its draft and commits a size this document does not hold.
-    await commitField("[data-vigilia-artboard-width]", "1.5");
+    await commitField("[data-yunari-artboard-width]", "1.5");
     expect(change).not.toHaveBeenCalled();
     expect(width.getAttribute("aria-invalid")).toBe("true");
     expect(field(`#${width.id}-invalid`).textContent).toContain("whole number");
 
     await commitField(
-      "[data-vigilia-artboard-width]",
+      "[data-yunari-artboard-width]",
       String(MAX_ARTBOARD_DIMENSION + 1),
     );
     expect(change).not.toHaveBeenCalled();
 
     // And a size the document can hold still goes through, so the refusals
     // above are not a field that stopped committing anything.
-    await commitField("[data-vigilia-artboard-width]", "1600");
+    await commitField("[data-yunari-artboard-width]", "1600");
     expect(change).toHaveBeenLastCalledWith({ width: 1600, height: 720 });
   });
 
@@ -323,11 +323,11 @@ describe("artboard panel", () => {
       background: { ref: "palette.background" },
     });
 
-    expect(choiceOf("[data-vigilia-artboard-background]")).toBe(
+    expect(choiceOf("[data-yunari-artboard-background]")).toBe(
       "palette.background",
     );
 
-    await chooseIn("[data-vigilia-artboard-background]", "palette.bars");
+    await chooseIn("[data-yunari-artboard-background]", "palette.bars");
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({ background: { ref: "palette.bars" } }),
     );
@@ -343,7 +343,7 @@ describe("artboard panel", () => {
       background: { value: "#e20074" },
     });
 
-    await commitField("[data-vigilia-artboard-width]", "1000");
+    await commitField("[data-yunari-artboard-width]", "1000");
 
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -359,13 +359,13 @@ describe("artboard panel", () => {
     });
     await draw({ width: 1280, height: 720 }, { name: "Before" });
 
-    await commitField("[data-vigilia-theme-name]", "Living Room");
+    await commitField("[data-yunari-theme-name]", "Living Room");
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "Living Room",
       themeLanguage: "en",
     });
 
-    await chooseIn("[data-vigilia-background-asset]", "clip");
+    await chooseIn("[data-yunari-background-asset]", "clip");
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({
         backgroundMedia: { assetId: "clip", fit: "theme" },
@@ -380,14 +380,14 @@ describe("artboard panel", () => {
       { name: "Before", version: "1.2.3" },
     );
 
-    await commitField("[data-vigilia-theme-name]", "After");
+    await commitField("[data-yunari-theme-name]", "After");
 
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "After",
       version: "1.2.3",
       themeLanguage: "en",
     });
-    const version = field<HTMLOutputElement>("[data-vigilia-theme-version]");
+    const version = field<HTMLOutputElement>("[data-yunari-theme-version]");
     expect(version.tagName).toBe("OUTPUT");
     expect(version.textContent).toBe("1.2.3");
   });
@@ -399,11 +399,11 @@ describe("artboard panel", () => {
       { name: "Before", themeLanguage: "en" },
     );
 
-    expect(choiceOf("[data-vigilia-theme-language]")).toBe("en");
+    expect(choiceOf("[data-yunari-theme-language]")).toBe("en");
 
     // The list must actually offer it: `chooseIn` finds an option by the id it
     // commits, so a missing Welsh option throws rather than passing vacuously.
-    await chooseIn("[data-vigilia-theme-language]", "vi");
+    await chooseIn("[data-yunari-theme-language]", "vi");
 
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "Before",
@@ -414,7 +414,7 @@ describe("artboard panel", () => {
     // language actually spells, not only its English label. Read after the
     // choice, because the sample follows the control rather than the render.
     const sample =
-      field<HTMLOutputElement>("[data-vigilia-theme-language-sample]")
+      field<HTMLOutputElement>("[data-yunari-theme-language-sample]")
         .textContent ?? "";
     const spell = spelledAt(parseInstant(instantIn(Date.now()))!);
     expect(sample).toContain(spell("vi", { month: "long" }));
@@ -431,7 +431,7 @@ describe("artboard panel", () => {
     await draw({ width: 1672, height: 941 }, { name: "Before", description });
 
     const fieldElement = field<HTMLTextAreaElement>(
-      "[data-vigilia-theme-description]",
+      "[data-yunari-theme-description]",
     );
     expect(fieldElement.tagName).toBe("TEXTAREA");
     expect(fieldElement.value).toBe(description);
@@ -455,10 +455,10 @@ describe("artboard panel", () => {
     // two different subjects — read as "how my picture looks in the preview",
     // which it never was.
     expect(
-      document.querySelector("[data-vigilia-artboard-fit-mode]"),
+      document.querySelector("[data-yunari-artboard-fit-mode]"),
     ).toBeNull();
 
-    const options = await openControl("[data-vigilia-background-media-fit]");
+    const options = await openControl("[data-yunari-background-media-fit]");
     expect(options.map((option) => option.textContent)).toEqual([
       "Fill theme",
       "Fill display",
@@ -477,7 +477,7 @@ describe("artboard panel", () => {
     // on a line of its own and told a sighted author nothing. A label the
     // author can see is what the F1.19 pairing already made the name.
     const sample = field<HTMLOutputElement>(
-      "[data-vigilia-theme-language-sample]",
+      "[data-yunari-theme-language-sample]",
     );
     const label = document.querySelector<HTMLLabelElement>(
       `label[for="${sample.id}"]`,
@@ -500,7 +500,7 @@ describe("artboard panel", () => {
 
     // Welsh is not one of the fifteen, but a document declaring it must not be
     // silently rewritten to English by the panel that displays it.
-    expect(choiceOf("[data-vigilia-theme-language]")).toBe("cy");
+    expect(choiceOf("[data-yunari-theme-language]")).toBe("cy");
   });
 });
 
@@ -510,9 +510,9 @@ describe("artboard presets in the panel", () => {
     await draw({ width: 1080, height: 2340, contentFit: "cover" });
 
     expect({
-      ratio: choiceOf("[data-vigilia-artboard-ratio]"),
-      orientation: choiceOf("[data-vigilia-artboard-orientation]"),
-      resolution: choiceOf("[data-vigilia-artboard-resolution]"),
+      ratio: choiceOf("[data-yunari-artboard-ratio]"),
+      orientation: choiceOf("[data-yunari-artboard-orientation]"),
+      resolution: choiceOf("[data-yunari-artboard-resolution]"),
     }).toEqual({
       ratio: "19.5:9",
       orientation: "portrait",
@@ -524,21 +524,21 @@ describe("artboard presets in the panel", () => {
     const { change } = await mount();
     await draw({ width: 1920, height: 1080, contentFit: "cover" });
 
-    await chooseIn("[data-vigilia-artboard-resolution]", "4k");
+    await chooseIn("[data-yunari-artboard-resolution]", "4k");
     expect(change).toHaveBeenLastCalledWith({
       width: 3840,
       height: 2160,
       contentFit: "cover",
     });
 
-    await chooseIn("[data-vigilia-artboard-orientation]", "portrait");
+    await chooseIn("[data-yunari-artboard-orientation]", "portrait");
     expect(change).toHaveBeenLastCalledWith({
       width: 2160,
       height: 3840,
       contentFit: "cover",
     });
 
-    await chooseIn("[data-vigilia-artboard-ratio]", "4:3");
+    await chooseIn("[data-yunari-artboard-ratio]", "4:3");
     // Still portrait from the step above, so the ratio's long edge is now the
     // short one: the three controls are read together, not one at a time.
     expect(change).toHaveBeenLastCalledWith({
@@ -557,14 +557,14 @@ describe("artboard presets in the panel", () => {
       "artboard-orientation",
       "artboard-resolution",
     ])
-      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
+      expect(choiceOf(`[data-yunari-${hook}]`), hook).toBe("");
   });
 
   it("keeps the free size fields for a size no preset names", async () => {
     const { change } = await mount();
     await draw({ width: 1000, height: 700 });
 
-    await commitField("[data-vigilia-artboard-width]", "1600");
+    await commitField("[data-yunari-artboard-width]", "1600");
 
     expect(change).toHaveBeenLastCalledWith({
       width: 1600,
@@ -578,7 +578,7 @@ describe("artboard presets in the panel", () => {
 
     // Choosing one of the three means choosing all three — the other two were
     // Custom, and leaving them so would show a size the controls deny.
-    await chooseIn("[data-vigilia-artboard-ratio]", "4:3");
+    await chooseIn("[data-yunari-artboard-ratio]", "4:3");
 
     expect(change).toHaveBeenLastCalledWith({
       width: 1440,
@@ -586,9 +586,9 @@ describe("artboard presets in the panel", () => {
       contentFit: "cover",
     });
     expect({
-      ratio: choiceOf("[data-vigilia-artboard-ratio]"),
-      orientation: choiceOf("[data-vigilia-artboard-orientation]"),
-      resolution: choiceOf("[data-vigilia-artboard-resolution]"),
+      ratio: choiceOf("[data-yunari-artboard-ratio]"),
+      orientation: choiceOf("[data-yunari-artboard-orientation]"),
+      resolution: choiceOf("[data-yunari-artboard-resolution]"),
     }).toEqual({
       ratio: "4:3",
       orientation: "landscape",
@@ -607,9 +607,9 @@ describe("artboard presets in the panel", () => {
       "artboard-orientation",
       "artboard-resolution",
     ]) {
-      const options = await openControl(`[data-vigilia-${hook}]`);
+      const options = await openControl(`[data-yunari-${hook}]`);
       const custom = options.find(
-        (option) => option.getAttribute("data-vigilia-option") === "",
+        (option) => option.getAttribute("data-yunari-option") === "",
       );
       expect(custom?.hasAttribute("data-disabled"), hook).toBe(true);
       if (custom === undefined) continue;
@@ -626,7 +626,7 @@ describe("artboard presets in the panel", () => {
       "artboard-orientation",
       "artboard-resolution",
     ])
-      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
+      expect(choiceOf(`[data-yunari-${hook}]`), hook).toBe("");
   });
 
   it("states that a size change does not move content, beside the controls that change it", async () => {
@@ -638,7 +638,7 @@ describe("artboard presets in the panel", () => {
     // what a size means, so it says so where the control is — before the click,
     // not after. With no scene given it states the rule and never a number it
     // has not measured.
-    const note = field("[data-vigilia-artboard-note]");
+    const note = field("[data-yunari-artboard-note]");
     expect(note.textContent).toBe(
       "Objects are not moved or resized. Anything outside the artboard is not shown on a display.",
     );
@@ -661,7 +661,7 @@ describe("artboard presets in the panel", () => {
     ];
     await mount(undefined, { sceneBoxes: () => boxes });
     const note = (): string =>
-      document.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
+      document.querySelector("[data-yunari-artboard-note]")?.textContent ?? "";
 
     await draw({ width: 1000, height: 1000 });
     expect(note()).toContain("1 of 1 objects are now outside");
@@ -693,7 +693,7 @@ describe("artboard presets in the panel", () => {
     });
     await draw({ width: 1280, height: 720 });
 
-    const width = field<HTMLInputElement>("[data-vigilia-artboard-width]");
+    const width = field<HTMLInputElement>("[data-yunari-artboard-width]");
     // Typed, not committed: the blur that commits has not happened yet.
     await draft(width, "1000");
     const drawn = boxes.mock.calls.length;
@@ -732,7 +732,7 @@ describe("artboard presets in the panel", () => {
     const read = vi.fn((): readonly SceneBox[] => boxes);
     await mount(undefined, { canvasEvents: canvas.events, sceneBoxes: read });
     const note = (): string =>
-      document.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
+      document.querySelector("[data-yunari-artboard-note]")?.textContent ?? "";
 
     await draw({ width: 1000, height: 1000 });
     expect(note(), "the scene fits to begin with").not.toContain(
@@ -785,7 +785,7 @@ describe("artboard presets in the panel", () => {
       sceneBoxes: () => boxes,
     });
     const note = (): string =>
-      document.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
+      document.querySelector("[data-yunari-artboard-note]")?.textContent ?? "";
 
     await draw({ width: 1000, height: 1000 });
     const outside = note();
@@ -807,7 +807,7 @@ describe("artboard presets in the panel", () => {
     canvas.fire("object:moving");
 
     await act(async () => panel?.destroy());
-    const released = document.querySelector("[data-vigilia-artboard-note]");
+    const released = document.querySelector("[data-yunari-artboard-note]");
     expect(
       released,
       "the tree is released with the subscription, not left behind",
@@ -820,7 +820,7 @@ describe("artboard presets in the panel", () => {
     // listeners cannot see: the frame would draw whether or not anyone is left
     // listening.
     await frame();
-    expect(document.querySelector("[data-vigilia-artboard-note]")).toBeNull();
+    expect(document.querySelector("[data-yunari-artboard-note]")).toBeNull();
   });
 });
 
@@ -854,13 +854,10 @@ describe.each([
       "artboard-orientation",
       "artboard-resolution",
     ])
-      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
+      expect(choiceOf(`[data-yunari-${hook}]`), hook).toBe("");
 
     // Edit: the free fields carry the shape, so a change keeps the other edge.
-    await commitField(
-      "[data-vigilia-artboard-width]",
-      String(size.width + 100),
-    );
+    await commitField("[data-yunari-artboard-width]", String(size.width + 100));
     const edited = change.mock.lastCall?.[0] as typeof created.artboard;
     expect(edited).toMatchObject({
       width: size.width + 100,
@@ -896,6 +893,6 @@ describe.each([
       "artboard-orientation",
       "artboard-resolution",
     ])
-      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
+      expect(choiceOf(`[data-yunari-${hook}]`), hook).toBe("");
   });
 });

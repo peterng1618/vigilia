@@ -3,8 +3,8 @@ import type {
   AssetReference,
   Globals,
   ThemeMetadata,
-} from "@vigilia/renderer-core";
-import type { SceneBox } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import type { SceneBox } from "@yunari/scene-fabric";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
@@ -62,7 +62,7 @@ export function createArtboardPanel(
   } = {},
 ): ArtboardPanel {
   const root = document.createElement("section");
-  // No `data-vigilia-panel` and no title here: `Pane` owns the identity and the
+  // No `data-yunari-panel` and no title here: `Pane` owns the identity and the
   // title bar, and a second element under either is a strict-mode failure for
   // every locator that browses by it.
   host.append(root);

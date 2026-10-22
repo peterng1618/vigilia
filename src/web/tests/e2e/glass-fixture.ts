@@ -6,7 +6,7 @@ import { createCanvas } from "canvas";
  * **Only the editor mount uses this.** The player would load the same envelope
  * through the host, but its background media 404s there - the resolver and the
  * host's asset route disagree about the `assets/` prefix, recorded in
- * [issue #3](https://github.com/peterng1618/vigilia/issues/3) - so the player's media
+ * [issue #3](https://github.com/peterng1618/yunari/issues/3) - so the player's media
  * path has no end-to-end proof yet. There is no player spec for this fixture and
  * this header used to claim otherwise.
  *
@@ -121,7 +121,7 @@ export const GLASS_ENVELOPE = {
       id: "stripes",
       kind: "image" as const,
       path: "assets/stripes.png",
-      license: { name: "MIT", attribution: "Vigilia test fixture." },
+      license: { name: "MIT", attribution: "Yunari test fixture." },
     },
   ],
   scene: {
@@ -144,8 +144,8 @@ export const GLASS_ENVELOPE = {
         id: "glass",
         selectable: false,
         evented: false,
-        vigiliaPaint: { fill: "palette.panel", stroke: "palette.edge" },
-        vigiliaGlass: { blurRadius: GLASS_PANEL.blurRadius },
+        yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
+        yunariGlass: { blurRadius: GLASS_PANEL.blurRadius },
       },
       {
         // No treatment: the control that proves an ordinary panel is untouched.
@@ -164,7 +164,7 @@ export const GLASS_ENVELOPE = {
         ry: 12,
         fill: "rgba(255, 255, 255, 0.10)",
         id: "plain",
-        vigiliaPaint: { fill: "palette.panel" },
+        yunariPaint: { fill: "palette.panel" },
       },
       {
         /**
@@ -185,7 +185,7 @@ export const GLASS_ENVELOPE = {
         ry: 12,
         fill: "rgba(255, 255, 255, 0.10)",
         id: AUTHORING_PANEL_ID,
-        vigiliaPaint: { fill: "palette.panel" },
+        yunariPaint: { fill: "palette.panel" },
       },
     ],
   },

@@ -19,7 +19,7 @@ So the question this note answers is narrower than "how do we warn": it is
 whether a **third reader of two facts that already have two readers** is a new
 owner in disguise, or a new *question* asked of owners that stay where they are.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `src/web/packages/renderer-core/src/theme/` (`glass.ts`,
 `envelope-semantics.ts`, `fabric-envelope.ts`, `document.ts`'s `AssetKind`),
@@ -29,7 +29,7 @@ and `grep -i "repaint|idle|performance|expensive"` across `src/web/packages`.
 
 Found: **both facts already have an owner, and neither owner answers a cost.**
 
-- Glass is `VIGILIA_GLASS_PROPERTY` + `isGlassTreatment` / `glassTreatment`
+- Glass is `YUNARI_GLASS_PROPERTY` + `isGlassTreatment` / `glassTreatment`
   (`renderer-core/src/theme/glass.ts:8,69,78`). `glassTreatment` takes a
   `get(name)` accessor, so it is for *revived* objects; `isGlassTreatment` is the
   raw-JSON test and is what a reader of the document can use.
@@ -65,7 +65,7 @@ Searched: `packages/renderer-core/package.json` (including its `//` policy note)
 
 Found: **nothing.** `renderer-core` has exactly one runtime dependency, `echarts`
 6.1.0, and its note forbids editor-only and Fabric dependencies outright.
-`@vigilia/host` carries `renderer-core`, `scene-fabric`, `theme-package`,
+`@yunari/host` carries `renderer-core`, `scene-fabric`, `theme-package`,
 `node-forge` and `systeminformation`, and its note says a new runtime dependency
 needs a `THIRD-PARTY-NOTICES.md` entry first. No cost-estimation, complexity or
 scene-analysis package is installed, and none is transitive.
@@ -162,7 +162,7 @@ and answers `[]` for anything malformed rather than throwing: it runs on a theme
 the host has on disk, and a listing is the wrong place to raise. Glass is found
 by walking the envelope's **own JSON tree** (`envelope.scene`, whose objects are
 under `objects`, groups included) and asking `isGlassTreatment` about each node's
-`VIGILIA_GLASS_PROPERTY` value — the vocabulary stays `glass.ts`'s, and the
+`YUNARI_GLASS_PROPERTY` value — the vocabulary stays `glass.ts`'s, and the
 walker is nine lines because it does not need to be anything else.
 
 The host side is two lines in `entryFor` (`ThemeStoreEntry.costs`), which

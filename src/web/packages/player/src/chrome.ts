@@ -1,4 +1,4 @@
-import type { LiveSourceStatus, SampleSource } from "@vigilia/renderer-core";
+import type { LiveSourceStatus, SampleSource } from "@yunari/renderer-core";
 import { availabilityNoticeText } from "./availability-notice.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -43,7 +43,7 @@ export type ChromeSide = "top" | "bottom";
  *  for `#artboard`. */
 export function chromeBand(side: ChromeSide): HTMLElement {
   const band = document.querySelector<HTMLElement>(
-    `[data-vigilia-chrome="${side}"]`,
+    `[data-yunari-chrome="${side}"]`,
   );
   if (band === null) {
     throw new Error(`The display has no ${side} chrome band.`);
@@ -83,7 +83,7 @@ export function putStrip(
 
   const strip = document.createElement("div");
   strip.id = input.id;
-  strip.dataset["vigiliaChromeStrip"] = "";
+  strip.dataset["yunariChromeStrip"] = "";
   if ("text" in input) strip.textContent = input.text;
   else strip.append(...input.children);
   strip.style.cssText =
@@ -151,7 +151,7 @@ export function showAvailabilityNotice(
     // strip that may still be up is stale, and the next failure is a new one.
     clearAvailabilityTimer();
     availabilityNotice = "idle";
-    removeStrip("vigilia-availability");
+    removeStrip("yunari-availability");
     return;
   }
 
@@ -161,7 +161,7 @@ export function showAvailabilityNotice(
 
   const strip = putStrip({
     side: "top",
-    id: "vigilia-availability",
+    id: "yunari-availability",
     text,
     background: "#3a2a00",
     color: "#ffce6a",
@@ -169,12 +169,12 @@ export function showAvailabilityNotice(
     // composition when it clears.
     overlay: true,
   });
-  strip.dataset["vigiliaAvailability"] = "";
+  strip.dataset["yunariAvailability"] = "";
   availabilityNotice = "up";
   availabilityTimer = setTimeout(() => {
     availabilityTimer = undefined;
     availabilityNotice = "dismissed";
-    removeStrip("vigilia-availability");
+    removeStrip("yunari-availability");
   }, AVAILABILITY_VISIBLE_MS);
 }
 
@@ -185,14 +185,14 @@ export function showConnectionState(
   detail?: string,
 ): void {
   if (status === "live") {
-    removeStrip("vigilia-connection");
+    removeStrip("yunari-connection");
     return;
   }
 
   const refused = status === "refused";
   putStrip({
     side: "bottom",
-    id: "vigilia-connection",
+    id: "yunari-connection",
     text: refused
       ? uiCopy.connection.refused(detail)
       : status === "connecting"

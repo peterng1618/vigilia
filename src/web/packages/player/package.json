@@ -1,5 +1,5 @@
 {
-  "name": "@vigilia/player",
+  "name": "@yunari/player",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,8 +13,8 @@
     "size": "node ./scripts/check-size.mjs"
   },
   "dependencies": {
-    "@vigilia/renderer-core": "*",
-    "@vigilia/scene-fabric": "*"
+    "@yunari/renderer-core": "*",
+    "@yunari/scene-fabric": "*"
   },
   "//": "§47: this package proves the shared renderer runs in a small display-only bundle. Adding an editor dependency here is a Gate 0 failure, not a convenience — the budget check in scripts/check-size.mjs is what keeps that honest."
 }

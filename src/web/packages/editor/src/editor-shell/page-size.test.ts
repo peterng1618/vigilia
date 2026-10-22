@@ -21,7 +21,7 @@ import {
 /** The key the trio is namespaced by. Spelled here rather than read from the
  *  module, because a rename is a viewer's choice silently forgotten and the
  *  assertion that would catch it is this literal. */
-const KEY = "vigilia.editor.store-page-size";
+const KEY = "yunari.editor.store-page-size";
 
 /** A `Storage` that refuses every call, which is what a browser in a blocked
  *  third-party context hands back — an access that throws rather than one that

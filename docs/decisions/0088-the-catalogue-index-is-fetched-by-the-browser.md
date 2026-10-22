@@ -26,7 +26,7 @@ consumer**, and the spec's own sentence about the facet record (line 505) alread
 states the rule for the other shared derivation: it lives in `renderer-core`, "because
 that is the only layer both producers can import".
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every `fetch(` in `packages/`; `If-None-Match`, `ETag`, `Cache-Control`,
 `cache: "` across `packages/`; `AbortController`/`signal:` in the editor and host; the

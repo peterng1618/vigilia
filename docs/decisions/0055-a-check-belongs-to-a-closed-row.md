@@ -14,7 +14,7 @@ close script's own guard (`if (/"check"\s*:/.test(line)) throw`) would have refu
 the register's contract states what a `verified` row must carry and is **silent** on whether an `open` row
 may carry a check.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every rule in `scripts/backlog-check.mjs`; `AGENTS.md`'s close rules; the register itself.
 Found: **the checker already has the axis this needs, and already refuses across it in both directions.**

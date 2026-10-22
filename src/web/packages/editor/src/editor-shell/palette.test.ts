@@ -52,7 +52,7 @@ describe("shell palette", () => {
   });
 
   it("ignores a stored value that is not a palette", () => {
-    localStorage.setItem("vigilia.editor.shell-palette", "invalid");
+    localStorage.setItem("yunari.editor.shell-palette", "invalid");
     expect(readShellChoice(localStorage)).toBeUndefined();
   });
 
@@ -87,7 +87,7 @@ describe("shell palette", () => {
     writeShellChoice(localStorage, "moss");
     applyShellPalette("moss");
 
-    expect(localStorage.getItem("vigilia.editor.shell-palette")).toBe("moss");
+    expect(localStorage.getItem("yunari.editor.shell-palette")).toBe("moss");
     // The document element rather than the editor's own root, because Base UI
     // portals every popup to `body` — a sibling of that root, not a descendant —
     // and a palette attribute below it is invisible to all of them.

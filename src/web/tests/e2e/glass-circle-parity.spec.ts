@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { frost as FROST } from "../../packages/editor/src/new-fabric-theme-globals.js";
 import {
   type Box,
@@ -118,9 +118,9 @@ function objectFor(
     originY: "top" as const,
     left,
     top: BOX.top,
-    vigiliaPaint: { fill: "palette.frost" },
+    yunariPaint: { fill: "palette.frost" },
     fill: FROST,
-    ...(frosted ? { vigiliaGlass: { blurRadius: RADIUS } } : {}),
+    ...(frosted ? { yunariGlass: { blurRadius: RADIUS } } : {}),
   };
   if (kind === "Circle")
     return { ...common, id, type: "Circle", radius: BOX.size / 2 };
@@ -189,7 +189,7 @@ function packageFor(scene: Scene, backdrop: Backdrop): Uint8Array {
           kind: "image" as const,
           path: "assets/backdrop.jpg",
           license: {
-            name: "Vigilia",
+            name: "Yunari",
             attribution: "Starter backdrop, shipped with the editor.",
           },
         }
@@ -197,7 +197,7 @@ function packageFor(scene: Scene, backdrop: Backdrop): Uint8Array {
           id: "stripes",
           kind: "image" as const,
           path: "assets/stripes.png",
-          license: { name: "MIT", attribution: "Vigilia test fixture." },
+          license: { name: "MIT", attribution: "Yunari test fixture." },
         };
   const written = writeThemePackage({
     envelope: {
@@ -251,7 +251,7 @@ async function open(
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return image !== null && image.complete && image.naturalWidth > 0;
     },
@@ -262,7 +262,7 @@ async function open(
   await page.evaluate(() => {
     const scope = window as unknown as Record<string, unknown>;
     const key = Object.keys(scope).find((c) =>
-      c.startsWith("vigilia-fabric-editor"),
+      c.startsWith("yunari-fabric-editor"),
     );
     (
       scope[key ?? ""] as { canvas: { renderAll(): void } } | undefined
@@ -363,7 +363,7 @@ async function objectBox(
   return page.evaluate((objectId) => {
     const scope = window as unknown as Record<string, unknown>;
     const key =
-      Object.keys(scope).find((c) => c.startsWith("vigilia-fabric-editor")) ??
+      Object.keys(scope).find((c) => c.startsWith("yunari-fabric-editor")) ??
       "";
     const canvas = (
       scope[key] as
@@ -437,7 +437,7 @@ async function editObject(
     (input) => {
       const scope = window as unknown as Record<string, unknown>;
       const key =
-        Object.keys(scope).find((c) => c.startsWith("vigilia-fabric-editor")) ??
+        Object.keys(scope).find((c) => c.startsWith("yunari-fabric-editor")) ??
         "";
       const canvas = (
         scope[key] as
@@ -455,7 +455,7 @@ async function editObject(
       if (canvas === undefined) throw new Error("no editor canvas is mounted");
       const object = canvas.getObjects().find((o) => o.get("id") === input.id);
       if (object === undefined) throw new Error(`no object "${input.id}"`);
-      if (input.mode === "lift") object.set("vigiliaGlass", undefined);
+      if (input.mode === "lift") object.set("yunariGlass", undefined);
       else object.set("objectCaching", false);
       canvas.renderAll();
     },

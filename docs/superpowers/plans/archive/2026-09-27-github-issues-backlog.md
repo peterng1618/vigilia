@@ -30,7 +30,7 @@ rather than ignored.
 - Nothing cites an issue number before that issue exists. Repointing runs after
   filing, and uses the numbers Task 2 prints.
 - Scratch files for issue bodies go **outside the repo** — a temp directory such
-  as `$TMPDIR/vigilia-issues/`. Nothing transient is written into the tree.
+  as `$TMPDIR/yunari-issues/`. Nothing transient is written into the tree.
 - Only the four existing bug records migrate. No new issue is invented.
 - Closed issues record the commit that closed them, so "did we already try this?"
   stays answerable by search.
@@ -120,9 +120,9 @@ issue numbers; Tasks 4–6 cite them.
 - [ ] Create the temp directory and copy the four records into it:
 
 ```bash
-mkdir -p "$TMPDIR/vigilia-issues"
-cp docs/bugs/open/delete-inside-a-group-is-unreachable.md   "$TMPDIR/vigilia-issues/"
-cp docs/bugs/open/host-cannot-serve-packaged-assets.md       "$TMPDIR/vigilia-issues/"
+mkdir -p "$TMPDIR/yunari-issues"
+cp docs/bugs/open/delete-inside-a-group-is-unreachable.md   "$TMPDIR/yunari-issues/"
+cp docs/bugs/open/host-cannot-serve-packaged-assets.md       "$TMPDIR/yunari-issues/"
 ```
 
   Add one line to the top of each body giving the origin:
@@ -132,10 +132,10 @@ cp docs/bugs/open/host-cannot-serve-packaged-assets.md       "$TMPDIR/vigilia-is
 
 ```bash
 gh issue create --title "Delete cannot remove an object that lives inside a group" \
-  --body-file "$TMPDIR/vigilia-issues/delete-inside-a-group-is-unreachable.md" \
+  --body-file "$TMPDIR/yunari-issues/delete-inside-a-group-is-unreachable.md" \
   --label bug,needs-triage
 gh issue create --title "Hosted themes cannot load their packaged assets in the player" \
-  --body-file "$TMPDIR/vigilia-issues/host-cannot-serve-packaged-assets.md" \
+  --body-file "$TMPDIR/yunari-issues/host-cannot-serve-packaged-assets.md" \
   --label bug,needs-triage
 ```
 
@@ -145,7 +145,7 @@ gh issue create --title "Hosted themes cannot load their packaged assets in the 
 
 ```bash
 gh issue create --title "Task 9 browser matrix" \
-  --body-file "$TMPDIR/vigilia-issues/BR-001-task-9-browser-matrix.md"
+  --body-file "$TMPDIR/yunari-issues/BR-001-task-9-browser-matrix.md"
 gh issue close <the number just printed> --reason completed \
   --comment "Resolved by 1fc22b7. Migrated from docs/bugs/closed/ on 2026-09-27."
 ```

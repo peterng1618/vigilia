@@ -68,7 +68,7 @@ independently as `this-pc`.
 **What does not transfer, and why it matters.** 9remote pairs a device to a **cloud
 relay** — a Worker, a `workerUrl`, a hosted endpoint — so its one-time code is
 revoked *at the Worker* and its permanent key is a bearer credential for a service
-somebody runs. Vigilia's premise is the opposite: no server, no recurring cost, and
+somebody runs. Yunari's premise is the opposite: no server, no recurring cost, and
 browsing that touches no API. A one-time code here is revoked in the host's own
 process and expiry is the only revocation it needs, and the card has no endpoint to
 write but this PC's own address. Their device *management* transfers whole; their
@@ -497,7 +497,7 @@ rather than a fresh pairing, and the reason a scan cannot attach a display to
 somebody else's PC.
 
 **A second host on one machine is a different question, and today it is broken.**
-`DEFAULT_APP_DIR` is `~/.vigilia` with `themes/` and `settings/` inside it
+`DEFAULT_APP_DIR` is `~/.yunari` with `themes/` and `settings/` inside it
 (`cli/args.ts`), and `--app-dir` is the only thing that separates two installs. Two
 hosts started on this PC with no flags share one `settings/`, so they share
 `active-theme.json`, `theme-answers.json` and the `display-clients.json` this
@@ -585,7 +585,7 @@ poll, so the Host settings mode can show where a display was last seen; that is 
 field open question 1 already names, and this is the reader that wants it.
 
 **mDNS advertising is not in this design.** The host announcing
-`_vigilia._tcp.local` would give the name above for free on networks with no
+`_yunari._tcp.local` would give the name above for free on networks with no
 router-assigned name — but **a browser cannot resolve `.local` except Safari**, so
 it is a bonus for OS-level clients and never the whole answer, and it costs a
 shipped dependency (licence review, `THIRD-PARTY-NOTICES.md`,

@@ -24,7 +24,7 @@ list of documents whose `§N` are design-language citations, and a document join
 by being *about* the design language — a property a reviewer checks, unlike a
 number.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `CITE_TREES`, `CITE_EXTENSIONS`, `CITE_EXCLUDE`, `CITE_NUMBERS`,
 `UNCITED_OK`, `MAPPING_EXEMPT`, `citedIn`, `collectCitations` and `checkCitations`

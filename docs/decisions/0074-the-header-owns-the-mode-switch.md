@@ -17,7 +17,7 @@ So the question is not "build a switch" — §5 already names **Segmented** — 
 document**. The switch is one control, one render; the ownership is the part
 that stays in the tree.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `ToggleGroup`, `Toggle`, `Segmented`, `Tabs` across
 `src/web/packages/editor/src`; `components/ui/control-segmented.tsx`;
@@ -136,7 +136,7 @@ lifted to `var(--stage)` and inked `var(--shell-text)` — the shared chosen
 treatment, never an accent fill (§4). The shell holds the mode (it is chrome,
 never persisted) and hands the header and the regions a `ShellLayoutProps`:
 `mode` and `onModeChange`. The region seam is one element
-(`[data-vigilia-mode-region]`), so Task A.2 and Task A.8 add a region rather than
+(`[data-yunari-mode-region]`), so Task A.2 and Task A.8 add a region rather than
 restructure the shell.
 
 **The guard is the editor's existing replacement prompt** —

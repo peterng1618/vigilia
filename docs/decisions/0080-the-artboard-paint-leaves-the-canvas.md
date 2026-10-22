@@ -25,7 +25,7 @@ colour is fully covered — which is why the requirement is phrased about theme 
 This is `vg-667`, filed from the glass fix's own harness, whose "not established" half was
 whether the paint winning was intended precedence. The user has now ruled that it is not.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every `backgroundColor` writer, every `backgroundImage` writer, every `backdrop`
 mount site, `artboardPlate`, `createApplyArtboard`, `cssArtboardPaint`,

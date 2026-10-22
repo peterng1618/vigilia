@@ -15,7 +15,7 @@ export { scaleOf, writeAuthoredBoxDimension } from "./authored-box.js";
 export type {
   FabricThemeEnvelope,
   FabricThemeEnvelopeInput,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 export type { SceneAdapter, SceneAdapterOptions } from "./adapter.js";
 export { createSceneAdapter } from "./adapter.js";
 export type { ArtboardBackdropOptions } from "./artboard-backdrop.js";
@@ -35,12 +35,12 @@ export {
 } from "./background-media.js";
 export type {
   ChartSerialisedKey,
-  VigiliaChartOptions,
+  YunariChartOptions,
 } from "./chart-object.js";
 export {
   CHART_SERIALISED_KEYS,
-  VigiliaChart,
   withoutEngineAnimation,
+  YunariChart,
 } from "./chart-object.js";
 export { type ChartRefreshRate, startChartRefresh } from "./chart-refresh.js";
 export type { UnsupportedReporter } from "./fabric-nodes.js";
@@ -48,7 +48,7 @@ export {
   applyAuthoredText,
   type PlanTextObject,
   refreshBoundText,
-  VIGILIA_TEXT_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
 } from "./fabric-text.js";
 export { type FontAssetLoadOptions, loadFontAssets } from "./font-assets.js";
 export {
@@ -62,7 +62,7 @@ export {
   type FabricAssetReference,
   objectAssetReference,
   setObjectAssetReference,
-  VIGILIA_ASSET_PROPERTY,
+  YUNARI_ASSET_PROPERTY,
 } from "./object-asset.js";
 export { holderOf, targetsOf } from "./object-holder.js";
 export { isLocked } from "./object-lock.js";
@@ -72,7 +72,7 @@ export {
   type FabricPaintRefs,
   type PaintApplicationOptions,
   paintPropertyFor,
-  VIGILIA_PAINT_PROPERTY,
+  YUNARI_PAINT_PROPERTY,
 } from "./object-paint.js";
 export {
   applyObjectTypePresets,

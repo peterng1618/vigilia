@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { VIGILIA_NAME_PROPERTY } from "@vigilia/renderer-core";
-import { serialiseScene } from "@vigilia/scene-fabric";
+import { YUNARI_NAME_PROPERTY } from "@yunari/renderer-core";
+import { serialiseScene } from "@yunari/scene-fabric";
 import {
   type Canvas as FabricCanvas,
   type FabricObject,
@@ -177,7 +177,7 @@ function rect(left: number, top: number, size = 60): Rect {
 
 /** The two properties the layer tree and the layer panel key an object by. */
 function named<T extends Rect | Textbox>(shape: T, id: string): T {
-  shape.set({ id, [VIGILIA_NAME_PROPERTY]: id });
+  shape.set({ id, [YUNARI_NAME_PROPERTY]: id });
   return shape;
 }
 
@@ -393,7 +393,7 @@ describe("the stage's artboard paint", () => {
       "with media declared, nothing on the canvas may cover it",
     ).toBeUndefined();
     expect(
-      mediaHost.querySelector("[data-vigilia-background-media]"),
+      mediaHost.querySelector("[data-yunari-background-media]"),
       "and the layer it would have covered is mounted",
     ).not.toBeNull();
     expect(
@@ -455,7 +455,7 @@ describe("the two clips that already exist still behave", () => {
   it("keeps the derived text-box clip", async () => {
     // The other half of `vg-046`'s named pair, and the one with the sharper
     // failure: `persist.ts` deletes a text object's serialised clipPath and
-    // rebuilds it from `vigiliaText.box`, so a repair that adopted the object's
+    // rebuilds it from `yunariText.box`, so a repair that adopted the object's
     // clipPath would put a stale or artboard-sized rect where a text box's own
     // clip belongs.
     const host = stageHost();

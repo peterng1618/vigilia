@@ -91,7 +91,7 @@ async function alphaAt(page: Page, x: number, y: number): Promise<number> {
   return page.evaluate(
     ([cx, cy]: readonly [number, number]) => {
       const canvas = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.lower-canvas",
+        "#yunari-fabric-editor canvas.lower-canvas",
       );
       if (canvas === null) throw new Error("no lower canvas in the editor");
       const box = canvas.getBoundingClientRect();
@@ -120,11 +120,11 @@ async function sceneToClient(
 ): Promise<{ x: number; y: number }> {
   return page.evaluate(
     ([sx, sy]: readonly [number, number]) => {
-      const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-        .vigiliaEditorBridge;
+      const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+        .yunariEditorBridge;
       const vpt = bridge.editor.canvas.viewportTransform;
       const upper = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.upper-canvas",
+        "#yunari-fabric-editor canvas.upper-canvas",
       );
       if (upper === null) throw new Error("no upper canvas in the editor");
       const box = upper.getBoundingClientRect();
@@ -140,8 +140,8 @@ async function sceneToClient(
 /** A row through the middle of the overhanging card, in scene units. */
 async function cardMiddleRow(page: Page): Promise<number> {
   return page.evaluate((cardId) => {
-    const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-      .vigiliaEditorBridge;
+    const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+      .yunariEditorBridge;
     const card = bridge.editor.canvas
       .getObjects()
       .find((object) => object.id === cardId);
@@ -159,7 +159,7 @@ async function stageBox(page: Page): Promise<{
 }> {
   return page.evaluate(() => {
     const canvas = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.lower-canvas",
+      "#yunari-fabric-editor canvas.lower-canvas",
     );
     if (canvas === null) throw new Error("no lower canvas in the editor");
     const box = canvas.getBoundingClientRect();
@@ -189,8 +189,8 @@ async function arrangeOverhang(page: Page): Promise<{
 }> {
   const measured = await page.evaluate(
     ([cardId, boardWidth, past]: readonly [string, number, number]) => {
-      const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-        .vigiliaEditorBridge;
+      const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+        .yunariEditorBridge;
       const canvas = bridge.editor.canvas;
 
       // Half fit, so the board no longer fills the canvas and there is
@@ -235,11 +235,11 @@ async function arrangeOverhang(page: Page): Promise<{
 test.describe("the editor clips the object layer to the artboard", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(EDITOR);
-    await expect(page.locator("#vigilia-fabric-editor")).toBeVisible();
+    await expect(page.locator("#yunari-fabric-editor")).toBeVisible();
     await page.waitForFunction(
       () =>
-        (window as unknown as { vigiliaEditorBridge?: unknown })
-          .vigiliaEditorBridge !== undefined,
+        (window as unknown as { yunariEditorBridge?: unknown })
+          .yunariEditorBridge !== undefined,
     );
     // The starter paints asynchronously (fonts, images); a read before it has
     // finished is a read of an empty canvas.
@@ -286,8 +286,8 @@ test.describe("the editor clips the object layer to the artboard", () => {
     expect(
       await page.evaluate(
         () =>
-          (window as unknown as { vigiliaEditorBridge: Bridge })
-            .vigiliaEditorBridge.editor.canvas.clipPath,
+          (window as unknown as { yunariEditorBridge: Bridge })
+            .yunariEditorBridge.editor.canvas.clipPath,
       ),
       "and the mechanism doing it is the scene-level clip the row calls for",
     ).toBeTruthy();
@@ -309,8 +309,8 @@ test.describe("the editor clips the object layer to the artboard", () => {
     // first is what frees the pan. Pan left and down, the way the clamp allows
     // once there is room.
     await page.evaluate(() => {
-      const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-        .vigiliaEditorBridge;
+      const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+        .yunariEditorBridge;
       bridge.editor.viewport.zoomBy(0.75);
       bridge.editor.viewport.panBy(-40, 20);
       bridge.editor.canvas.requestRenderAll();
@@ -318,8 +318,8 @@ test.describe("the editor clips the object layer to the artboard", () => {
     await page.waitForTimeout(300);
 
     const moved = await page.evaluate(() => {
-      const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-        .vigiliaEditorBridge;
+      const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+        .yunariEditorBridge;
       const vpt = bridge.editor.canvas.viewportTransform;
       return {
         zoom: vpt[0] ?? 1,
@@ -362,8 +362,8 @@ test.describe("the editor clips the object layer to the artboard", () => {
     );
 
     await page.evaluate((cardId) => {
-      const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-        .vigiliaEditorBridge;
+      const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+        .yunariEditorBridge;
       const card = bridge.editor.canvas
         .getObjects()
         .find((object) => object.id === cardId);
@@ -374,8 +374,8 @@ test.describe("the editor clips the object layer to the artboard", () => {
     await page.waitForTimeout(300);
 
     const handle = await page.evaluate(() => {
-      const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
-        .vigiliaEditorBridge;
+      const bridge = (window as unknown as { yunariEditorBridge: Bridge })
+        .yunariEditorBridge;
       const active = bridge.editor.canvas.getActiveObject() as {
         calcOCoords?: () => Record<
           string,
@@ -388,7 +388,7 @@ test.describe("the editor clips the object layer to the artboard", () => {
       const br = active.calcOCoords()["br"];
       if (br === undefined) throw new Error("no bottom-right handle");
       const upper = document.querySelector<HTMLCanvasElement>(
-        "#vigilia-fabric-editor canvas.upper-canvas",
+        "#yunari-fabric-editor canvas.upper-canvas",
       );
       if (upper === null) throw new Error("no upper canvas in the editor");
       const box = upper.getBoundingClientRect();

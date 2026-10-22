@@ -74,14 +74,14 @@ it("answers health and reaches the D1 binding", async () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker`
+Run: `npm run test -w @yunari/store-worker`
 Expected: FAIL — the package or the route does not exist.
 
 - [ ] **Step 3: Create the package and configuration**
 
-`package.json`: name `@vigilia/store-worker`, private, type module, `main`/`exports` `./src/index.ts`, scripts `deploy: wrangler deploy`, `dev: wrangler dev`, `test: vitest run --config vitest.config.ts`, `typecheck: tsc --noEmit -p tsconfig.json`. Dependencies `better-auth@1.7.12`, `aws4fetch@1.0.20`. Dev dependencies `@cloudflare/vitest-pool-workers@0.23.0`, `@cloudflare/workers-types@5.20261022.1`, `vitest@4.1.12`, `wrangler@4.152.0`. The nested Vitest 4 is required because the Workers pool's peer range is `^4.1.0` while the workspace runs Vitest 5; say so in a `//` key in the manifest.
+`package.json`: name `@yunari/store-worker`, private, type module, `main`/`exports` `./src/index.ts`, scripts `deploy: wrangler deploy`, `dev: wrangler dev`, `test: vitest run --config vitest.config.ts`, `typecheck: tsc --noEmit -p tsconfig.json`. Dependencies `better-auth@1.7.12`, `aws4fetch@1.0.20`. Dev dependencies `@cloudflare/vitest-pool-workers@0.23.0`, `@cloudflare/workers-types@5.20261022.1`, `vitest@4.1.12`, `wrangler@4.152.0`. The nested Vitest 4 is required because the Workers pool's peer range is `^4.1.0` while the workspace runs Vitest 5; say so in a `//` key in the manifest.
 
-`wrangler.toml`: worker name `vigilia-store`, `main = "src/index.ts"`, `compatibility_date = "2026-10-22"`, `compatibility_flags = ["nodejs_compat"]`, D1 binding `DB` named `vigilia-store` with `database_id = "00000000-0000-0000-0000-000000000000"`, R2 binding `BUCKET` named `vigilia-store-packages`. Task 5.2 replaces the id after `wrangler d1 create`. Add `[vars]` with no secrets.
+`wrangler.toml`: worker name `yunari-store`, `main = "src/index.ts"`, `compatibility_date = "2026-10-22"`, `compatibility_flags = ["nodejs_compat"]`, D1 binding `DB` named `yunari-store` with `database_id = "00000000-0000-0000-0000-000000000000"`, R2 binding `BUCKET` named `yunari-store-packages`. Task 5.2 replaces the id after `wrangler d1 create`. Add `[vars]` with no secrets.
 
 `vitest.config.ts`: `defineWorkersConfig` with `wrangler.configPath`, `miniflare.bindings` carrying `TEST_MIGRATIONS = await readD1Migrations("./migrations")`, `TEST_MODE: "1"`, `MIGRATE_TOKEN: "test-migrate"`, `BETTER_AUTH_SECRET: "test-secret"`, `OWNER_EMAILS: "owner@example.com"`, and the R2 signing values the presign tests read, and `setupFiles: ["./tests/apply-migrations.ts"]`.
 
@@ -89,13 +89,13 @@ Expected: FAIL — the package or the route does not exist.
 
 `migrations/0001_catalogue.sql`: `item`, `item_version`, `favorite`, `author_profile` and `presign_event` exactly as the spec's data model, with `CHECK` on `status` and the indexes `item(status)`, `item(author_user_id)`, `favorite(item_id)`, `presign_event(user_id, at)`. `item_version.package_key` and `thumbnail_key` are `NOT NULL`; `facet` columns are `TEXT NOT NULL`.
 
-Root `package.json`: add `"packages/store-worker"` to `workspaces`, `"test:worker": "npm run test -w @vigilia/store-worker"`, and insert `&& npm run test:worker` into `gate` immediately after `npm run test`.
+Root `package.json`: add `"packages/store-worker"` to `workspaces`, `"test:worker": "npm run test -w @yunari/store-worker"`, and insert `&& npm run test:worker` into `gate` immediately after `npm run test`.
 
 Record both new runtime dependencies and the dev-only Workers tooling in the notices and dependency map before installing.
 
 - [ ] **Step 4: Implement the minimal health route and run the test**
 
-`src/index.ts` answers `/api/health`; `src/env.ts` exports `Env`. Run `npm install` from `src/web`, then `npm run test -w @vigilia/store-worker`. Expected: PASS.
+`src/index.ts` answers `/api/health`; `src/env.ts` exports `Env`. Run `npm install` from `src/web`, then `npm run test -w @yunari/store-worker`. Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -114,7 +114,7 @@ git commit -m "feat(store-worker): add the Worker, D1 schema and Workers test ha
 - Create: `src/web/packages/store-worker/src/version/plan.test.ts`
 
 **Interfaces:**
-- Consumes: `CatalogueEntry`, `CatalogueItemFile`, `CatalogueIndex`, `FacetRecord` from `@vigilia/renderer-core`; `classifyThemeChange`, `versionFor`, `type VersionLevel` from `@vigilia/theme-package`.
+- Consumes: `CatalogueEntry`, `CatalogueItemFile`, `CatalogueIndex`, `FacetRecord` from `@yunari/renderer-core`; `classifyThemeChange`, `versionFor`, `type VersionLevel` from `@yunari/theme-package`.
 - Produces: in `renderer-core/src/theme/catalogue-index.ts`, `export type CatalogueStatus = "draft" | "pending" | "published" | "unpublished" | "rejected" | "removed"` and `export interface MineEntry extends CatalogueEntry { readonly status: CatalogueStatus; readonly statusReason?: string }`.
 - Produces: `interface ItemRow`, `interface VersionRow` in `db/types.ts`.
 - Produces: `entryOf(item: ItemRow, version: VersionRow, favorites: number, packageUrl: string, thumbnailUrl: string): CatalogueEntry`.
@@ -148,7 +148,7 @@ it("bumps from the stored envelope and refuses a claimed version that disagrees"
 
 - [ ] **Step 3: Run both tests to verify they fail**
 
-Run: `npm run test -w @vigilia/store-worker -- src/catalogue/entry.test.ts src/version/plan.test.ts`
+Run: `npm run test -w @yunari/store-worker -- src/catalogue/entry.test.ts src/version/plan.test.ts`
 Expected: FAIL — the modules do not exist.
 
 - [ ] **Step 4: Implement the projections and `planVersion`**
@@ -205,7 +205,7 @@ it("serves the index, then 404s every unpublished read", async () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/public.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/public.spec.ts`
 Expected: FAIL — routes are missing.
 
 - [ ] **Step 3: Implement the routes**
@@ -214,7 +214,7 @@ Expected: FAIL — routes are missing.
 
 - [ ] **Step 4: Run the test and the package suite**
 
-Run: `npm run test -w @vigilia/store-worker`
+Run: `npm run test -w @yunari/store-worker`
 Expected: PASS, including two downloads incrementing twice.
 
 - [ ] **Step 5: Commit**
@@ -275,7 +275,7 @@ it("accepts a real test session", async () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/auth.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/auth.spec.ts`
 Expected: FAIL — `/migrate` and `/api/me` do not exist.
 
 - [ ] **Step 3: Implement `createAuth`, the session helper, `/migrate` and `/auth/return`**
@@ -286,7 +286,7 @@ Expected: FAIL — `/migrate` and `/api/me` do not exist.
 
 - [ ] **Step 4: Run the auth test and the package suite**
 
-Run: `npm run test -w @vigilia/store-worker`
+Run: `npm run test -w @yunari/store-worker`
 Expected: PASS; a forged bearer is 401 and a real test session reaches `/api/me`.
 
 - [ ] **Step 5: Commit**
@@ -346,7 +346,7 @@ it("refuses the 21st item and the 61st presign in an hour", async () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/versions.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/versions.spec.ts`
 Expected: FAIL — the route is missing.
 
 - [ ] **Step 3: Implement `presignPut` and the version route**
@@ -357,7 +357,7 @@ The route resolves the session, refuses an item id owned by another user, loads 
 
 - [ ] **Step 4: Run the tests and commit**
 
-Run: `npm run test -w @vigilia/store-worker`
+Run: `npm run test -w @yunari/store-worker`
 Expected: PASS; the URL's path is the derived key and a foreign id is 404.
 
 ```bash
@@ -410,7 +410,7 @@ it("returns a rejected item to the queue on a new version", async () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/finalize.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/finalize.spec.ts`
 Expected: FAIL — the route is missing.
 
 - [ ] **Step 3: Implement finalize**
@@ -419,7 +419,7 @@ The route checks the item belongs to the session and is not `removed`, HEADs the
 
 - [ ] **Step 4: Run the tests and commit**
 
-Run: `npm run test -w @vigilia/store-worker`
+Run: `npm run test -w @yunari/store-worker`
 Expected: PASS; pending items are absent from the index.
 
 ```bash
@@ -476,7 +476,7 @@ Copy `github-token.ts`'s exclusive read/write/rename pattern; validate four non-
 
 - [ ] **Step 4: Run the test, typecheck and commit**
 
-Run: `npx vitest run packages/host/src/settings/store-session.test.ts` and `npm run typecheck -w @vigilia/host`. Expected: PASS.
+Run: `npx vitest run packages/host/src/settings/store-session.test.ts` and `npm run typecheck -w @yunari/host`. Expected: PASS.
 
 ```bash
 git add src/web/packages/host/src/settings/store-session.ts src/web/packages/host/src/settings/store-session.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/index.ts
@@ -523,7 +523,7 @@ The client sends `Authorization: Bearer <token>`, parses every answer as JSON, a
 
 - [ ] **Step 4: Run the host suite, typecheck and commit**
 
-Run: `npx vitest run packages/host/src/themes` and `npm run typecheck -w @vigilia/host`. Expected: PASS.
+Run: `npx vitest run packages/host/src/themes` and `npm run typecheck -w @yunari/host`. Expected: PASS.
 
 ```bash
 git add src/web/packages/host/src/themes src/web/packages/host/src/server.ts src/web/packages/host/src/index.ts src/web/packages/host/src/settings
@@ -574,7 +574,7 @@ it("removes with a reason and only the owner can restore", async () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/admin.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/admin.spec.ts`
 Expected: FAIL — the routes are missing.
 
 - [ ] **Step 3: Implement the admin routes**
@@ -583,7 +583,7 @@ Every handler resolves the session first, then `isOwner`; a non-owner gets 404 s
 
 - [ ] **Step 4: Run the tests and commit**
 
-Run: `npm run test -w @vigilia/store-worker`. Expected: PASS.
+Run: `npm run test -w @yunari/store-worker`. Expected: PASS.
 
 ```bash
 git add src/web/packages/store-worker/src/routes/admin.ts src/web/packages/store-worker/src/auth/owner.ts src/web/packages/store-worker/src/index.ts src/web/packages/store-worker/tests/admin.spec.ts
@@ -622,7 +622,7 @@ it("hides every read, keeps the record, and restores counters on republish", asy
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/unpublish.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/unpublish.spec.ts`
 Expected: FAIL — the routes are missing.
 
 - [ ] **Step 3: Implement both transitions**
@@ -631,7 +631,7 @@ Unpublish uses `setStatus(db, id, ["published"], "unpublished", now)`; republish
 
 - [ ] **Step 4: Run the tests and commit**
 
-Run: `npm run test -w @vigilia/store-worker`. Expected: PASS.
+Run: `npm run test -w @yunari/store-worker`. Expected: PASS.
 
 ```bash
 git add src/web/packages/store-worker/src/routes/me.ts src/web/packages/store-worker/src/db/items.ts src/web/packages/store-worker/tests/unpublish.spec.ts
@@ -667,7 +667,7 @@ it("counts one favourite per account and follows the index", async () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/favorites.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/favorites.spec.ts`
 Expected: FAIL — the route is missing.
 
 - [ ] **Step 3: Implement favourites and wire the counts**
@@ -676,7 +676,7 @@ Expected: FAIL — the route is missing.
 
 - [ ] **Step 4: Run the tests and commit**
 
-Run: `npm run test -w @vigilia/store-worker`. Expected: PASS.
+Run: `npm run test -w @yunari/store-worker`. Expected: PASS.
 
 ```bash
 git add src/web/packages/store-worker/src/db/favorites.ts src/web/packages/store-worker/src/routes/me.ts src/web/packages/store-worker/src/db/items.ts src/web/packages/store-worker/src/routes/public.ts src/web/packages/store-worker/tests/favorites.spec.ts
@@ -712,7 +712,7 @@ it("returns the author's unpublished and pending items and nobody else's", async
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npm run test -w @vigilia/store-worker -- tests/mine.spec.ts`
+Run: `npm run test -w @yunari/store-worker -- tests/mine.spec.ts`
 Expected: FAIL — the route is missing.
 
 - [ ] **Step 3: Implement the endpoint and the proxy**
@@ -721,7 +721,7 @@ Join `item` to its latest version and favourite count, filter `author_user_id = 
 
 - [ ] **Step 4: Run the tests and commit**
 
-Run: `npm run test -w @vigilia/store-worker && npx vitest run packages/host/src/themes/store-client.test.ts`. Expected: PASS.
+Run: `npm run test -w @yunari/store-worker && npx vitest run packages/host/src/themes/store-client.test.ts`. Expected: PASS.
 
 ```bash
 git add src/web/packages/store-worker/src/routes/me.ts src/web/packages/store-worker/tests/mine.spec.ts src/web/packages/host/src/server.ts src/web/packages/host/src/themes/store-client.ts src/web/packages/host/src/themes/store-client.test.ts
@@ -745,7 +745,7 @@ git commit -m "feat(store): list an author's own items through the host"
 - Modify: `src/web/packages/host/src/server.test.ts`, `download.test.ts`, `online-source.test.ts`
 
 **Interfaces:**
-- Produces: `CATALOGUE_ORIGIN` (initial value `https://vigilia-store.workers.dev`; Task 5.2 replaces it with the deployed URL).
+- Produces: `CATALOGUE_ORIGIN` (initial value `https://yunari-store.workers.dev`; Task 5.2 replaces it with the deployed URL).
 - Produces: `catalogueIndexUrl()`, `catalogueItemUrl(id)`, `cataloguePackageUrl(id, version)`, `catalogueThumbnailUrl(path)`; the last joins `CATALOGUE_ORIGIN` and the path without a `/catalogue` suffix.
 
 - [ ] **Step 1: Write the failing location test**
@@ -789,7 +789,7 @@ git commit -m "refactor(store): own the catalogue origin in renderer-core"
 **Interfaces:**
 - Consumes: host `GET /api/store/mine` → `{ entries: MineEntry[] }`.
 - Produces: `mineThemeSource(options?: { fetch?: typeof fetch }): ItemSource` — `list()` maps entries to `StoreItem & { status; statusReason }`.
-- Produces: a `Mine` toggle (`data-vigilia-store-mine`) drawn in the online half when a session is present; with it on, `listed` comes from `mineThemeSource`, status is carried on each item, and the public filters still apply.
+- Produces: a `Mine` toggle (`data-yunari-store-mine`) drawn in the online half when a session is present; with it on, `listed` comes from `mineThemeSource`, status is carried on each item, and the public filters still apply.
 
 - [ ] **Step 1: Write the failing mine-source test**
 
@@ -857,7 +857,7 @@ Expected: FAIL — the status is not drawn.
 
 - [ ] **Step 3: Implement the badge and the actions**
 
-A small badge element after the item's name, with `data-vigilia-store-status`. The modal shows Unpublish only for `published`, Republish only for `unpublished`, and the owner's sentence for `rejected`/`removed`. The region posts to the host and replaces the item in the Mine listing with the answer; a refusal is announced in the existing live region.
+A small badge element after the item's name, with `data-yunari-store-status`. The modal shows Unpublish only for `published`, Republish only for `unpublished`, and the owner's sentence for `rejected`/`removed`. The region posts to the host and replaces the item in the Mine listing with the answer; a refusal is announced in the existing live region.
 
 - [ ] **Step 4: Run the tests and commit**
 
@@ -1002,7 +1002,7 @@ git commit -m "feat(store): import the GitHub catalogue item through the author 
 
 - [ ] **Step 1: Create the Cloudflare resources**
 
-Run: `npx wrangler d1 create vigilia-store`, then `npx wrangler r2 bucket create vigilia-store-packages`. Put the printed D1 id into `wrangler.toml`.
+Run: `npx wrangler d1 create yunari-store`, then `npx wrangler r2 bucket create yunari-store-packages`. Put the printed D1 id into `wrangler.toml`.
 
 - [ ] **Step 2: Set the secrets**
 
@@ -1032,7 +1032,7 @@ Route `/api/store/session` and `/api/store/mine` with `page.route`, open the sto
 
 - [ ] **Step 3: Capture and look at the images**
 
-Run `VIGILIA_CAPTURE=1 npx playwright test tests/e2e/store-mine.spec.ts --workers=1`, then inspect each registered image and write one sentence per image into the plan's evidence.
+Run `YUNARI_CAPTURE=1 npx playwright test tests/e2e/store-mine.spec.ts --workers=1`, then inspect each registered image and write one sentence per image into the plan's evidence.
 
 - [ ] **Step 4: Commit**
 

@@ -6,10 +6,10 @@ import { submitToCatalogue } from "./github-submit.js";
 const TOKEN = "gho_secret_token_value";
 
 const API = "https://api.github.com";
-const CATALOGUE = `${API}/repos/peterng1618/vigilia-store`;
-const FORK = `${API}/repos/octocat/vigilia-store`;
-const FORK_PATH = "/repos/octocat/vigilia-store";
-const PR_URL = "https://github.com/peterng1618/vigilia-store/pull/7";
+const CATALOGUE = `${API}/repos/peterng1618/yunari-store`;
+const FORK = `${API}/repos/octocat/yunari-store`;
+const FORK_PATH = "/repos/octocat/yunari-store";
+const PR_URL = "https://github.com/peterng1618/yunari-store/pull/7";
 
 const FILES: SubmissionFiles = {
   itemJson: '{\n  "kind": "dashboard-theme",\n  "name": "Aurora"\n}\n',

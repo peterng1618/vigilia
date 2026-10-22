@@ -4,7 +4,7 @@ interface NumberFieldOptions {
   readonly label: string;
   readonly value: number;
   readonly data: string;
-  /** A dataset value, for a keyed selector like `data-vigilia-geometry="left"`.
+  /** A dataset value, for a keyed selector like `data-yunari-geometry="left"`.
       Absent means the bare attribute the panels already query. */
   readonly dataValue?: string;
   readonly step?: number;
@@ -52,7 +52,7 @@ let fieldSeq = 0;
 
 export function numberField(options: NumberFieldOptions): NumberField {
   const row = document.createElement("div");
-  row.className = "vigilia-field";
+  row.className = "yunari-field";
   const field = numberInput({ ...options, host: row, withRange: true });
   row.append(field.label, field.input);
   if (field.range !== undefined)
@@ -73,7 +73,7 @@ function boundLine(
   max: number | undefined,
 ): HTMLElement {
   const line = document.createElement("p");
-  line.className = "vigilia-field-bound";
+  line.className = "yunari-field-bound";
   line.textContent = `${min}–${max}`;
   return line;
 }
@@ -92,9 +92,9 @@ function numberInput(options: NumberInputOptions): NumberInput {
   input.step = String(options.step ?? 1);
   if (options.min !== undefined) input.min = String(options.min);
   if (options.max !== undefined) input.max = String(options.max);
-  input.className = "vigilia-numeric";
+  input.className = "yunari-numeric";
   input.dataset[options.data] = options.dataValue ?? "";
-  const id = `vigilia-number-${++fieldSeq}`;
+  const id = `yunari-number-${++fieldSeq}`;
   label.htmlFor = input.id = id;
   label.id = `${id}-label`;
   input.value = String(last);
@@ -190,7 +190,7 @@ function rangeControl(
   const range = document.createElement("input");
   range.type = "range";
   range.id = `${id}-range`;
-  range.className = "vigilia-numeric";
+  range.className = "yunari-numeric";
   range.min = String(min);
   range.max = String(max);
   range.step = String(step);

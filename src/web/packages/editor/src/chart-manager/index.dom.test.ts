@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createDemoSource } from "@vigilia/fake-source";
+import { createDemoSource } from "@yunari/fake-source";
 import {
   defaultBarSettings,
   defaultGaugeSettings,
@@ -7,12 +7,12 @@ import {
   type GaugeSettings,
   type Sample,
   SampleStore,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   type SceneAdapter,
   serialiseScene,
-  VigiliaChart,
-} from "@vigilia/scene-fabric";
+  YunariChart,
+} from "@yunari/scene-fabric";
 import { Canvas, Group } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import type { EditorInteraction } from "../editor-interaction.js";
@@ -43,10 +43,10 @@ const artboard = () => ({ width: 1920, height: 1080 });
  */
 function mountFields(
   manager: ChartManager,
-  chart: () => VigiliaChart | undefined,
+  chart: () => YunariChart | undefined,
 ): ChartFieldsStage {
   const body = <T>(
-    project: (target: VigiliaChart) => T | undefined,
+    project: (target: YunariChart) => T | undefined,
   ): (() => T | undefined) => {
     return () => {
       const target = chart();
@@ -64,11 +64,11 @@ describe("ChartManager", () => {
   it.each(["gauge", "line", "bar", "pie"] as const)(
     "adds, selects and records a palette-backed %s",
     (family) => {
-      const objects: VigiliaChart[] = [];
+      const objects: YunariChart[] = [];
       const canvas = {
         on: vi.fn(),
         off: vi.fn(),
-        add: vi.fn((chart: VigiliaChart) => objects.push(chart)),
+        add: vi.fn((chart: YunariChart) => objects.push(chart)),
         getActiveObject: vi.fn(),
         getObjects: vi.fn(() => objects),
         requestRenderAll: vi.fn(),
@@ -134,7 +134,7 @@ describe("ChartManager", () => {
       requestRenderAll: vi.fn(),
       setActiveObject: vi.fn(),
     };
-    const chart = new VigiliaChart({
+    const chart = new YunariChart({
       id: "card-sparkline",
       family: "line",
       settings: defaultLineSettings,
@@ -199,9 +199,9 @@ describe("ChartManager", () => {
     });
 
     manager.addChart("gauge");
-    const first = objects[0] as VigiliaChart;
+    const first = objects[0] as YunariChart;
     manager.addChart("gauge");
-    const second = objects[1] as VigiliaChart;
+    const second = objects[1] as YunariChart;
 
     // The first chart takes the inset every other new object takes…
     expect({ left: first.left, top: first.top }).toEqual(
@@ -244,7 +244,7 @@ describe("ChartManager", () => {
   });
 
   it("hydrates a revived chart without bindings", () => {
-    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+    const chart = Object.assign(Object.create(YunariChart.prototype), {
       id: "unbound-gauge",
       family: "gauge",
       settings: {
@@ -252,7 +252,7 @@ describe("ChartManager", () => {
         track: { ref: "palette.track" },
         progress: { ref: "palette.accent" },
       },
-    }) as VigiliaChart;
+    }) as YunariChart;
     const canvas = {
       on: vi.fn(),
       off: vi.fn(),
@@ -281,7 +281,7 @@ describe("ChartManager", () => {
 
   it("updates the selected Fabric chart from envelope bindings", async () => {
     const listeners = new Map<string, (event?: unknown) => void>();
-    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+    const chart = Object.assign(Object.create(YunariChart.prototype), {
       id: "cpu-gauge",
       family: "gauge",
       settings: {
@@ -294,7 +294,7 @@ describe("ChartManager", () => {
       scaleX: 2,
       scaleY: 1.5,
       resizeTo: vi.fn(),
-    }) as VigiliaChart;
+    }) as YunariChart;
     let revivedChart = chart;
     let stage: ChartFieldsStage | undefined;
     const canvas = {
@@ -337,11 +337,11 @@ describe("ChartManager", () => {
     listeners.get("object:modified")!({ target: chart });
     expect(chart.resizeTo).toHaveBeenCalledWith(200, 150);
 
-    await choose(host, 'data-vigilia-binding="cpu"', "RAM used");
+    await choose(host, 'data-yunari-binding="cpu"', "RAM used");
     expect(chart.option).toMatchObject({ series: expect.any(Array) });
 
     await edit(
-      pick<HTMLInputElement>(host, 'data-vigilia-chart-setting="thickness"'),
+      pick<HTMLInputElement>(host, 'data-yunari-chart-setting="thickness"'),
       "24",
     );
 
@@ -349,20 +349,20 @@ describe("ChartManager", () => {
     // The control reads back what the owner now holds, not a draft of its own.
     stage.render();
     expect(
-      pick<HTMLInputElement>(host, 'data-vigilia-chart-setting="thickness"')
+      pick<HTMLInputElement>(host, 'data-yunari-chart-setting="thickness"')
         .value,
     ).toBe("24");
 
-    await choose(host, 'data-vigilia-chart-paint="progress"', "Track");
+    await choose(host, 'data-yunari-chart-paint="progress"', "Track");
     expect(chart.settings).toMatchObject({
       progress: { ref: "palette.track" },
     });
 
-    revivedChart = Object.assign(Object.create(VigiliaChart.prototype), {
+    revivedChart = Object.assign(Object.create(YunariChart.prototype), {
       id: "cpu-gauge",
       family: "gauge",
       settings: chart.settings,
-    }) as VigiliaChart;
+    }) as YunariChart;
     listeners.get("editor:history-state-loaded")!();
     expect(revivedChart.option).toMatchObject({ series: expect.any(Array) });
 
@@ -384,7 +384,7 @@ describe("ChartManager", () => {
     // but announced nothing, and the inspector re-reads on `object:modified`.
     // The Height field is editable, so an author reading a number the product no
     // longer holds types a height against it.
-    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+    const chart = Object.assign(Object.create(YunariChart.prototype), {
       id: "trends",
       family: "line",
       settings: defaultLineSettings,
@@ -396,7 +396,7 @@ describe("ChartManager", () => {
         this.width = w;
         this.height = h;
       },
-    }) as VigiliaChart;
+    }) as YunariChart;
     const canvas = {
       on: vi.fn(),
       off: vi.fn(),
@@ -412,7 +412,7 @@ describe("ChartManager", () => {
     });
     const stage = mountFields(manager, () => chart);
 
-    await segment(stage.host, "data-vigilia-chart-aspect", "2:1");
+    await segment(stage.host, "data-yunari-chart-aspect", "2:1");
 
     // The object resized, exactly as the saved document showed: 963 wide at
     // 2:1 is 481.5, which is the 482 the inspector rounds to.
@@ -433,7 +433,7 @@ describe("ChartManager", () => {
     // them apart, so after clicking there was no way to tell 2:1 from 3:1.
     // The ratio is the chart's own width over its height — read from the object
     // rather than remembered, so it is right after a drag as well as a click.
-    const chart = Object.assign(Object.create(VigiliaChart.prototype), {
+    const chart = Object.assign(Object.create(YunariChart.prototype), {
       id: "trends",
       family: "line",
       settings: defaultLineSettings,
@@ -445,7 +445,7 @@ describe("ChartManager", () => {
         this.width = w;
         this.height = h;
       },
-    }) as VigiliaChart;
+    }) as YunariChart;
     const listeners = new Map<string, (event?: unknown) => void>();
     const canvas = {
       on: vi.fn((event: string, listener: (event?: unknown) => void) =>
@@ -464,12 +464,12 @@ describe("ChartManager", () => {
     });
     const stage = mountFields(manager, () => chart);
     const pressed = (): string | undefined =>
-      pressedLabel(stage.host, "data-vigilia-chart-aspect");
+      pressedLabel(stage.host, "data-yunari-chart-aspect");
 
     // 800 × 400 is 2:1, and that is the only button that says so.
     expect(pressed()).toBe("2:1");
 
-    await segment(stage.host, "data-vigilia-chart-aspect", "3:1");
+    await segment(stage.host, "data-yunari-chart-aspect", "3:1");
 
     // The manager announced the change, and the column is what re-reads it.
     stage.render();
@@ -496,7 +496,7 @@ describe("ChartManager", () => {
     // carries no `aspect` property — so the state that tells the author which
     // button is live cannot reach a save and become a fourth source of truth
     // beside the geometry it describes.
-    const chart = new VigiliaChart({
+    const chart = new YunariChart({
       id: "trends",
       family: "line",
       settings: defaultLineSettings,
@@ -513,7 +513,7 @@ describe("ChartManager", () => {
     });
     const stage = mountFields(manager, () => chart);
 
-    await segment(stage.host, "data-vigilia-chart-aspect", "4:1");
+    await segment(stage.host, "data-yunari-chart-aspect", "4:1");
 
     // The chart's own persisted shape: no ratio, no pressed state, just the
     // geometry the ratio produced. 4:1 of an 800-wide chart is 200 tall, and
@@ -550,7 +550,7 @@ describe("ChartManager", () => {
     // `GroupProps` carries no `id`; a group is named the way Fabric accepts
     // one — after construction, the same as the asset panel's own group.
     const card = new Group([
-      new VigiliaChart({
+      new YunariChart({
         id: "cpu-gauge",
         family: "gauge",
         settings,
@@ -563,7 +563,7 @@ describe("ChartManager", () => {
     // The same chart at the root, which the walk already reached — this fails
     // if the descent is fixed by stopping at the top level instead.
     canvas.add(
-      new VigiliaChart({
+      new YunariChart({
         id: "ram-gauge",
         family: "gauge",
         settings,
@@ -608,14 +608,14 @@ describe("a chart that throws", () => {
     // `setOption` throws must not stop the readings beside it — otherwise one
     // bad option freezes the whole editor, which is the same defect one level
     // up in the frame loop.
-    const good = new VigiliaChart({
+    const good = new YunariChart({
       id: "good",
       family: "gauge",
       width: 100,
       height: 100,
       settings: defaultGaugeSettings,
     });
-    const bad = new VigiliaChart({
+    const bad = new YunariChart({
       id: "bad",
       family: "gauge",
       width: 100,
@@ -702,14 +702,14 @@ describe("a chart that throws", () => {
         return [];
       },
     };
-    const bad = new VigiliaChart({
+    const bad = new YunariChart({
       id: "bad",
       family: "line",
       width: 100,
       height: 100,
       settings: defaultLineSettings,
     });
-    const good = new VigiliaChart({
+    const good = new YunariChart({
       id: "good",
       family: "gauge",
       width: 100,
@@ -761,7 +761,7 @@ describe("a chart whose reading has not moved", () => {
   function harness(
     bindings: Record<string, readonly { id: string; semanticKey: string }[]>,
   ) {
-    const chart = new VigiliaChart({
+    const chart = new YunariChart({
       id: "cpu",
       family: "gauge",
       width: 100,
@@ -850,7 +850,7 @@ describe("a chart whose reading has not moved", () => {
     const source = new SampleStore();
     source.ingest([["cpu.load", sample(t0, 10)]], t0);
 
-    const chart = new VigiliaChart({
+    const chart = new YunariChart({
       id: "cpu",
       family: "bar",
       width: 100,
@@ -909,12 +909,12 @@ describe("a line chart's trailing window", () => {
     const box = { id: "cpu", width: 100, height: 100 };
     const chart =
       family === "line"
-        ? new VigiliaChart({
+        ? new YunariChart({
             ...box,
             family: "line",
             settings: defaultLineSettings,
           })
-        : new VigiliaChart({
+        : new YunariChart({
             ...box,
             family: "gauge",
             settings: defaultGaugeSettings,
@@ -1010,9 +1010,9 @@ describe("a chart's series paint", () => {
    * blue, violet and teal — was unreachable.
    */
   function harness() {
-    const objects: VigiliaChart[] = [];
+    const objects: YunariChart[] = [];
     const canvas = {
-      add: (object: VigiliaChart) => objects.push(object),
+      add: (object: YunariChart) => objects.push(object),
       setActiveObject: vi.fn(),
       getActiveObject: () => objects.at(-1),
       getObjects: () => objects,
@@ -1054,14 +1054,14 @@ describe("a chart's series paint", () => {
       "GPU load",
       "RAM used (share of total)",
     ]) {
-      await choose(stage.host, "data-vigilia-chart-binding-add", semanticKey);
+      await choose(stage.host, "data-yunari-chart-binding-add", semanticKey);
       stage.render();
     }
 
     expect((palette() as unknown[]).length).toBe(3);
     // The control follows the array, so three entries means three pickers.
     expect(
-      stage.host.querySelectorAll("[data-vigilia-chart-paint^='palette']")
+      stage.host.querySelectorAll("[data-yunari-chart-paint^='palette']")
         .length,
     ).toBe(3);
     await stage.dispose();
@@ -1074,7 +1074,7 @@ describe("a chart's series paint", () => {
     const stage = mountFields(manager, () => objects.at(-1));
     const before = objects[0]?.settings;
 
-    await choose(stage.host, "data-vigilia-chart-binding-add", "CPU load");
+    await choose(stage.host, "data-yunari-chart-binding-add", "CPU load");
 
     // A gauge's track and progress are not per-series, so nothing about them
     // changes when a sensor is bound to it.
@@ -1086,11 +1086,11 @@ describe("a chart's series paint", () => {
 
 describe("a chart control's commit", () => {
   /** A manager whose fields are mounted over whichever chart is current. */
-  function mounted(initial: VigiliaChart) {
+  function mounted(initial: YunariChart) {
     let current = initial;
     const objects = [initial];
     const canvas = {
-      add: (object: VigiliaChart) => objects.push(object),
+      add: (object: YunariChart) => objects.push(object),
       setActiveObject: vi.fn(),
       getActiveObject: () => current,
       getObjects: () => objects,
@@ -1115,7 +1115,7 @@ describe("a chart control's commit", () => {
       stage,
       canvas,
       /** A later selection, without the column having re-read it yet. */
-      select(next: VigiliaChart): void {
+      select(next: YunariChart): void {
         current = next;
         objects.push(next);
       },
@@ -1127,14 +1127,14 @@ describe("a chart control's commit", () => {
     // is re-read on the next event, but a commit that arrives first still
     // carries the chart id it was built with. Resolving by id is what stops it
     // landing on whatever happens to be selected now.
-    const first = new VigiliaChart({
+    const first = new YunariChart({
       id: "first",
       family: "gauge",
       settings: defaultGaugeSettings,
       width: 100,
       height: 100,
     });
-    const second = new VigiliaChart({
+    const second = new YunariChart({
       id: "second",
       family: "gauge",
       settings: defaultGaugeSettings,
@@ -1148,7 +1148,7 @@ describe("a chart control's commit", () => {
     await edit(
       pick<HTMLInputElement>(
         stage.host,
-        'data-vigilia-chart-setting="thickness"',
+        'data-yunari-chart-setting="thickness"',
       ),
       "24",
     );
@@ -1164,7 +1164,7 @@ describe("a chart control's commit", () => {
     // The write path and the read path are one path: a nested commit is
     // persisted as the block the renderer reads, so reopening the document
     // shows the author's number rather than a key with a dot in its name.
-    const chart = new VigiliaChart({
+    const chart = new YunariChart({
       id: "trends",
       family: "line",
       settings: defaultLineSettings,
@@ -1189,7 +1189,7 @@ describe("a chart control's commit", () => {
     await edit(
       pick<HTMLInputElement>(
         stage.host,
-        'data-vigilia-chart-setting="animation.durationMs"',
+        'data-yunari-chart-setting="animation.durationMs"',
       ),
       "2400",
     );

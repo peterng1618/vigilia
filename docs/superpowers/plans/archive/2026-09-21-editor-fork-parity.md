@@ -220,7 +220,7 @@ Create `packages/scene-fabric/src/scene.dom.test.ts`:
 ```typescript
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import type { Artboard, ScenePlan } from "@vigilia/renderer-core";
+import type { Artboard, ScenePlan } from "@yunari/renderer-core";
 import { mountFabricScene } from "./scene.js";
 
 function plan(): ScenePlan {
@@ -266,7 +266,7 @@ describe("mountFabricScene updateArtboard", () => {
     });
 
     const media = element.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     expect(media?.src).toBe("blob:b");
 
@@ -286,7 +286,7 @@ describe("mountFabricScene updateArtboard", () => {
       }),
     ).not.toThrow();
     expect(
-      element.querySelector("[data-vigilia-background-media]"),
+      element.querySelector("[data-yunari-background-media]"),
     ).toBeNull();
 
     scene.dispose();
@@ -379,8 +379,8 @@ git commit -m "feat(scene-fabric): add updateArtboard for live background-media 
 ## Task 2: `error-manager/` — structured editor diagnostics
 
 Every manager added by this plan needs one way to report a failure. This is
-**rebuilt, not ported**: the fork's categories name subsystems Vigilia does not
-have (background, crop frame and so on). The categories here name Vigilia's
+**rebuilt, not ported**: the fork's categories name subsystems Yunari does not
+have (background, crop frame and so on). The categories here name Yunari's
 actual managers.
 
 **Files:**
@@ -469,7 +469,7 @@ Create `packages/editor/src/error-manager/index.ts`:
 ```typescript
 import type { Canvas } from "fabric/es";
 
-/** Named for Vigilia's own managers, not the retired fork's subsystems. */
+/** Named for Yunari's own managers, not the retired fork's subsystems. */
 export type EditorErrorCategory =
   | "clipboard"
   | "deletion"
@@ -491,7 +491,7 @@ export interface ErrorManager {
   warn(category: EditorErrorCategory, message: string, cause?: unknown): void;
 }
 
-/** Fabric's typed event map does not declare Vigilia's own event names. */
+/** Fabric's typed event map does not declare Yunari's own event names. */
 function emit(
   canvas: Canvas,
   event: "editor:error" | "editor:warning",
@@ -513,11 +513,11 @@ export function createErrorManager(canvas: Canvas): ErrorManager {
 
   return {
     error(category, message, cause) {
-      console.error(`[vigilia:${category}] ${message}`, cause);
+      console.error(`[yunari:${category}] ${message}`, cause);
       emit(canvas, "editor:error", build(category, message, cause));
     },
     warn(category, message, cause) {
-      console.warn(`[vigilia:${category}] ${message}`, cause);
+      console.warn(`[yunari:${category}] ${message}`, cause);
       emit(canvas, "editor:warning", build(category, message, cause));
     },
   };
@@ -571,7 +571,7 @@ git commit -m "feat(editor): add structured editor diagnostics owner"
 
 ## Task 3: unmodified-key product shortcuts
 
-`ShortcutManager` is the single window-level dispatcher for Vigilia product
+`ShortcutManager` is the single window-level dispatcher for Yunari product
 actions, but it recognises only `Ctrl`/`Meta` combinations: it computes an
 action only when `event.ctrlKey || event.metaKey`. Delete and Backspace carry no
 modifier, and `Ctrl+Shift+G` must select a different action from `Ctrl+G`. Three
@@ -788,7 +788,7 @@ git commit -m "feat(editor): support unmodified-key product shortcuts"
 ## Task 4: image import bounds (product-requirements §171)
 
 An imported image is downscaled to a maximum edge before it becomes a Fabric
-image object, preserving aspect ratio. Main thread, no Web Worker: Vigilia
+image object, preserving aspect ratio. Main thread, no Web Worker: Yunari
 dashboards are not a bulk photo-editing workload. Revisit worker offloading only
 if resize becomes a measured performance problem.
 
@@ -1048,7 +1048,7 @@ function oversizedImage(width: number, height: number): HTMLImageElement {
 ```
 
 Extend that file's existing imports to cover `Canvas`, `FabricImage`, `vi` and
-`setObjectAssetReference` (from `@vigilia/scene-fabric`) rather than duplicating
+`setObjectAssetReference` (from `@yunari/scene-fabric`) rather than duplicating
 import statements. If jsdom's 2D canvas context is unavailable in this suite,
 `boundedImageElement` returns the source element and the assertion will read
 8192 — in that case stub `HTMLCanvasElement.prototype.getContext` with
@@ -1078,7 +1078,7 @@ git commit -m "feat(editor): bound imported and rehydrated image pixels"
 
 ## Task 5: `crop-manager/` — per-image crop session (product-requirements §171)
 
-An interactive crop session for a selected `FabricImage`, built on Vigilia's own
+An interactive crop session for a selected `FabricImage`, built on Yunari's own
 `clipPath` primitive — the `cover` branch of `fitImage` in
 `scene-fabric/src/fabric-image.ts` already clips an image with a centred
 unscaled-local `Rect`. This is **not** a port of the fork's 3,600-line
@@ -1574,7 +1574,7 @@ it("keeps an open crop frame out of the serialised scene", async () => {
 ```
 
 Extend that file's imports with `FabricImage` from `fabric/es` and
-`serialiseScene` from `@vigilia/scene-fabric`.
+`serialiseScene` from `@yunari/scene-fabric`.
 
 - [ ] **Step 8: Run the suites and verify they pass**
 
@@ -1603,7 +1603,7 @@ git commit -m "feat(editor): add per-image crop session over the clipPath primit
 
 Deliberately minimal relative to the fork: **no** group-ungroup-on-delete
 recursion and **no** delete-guard hook, because neither concept exists in
-Vigilia today. Build what Vigilia has, not what the fork had.
+Yunari today. Build what Yunari has, not what the fork had.
 
 **Files:**
 - Create: `packages/editor/src/deletion-manager/index.ts`
@@ -1844,11 +1844,11 @@ is, verbatim:
 - `patchActiveSelectionBounds()` monkey-patches two *private* Fabric internals
   (`ActiveSelection.prototype._calcBoundsFromObjects`,
   `_onAfterObjectsChange`) and `FitContentLayout.prototype.calcBoundingBox`
-  globally. It exists to serve the fork's shape-composite types, which Vigilia
+  globally. It exists to serve the fork's shape-composite types, which Yunari
   does not have. Excluding it also drops its dependency on the fork's
   shape-manager.
 - `wrapWidthControl()` guards the fork's `BackgroundTextbox` width handles.
-  Vigilia has no such type. Note the coupling carefully: dropping the wrapper
+  Yunari has no such type. Note the coupling carefully: dropping the wrapper
   removes only the two `wrapWidthControl` calls. The rest of the textbox block,
   including hiding `mt` and `mb`, is independent and **is** ported.
 
@@ -2119,7 +2119,7 @@ let applied = false;
 /**
  * Fabric reads `ownDefaults` when an object is constructed, so this runs before
  * the canvas exists. Excludes the fork's ActiveSelection bounds patch and its
- * Textbox width-control wrapping; neither has a Vigilia type to serve.
+ * Textbox width-control wrapping; neither has a Yunari type to serve.
  */
 export function applyEditorControls(): void {
   if (applied) return;
@@ -2166,7 +2166,7 @@ and make it the first statement of `createNativeEditor`, above
 
 Run: `npx vitest run packages/editor`
 Expected: PASS. Watch for pre-existing tests that assert default Fabric control
-geometry; if one fails, the handle sizes are now Vigilia's, and the assertion
+geometry; if one fails, the handle sizes are now Yunari's, and the assertion
 should be updated to the new values rather than the defaults restored.
 
 Run: `npm run typecheck`
@@ -2192,12 +2192,12 @@ git -C D:/git-repos/fabricjs-image-editor show 9efdd78a:src/editor/clipboard-man
 
 **Adaptations, each with its reason.**
 
-| Fork behaviour | Vigilia | Why |
+| Fork behaviour | Yunari | Why |
 |---|---|---|
-| `_materializeCloneGeometry` calls `textManager.commitStandaloneTextScale` (`:379`, `:390`) and `shapeManager.commitRehydratedShapeLayout` (`:382`, `:393`) | `object.setCoords()` | Neither concept exists in Vigilia's plain-object model. Spec 0017 requires this substitution. |
-| `nanoid()` for new ids | `crypto.randomUUID()` | Already Vigilia's id source in `text-manager` and `chart-manager`; adds no dependency. |
-| `CLIPBOARD_CLONE_OBJECT_KEYS` (fork's own ~45-prop list incl. `shapeComposite`) | `SCENE_PERSISTED_PROPERTIES` from `@vigilia/scene-fabric` | Already the single owner of "what survives a round trip". A clone that carries less would silently drop paint, text and asset references. |
-| `editor.options.prepareObjectClone` hook and `customData` deep-clone | dropped | No such option or property in Vigilia. |
+| `_materializeCloneGeometry` calls `textManager.commitStandaloneTextScale` (`:379`, `:390`) and `shapeManager.commitRehydratedShapeLayout` (`:382`, `:393`) | `object.setCoords()` | Neither concept exists in Yunari's plain-object model. Spec 0017 requires this substitution. |
+| `nanoid()` for new ids | `crypto.randomUUID()` | Already Yunari's id source in `text-manager` and `chart-manager`; adds no dependency. |
+| `CLIPBOARD_CLONE_OBJECT_KEYS` (fork's own ~45-prop list incl. `shapeComposite`) | `SCENE_PERSISTED_PROPERTIES` from `@yunari/scene-fabric` | Already the single owner of "what survives a round trip". A clone that carries less would silently drop paint, text and asset references. |
+| `editor.options.prepareObjectClone` hook and `customData` deep-clone | dropped | No such option or property in Yunari. |
 | `FileReader.readAsDataURL` then import from a data URL | pass the `File` straight to `importImage` | `DataTransferItem.getAsFile()` already returns a `File`, which is what `importImage` takes. The data-URL hop is pure overhead. |
 | Russian error messages | English | Global constraint. |
 
@@ -2206,7 +2206,7 @@ deliberately leaves `Ctrl+V` unbound so the browser fires `paste` with
 `clipboardData`; that is the only way to read an image copied from another
 application. Copy, cut and duplicate go through `ShortcutManager`.
 
-**Pasted charts must rehydrate.** A cloned `VigiliaChart` carries no engine or
+**Pasted charts must rehydrate.** A cloned `YunariChart` carries no engine or
 samples, exactly like a revived one. `ChartManager` already owns that repair and
 already runs it on `editor:history-state-loaded`. This task makes it also listen
 for `editor:object-pasted` rather than inventing a second hydration path.
@@ -2402,7 +2402,7 @@ import {
   type Canvas,
   type FabricObject,
 } from "fabric/es";
-import { SCENE_PERSISTED_PROPERTIES } from "@vigilia/scene-fabric";
+import { SCENE_PERSISTED_PROPERTIES } from "@yunari/scene-fabric";
 import type { ErrorManager } from "../error-manager/index.js";
 import type { DeletionManager } from "../deletion-manager/index.js";
 import type { ImageManager } from "../image-manager/index.js";
@@ -2433,7 +2433,7 @@ function reassignIds(object: FabricObject): void {
   }
 }
 
-/** Replaces the fork's text/shape commit hooks; Vigilia objects only need coords. */
+/** Replaces the fork's text/shape commit hooks; Yunari objects only need coords. */
 function settle(object: FabricObject): void {
   if (object instanceof ActiveSelection || object instanceof Group) {
     for (const child of object.getObjects()) child.setCoords();
@@ -3061,8 +3061,8 @@ describe("SelectionToolbar", () => {
     canvas.fire("selection:created", { selected: [object] });
 
     expect(visible(toolbar.root)).toBe(true);
-    const actions = [...toolbar.root.querySelectorAll("[data-vigilia-toolbar-action]")].map(
-      (button) => button.getAttribute("data-vigilia-toolbar-action"),
+    const actions = [...toolbar.root.querySelectorAll("[data-yunari-toolbar-action]")].map(
+      (button) => button.getAttribute("data-yunari-toolbar-action"),
     );
     expect(actions).toEqual([
       "duplicate",
@@ -3087,8 +3087,8 @@ describe("SelectionToolbar", () => {
     canvas.setActiveObject(object);
     canvas.fire("selection:created", { selected: [object] });
 
-    const actions = [...toolbar.root.querySelectorAll("[data-vigilia-toolbar-action]")].map(
-      (button) => button.getAttribute("data-vigilia-toolbar-action"),
+    const actions = [...toolbar.root.querySelectorAll("[data-yunari-toolbar-action]")].map(
+      (button) => button.getAttribute("data-yunari-toolbar-action"),
     );
     expect(actions).toEqual(["unlock"]);
     toolbar.destroy();
@@ -3135,14 +3135,14 @@ describe("SelectionToolbar", () => {
     canvas.setActiveObject(first);
     canvas.fire("selection:created", { selected: [first] });
     expect(
-      toolbar.root.querySelector<HTMLButtonElement>('[data-vigilia-toolbar-action="group"]')
+      toolbar.root.querySelector<HTMLButtonElement>('[data-yunari-toolbar-action="group"]')
         ?.disabled,
     ).toBe(true);
 
     canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
     canvas.fire("selection:updated", { selected: [first, second] });
     expect(
-      toolbar.root.querySelector<HTMLButtonElement>('[data-vigilia-toolbar-action="group"]')
+      toolbar.root.querySelector<HTMLButtonElement>('[data-yunari-toolbar-action="group"]')
         ?.disabled,
     ).toBe(false);
     toolbar.destroy();
@@ -3160,7 +3160,7 @@ describe("SelectionToolbar", () => {
     canvas.fire("selection:created", { selected: [group] });
 
     expect(
-      toolbar.root.querySelector<HTMLButtonElement>('[data-vigilia-toolbar-action="ungroup"]')
+      toolbar.root.querySelector<HTMLButtonElement>('[data-yunari-toolbar-action="ungroup"]')
         ?.disabled,
     ).toBe(false);
     toolbar.destroy();
@@ -3177,7 +3177,7 @@ describe("SelectionToolbar", () => {
 
     const click = (action: string): void => {
       toolbar.root
-        .querySelector<HTMLButtonElement>(`[data-vigilia-toolbar-action="${action}"]`)
+        .querySelector<HTMLButtonElement>(`[data-yunari-toolbar-action="${action}"]`)
         ?.click();
     };
     click("duplicate");
@@ -3298,7 +3298,7 @@ export function createSelectionToolbar(
 ): SelectionToolbar {
   const { canvas } = editor;
   const root = document.createElement("div");
-  root.dataset["vigiliaToolbar"] = "";
+  root.dataset["yunariToolbar"] = "";
   root.style.cssText =
     "position:absolute;display:none;gap:8px;align-items:center;padding:0 8px;" +
     "height:32px;border-radius:8px;background:#2B2D33;z-index:10;";
@@ -3313,7 +3313,7 @@ export function createSelectionToolbar(
     for (const action of locked ? LOCKED : UNLOCKED) {
       const button = document.createElement("button");
       button.type = "button";
-      button.dataset["vigiliaToolbarAction"] = action.id;
+      button.dataset["yunariToolbarAction"] = action.id;
       button.textContent = action.label;
       button.disabled = action.enabled !== undefined && !action.enabled(target);
       // The canvas would otherwise start a drag under the pointer.
@@ -3467,9 +3467,9 @@ coupling is concentrated in exactly three places:
 | Where | Coupling | Handling |
 |---|---|---|
 | `guides/snap-target-resolver.ts:23-26, 65-92` | Duck-typed `cropSource` for CropFrame | Strip the type and the `_isActiveCropSource` branch, ~15 lines (Task 12) |
-| `movement/movement-snapping-controller.ts:40, 195` | `isShapeGroup` from the fork's shape-manager, which tests `shapeComposite` | Rewrite the controller against a Vigilia predicate (Task 13) |
+| `movement/movement-snapping-controller.ts:40, 195` | `isShapeGroup` from the fork's shape-manager, which tests `shapeComposite` | Rewrite the controller against a Yunari predicate (Task 13) |
 | `movement/movement-snapping-controller.ts:12, 280-304` | Whole `ImageEditor` god-object, for `canvas` and `montageArea` | Rewrite against `{ canvas, bounds }` (Task 13) |
-| `src/editor/utils/object-filter.ts:3` | `IGNORED_IDS = ['montage-area', 'background', 'interaction-blocker']` | Mechanism is generic, default is fork-specific; port with a Vigilia default (Task 13) |
+| `src/editor/utils/object-filter.ts:3` | `IGNORED_IDS = ['montage-area', 'background', 'interaction-blocker']` | Mechanism is generic, default is fork-specific; port with a Yunari default (Task 13) |
 | `pixel-grid.ts:40` | String-matches `'background-textbox'` | Not in this port's scope; `pixel-grid.ts` is excluded |
 
 **Not ported.** `snapping-manager/index.ts` (1,450 lines) is the fork's
@@ -3480,7 +3480,7 @@ remains a spec-0014 item.
 
 **Snapping has no enablement flag in the fork** — it is unconditionally on,
 constructed at `src/editor/index.ts:276` with `{ editor }` and nothing else.
-Tuning lives in compile-time module constants. Vigilia keeps that shape.
+Tuning lives in compile-time module constants. Yunari keeps that shape.
 
 ## File-size exemption
 
@@ -3498,7 +3498,7 @@ restructure these two files while porting them.
 AGENTS.md forbids generic folder names, so the fork's `utils/` helpers are
 renamed by responsibility as they land in `packages/editor/src/snap-manager/`:
 
-| Fork path | Vigilia path |
+| Fork path | Yunari path |
 |---|---|
 | `utils/geometry.ts` (only `ObjectBounds`, `getObjectBounds`, `getObjectExactBounds`) | `snap-manager/bounds.ts` |
 | `utils/distance.ts` | `snap-manager/distance.ts` |
@@ -3527,7 +3527,7 @@ be verified without a browser.
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
 - Produces: the fork's exported symbols, unchanged in name and signature, from
-  the Vigilia paths above. Tasks 12 and 13 import from here.
+  the Yunari paths above. Tasks 12 and 13 import from here.
 
 - [ ] **Step 1: Record the attribution before copying anything**
 
@@ -3598,7 +3598,7 @@ refers to the runtime dependency, which stays removed.
 - [ ] **Step 2: Copy the fork's clean files**
 
 Run each of these from `src/web/`, writing the fork blob straight to its
-Vigilia path. The `guides/` and `movement/` subfolders are flattened; only the
+Yunari path. The `guides/` and `movement/` subfolders are flattened; only the
 import specifiers change, in Step 3.
 
 ```bash
@@ -3636,7 +3636,7 @@ In `bounds.ts`, keep only `ObjectBounds`, `getObjectBounds`,
 `getObjectExactBounds` and whatever they transitively need from the original
 `geometry.ts`, and delete the rest. Keep the `getObjectSnappingBounds?.()`
 escape hatch it calls: the audit identifies it as the intended seam, and
-Vigilia's crop work may use it later. Declare it locally rather than
+Yunari's crop work may use it later. Declare it locally rather than
 module-augmenting Fabric:
 
 ```typescript
@@ -3861,7 +3861,7 @@ git commit -m "feat(editor): port snapping guide rendering and target resolution
 
 ---
 
-## Task 13: Vigilia snapping controller and canvas wiring
+## Task 13: Yunari snapping controller and canvas wiring
 
 The fork's `movement-snapping-controller.ts` (359 lines) and its orchestrator
 `snapping-manager/index.ts` (1,450 lines) are **rewritten, not ported** — they
@@ -3884,14 +3884,14 @@ editor canvas.
 **What replaces each coupling.**
 - `isShapeGroup` / the `ActiveSelection | FabricImage | Group | Textbox`
   allow-list becomes: any object that is `selectable`, not `locked`, and not
-  excluded by id. Vigilia has no composite shape type, and an allow-list would
-  silently exclude `VigiliaChart`.
+  excluded by id. Yunari has no composite shape type, and an allow-list would
+  silently exclude `YunariChart`.
 - `editor.montageArea` bounds become the `bounds()` callback, which the session
   supplies from the artboard.
-- `IGNORED_IDS` keeps the mechanism and takes a Vigilia default of `[]`;
-  Vigilia has no montage-area, background or interaction-blocker object.
+- `IGNORED_IDS` keeps the mechanism and takes a Yunari default of `[]`;
+  Yunari has no montage-area, background or interaction-blocker object.
 
-- [ ] **Step 1: Port the object filter with a Vigilia default**
+- [ ] **Step 1: Port the object filter with a Yunari default**
 
 ```bash
 git -C D:/git-repos/fabricjs-image-editor show 9efdd78a:src/editor/utils/object-filter.ts \
@@ -3902,7 +3902,7 @@ Change the fork's `export const IGNORED_IDS = ['montage-area', 'background', 'in
 to:
 
 ```typescript
-/** Vigilia has no montage-area, background or blocker objects to skip. */
+/** Yunari has no montage-area, background or blocker objects to skip. */
 export const IGNORED_IDS: readonly string[] = [];
 ```
 
@@ -4019,7 +4019,7 @@ export interface SnapManagerOptions {
   readonly errors: ErrorManager;
 }
 
-/** Any movable object snaps; Vigilia has no composite type to allow-list. */
+/** Any movable object snaps; Yunari has no composite type to allow-list. */
 function isSnapTarget(object: FabricObject): boolean {
   return (
     object.selectable === true &&
@@ -4086,7 +4086,7 @@ test("snaps a dragged object to a neighbour and shows a guide", async ({
   );
 
   await page.goto(EDITOR);
-  const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
+  const canvas = page.locator("#yunari-fabric-editor canvas.upper-canvas");
   await expect(canvas).toBeVisible();
   const box = (await canvas.boundingBox())!;
 
@@ -4104,7 +4104,7 @@ guide must be visible along the aligned edge while the pointer is still down.
 
 ```bash
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep 'snaps a dragged object' --workers=1
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep 'snaps a dragged object' --workers=1
 ```
 
 If the starter document's objects do not land near an alignment at those
@@ -4159,7 +4159,7 @@ decide whether to construct the manager, once per event — and this port keeps
 both checks.
 
 **The size label is translated.** The fork renders
-`ширина: <W> высота: <H>` (`_formatSize`, `:223-228`). Vigilia renders
+`ширина: <W> высота: <H>` (`_formatSize`, `:223-228`). Yunari renders
 `<W> × <H>`. Number formatting is ported exactly: `Math.round(value + 1e-6)`,
 where the epsilon forces `.5` boundaries up despite float error, then thousands
 separated by a plain space via `\B(?=(\d{3})+(?!\d))`. The angle label
@@ -4167,9 +4167,9 @@ separated by a plain space via `\B(?=(\d{3})+(?!\d))`. The angle label
 normalisation to `[-180, 180]` and `Math.round`.
 
 **Two fork behaviours are dropped.** The `montageArea.id` suppression has no
-Vigilia equivalent. The `mouse:move` second pass in the size indicator reaches
+Yunari equivalent. The `mouse:move` second pass in the size indicator reaches
 into Fabric's private `_currentTransform` and exists only because the fork's
-`TextManager` materialises text dimensions late; Vigilia has no such pipeline.
+`TextManager` materialises text dimensions late; Yunari has no such pipeline.
 If the size label proves stale at the end of a text resize during Step 6's
 visual check, restore that pass rather than leaving a wrong number on screen.
 
@@ -4253,7 +4253,7 @@ describe("IndicatorManager", () => {
 
     canvas.fire("object:rotating", { target: object, e: pointer() });
     const element = document.querySelector<HTMLElement>(
-      ".vigilia-angle-indicator",
+      ".yunari-angle-indicator",
     );
     expect(element?.textContent).toBe("30°");
     expect(element?.style.display).not.toBe("none");
@@ -4272,7 +4272,7 @@ describe("IndicatorManager", () => {
     canvas.fire("object:scaling", { target: object, e: pointer() });
 
     expect(
-      document.querySelector<HTMLElement>(".vigilia-size-indicator")?.textContent,
+      document.querySelector<HTMLElement>(".yunari-size-indicator")?.textContent,
     ).toBe("100 × 50");
     indicators.destroy();
   });
@@ -4289,7 +4289,7 @@ describe("IndicatorManager", () => {
     canvas.fire("object:rotating", { target: object, e: pointer() });
 
     expect(
-      document.querySelector<HTMLElement>(".vigilia-angle-indicator")?.style.display,
+      document.querySelector<HTMLElement>(".yunari-angle-indicator")?.style.display,
     ).toBe("none");
     indicators.destroy();
   });
@@ -4303,7 +4303,7 @@ describe("IndicatorManager", () => {
     canvas.fire("object:scaling", { target: object, e: pointer() });
 
     expect(
-      document.querySelector<HTMLElement>(".vigilia-size-indicator")?.style.display,
+      document.querySelector<HTMLElement>(".yunari-size-indicator")?.style.display,
     ).toBe("none");
     indicators.destroy();
   });
@@ -4314,8 +4314,8 @@ describe("IndicatorManager", () => {
 
     indicators.destroy();
 
-    expect(document.querySelector(".vigilia-angle-indicator")).toBeNull();
-    expect(document.querySelector(".vigilia-size-indicator")).toBeNull();
+    expect(document.querySelector(".yunari-angle-indicator")).toBeNull();
+    expect(document.querySelector(".yunari-size-indicator")).toBeNull();
   });
 });
 ```
@@ -4374,7 +4374,7 @@ export function formatSize(size: {
 ```
 
 `createIndicatorManager` builds one `createCursorIndicator` per indicator, with
-class names `vigilia-angle-indicator` and `vigilia-size-indicator`, parented to
+class names `yunari-angle-indicator` and `yunari-size-indicator`, parented to
 `canvas.wrapperEl ?? document.body`. Bind the fork's event sets exactly:
 
 - angle: `object:rotating` shows, `mouse:up`, `object:modified` and
@@ -4408,7 +4408,7 @@ the rotation handle, and named `editor-fork-rotation-indicator`. Then:
 
 ```bash
 npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep 'rotation indicator' --workers=1
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium --grep 'rotation indicator' --workers=1
 ```
 
 **Open the PNG and confirm** a degree readout is visible beside the pointer
@@ -4557,7 +4557,7 @@ contribute; three bundles built; the player size gate passing within a
 few tenths of a KB of 269.3 KB gzip, since every change but Task 1 is
 editor-only; and the browser suite green.
 
-Then run `vigilia:verify` as AGENTS.md requires before commit or push.
+Then run `yunari:verify` as AGENTS.md requires before commit or push.
 
 If any gate fails, fix the cause and re-run it. Do not record a partial pass.
 

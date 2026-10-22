@@ -19,7 +19,7 @@ probe, so from an https page every probe is mixed content and can never match (`
 
 The owner's ruling, 2026-10-20: **https first, with http kept as a fallback.**
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `originFor`, `refindTarget`, `host-refind.ts`, `lanAddress`, `caCertificate`,
 `CA_CERTIFICATE_PATH`, `createDisplayLauncher`, `displayUrl`, `pairingUrl`, and every `http://`

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   CHART_SERIALISED_KEYS,
-  VigiliaChart,
   withoutEngineAnimation,
+  YunariChart,
 } from "./chart-object.js";
 
 /**
@@ -46,17 +46,17 @@ describe("the persisted surface", () => {
     // picks, so deriving this from CHART_SERIALISED_KEYS makes the declaration
     // and the behaviour one thing. The previous `toObject` override kept a
     // second hand-written list beside it.
-    expect(VigiliaChart.customProperties).toEqual([...CHART_SERIALISED_KEYS]);
+    expect(YunariChart.customProperties).toEqual([...CHART_SERIALISED_KEYS]);
   });
 
   it("leaves revival entirely to Fabric", () => {
     // `FabricObject.fromObject` routes through `_fromObject`, which runs
     // `enlivenObjectEnlivables` first — the step that turns a serialised
     // clipPath, gradient or pattern back into an instance. An override calling
-    // `new VigiliaChart(object)` skipped it and revived a clip path as a plain
+    // `new YunariChart(object)` skipped it and revived a clip path as a plain
     // object, which matters from stage 2, where content is clipped to the
     // artboard.
-    expect(Object.hasOwn(VigiliaChart, "fromObject")).toBe(false);
+    expect(Object.hasOwn(YunariChart, "fromObject")).toBe(false);
   });
 });
 
@@ -68,8 +68,8 @@ describe("every property Fabric may assign is assignable", () => {
    * key that cannot be assigned breaks all four.
    *
    * This is the test that was missing. `option` was declared as a getter with
-   * no setter, so `new VigiliaChart({ option })` threw
-   * `TypeError: Cannot set property option of #<VigiliaChart> which has only a
+   * no setter, so `new YunariChart({ option })` threw
+   * `TypeError: Cannot set property option of #<YunariChart> which has only a
    * getter` on **every** construction that supplied one — and because no unit
    * test instantiated the class and the browser tests were deferred to stage 2,
    * the suite stayed green against an object that could not be built.
@@ -78,13 +78,13 @@ describe("every property Fabric may assign is assignable", () => {
    * constructor, so the assignment path is exercised for real with no DOM.
    */
   const assignableKeys = [
-    ...VigiliaChart.customProperties,
+    ...YunariChart.customProperties,
     "option",
     "renderScale",
   ];
 
   it.each(assignableKeys)("accepts an assignment to `%s`", (key) => {
-    const instance = Object.create(VigiliaChart.prototype) as Record<
+    const instance = Object.create(YunariChart.prototype) as Record<
       string,
       unknown
     >;
@@ -101,7 +101,7 @@ describe("every property Fabric may assign is assignable", () => {
     const offenders: string[] = [];
 
     for (
-      let prototype: object | null = VigiliaChart.prototype;
+      let prototype: object | null = YunariChart.prototype;
       prototype !== null && prototype !== Object.prototype;
       prototype = Object.getPrototypeOf(prototype) as object | null
     ) {
@@ -131,7 +131,7 @@ describe("the defaults Fabric actually applies", () => {
     // so a subclass must assign its own — the pattern `Rect` and `Group` use.
     // Setting them a second time in the constructor body, as this class used
     // to, both duplicated the declaration and overrode the caller.
-    expect(VigiliaChart.getDefaults()).toMatchObject(VigiliaChart.ownDefaults);
+    expect(YunariChart.getDefaults()).toMatchObject(YunariChart.ownDefaults);
   });
 
   it("uses Fabric’s centre origin rather than the deprecated top-left", () => {
@@ -141,7 +141,7 @@ describe("the defaults Fabric actually applies", () => {
     // persisted — it equals the default and defaults are stripped, which is
     // deliberate; see `persist.ts`. It still has to be declared, because
     // `_render` and every box measurement work in centred local space.
-    expect(VigiliaChart.ownDefaults).toMatchObject({
+    expect(YunariChart.ownDefaults).toMatchObject({
       originX: "center",
       originY: "center",
     });
@@ -153,14 +153,14 @@ describe("the defaults Fabric actually applies", () => {
     // It is the whole 1.4 px error measured at 37 degrees: 1 x (cos 37 + sin 37)
     // is 1.4004. `_render` never calls `_renderPaintInOrder`, so no stroke was
     // ever drawn — only measured.
-    expect(VigiliaChart.ownDefaults.strokeWidth).toBe(0);
+    expect(YunariChart.ownDefaults.strokeWidth).toBe(0);
   });
 
   it("never caches the object", () => {
     // 7.99 ms mean / 36.5 ms p95 at DPR 2.75 against 0.12/0.2 ms, and past
     // viewport zoom ~8 the capped raster is upscaled — the bitmap label §91
     // forbids.
-    expect(VigiliaChart.ownDefaults.objectCaching).toBe(false);
+    expect(YunariChart.ownDefaults.objectCaching).toBe(false);
   });
 });
 
@@ -168,7 +168,7 @@ describe("withoutEngineAnimation", () => {
   it("disables the engine animation loop", () => {
     // Measured: with animation on, one data push fires the invalidation hook
     // ~31 times and repaints the whole canvas each time, for one visible
-    // change. Vigilia's own appear animations live in the plan instead.
+    // change. Yunari's own appear animations live in the plan instead.
     const option = { series: [{ type: "line" }] } as never;
 
     expect(withoutEngineAnimation(option)).toMatchObject({ animation: false });

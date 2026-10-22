@@ -42,7 +42,7 @@ the reading that `GaugeView.js:312-314` reads it unconditionally. It does not:
 The real question is what a gauge's option should say when there is no reading
 to draw.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `renderer-core/src/charts/gauge.ts` (`buildGaugeOption`, `progress`,
 `data`), `gauge.test.ts`, `chart-paint.ts`, `scene/plan.ts` (`buildChartPlan`),
@@ -136,7 +136,7 @@ Found:
 ## Rung 6 — probe
 
 jsdom plus the repo's `canvas@3.2.3` and installed `echarts@6.1.0`, driving a
-real `echarts.init` the way `VigiliaChart._mount` does (a bare canvas with
+real `echarts.init` the way `YunariChart._mount` does (a bare canvas with
 explicit init dimensions, `devicePixelRatio: 1`, 300×300). The option is the
 starter's own: `startAngle: 225`, `endAngle: -45`, `min: 0`, `max: 100`,
 `thickness: 20`, `roundCap: true`, track `#223047`, progress `#2ee6a8`, `pointer:

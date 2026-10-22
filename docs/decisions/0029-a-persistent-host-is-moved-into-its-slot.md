@@ -29,7 +29,7 @@ account for both: `Host` (a component, `shell-layout.tsx:66–82`, used by six
 hosts) and the dock's inline `ref` callback with `replaceChildren`
 (`shell-layout.tsx:555–564`).
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `shell-layout.tsx` in full (`Host`, `element`, `ShellHosts`,
 `ShellLayout`, `Shell`, `createShellLayout`); `editor-main.ts` (the `layout.hosts`

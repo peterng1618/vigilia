@@ -45,7 +45,7 @@ to the end of what it is given. The path is then appended *after* the query,
 so a paired display requests `…/api/themes/<id>/?session=Tassets/badge.svg`.
 Loopback never saw it, because `withToken` is a no-op with no token.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `renderer-core/src/theme/assets.ts` (`createAssetResolver`,
 `AssetResolverOptions`, `isSafeAssetPath`), `theme/document.ts`
@@ -168,7 +168,7 @@ package directory's name.
 ## Rung 6 — probe
 
 The three-row table in *The problem*, measured with `curl` against a real
-host process (`node packages/host/bin/vigilia.js --no-browser --port 4175
+host process (`node packages/host/bin/yunari.js --no-browser --port 4175
 --themes-dir .e2e-host-themes`) after `npm run build`, against the seeded
 `e2e-hosted` package which declares `assets/badge.svg`:
 

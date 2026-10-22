@@ -102,7 +102,7 @@ export const BOUNDARY_MIN = 3;
  * reason read at 1.4–2.0:1 and the row was pinned at ember 1.9, moss 1.35, plum
  * 1.35. The control was never the error: the shell paints
  * `.editor-shell-diagnostic` and `.editor-shell-save-state` with the same role.
- * (The row also justified the deepening by `--vigilia-accent` aliasing
+ * (The row also justified the deepening by `--yunari-accent` aliasing
  * `--shell-warm`, but that token was read by no rule and is retired — `vg-552`.)
  * Deepening the hue is what `--shell-accent`
  * got in the same three palettes, and it is what `--shell-warm` now gets, so the
@@ -216,8 +216,8 @@ export async function openFixture(page: Page): Promise<void> {
     throw new Error(
       `${FIXTURE} served no control fixture: the built editor has no ` +
         "`control-fixture.html`, so the preview fell back to `index.html`. " +
-        "Build it with `npm run build:fixture -w @vigilia/editor` after " +
-        "`npm run build -w @vigilia/editor` — the production build empties " +
+        "Build it with `npm run build:fixture -w @yunari/editor` after " +
+        "`npm run build -w @yunari/editor` — the production build empties " +
         "`dist` and deletes the fixture page.",
     );
   }

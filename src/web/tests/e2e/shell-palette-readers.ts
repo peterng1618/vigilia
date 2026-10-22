@@ -9,16 +9,16 @@ export async function openEditor(page: Page): Promise<void> {
 }
 
 /**
- * The computed colours of the surfaces a `--vigilia-*` token paints.
+ * The computed colours of the surfaces a `--yunari-*` token paints.
  *
  * `documentSelect` is the **control set's** select — a `role="combobox"`
- * trigger. Measured: the match is `data-vigilia-asset-select`, the Add pane's
+ * trigger. Measured: the match is `data-yunari-asset-select`, the Add pane's
  * asset-list trigger, which is the surface the panel-`select` read resolved to
  * before that pane converted. It is named by the control set's own role rather
  * than by that hook because the panes are hidden rather than unmounted, so a
  * pane-specific selector would say "document" about whichever pane happens to
  * mount first. It reads a control-set well, so it resolves through `--panel-2`
- * and not through `--vigilia-control-bg`: the legacy `.editor-shell-panel
+ * and not through `--yunari-control-bg`: the legacy `.editor-shell-panel
  * button` rule that used to paint it was removed by plan 7 Task 8, and the hook
  * itself is targeted by no rule at all.
  *
@@ -30,7 +30,7 @@ export async function openEditor(page: Page): Promise<void> {
  * because the legacy rule painted every input indiscriminately. A real
  * control-set well would be a surface, but one painted by `--panel-2`, so it
  * would not restore what this entry used to cover. The consequence is stated
- * rather than hidden: `--vigilia-control-bg` now paints only conditional
+ * rather than hidden: `--yunari-control-bg` now paints only conditional
  * surfaces — the Add pane's asset buttons, the crop row, the modal's own
  * buttons, the keyboard sheet's chips — so this sweep no longer verifies that
  * token on a surface that is always mounted, and

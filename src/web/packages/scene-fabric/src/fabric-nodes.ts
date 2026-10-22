@@ -1,4 +1,4 @@
-import type { PlanBox, PlanNode, ResolvedStyle } from "@vigilia/renderer-core";
+import type { PlanBox, PlanNode, ResolvedStyle } from "@yunari/renderer-core";
 import {
   Ellipse,
   type FabricImage,
@@ -8,7 +8,7 @@ import {
   LayoutManager,
   Rect,
 } from "fabric/es";
-import { VigiliaChart } from "./chart-object.js";
+import { YunariChart } from "./chart-object.js";
 import { buildImage, placeImage } from "./fabric-image.js";
 import {
   buildText,
@@ -66,7 +66,7 @@ export function updateNodeObject(
 
   switch (node.content.kind) {
     case "chart":
-      if (object instanceof VigiliaChart) {
+      if (object instanceof YunariChart) {
         updateChart(object, node, previous, box, geometryChanged);
       }
       break;
@@ -280,7 +280,7 @@ function buildChart(
     return undefined;
   }
 
-  return new VigiliaChart({
+  return new YunariChart({
     ...node.content,
     width: placement.width,
     height: placement.height,
@@ -295,7 +295,7 @@ function buildChart(
 }
 
 function updateChart(
-  chart: VigiliaChart,
+  chart: YunariChart,
   node: PlanNode,
   previous: PlanNode | undefined,
   box: PlanBox,

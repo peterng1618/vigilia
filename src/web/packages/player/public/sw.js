@@ -19,9 +19,9 @@
  */
 
 // v2 because v1 keyed the document by its own URL and so holds a display's
-// session token. `activate` deletes every other `vigilia-*` cache, which is
+// session token. `activate` deletes every other `yunari-*` cache, which is
 // what clears a credential already on a display's disk.
-const SHELL_CACHE = "vigilia-shell-v2";
+const SHELL_CACHE = "yunari-shell-v2";
 /** Stable names, so they can be precached without a build-time list. The
  *  content-hashed bundle assets are cached as they are fetched instead. */
 const SHELL_FILES = ["/manifest.webmanifest", "/favicon.svg"];
@@ -53,7 +53,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith("vigilia-") && key !== SHELL_CACHE)
+            .filter((key) => key.startsWith("yunari-") && key !== SHELL_CACHE)
             .map((key) => caches.delete(key)),
         ),
       )

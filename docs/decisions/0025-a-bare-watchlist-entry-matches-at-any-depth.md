@@ -26,7 +26,7 @@ promise. It was found *by taking the gate at its word* — an agent was told
 `scripts/` was on the watchlist, wrote the note anyway, and found the gate
 allowing what it read as saying.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scripts/reuse-gate.mjs` in full (`isWatched`, `WATCHLIST`,
 `claimedPaths`, `covers`), the `--self-test` block, `AGENTS.md`'s reuse-gate

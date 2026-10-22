@@ -32,7 +32,7 @@ function scroller(root: HTMLElement): HTMLElement {
  *  cannot come from the element remembering what the case wrote into it. */
 function layersBody(root: HTMLElement): HTMLElement {
   return root.querySelector<HTMLElement>(
-    '[data-vigilia-panel="layers"] > .editor-shell-pane-body',
+    '[data-yunari-panel="layers"] > .editor-shell-pane-body',
   )!;
 }
 

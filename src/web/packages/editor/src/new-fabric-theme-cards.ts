@@ -2,7 +2,7 @@ import {
   defaultBarSettings,
   defaultGaugeSettings,
   defaultLineSettings,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { type StarterPaletteId } from "./new-fabric-theme-globals.js";
 import { starterIcons } from "./new-fabric-theme-icons.js";
 import {

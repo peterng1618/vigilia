@@ -136,7 +136,7 @@ function pager(over: {
 /** The numerals the pager drew, in the order it drew them. */
 function numerals(container: HTMLElement): HTMLButtonElement[] {
   return Array.from(
-    container.querySelectorAll<HTMLButtonElement>("[data-vigilia-store-page]"),
+    container.querySelectorAll<HTMLButtonElement>("[data-yunari-store-page]"),
   );
 }
 
@@ -254,7 +254,7 @@ it("marks the current page with the chosen treatment and no accent fill", async 
 
   const current = must(
     container.querySelector<HTMLElement>(
-      '[data-vigilia-store-page][aria-current="page"]',
+      '[data-yunari-store-page][aria-current="page"]',
     ),
     "current page",
   );
@@ -283,9 +283,7 @@ it("marks the current page with the chosen treatment and no accent fill", async 
   // Exactly one page is the current one: a pager that marked none, or marked
   // two, would satisfy the reading above.
   expect(
-    container.querySelectorAll(
-      '[data-vigilia-store-page][aria-current="page"]',
-    ),
+    container.querySelectorAll('[data-yunari-store-page][aria-current="page"]'),
   ).toHaveLength(1);
 });
 
@@ -307,12 +305,12 @@ it("names every page and reports the one pressed", async () => {
   ).toEqual(shown.map((page) => uiCopy.store.pager.page(page)));
   // The two skipped runs are two marks, not numerals.
   expect(
-    container.querySelectorAll("[data-vigilia-store-page-gap]"),
+    container.querySelectorAll("[data-yunari-store-page-gap]"),
   ).toHaveLength(2);
 
   const fourth = must(
     drawn.find(
-      (button) => button.getAttribute("data-vigilia-store-page") === "4",
+      (button) => button.getAttribute("data-yunari-store-page") === "4",
     ) ?? null,
     "numeral 4",
   );
@@ -333,14 +331,12 @@ it("steps one page at a time and stops at the ends", async () => {
 
   const previous = must(
     container.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-page-previous]",
+      "[data-yunari-store-page-previous]",
     ),
     "previous step",
   );
   const next = must(
-    container.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-page-next]",
-    ),
+    container.querySelector<HTMLButtonElement>("[data-yunari-store-page-next]"),
     "next step",
   );
   expect(previous.disabled, "page one can step back off the listing").toBe(
@@ -359,9 +355,7 @@ it("disables the forward step on the last page", async () => {
   const container = await mount(pager({ current: 12, total: 12, onPage }));
 
   const next = must(
-    container.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-page-next]",
-    ),
+    container.querySelector<HTMLButtonElement>("[data-yunari-store-page-next]"),
     "next step",
   );
   expect(next.disabled, "the last page can step past the listing").toBe(true);
@@ -371,7 +365,7 @@ it("disables the forward step on the last page", async () => {
   await click(
     must(
       container.querySelector<HTMLButtonElement>(
-        "[data-vigilia-store-page-previous]",
+        "[data-yunari-store-page-previous]",
       ),
       "previous step",
     ),
@@ -386,16 +380,16 @@ it("offers the four page sizes and reports the one chosen", async () => {
   const container = await mount(pager({ size: 12, onSize }));
 
   const trigger = must(
-    container.querySelector<HTMLElement>("[data-vigilia-store-page-size]"),
+    container.querySelector<HTMLElement>("[data-yunari-store-page-size]"),
     "size well",
   );
   expect(
     // The value carrier inside the trigger, which is where `ControlSelect`
     // prints the chosen label — a driver reads the value it must not guess at.
     must(
-      trigger.querySelector<HTMLElement>("[data-vigilia-value]"),
+      trigger.querySelector<HTMLElement>("[data-yunari-value]"),
       "size value",
-    ).getAttribute("data-vigilia-value"),
+    ).getAttribute("data-yunari-value"),
     "the well does not print the size in force",
   ).toBe("12");
   expect(
@@ -406,10 +400,10 @@ it("offers the four page sizes and reports the one chosen", async () => {
   await click(trigger);
   await flush();
   const options = Array.from(
-    document.querySelectorAll<HTMLElement>("[data-vigilia-option]"),
+    document.querySelectorAll<HTMLElement>("[data-yunari-option]"),
   );
   expect(
-    options.map((option) => option.getAttribute("data-vigilia-option")),
+    options.map((option) => option.getAttribute("data-yunari-option")),
     "the well does not offer the four sizes in the drawing's order",
   ).toEqual(["12", "24", "48", "all"]);
   expect(
@@ -418,7 +412,7 @@ it("offers the four page sizes and reports the one chosen", async () => {
   ).toEqual(["12", "24", "48", uiCopy.store.pager.all]);
 
   const chosen = options.find(
-    (option) => option.getAttribute("data-vigilia-option") === "24",
+    (option) => option.getAttribute("data-yunari-option") === "24",
   );
   if (chosen === undefined) throw new Error("the well offers no 24");
   await pointerDown(chosen);
@@ -444,7 +438,7 @@ it("gives the label and its well §5's own row width", async () => {
   const container = await mount(pager({}));
 
   const row = must(
-    container.querySelector<HTMLElement>("[data-vigilia-store-page-row]"),
+    container.querySelector<HTMLElement>("[data-yunari-store-page-row]"),
     "size row",
   );
   expect(
@@ -453,7 +447,7 @@ it("gives the label and its well §5's own row width", async () => {
   ).toContain("w-[158px]");
   expect(
     must(
-      row.querySelector<HTMLElement>("[data-vigilia-store-page-size]"),
+      row.querySelector<HTMLElement>("[data-yunari-store-page-size]"),
       "size well",
     ),
     "the well is outside the row the label shares",

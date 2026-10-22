@@ -167,7 +167,7 @@ function isModalOpen(): boolean {
   return document.querySelector("dialog[open], [role='dialog']") !== null;
 }
 
-/** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
+/** The sole window-level dispatcher for Yunari product actions above the canvas's own key handling. */
 export class ShortcutManager {
   readonly #handlers = new Map<ProductShortcutId, ShortcutHandler>();
   /** Whether a modal was open when the current key event *started*, sampled by

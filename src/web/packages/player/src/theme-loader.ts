@@ -5,7 +5,7 @@ import {
   isMeasurementSystem,
   type MeasurementSystem,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 
 /**
  * Why a theme could not be loaded, in a vocabulary the failure page can speak.

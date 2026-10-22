@@ -46,21 +46,21 @@ There are three traps, and each was reachable:
    would not catch, because each surface's own test would still be green against the
    old behaviour.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `renderer-core/src/theme/` for the pattern a persisted per-object flag
-already takes — `object-name.ts` (`VIGILIA_NAME_PROPERTY`), `glass.ts`
-(`VIGILIA_GLASS_PROPERTY`); `fabric-envelope-validate.ts` for how both are checked
+already takes — `object-name.ts` (`YUNARI_NAME_PROPERTY`), `glass.ts`
+(`YUNARI_GLASS_PROPERTY`); `fabric-envelope-validate.ts` for how both are checked
 at import; `persist.ts` for `SCENE_PERSISTED_PROPERTIES`;
 `scene-fabric/src/artboard-crop.ts` for `SceneBox`/`countable`/`sceneBoxesOf`;
 every caller of `outsideCount`, `outsideEdges`, `outsideBoxes`, `sceneBoxesOf`,
 `cropNoticeText` (10 files); `NodeBase` in `theme/document.ts` and `theme/widget.ts`.
 
 Found: **the whole shape already exists, twice, and both instances are exactly this
-problem.** `name` and `vigiliaGlass` are each: a declared property constant, a
+problem.** `name` and `yunariGlass` are each: a declared property constant, a
 reader that trusts the validator rather than re-checking, one named check in the
 envelope validator beside the other, and an entry in `SCENE_PERSISTED_PROPERTIES`.
-`vigiliaGlass` additionally demonstrates the optional-treatment case — absent means
+`yunariGlass` additionally demonstrates the optional-treatment case — absent means
 off, so a scene authored before the field opens exactly as it does today — which is
 the same semantic `bleeds` needs.
 
@@ -93,7 +93,7 @@ real and is not closed by declaring a constant: an unlisted custom property is
 silently omitted from `toObject` output.
 
 Fabric's own docs also warn that a revived object's custom property must be
-understood by the loader, which is why `vigiliaBleeds` needs the named validator
+understood by the loader, which is why `yunariBleeds` needs the named validator
 check rather than being read optimistically. **No new dependency is warranted** — the
 flag is one boolean on a property Fabric already round-trips.
 
@@ -180,8 +180,8 @@ for `visible`/`locked` and for any path to a persisted v2 scene: it is imported 
 field there is invisible to a saved theme by construction, not by accident.
 
 **The silent-drop probe.** `serialiseScene` passes `SCENE_PERSISTED_PROPERTIES`
-explicitly. The list currently holds `id`, `name`, `vigiliaText`, `vigiliaPaint`,
-`vigiliaAsset`, `vigiliaGlass`, `provenance`, `selectable`, `evented`, `locked`. A
+explicitly. The list currently holds `id`, `name`, `yunariText`, `yunariPaint`,
+`yunariAsset`, `yunariGlass`, `provenance`, `selectable`, `evented`, `locked`. A
 property set on an object but absent from that list does not appear in
 `canvas.toObject([...])` output and produces no diagnostic. This is why the round-trip
 test is a first-class case rather than an afterthought.
@@ -213,7 +213,7 @@ code.
 
 ## Decision
 
-**`vigiliaBleeds` is a validated Fabric custom property, declared in
+**`yunariBleeds` is a validated Fabric custom property, declared in
 `renderer-core/src/theme/bleed.ts` the way `object-name.ts` declares `name`, and
 `SceneBox` gains a `bleeds` field read in `sceneBoxesOf` and honoured by
 `countable`.**

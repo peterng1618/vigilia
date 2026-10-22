@@ -78,7 +78,7 @@ Copied from the spec and `AGENTS.md`; every task's requirements implicitly inclu
   `@theme inline` for the runtime-switched palette. Getting this backwards is the specific mistake
   §9 names, and decision 0035 records why.
 - **Captures are a task, and they are performed by the executor of that task**, not by this plan's
-  author. `VIGILIA_CAPTURE=1` and `--workers=1`; register the capture in
+  author. `YUNARI_CAPTURE=1` and `--workers=1`; register the capture in
   `docs/evidence/screenshots/README.md` in the same commit.
 - **No compatibility glue: Radix and Base UI do not coexist at the end of Phase 1**, and no `data-*`
   selector is written for both an old and a new attribute. Removing the two packages is Task 1.3,
@@ -164,7 +164,7 @@ this is wrong.**
   `collapsible` are discharged by an existing owner, not by a migration.
 - **The three hand-rolled native `<dialog>`s stay native.** `new-document-chooser.ts:55`,
   `persistence-manager/index.ts:71` and `theme-library-dialog.ts` (three dialogs: `:63`, `:134`,
-  `:345`) are DOM factories, styled by `.vigilia-dialog` (`editor-shell.css:761-788`). They are not
+  `:345`) are DOM factories, styled by `.yunari-dialog` (`editor-shell.css:761-788`). They are not
   a third primitive library — they are the platform — and 0033 rejected a *fourth* one for plan 7,
   not this three. **What this plan owes them is evidence, not a migration**: Task 3.1.
 - **Plan 7 has landed by the time this plan runs**, and it changed three things this plan reads:
@@ -488,7 +488,7 @@ test("a shell colour utility resolves the palette of its own subtree", async ({
 
   await openEditor(page);
   await choosePalette(page, "graphite");
-  await page.locator("[data-vigilia-palette]").click();
+  await page.locator("[data-yunari-palette]").click();
   const popup = page.locator(PALETTE_POPUP);
   await expect(popup).toBeVisible();
 
@@ -519,7 +519,7 @@ disabled is a finding about the test**, and this one is the whole of §9's runti
 ```bash
 cd src/web
 npx vitest run packages/editor/src/editor-shell/editor-shell.tokens.test.ts
-npm run build -w @vigilia/editor
+npm run build -w @yunari/editor
 npx playwright test tests/e2e/shell-appearance.spec.ts --project=desktop-chromium --workers=1
 ```
 
@@ -598,7 +598,7 @@ it("has no choice stored until the picker is used", () => {
 });
 
 it("ignores a stored value that is not a palette", () => {
-  localStorage.setItem("vigilia.editor.shell-palette", "invalid");
+  localStorage.setItem("yunari.editor.shell-palette", "invalid");
   expect(readShellChoice(localStorage)).toBeUndefined();
 });
 ```
@@ -692,7 +692,7 @@ consult anything. Add exactly one media query, so a dark-OS author's first frame
 **Ceiling, stated rather than hidden:** a *stored* palette still flashes editorial, because the
 pre-paint block reads no storage and decision 0035 rejected duplicating the mapping into a script.
 Add the one-line `localStorage` read only if an author reports the flash; the key is
-`vigilia.editor.shell-palette` and `palette.ts` owns it.
+`yunari.editor.shell-palette` and `palette.ts` owns it.
 
 - [ ] **Step 6: Prove the precedence in a browser**
 
@@ -729,7 +729,7 @@ asserts the attribute rather than trusting the click (`:66-79`).
 cd src/web
 npx vitest run packages/editor/src/editor-shell/palette.test.ts \
   packages/editor/src/editor-shell/palette-menu.dom.test.tsx
-npm run build -w @vigilia/editor
+npm run build -w @yunari/editor
 npx playwright test tests/e2e/shell-appearance.spec.ts --project=desktop-chromium --workers=1
 ```
 
@@ -768,7 +768,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `captureVisualReview(page, testInfo, name)` from `tests/e2e/editor-canvas.ts:297-315`,
   which writes `<name>-<project>.png` into `docs/evidence/screenshots` and returns early unless
-  `VIGILIA_CAPTURE=1`.
+  `YUNARI_CAPTURE=1`.
 - Produces: the artefacts §9's acceptance item at `:541-543` names.
 
 **Constraints.** The acceptance item is explicit that a computed value is not enough: *"a
@@ -806,14 +806,14 @@ test("captures each palette's own surface", async ({ page }, testInfo) => {
 
 ```bash
 cd src/web
-npm run build -w @vigilia/editor
-VIGILIA_CAPTURE=1 npx playwright test tests/e2e/shell-appearance.spec.ts \
+npm run build -w @yunari/editor
+YUNARI_CAPTURE=1 npx playwright test tests/e2e/shell-appearance.spec.ts \
   --project=desktop-chromium --grep "captures each palette" --workers=1
 ```
 
 Expected: six files in `docs/evidence/screenshots/`, each printed as attached. **Inspect every one
 before staging it** — this is the whole acceptance item, and a capture of a palette that did not
-apply is worse than no capture. `VIGILIA_CAPTURE_DIR` redirects the output if a scratch copy is
+apply is worse than no capture. `YUNARI_CAPTURE_DIR` redirects the output if a scratch copy is
 wanted first.
 
 - [ ] **Step 3: Register the captures**
@@ -862,7 +862,7 @@ discharge clause is owed by its last plan.
 for the tooltip applies to both, and the reasoning is recorded in this plan's *What is already true*:
 
 - the three native `<dialog>`s (`new-document-chooser.ts:55`, `persistence-manager/index.ts:71`,
-  `theme-library-dialog.ts:63|134|345`), styled by `.vigilia-dialog` (`editor-shell.css:761-788`);
+  `theme-library-dialog.ts:63|134|345`), styled by `.yunari-dialog` (`editor-shell.css:761-788`);
 - the inspector's sections (`editor-shell/controls/property-section.ts`) — a native `<details>`, not
   a library Collapsible, and §8's table row for `collapsible` is discharged by that owner. **Phase 1
   does not change this**: Base UI ships `Collapsible` and `Accordion` that could replace it, and
@@ -895,7 +895,7 @@ test("the dialogs and the inspector's sections paint every palette", async ({
     // The New-document chooser: opened from the File menu, closed with Escape.
     await page.getByRole("button", { name: "File" }).click();
     await page.getByRole("menuitem", { name: "New theme" }).click();
-    const dialog = page.locator(".vigilia-dialog");
+    const dialog = page.locator(".yunari-dialog");
     await expect(dialog).toBeVisible();
     const [dialogBackground, headerBackground] = await Promise.all([
       dialog.evaluate((node) => getComputedStyle(node).backgroundColor),
@@ -908,7 +908,7 @@ test("the dialogs and the inspector's sections paint every palette", async ({
 
     // The inspector's own section, on whatever is selected when the pane opens.
     await openPane(page, "Selection");
-    await expect(page.locator(".vigilia-section-details").first()).toBeVisible();
+    await expect(page.locator(".yunari-section-details").first()).toBeVisible();
   }
 });
 ```
@@ -922,17 +922,17 @@ test("the dialogs and the inspector's sections paint every palette", async ({
 >
 > - **`openPane(page, "Selection")` cannot work: `Selection` is not a pane.** The pane bar's segments
 >   are Layers, Insert, Assets, Document and the `+`; the right column is not one of them and is
->   always mounted. Locate `.vigilia-section-details` directly.
+>   always mounted. Locate `.yunari-section-details` directly.
 > - **`selectLayer(page, "cpu-card")` cannot work either: the starter's cards are nested.** The
 >   top-level rows are `group-cpu-card`, `group-storage-card`, `group-trends-card` and so on, and a
 >   collapsed row is not clickable. The step above never selected anything, and the selection is what
 >   the column renders sections for — with nothing selected it correctly says where to choose from,
 >   which is `vg-157`'s assertion rather than this one.
 > - The dialog selector landed as `dialog[open]` matched on `"Choose an artboard size"`, which is
->   `new-document-chooser`'s own lead copy, rather than a bare `.vigilia-dialog`: three dialog
+>   `new-document-chooser`'s own lead copy, rather than a bare `.yunari-dialog`: three dialog
 >   owners share that class, and only one of them was on screen.
 >
-> **Measured after the correction:** passes first run in 14.1 s; with `.vigilia-dialog`'s background
+> **Measured after the correction:** passes first run in 14.1 s; with `.yunari-dialog`'s background
 > moved to `--shell-backdrop` it fails on the first palette (dialog `rgb(245,241,232)` against header
 > `rgb(255,253,247)`); reverted and rebuilt, green.
 
@@ -940,7 +940,7 @@ test("the dialogs and the inspector's sections paint every palette", async ({
 
 ```bash
 cd src/web
-npm run build -w @vigilia/editor
+npm run build -w @yunari/editor
 npx playwright test tests/e2e/shell-appearance.spec.ts --project=desktop-chromium \
   --grep "hand-owned surfaces" --workers=1
 ```
@@ -952,7 +952,7 @@ find. Report which.
 
 - [ ] **Step 3: Confirm the test can fail**
 
-A test that cannot fail proves nothing. Break `.vigilia-dialog`'s background by one token in
+A test that cannot fail proves nothing. Break `.yunari-dialog`'s background by one token in
 `editor-shell.css` (`background: var(--shell-surface)` → `background: var(--shell-backdrop)`),
 rebuild, re-run, and confirm the assertion fails for at least one palette. Revert, **rebuild**, and
 re-run to green. Playwright previews built bundles; a revert without a rebuild leaves the broken
@@ -967,7 +967,7 @@ git commit -m "test(editor): the hand-owned dialogs and sections paint every pal
 The three native <dialog>s and the inspector's native <details> sections stay
 hand-owned — 0033's argument for the tooltip applies unchanged. This pins the
 part a palette change could break: a dialog in the top layer is not a descendant
-of #app. Proved to fail by moving .vigilia-dialog off --shell-surface.
+of #app. Proved to fail by moving .yunari-dialog off --shell-surface.
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
@@ -998,7 +998,7 @@ patched, and the walk's whole value is that it is not spending its attention on 
 ```bash
 cd src/web
 npm run build
-node packages/host/bin/vigilia.js --no-browser
+node packages/host/bin/yunari.js --no-browser
 ```
 
 Then drive the editor at `http://127.0.0.1:<host port>/editor/` — **not** the preview server, because
@@ -1034,7 +1034,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 > **Walked 2026-10-08. Seventeen capability checks, all present; nothing missing, so no backlog row
 > and no spec edit.** Against the host's own `/editor` mount at `http://127.0.0.1:5227/editor`, with
-> the host built by `npm run build` and started by `packages/host/bin/vigilia.js --no-browser` —
+> the host built by `npm run build` and started by `packages/host/bin/yunari.js --no-browser` —
 > **not** the preview server, because the relative base and the `/editor` mount are things this
 > redesign touched.
 >

@@ -32,9 +32,9 @@
 - [ ] Add a failing DOM test with a preset containing `face`, `trioRole`, `weight`, `letterSpacing` and `lineHeight`; change its size and assert all untouched fields remain.
 - [ ] Add a failing DOM test that changes `letterSpacing` and asserts the emitted preset contains its numeric value.
 - [ ] Replace the reduced `TypePreset` reconstruction with a patch of `entry.value`: preserve `face` and `trioRole`, replace edited fields, and omit only an optional field whose input was explicitly cleared.
-- [ ] Render a numeric `Letter spacing` input with `data-vigilia-type-letter-spacing`; validate it as finite before committing.
+- [ ] Render a numeric `Letter spacing` input with `data-yunari-type-letter-spacing`; validate it as finite before committing.
 - [ ] Run `npm test -- --run packages/editor/src/type-preset-panel.dom.test.ts` from `src/web/`.
-- [ ] Run `npm run typecheck -w @vigilia/editor` from `src/web/`.
+- [ ] Run `npm run typecheck -w @yunari/editor` from `src/web/`.
 
 ### Task 2: Restrict release-version mutation
 
@@ -44,11 +44,11 @@
 - Test: `src/web/packages/editor/src/fork-extensions/index.dom.test.ts`
 
 - [ ] Add a failing artboard-panel DOM test that renders metadata with `version: '1.2.3'`, edits `name`, and asserts the callback preserves `version: '1.2.3'` while the displayed version remains `1.2.3`.
-- [ ] Replace the editable release-version input with a read-only output carrying `data-vigilia-theme-version`; keep the current version in `submitMetadata` so ordinary metadata edits preserve it, and remove its change listener.
+- [ ] Replace the editable release-version input with a read-only output carrying `data-yunari-theme-version`; keep the current version in `submitMetadata` so ordinary metadata edits preserve it, and remove its change listener.
 - [ ] Add a focused `ForkExtensions` DOM test that stubs the Release prompt and save path, then asserts Release is the only path that emits a bumped `metadata.version`.
 - [ ] Keep `#release()` validation-before-bump and `bumpSemanticVersion()`; do not introduce a second version calculator.
 - [ ] Run `npm test -- --run packages/editor/src/artboard-panel.dom.test.ts packages/editor/src/fork-extensions/index.dom.test.ts` from `src/web/`.
-- [ ] Run `npm run typecheck -w @vigilia/editor` from `src/web/`.
+- [ ] Run `npm run typecheck -w @yunari/editor` from `src/web/`.
 
 ### Task 3: Prove the editor integration
 
@@ -58,9 +58,9 @@
 - Update: `.agents/status.md`
 
 - [ ] Add or extend the focused editor browser case to apply a curated face, edit the same preset, save, reopen, and assert its `face`, `trioRole` and edited `letterSpacing` survive.
-- [ ] Build the editor with `npm run build -w @vigilia/editor` from `src/web/`.
+- [ ] Build the editor with `npm run build -w @yunari/editor` from `src/web/`.
 - [ ] Run the focused browser test with `npx playwright test tests/e2e/editor-fork.spec.ts --project=desktop-chromium --grep 'global type preset'` from `src/web/`.
-- [ ] Capture and inspect the affected font-trio visual action with `VIGILIA_CAPTURE=1` and `--workers=1` if the focused test changes visible controls.
+- [ ] Capture and inspect the affected font-trio visual action with `YUNARI_CAPTURE=1` and `--workers=1` if the focused test changes visible controls.
 - [ ] Update spec/status evidence using only observed test/build/browser results.
 
 ## Completion

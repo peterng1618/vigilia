@@ -1,4 +1,4 @@
-import { holderOf, targetsOf } from "@vigilia/scene-fabric";
+import { holderOf, targetsOf } from "@yunari/scene-fabric";
 import { type Canvas, type FabricObject, Group } from "fabric/es";
 
 /** Generic canvas stacking order; semantic layer projection lives in

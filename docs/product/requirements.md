@@ -1,4 +1,4 @@
-# Vigilia — product requirements
+# Yunari — product requirements
 
 Canonical current product requirements. User goals and explicit product choices take
 precedence. `§N` markers are stable labels used by code/docs; never renumber.
@@ -26,7 +26,7 @@ text/typography. Decorative drawing must not delay charts or typography.
 
 ## §31 — One renderer, shared
 
-Editor and player use one Fabric scene implementation. `@vigilia/editor` owns
+Editor and player use one Fabric scene implementation. `@yunari/editor` owns
 interactive editor mechanics directly over the pinned `fabric/es` runtime; do
 not maintain a second DOM/geometry renderer or an external editor foundation.
 
@@ -60,7 +60,7 @@ host/player shell styling is not. Multiple locales are not in scope for product 
 ## §43 — Feasibility
 
 Fabric rendering is established for text, images/SVG, basic shapes and all four
-chart families. `VigiliaChart` supports rotation, proportional resize, live
+chart families. `YunariChart` supports rotation, proportional resize, live
 redraw and persistence. Video remains a separate background path.
 
 ## §47 — Small display bundle
@@ -95,7 +95,7 @@ controls use whole artboard units where practical.
 ## §61 — Editor controls
 
 Generic selection, transforms, grouping, duplication/clipboard and object tools
-are native `@vigilia/editor` mechanics over Fabric. Do not recreate a parallel
+are native `@yunari/editor` mechanics over Fabric. Do not recreate a parallel
 DOM/geometry model.
 
 Old custom-editor QoL that is absent from the fork route is **not automatically
@@ -135,7 +135,7 @@ as opacity and geometry remain local.
 Compatible authored styles resolve through stable global keys; typography resolves
 through named type presets and paint resolves through palette tokens. Globals also
 have editable display names. Deleting a referenced global requires reassignment.
-Scene objects have one stable Vigilia id.
+Scene objects have one stable Yunari id.
 
 ## §77 — Widgets
 
@@ -188,7 +188,7 @@ can say, not a defect:
 
 ## §87 — Typed chart settings
 
-Themes persist typed Vigilia chart settings, not raw ECharts options. Engine
+Themes persist typed Yunari chart settings, not raw ECharts options. Engine
 translation has one owner.
 
 ## §89 — Typography
@@ -278,7 +278,7 @@ licence and attribution behaviour is defined.
 
 ## §134 — Theme format
 
-Vigilia owns a versioned semantic envelope; Fabric JSON is the persisted scene.
+Yunari owns a versioned semantic envelope; Fabric JSON is the persisted scene.
 The development v2 envelope already establishes this scene boundary. Its globals/
 property semantics remain pre-release and may break until spec 0011 completes.
 
@@ -385,9 +385,9 @@ Design: [editor UI polish](../superpowers/specs/2026-09-25-editor-ui-polish.md).
 
 The editor is a professional authoring surface used for extended sessions. Its
 own chrome favours information density and a consistent row rhythm over spacious
-marketing-page layout, and follows Figma UI3 as its reference where Vigilia has
+marketing-page layout, and follows Figma UI3 as its reference where Yunari has
 no domain-specific answer of its own. Palette tokens, type presets and value runs
-are Vigilia concepts and keep their own shape rather than being bent to fit it.
+are Yunari concepts and keep their own shape rather than being bent to fit it.
 
 Motion is restrained and functional: short transitions on interaction feedback
 and panel reveals only. Decorative, scroll-driven, staggered or spring motion is

@@ -8,7 +8,7 @@ wrong for a long time, and the next reader should not have to re-derive why.
 **What happens**
 
 The starter theme's charts threw inside ECharts when the theme was loaded in the
-player (`@vigilia/player`). No chart rendered a live value, so the default demo
+player (`@yunari/player`). No chart rendered a live value, so the default demo
 theme showed no live data on a second screen. The starter's own clock and date
 are bound text rather than charts and were unaffected.
 
@@ -56,7 +56,7 @@ The first three rounds of this defect were lost to a throw whose text was never
 written down, so it is recorded here verbatim. Re-captured by disabling the fix
 (`data: [{ value: displayValue }]`) and rebuilding the player against the real
 host, driving the editor's own `Save to library` and then opening
-`/?theme=vigilia-demo-dashboard&data=live`:
+`/?theme=yunari-demo-dashboard&data=live`:
 
 ```
 TypeError: Cannot read properties of undefined (reading '0')
@@ -76,7 +76,7 @@ In the player this reaches the console through the per-chart guard rather than
 as a `pageerror`, once per chart per refresh cadence:
 
 ```
-Vigilia: Chart "ram-gauge" failed to draw and was left as it was.
+Yunari: Chart "ram-gauge" failed to draw and was left as it was.
   Cannot read properties of undefined (reading '0')
 ```
 
@@ -125,7 +125,7 @@ round-cap shape, and not the option being wrong.
 **How to reproduce** (before the fix)
 
 1. Build and open the starter theme in the display against the real host.
-2. Watch the console: `Vigilia: Chart "ram-gauge" failed to draw and was left as
+2. Watch the console: `Yunari: Chart "ram-gauge" failed to draw and was left as
    it was. Cannot read properties of undefined (reading '0')`. The ring stays a
    grey track.
 3. In the editor, the same document's rings paint — the first render there

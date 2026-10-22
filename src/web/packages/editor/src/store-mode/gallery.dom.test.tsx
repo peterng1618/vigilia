@@ -16,8 +16,8 @@
  * into the region, so there is no page to inspect in a browser and no browser
  * case here.
  */
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { DASHBOARD_THEME_KIND, facetRecordOf } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { DASHBOARD_THEME_KIND, facetRecordOf } from "@yunari/renderer-core";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
@@ -150,7 +150,7 @@ function item(overrides: Partial<StoreItem> = {}): StoreItem {
 /** Where a theme came from, as the host records it: the catalogue item and the
  *  version this copy was installed from. */
 const ORIGIN: ThemeOrigin = {
-  catalogueId: "vigilia/office-wall",
+  catalogueId: "yunari/office-wall",
   version: "1.3.0",
   installedAt: "2026-10-14T00:00:00.000Z",
 };
@@ -181,7 +181,7 @@ const NO_INSTALL: InstallControl = {
 /** The cell's picture box, which every case here reads through. */
 function pictureBox(container: HTMLElement): HTMLElement {
   return must(
-    container.querySelector<HTMLElement>("[data-vigilia-store-picture]"),
+    container.querySelector<HTMLElement>("[data-yunari-store-picture]"),
     "picture box",
   );
 }
@@ -312,7 +312,7 @@ it("asks for the picture again only when the theme itself changed", async () => 
   );
   expect(
     must(
-      container.querySelector<HTMLElement>("[data-vigilia-store-cell-name]"),
+      container.querySelector<HTMLElement>("[data-yunari-store-cell-name]"),
       "cell name",
     ).textContent,
     "the cell did not re-render, so the case below proves nothing",
@@ -368,7 +368,7 @@ it("draws its four actions, runs the two it has and disables the two it has not"
   function actionButton(action: string): HTMLButtonElement {
     return must(
       container.querySelector<HTMLButtonElement>(
-        `[data-vigilia-store-cell-action="${action}"]`,
+        `[data-yunari-store-cell-action="${action}"]`,
       ),
       `${action} action`,
     );
@@ -441,7 +441,7 @@ it("opens the item from the cell's own surface rather than from an action", asyn
 
   const surface = must(
     container.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-cell-surface]",
+      "[data-yunari-store-cell-surface]",
     ),
     "cell surface",
   );
@@ -485,7 +485,7 @@ it("writes the byline the drawing draws, and says so when there is no author", a
   );
 
   const bylines = Array.from(
-    container.querySelectorAll<HTMLElement>("[data-vigilia-store-cell-byline]"),
+    container.querySelectorAll<HTMLElement>("[data-yunari-store-cell-byline]"),
     (byline) => byline.textContent,
   );
   expect(bylines).toEqual([
@@ -527,7 +527,7 @@ it("badges the cell whose theme came from the store, and leaves the other unbadg
   function band(id: string): HTMLElement {
     return must(
       container.querySelector<HTMLElement>(
-        `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-band]`,
+        `[data-yunari-store-cell="${id}"] [data-yunari-store-cell-band]`,
       ),
       `${id}'s facts band`,
     );
@@ -536,7 +536,7 @@ it("badges the cell whose theme came from the store, and leaves the other unbadg
   /** One cell's badge, or the `null` that says it drew none. */
   function badge(id: string): HTMLElement | null {
     return band(id).querySelector<HTMLElement>(
-      "[data-vigilia-store-cell-origin]",
+      "[data-yunari-store-cell-origin]",
     );
   }
 
@@ -580,7 +580,7 @@ it("draws the kind badge and the download count for an online item, and neither 
   function band(id: string): HTMLElement {
     return must(
       container.querySelector<HTMLElement>(
-        `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-band]`,
+        `[data-yunari-store-cell="${id}"] [data-yunari-store-cell-band]`,
       ),
       `${id}'s facts band`,
     );
@@ -589,7 +589,7 @@ it("draws the kind badge and the download count for an online item, and neither 
   expect(
     must(
       band("living-room").querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-kind]",
+        "[data-yunari-store-cell-kind]",
       ),
       "kind badge",
     ).textContent,
@@ -597,7 +597,7 @@ it("draws the kind badge and the download count for an online item, and neither 
   ).toBe("Theme");
   const downloads = must(
     band("living-room").querySelector<HTMLElement>(
-      "[data-vigilia-store-cell-downloads]",
+      "[data-yunari-store-cell-downloads]",
     ),
     "download count",
   );
@@ -614,23 +614,23 @@ it("draws the kind badge and the download count for an online item, and neither 
   expect(
     must(
       band("living-room").querySelector<HTMLElement>(
-        "[data-vigilia-store-cell-downloads] span.text-faint",
+        "[data-yunari-store-cell-downloads] span.text-faint",
       ),
       "the count's faint glyph",
     ).textContent,
     "the count's number, not its glyph, wears the faint colour",
   ).toBe("");
   expect(
-    band("living-room").querySelector("[data-vigilia-store-cell-origin]"),
+    band("living-room").querySelector("[data-yunari-store-cell-origin]"),
     "the online cell drew the local half's origin pill as well",
   ).toBeNull();
 
   expect(
-    band("workshop-bench").querySelector("[data-vigilia-store-cell-kind]"),
+    band("workshop-bench").querySelector("[data-yunari-store-cell-kind]"),
     "the library cell drew a catalogue kind",
   ).toBeNull();
   expect(
-    band("workshop-bench").querySelector("[data-vigilia-store-cell-downloads]"),
+    band("workshop-bench").querySelector("[data-yunari-store-cell-downloads]"),
     "the library cell drew a catalogue count",
   ).toBeNull();
 });
@@ -658,7 +658,7 @@ it("prints the identifier of a kind this build does not know", async () => {
 
   expect(
     must(
-      container.querySelector<HTMLElement>("[data-vigilia-store-cell-kind]"),
+      container.querySelector<HTMLElement>("[data-yunari-store-cell-kind]"),
       "kind badge",
     ).textContent,
     "an unknown kind was not printed as its own identifier",
@@ -759,7 +759,7 @@ it("marks an installed online item without drawing a control", async () => {
 
   const mark = must(
     container.querySelector<HTMLElement>(
-      '[data-vigilia-store-cell-install="installed"]',
+      '[data-yunari-store-cell-install="installed"]',
     ),
     "installed mark",
   );
@@ -826,7 +826,7 @@ it("reports a press on Install and Update, and draws no control for an installed
   for (const { id, state } of expected) {
     const button = must(
       container.querySelector<HTMLButtonElement>(
-        `[data-vigilia-store-cell="${id}"] [data-vigilia-store-cell-install="${state}"]`,
+        `[data-yunari-store-cell="${id}"] [data-yunari-store-cell-install="${state}"]`,
       ),
       `${state} action`,
     );
@@ -844,12 +844,12 @@ it("reports a press on Install and Update, and draws no control for an installed
   ).toEqual(["living-room", "office-wall"]);
 
   expect(
-    container.querySelector('[data-vigilia-store-cell-install="installed"]'),
+    container.querySelector('[data-yunari-store-cell-install="installed"]'),
     "the installed item draws no mark",
   ).not.toBeNull();
   expect(
     container.querySelector(
-      '[data-vigilia-store-cell="living-room-2"] button[data-vigilia-store-cell-install]',
+      '[data-yunari-store-cell="living-room-2"] button[data-yunari-store-cell-install]',
     ),
     "an installed item drew an install control it has no action for",
   ).toBeNull();

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { type APIRequestContext, request } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 
 /** Seeds a theme package into the host's themes directory so a browser test can
  * load it through the real host — the path `vite preview` cannot exercise. */
@@ -161,7 +161,7 @@ const envelopeFor = (
       id: "badge",
       kind: "svg" as const,
       path: "assets/badge.svg",
-      license: { name: "MIT", attribution: "Vigilia test fixture." },
+      license: { name: "MIT", attribution: "Yunari test fixture." },
     },
     {
       // Same source the curated catalog uses, so the fixture exercises the real
@@ -195,7 +195,7 @@ const envelopeFor = (
         height: 80,
         fill: "palette.ink",
         id: "card",
-        vigiliaPaint: { fill: "palette.ink" },
+        yunariPaint: { fill: "palette.ink" },
       },
       {
         type: "Textbox",
@@ -211,8 +211,8 @@ const envelopeFor = (
         fontFamily: "system-ui, sans-serif",
         fill: "palette.ink",
         id: "title",
-        vigiliaPaint: { fill: "palette.ink" },
-        vigiliaText: {
+        yunariPaint: { fill: "palette.ink" },
+        yunariText: {
           runs: [
             {
               text: "Hosted theme from the real host",
@@ -238,8 +238,8 @@ const envelopeFor = (
         fontFamily: "system-ui, sans-serif",
         fill: "palette.ink",
         id: "clock",
-        vigiliaPaint: { fill: "palette.ink" },
-        vigiliaText: {
+        yunariPaint: { fill: "palette.ink" },
+        yunariText: {
           runs: [
             {
               kind: "value",
@@ -267,8 +267,8 @@ const envelopeFor = (
         fontFamily: "system-ui, sans-serif",
         fill: "palette.ink",
         id: TEMPERATURE_NODE_ID,
-        vigiliaPaint: { fill: "palette.ink" },
-        vigiliaText: {
+        yunariPaint: { fill: "palette.ink" },
+        yunariText: {
           runs: [
             {
               kind: "value",
@@ -324,11 +324,11 @@ const chartEnvelope = {
     version: "7.4.0" as const,
     objects: [
       {
-        type: "VigiliaChart" as const,
+        type: "YunariChart" as const,
         version: "7.4.0" as const,
         id: CHART_NODE_ID,
         name: CHART_NODE_ID,
-        // Centred, because that is `VigiliaChart`'s own default origin.
+        // Centred, because that is `YunariChart`'s own default origin.
         left: 320,
         top: 180,
         width: 260,
@@ -388,7 +388,7 @@ const mediaEnvelope = {
       id: "badge",
       kind: "svg" as const,
       path: "assets/badge.svg",
-      license: { name: "MIT", attribution: "Vigilia test fixture." },
+      license: { name: "MIT", attribution: "Yunari test fixture." },
     },
   ],
   scene: { version: "7.4.0" as const, objects: [] },
@@ -425,7 +425,7 @@ const videoEnvelope = {
       id: "loop",
       kind: "video" as const,
       path: "assets/loop.webm",
-      license: { name: "CC0", attribution: "Vigilia test fixture." },
+      license: { name: "CC0", attribution: "Yunari test fixture." },
     },
   ],
   scene: { version: "7.4.0" as const, objects: [] },
@@ -474,7 +474,7 @@ const overhangEnvelope = {
         // the validator refuses a resolved colour with no token behind it. The
         // literal is what a display draws, since the player resolves no palette
         // paints of its own (ADR-0026).
-        vigiliaPaint: { fill: "palette.ink" },
+        yunariPaint: { fill: "palette.ink" },
       },
       {
         type: "Wedge" as const,
@@ -488,7 +488,7 @@ const overhangEnvelope = {
         endAngle: 180,
         fill: "#e8ecf3",
         id: "stray-quarter",
-        vigiliaPaint: { fill: "palette.ink" },
+        yunariPaint: { fill: "palette.ink" },
       },
       {
         // An arc is an **open sweep**: no interior, so no fill, and it draws as
@@ -508,7 +508,7 @@ const overhangEnvelope = {
         strokeLineCap: "round" as const,
         fill: "",
         id: "open-arc",
-        vigiliaPaint: { stroke: "palette.ink" },
+        yunariPaint: { stroke: "palette.ink" },
       },
     ],
   },
@@ -554,7 +554,7 @@ export const GROUPED_GROUP_ANGLE = -20;
  *
  * **The backdrop is scene geometry, not media.** A `<video>` or `<img>` media
  * layer is a DOM sibling the player cannot load — its asset URL drops a segment
- * the host's route needs, [#3](https://github.com/peterng1618/vigilia/issues/3) —
+ * the host's route needs, [#3](https://github.com/peterng1618/yunari/issues/3) —
  * but an authored `Rect` is a Fabric object, already on the canvas and already
  * painted when a panel samples it. The glass has a real high-frequency backdrop
  * on the player, and nothing here waits on an issue.
@@ -645,7 +645,7 @@ const groupedGlassEnvelope = {
           id: `bar-${index}`,
           selectable: false,
           evented: false,
-          vigiliaPaint: { fill: light ? "palette.light" : "palette.dark" },
+          yunariPaint: { fill: light ? "palette.light" : "palette.dark" },
         };
       }),
       {
@@ -680,11 +680,11 @@ const groupedGlassEnvelope = {
             id: GROUPED_PANEL_IDS.grouped,
             selectable: false,
             evented: false,
-            vigiliaPaint: {
+            yunariPaint: {
               fill: "palette.panel",
               stroke: "palette.edge",
             },
-            vigiliaGlass: { blurRadius: PANEL.blurRadius },
+            yunariGlass: { blurRadius: PANEL.blurRadius },
           },
           {
             type: "Rect",
@@ -701,7 +701,7 @@ const groupedGlassEnvelope = {
             id: "grouped-tag",
             selectable: false,
             evented: false,
-            vigiliaPaint: { fill: "palette.tag" },
+            yunariPaint: { fill: "palette.tag" },
           },
         ],
       },
@@ -722,8 +722,8 @@ const groupedGlassEnvelope = {
         id: GROUPED_PANEL_IDS.flat,
         selectable: false,
         evented: false,
-        vigiliaPaint: { fill: "palette.panel", stroke: "palette.edge" },
-        vigiliaGlass: { blurRadius: PANEL.blurRadius },
+        yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
+        yunariGlass: { blurRadius: PANEL.blurRadius },
       },
       {
         // A real reading in free space, so the mount is a display and not a
@@ -741,8 +741,8 @@ const groupedGlassEnvelope = {
         fontFamily: "Inter, system-ui, sans-serif",
         fill: "#e8ecf3",
         id: CLOCK_NODE_ID,
-        vigiliaPaint: { fill: "palette.ink" },
-        vigiliaText: {
+        yunariPaint: { fill: "palette.ink" },
+        yunariText: {
           runs: [
             {
               kind: "value",
@@ -770,8 +770,8 @@ const groupedGlassEnvelope = {
         id: GROUPED_PANEL_IDS.overlapUnder,
         selectable: false,
         evented: false,
-        vigiliaPaint: { fill: "palette.panel", stroke: "palette.edge" },
-        vigiliaGlass: { blurRadius: PANEL.blurRadius },
+        yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
+        yunariGlass: { blurRadius: PANEL.blurRadius },
       },
       {
         // Intersects the panel above it over 90x110 artboard units.
@@ -791,8 +791,8 @@ const groupedGlassEnvelope = {
         id: GROUPED_PANEL_IDS.overlapOver,
         selectable: false,
         evented: false,
-        vigiliaPaint: { fill: "palette.panel", stroke: "palette.edge" },
-        vigiliaGlass: { blurRadius: PANEL.blurRadius },
+        yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
+        yunariGlass: { blurRadius: PANEL.blurRadius },
       },
     ],
   },
@@ -891,8 +891,8 @@ export async function seedHostTheme(): Promise<void> {
             fontFamily: "system-ui, sans-serif",
             fill: "palette.ink",
             id: CLOCK_NODE_ID,
-            vigiliaPaint: { fill: "palette.ink" },
-            vigiliaText: {
+            yunariPaint: { fill: "palette.ink" },
+            yunariText: {
               runs: [
                 {
                   kind: "value",

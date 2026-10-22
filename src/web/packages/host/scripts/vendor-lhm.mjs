@@ -105,7 +105,7 @@ async function main() {
       `sha256: ${digest}`,
       "",
       "Staged by packages/host/scripts/vendor-lhm.mjs. Not committed.",
-      "Vigilia links nothing and modifies nothing; it runs the executable and",
+      "Yunari links nothing and modifies nothing; it runs the executable and",
       "reads the JSON its web server publishes.",
       "",
       "LICENSE and THIRD-PARTY-NOTICES.txt are LHM's own notices, added here",

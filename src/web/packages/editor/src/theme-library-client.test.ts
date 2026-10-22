@@ -1,4 +1,4 @@
-import type { FabricThemeEnvelope, FacetRecord } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope, FacetRecord } from "@yunari/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import {
   createThemeLibraryClient,

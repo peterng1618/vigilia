@@ -1,4 +1,4 @@
-# ADR-0007: Typed Vigilia charts over ECharts
+# ADR-0007: Typed Yunari charts over ECharts
 
 **Status:** Accepted
 
@@ -10,7 +10,7 @@ chart families.
 
 ## Decision
 
-`VigiliaChart` persists typed Vigilia chart settings and translates them to
+`YunariChart` persists typed Yunari chart settings and translates them to
 ECharts through one adapter. Raw ECharts options are never persisted or exposed
 as the normal authoring surface.
 

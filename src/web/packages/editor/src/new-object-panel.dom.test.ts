@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import {
-  VIGILIA_PAINT_PROPERTY,
-  VIGILIA_TEXT_PROPERTY,
-} from "@vigilia/scene-fabric";
+  YUNARI_PAINT_PROPERTY,
+  YUNARI_TEXT_PROPERTY,
+} from "@yunari/scene-fabric";
 import { Ellipse, Line, Path, Polygon, Polyline, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { CARD_LIBRARY } from "./card-library.js";
@@ -99,7 +99,7 @@ describe("new object panel", () => {
     );
 
     panel.root
-      .querySelector<HTMLButtonElement>("[data-vigilia-panel-add]")!
+      .querySelector<HTMLButtonElement>("[data-yunari-panel-add]")!
       .click();
 
     const inserted = editor.canvas.add.mock.calls[0]?.[0];
@@ -120,14 +120,14 @@ describe("new object panel", () => {
     );
 
     panel.root
-      .querySelector<HTMLButtonElement>("[data-vigilia-panel-add]")!
+      .querySelector<HTMLButtonElement>("[data-yunari-panel-add]")!
       .click();
 
     // The saved document is only palette-reassignable if the new panel carries
     // its own reference rather than a literal colour. This palette has no card
     // token, so it takes the surface it does have.
     expect(
-      editor.canvas.add.mock.calls[0]?.[0].get(VIGILIA_PAINT_PROPERTY),
+      editor.canvas.add.mock.calls[0]?.[0].get(YUNARI_PAINT_PROPERTY),
     ).toEqual({ fill: "palette.background" });
   });
 
@@ -149,14 +149,14 @@ describe("new object panel", () => {
     );
 
     panel.root
-      .querySelector<HTMLButtonElement>('[data-vigilia-panel-add="ellipse"]')!
+      .querySelector<HTMLButtonElement>('[data-yunari-panel-add="ellipse"]')!
       .click();
 
     // A shape the author draws is a card they will put something on. Filled with
     // the scene's own backdrop it is not a shape at all, and nothing an author
     // cannot see can be selected or edited.
     expect(
-      editor.canvas.add.mock.calls[0]?.[0].get(VIGILIA_PAINT_PROPERTY),
+      editor.canvas.add.mock.calls[0]?.[0].get(YUNARI_PAINT_PROPERTY),
     ).toEqual({ fill: "palette.panel" });
   });
 
@@ -167,7 +167,7 @@ describe("new object panel", () => {
       palette as never,
     );
     const button = panel.root.querySelector<HTMLButtonElement>(
-      "[data-vigilia-panel-add]",
+      "[data-yunari-panel-add]",
     )!;
 
     expect(button.type).toBe("button");
@@ -184,7 +184,7 @@ describe("new object panel", () => {
     );
 
     panel.root
-      .querySelector<HTMLButtonElement>("[data-vigilia-panel-add]")!
+      .querySelector<HTMLButtonElement>("[data-yunari-panel-add]")!
       .click();
 
     // Reported through the editor's own diagnostics: a throw out of a click
@@ -270,7 +270,7 @@ describe("new object panel", () => {
     )!;
     expect(
       [...group.querySelectorAll("button")].map((button) =>
-        button.getAttribute("data-vigilia-panel-add"),
+        button.getAttribute("data-yunari-panel-add"),
       ),
     ).toEqual([...SHAPE_KINDS]);
   });
@@ -287,12 +287,10 @@ describe("new object panel", () => {
     expect(
       chartButton(root, uiCopy.chartFamilies.line).closest("fieldset"),
     ).not.toBe(
-      root
-        .querySelector('[data-vigilia-panel-add="line"]')
-        ?.closest("fieldset"),
+      root.querySelector('[data-yunari-panel-add="line"]')?.closest("fieldset"),
     );
     const shape = root.querySelector<HTMLElement>(
-      '[data-vigilia-panel-add="line"]',
+      '[data-yunari-panel-add="line"]',
     );
     expect(shape === null ? "" : accessibleName(shape)).toBe(
       uiCopy.shapeKinds.line,
@@ -372,7 +370,7 @@ describe("new object panel", () => {
     );
 
     root
-      .querySelector<HTMLButtonElement>(`[data-vigilia-panel-add="${kind}"]`)!
+      .querySelector<HTMLButtonElement>(`[data-yunari-panel-add="${kind}"]`)!
       .click();
 
     const inserted = editor.canvas.add.mock.calls[0]?.[0];
@@ -394,7 +392,7 @@ describe("new object panel", () => {
       );
 
       root
-        .querySelector<HTMLButtonElement>(`[data-vigilia-panel-add="${kind}"]`)!
+        .querySelector<HTMLButtonElement>(`[data-yunari-panel-add="${kind}"]`)!
         .click();
 
       // The id is the stable key bindings, the schema path and the envelope all
@@ -419,7 +417,7 @@ describe("new object panel", () => {
         palette as never,
       );
       const button = root.querySelector<HTMLButtonElement>(
-        `[data-vigilia-panel-add="${kind}"]`,
+        `[data-yunari-panel-add="${kind}"]`,
       )!;
 
       expect(button.type).toBe("button");
@@ -439,7 +437,7 @@ describe("new object panel", () => {
 
     for (const kind of SHAPE_KINDS) {
       root
-        .querySelector<HTMLButtonElement>(`[data-vigilia-panel-add="${kind}"]`)!
+        .querySelector<HTMLButtonElement>(`[data-yunari-panel-add="${kind}"]`)!
         .click();
     }
 
@@ -484,8 +482,8 @@ describe("new object panel", () => {
       expect.objectContaining({
         text: "New text",
         fill: "#102030",
-        [VIGILIA_PAINT_PROPERTY]: { fill: "palette.ink" },
-        [VIGILIA_TEXT_PROPERTY]: expect.objectContaining({
+        [YUNARI_PAINT_PROPERTY]: { fill: "palette.ink" },
+        [YUNARI_TEXT_PROPERTY]: expect.objectContaining({
           runs: [
             expect.objectContaining({
               text: "New text",

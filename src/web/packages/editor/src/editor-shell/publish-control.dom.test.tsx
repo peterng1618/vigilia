@@ -187,7 +187,7 @@ async function mount(session?: EditorActionFacade): Promise<HTMLDivElement> {
     ),
   );
   await vi.waitFor(() =>
-    expect(mounted.querySelector("[data-vigilia-publish]")).not.toBeNull(),
+    expect(mounted.querySelector("[data-yunari-publish]")).not.toBeNull(),
   );
   return mounted;
 }
@@ -202,12 +202,12 @@ async function remount(): Promise<HTMLDivElement> {
 
 /** The bar's own control. Everything else on this surface is behind it. */
 function headerControl(container: HTMLElement): HTMLElement | null {
-  return container.querySelector("[data-vigilia-publish]");
+  return container.querySelector("[data-yunari-publish]");
 }
 
 /** The host switch, which is the popover's and never the bar's. */
 function hostSwitch(): HTMLElement | null {
-  return document.querySelector("[data-vigilia-host-switch]");
+  return document.querySelector("[data-yunari-host-switch]");
 }
 
 /** The press that opens the surface. */
@@ -240,7 +240,7 @@ it("prints the publish chord on the header control, from the live table", async 
   hostServing({ lan: true });
   const container = await mount();
 
-  const chip = container.querySelector("[data-vigilia-publish-chord]");
+  const chip = container.querySelector("[data-yunari-publish-chord]");
   expect(chip?.textContent).toBe(shortcutLabel("publish.surface"));
   // The mark is a picture of a key, so what a screen reader is told is what the
   // caps are *called*, not the glyphs they print.
@@ -260,7 +260,7 @@ it("prints the publish chord on the header control, from the live table", async 
     setActiveShortcuts(resolveShortcuts({ "publish.surface": moved }));
   });
   expect(
-    container.querySelector("[data-vigilia-publish-chord]")?.textContent,
+    container.querySelector("[data-yunari-publish-chord]")?.textContent,
   ).toBe("Ctrl+J");
 });
 
@@ -273,7 +273,7 @@ it("opens the surface without moving the host, and keeps every fact behind the p
   // the control's name and the chord chip rides beside it (plan 5's Task 3).
   expect(popupOpen()).toBe(false);
   expect(container.querySelector("code")).toBeNull();
-  expect(container.querySelector("[data-vigilia-qr]")).toBeNull();
+  expect(container.querySelector("[data-yunari-qr]")).toBeNull();
   expect(headerControl(container)?.textContent).toContain(uiCopy.publish.start);
   expect(hostSwitch()).toBeNull();
 
@@ -290,11 +290,11 @@ it("opens the surface without moving the host, and keeps every fact behind the p
   expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
   // The code in type beside the address, because a device with no camera has
   // nowhere else to read it, and the symbol carries the same one.
-  expect(document.querySelector("[data-vigilia-pair-code]")?.textContent).toBe(
+  expect(document.querySelector("[data-yunari-pair-code]")?.textContent).toBe(
     CODE,
   );
   expect(popupText()).toContain(uiCopy.publish.reserveAddress);
-  const qr = document.querySelector("[data-vigilia-qr]");
+  const qr = document.querySelector("[data-yunari-qr]");
   expect(qr?.getAttribute("aria-label")).toBe(`QR code: ${PAIR_URL}`);
   // A camera needs modules, not a thumbnail.
   expect(Number(qr?.getAttribute("width"))).toBeGreaterThanOrEqual(120);
@@ -363,7 +363,7 @@ it("turns the host on from inside the surface, and shows what it is serving", as
   expect(popupOpen()).toBe(true);
   expect(popupText()).toContain(`https://${ADDRESS}:${PORT}`);
   expect(
-    document.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label"),
+    document.querySelector("[data-yunari-qr]")?.getAttribute("aria-label"),
   ).toBe(`QR code: ${PAIR_URL}`);
 });
 
@@ -438,7 +438,7 @@ it("shows the address the host named, with a code for it", async () => {
   // camera-less display would have typed at, and the code is printed beside it
   // for the device that has to type it. Both are the same mint.
   expect(
-    document.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label"),
+    document.querySelector("[data-yunari-qr]")?.getAttribute("aria-label"),
   ).toBe(`QR code: ${PAIR_URL}`);
   expect(popupText()).toContain(CODE);
   expect(popupText()).toContain(uiCopy.publish.warning);

@@ -31,7 +31,7 @@ table"* — and records that consuming descriptor bounds was decided against
 because authoring bounds and validation invariants are different questions. That
 is the tension this note resolves.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `theme/fabric-envelope-validate.ts` in full (`chartPaintReferences`,
 its `isRecord` guard, every check `validateFabricThemeEnvelope` calls);
@@ -112,7 +112,7 @@ URLs are recorded so the sweep is re-runnable.
 - **`echarts` has no option validator at all, and that is the maintainer's
   answer.** Issue `apache/echarts#19046` (open since 2023-08-28) asks for
   `echarts.validateOption`; the reply is *"There is not such checker, I'm
-  afraid."* So the renderer Vigilia builds options for cannot refuse a bad
+  afraid."* So the renderer Yunari builds options for cannot refuse a bad
   scalar — it draws it, or warns in a dev build. The refusal has to be ours, at
   the boundary where the document is read.
 - **`deck.gl-community`'s `SettingsManager`** (`visgl.github.io/deck.gl-community`)
@@ -172,9 +172,9 @@ Measured on this box, 2026-10-21, by building `renderer-core` to `dist`
 `node_modules`); the re-run partitions them **thirteen `ok: true` and five
 `ok: false`**. **Four carry a chart**, and the chart is not what decides them:
 **two read `ok: true`** —
-`src/web/.e2e-display-app/themes/vigilia-new-theme/theme.json` and
+`src/web/.e2e-display-app/themes/yunari-new-theme/theme.json` and
 `src/web/.e2e-host-app/themes/e2e-chart/theme.json` — and **two read `ok: false`
-already, before this change**, the two `vigilia-demo-dashboard/theme.json`
+already, before this change**, the two `yunari-demo-dashboard/theme.json`
 copies (`.e2e-host-app/themes/` and
 `.superpowers/sdd/2026-09-29-author-journey-proof/p1-app/themes/`), each on
 `artboard.barColor` and `backgroundMedia.fit` (the `p1-app` copy also on
@@ -285,10 +285,10 @@ check.
 - **The binding constraint**: the on-disk sweep is green on every document that
   was green before — re-run with the `line` pair included, and every verdict is
   unchanged: of the **four** chart-carrying documents, the **two** that read
-  `ok: true` still do (`.e2e-display-app/themes/vigilia-new-theme`,
+  `ok: true` still do (`.e2e-display-app/themes/yunari-new-theme`,
   `.e2e-host-app/themes/e2e-chart`), and the **five** already red for
   `metadata.locale` / `artboard.barColor` / `backgroundMedia.fit` — the two
-  `vigilia-demo-dashboard` copies among them — gain no chart-settings issue. The
+  `yunari-demo-dashboard` copies among them — gain no chart-settings issue. The
   starter dashboard and the card library keep their existing `ok: true`
   assertions in the unit suite.
 - **Not verified, and accepted as such**: the on-disk sweep is a point-in-time

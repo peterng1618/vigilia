@@ -31,7 +31,7 @@ import { execFileSync } from "node:child_process";
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const STYLESHEETS = [
   "src/web/packages/editor/src/editor-shell/editor-shell.css",
-  "src/web/packages/host/public/vigilia-page.css",
+  "src/web/packages/host/public/yunari-page.css",
 ];
 const SKIP_DIRS = new Set([
   "node_modules", "dist", ".git", ".vite", "coverage", "test-results",
@@ -303,12 +303,12 @@ function main(argv) {
 
 const SHEET = {
   "src/web/packages/editor/src/editor-shell/editor-shell.css":
-    ".vigilia-field { color: red }\n.vigilia-layer { color: blue }\n.theme-list { color: green }\n.theme-row { color: black }\n",
-  "src/web/packages/host/public/vigilia-page.css": ".hint { color: grey }\n",
+    ".yunari-field { color: red }\n.yunari-layer { color: blue }\n.theme-list { color: green }\n.theme-row { color: black }\n",
+  "src/web/packages/host/public/yunari-page.css": ".hint { color: grey }\n",
 };
 
 function fixture(files) {
-  const dir = mkdtempSync(join(tmpdir(), "vigilia-dead-selectors-"));
+  const dir = mkdtempSync(join(tmpdir(), "yunari-dead-selectors-"));
   for (const [rel, text] of Object.entries({ ...SHEET, ...files })) {
     if (text === null) continue;
     const path = join(dir, rel);
@@ -336,39 +336,39 @@ function selfTest() {
   const cases = [
     [
       "reports a class production writes that no stylesheet defines",
-      { [`${editor}/pane.tsx`]: 'const el = <p className="vigilia-field-hint" />;\n' },
+      { [`${editor}/pane.tsx`]: 'const el = <p className="yunari-field-hint" />;\n' },
       1,
-      "vigilia-field-hint",
+      "yunari-field-hint",
     ],
     [
       "counts a spelling in a comment as no application, and a write as one",
       {
         "src/web/packages/editor/src/editor-shell/editor-shell.css":
-          ".vigilia-field { color: red }\n.vigilia-layer { color: blue }\n",
-        "src/web/packages/host/public/vigilia-page.css": "",
+          ".yunari-field { color: red }\n.yunari-layer { color: blue }\n",
+        "src/web/packages/host/public/yunari-page.css": "",
         [`${editor}/pane.tsx`]:
-          '// the .vigilia-layer rule is dead\nconst el = <p className="vigilia-field" />;\n',
+          '// the .yunari-layer rule is dead\nconst el = <p className="yunari-field" />;\n',
       },
       1,
       "forward: 1 of 2",
     ],
     [
       "reads a classList write",
-      { [`${editor}/pane.ts`]: 'el.classList.add("vigilia-gone");\n' },
+      { [`${editor}/pane.ts`]: 'el.classList.add("yunari-gone");\n' },
       1,
-      "vigilia-gone",
+      "yunari-gone",
     ],
     [
       "reads the literals inside a conditional className expression",
-      { [`${editor}/pane.tsx`]: 'const el = <p className={a ? "vigilia-one" : "vigilia-two"} />;\n' },
+      { [`${editor}/pane.tsx`]: 'const el = <p className={a ? "yunari-one" : "yunari-two"} />;\n' },
       1,
-      "vigilia-two",
+      "yunari-two",
     ],
     [
       "counts a host page's own class write as the product applying it",
       {
         "src/web/packages/editor/src/editor-shell/editor-shell.css": ".theme-list { color: green }\n",
-        "src/web/packages/host/public/vigilia-page.css": "",
+        "src/web/packages/host/public/yunari-page.css": "",
         "src/web/packages/host/public/settings.html":
           '<html><body><ul class="theme-list"></ul></body></html>\n',
       },
@@ -379,15 +379,15 @@ function selfTest() {
       "reports a data-* attribute nothing spells",
       {
         "src/web/packages/editor/src/editor-shell/editor-shell.css":
-          ".vigilia-field { color: red }\n.vigilia-layer { color: blue }\n[data-vigilia-gone] { color: pink }\n",
-        "src/web/packages/host/public/vigilia-page.css": "",
+          ".yunari-field { color: red }\n.yunari-layer { color: blue }\n[data-yunari-gone] { color: pink }\n",
+        "src/web/packages/host/public/yunari-page.css": "",
       },
       1,
-      "data-vigilia-gone",
+      "data-yunari-gone",
     ],
     [
       "refuses a stylesheet it cannot read",
-      { "src/web/packages/host/public/vigilia-page.css": null },
+      { "src/web/packages/host/public/yunari-page.css": null },
       2,
       "STYLESHEET",
     ],

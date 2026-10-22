@@ -1,6 +1,6 @@
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Tabs } from "@base-ui/react/tabs";
-import { SUPPORTED_SCHEMA_VERSION } from "@vigilia/renderer-core";
+import { SUPPORTED_SCHEMA_VERSION } from "@yunari/renderer-core";
 import { useEffect, useRef, useState } from "react";
 import { ControlChoiceRow } from "../components/ui/control-choice-row.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
@@ -51,7 +51,7 @@ const SETTINGS_TAB_GLYPHS: Readonly<Record<SettingsTab, LucideIcon>> = {
 };
 
 /** The id the palette group is named by, kept out of the shell's other ids. */
-const PALETTE_GROUP_ID = "vigilia-settings-palette";
+const PALETTE_GROUP_ID = "yunari-settings-palette";
 
 /** One fact the About tab renders, identified by the id it renders it under so
  *  a test reads the row by what it is rather than by its position. */
@@ -89,7 +89,7 @@ export function versionFacts(
   releaseVersion: string | undefined,
 ): readonly VersionFact[] {
   const facts: VersionFact[] = [
-    { id: "product-version", value: __VIGILIA_VERSION__ },
+    { id: "product-version", value: __YUNARI_VERSION__ },
     { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
   ];
   if (releaseVersion !== undefined && releaseVersion !== "") {
@@ -180,7 +180,7 @@ function AppearanceTab({
             shape="card"
             label={entry}
             value={entry}
-            data={{ "data-vigilia-palette-choice": entry }}
+            data={{ "data-yunari-palette-choice": entry }}
             swatch={
               // Two bars, each resolving a role **of the palette this card
               // names** rather than of the one in force (`0035`): the ground
@@ -217,7 +217,7 @@ function AppearanceTab({
               ? uiCopy.settings.followSystemSessionOnly
               : uiCopy.settings.followSystemHint
           }
-          data={{ "data-vigilia-follow-system": "" }}
+          data={{ "data-yunari-follow-system": "" }}
           onChange={follow}
         />
       </div>
@@ -242,7 +242,7 @@ function AboutTab({
   return (
     <div
       className="editor-shell-about flex flex-col gap-[var(--space-8)]"
-      data-vigilia-about=""
+      data-yunari-about=""
     >
       <p className="text-sm text-muted">{uiCopy.settings.aboutProvenance}</p>
       <dl>
@@ -251,7 +251,7 @@ function AboutTab({
             <dt>{VERSION_FACT_LABELS[fact.id]}</dt>
             <dd
               className="font-mono text-text"
-              data-vigilia-about-fact={fact.id}
+              data-yunari-about-fact={fact.id}
             >
               {String(fact.value)}
             </dd>

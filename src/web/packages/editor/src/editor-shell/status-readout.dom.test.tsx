@@ -50,10 +50,10 @@ describe("the status bar's counts", () => {
     const host = mount(store);
 
     expect(
-      host.querySelector("[data-vigilia-status-objects]")?.textContent,
+      host.querySelector("[data-yunari-status-objects]")?.textContent,
     ).toBe("52 objects");
     expect(
-      host.querySelector("[data-vigilia-status-selected]")?.textContent,
+      host.querySelector("[data-yunari-status-selected]")?.textContent,
     ).toBe("0 selected");
   });
 
@@ -67,7 +67,7 @@ describe("the status bar's counts", () => {
     const host = mount(store);
 
     expect(host.textContent).toBe("");
-    expect(host.querySelector("[data-vigilia-status-objects]")).toBeNull();
+    expect(host.querySelector("[data-yunari-status-objects]")).toBeNull();
   });
 
   it("reads a blank document as zero objects, which is an answer", () => {
@@ -78,7 +78,7 @@ describe("the status bar's counts", () => {
     const host = mount(store);
 
     expect(
-      host.querySelector("[data-vigilia-status-objects]")?.textContent,
+      host.querySelector("[data-yunari-status-objects]")?.textContent,
     ).toBe("0 objects");
   });
 
@@ -95,16 +95,16 @@ describe("the status bar's counts", () => {
     } as unknown as EditorShellBridge);
     const host = mount(store);
     expect(
-      host.querySelector("[data-vigilia-status-objects]")?.textContent,
+      host.querySelector("[data-yunari-status-objects]")?.textContent,
     ).toBe("1 object");
 
     current = snapshotWith(2, 1);
     act(() => announce?.());
     expect(
-      host.querySelector("[data-vigilia-status-objects]")?.textContent,
+      host.querySelector("[data-yunari-status-objects]")?.textContent,
     ).toBe("2 objects");
     expect(
-      host.querySelector("[data-vigilia-status-selected]")?.textContent,
+      host.querySelector("[data-yunari-status-selected]")?.textContent,
     ).toBe("1 selected");
   });
 });

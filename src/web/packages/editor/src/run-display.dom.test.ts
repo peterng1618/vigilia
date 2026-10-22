@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+import { YUNARI_TEXT_PROPERTY } from "@yunari/scene-fabric";
 import { Canvas, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { LiveRuntime } from "./live-runtime.js";
@@ -50,7 +50,7 @@ function scene(): { canvas: Canvas; objects: Record<string, Textbox> } {
   const canvas = new Canvas(document.createElement("canvas"));
   const make = (id: string): Textbox => {
     const object = new Textbox("MEM -- %", { id });
-    object.set(VIGILIA_TEXT_PROPERTY, AUTHORED);
+    object.set(YUNARI_TEXT_PROPERTY, AUTHORED);
     canvas.add(object);
     return object;
   };
@@ -141,6 +141,6 @@ describe("what a value run shows", () => {
 
     runtime.showAuthoringView(objects["mem-label"] as Textbox);
 
-    expect(objects["mem-label"]?.get(VIGILIA_TEXT_PROPERTY)).toEqual(AUTHORED);
+    expect(objects["mem-label"]?.get(YUNARI_TEXT_PROPERTY)).toEqual(AUTHORED);
   });
 });

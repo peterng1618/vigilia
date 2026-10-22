@@ -7,7 +7,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bring Vigilia's snapping and smart guides up to the retired fork's practical quality: port the resize/scale snapping subsystem the parity plan deferred, restore the candidate filter and selection guards that were narrowed, and replace the single capture that hid the gap with a behaviour matrix that can actually fail.
+**Goal:** Bring Yunari's snapping and smart guides up to the retired fork's practical quality: port the resize/scale snapping subsystem the parity plan deferred, restore the candidate filter and selection guards that were narrowed, and replace the single capture that hid the gap with a behaviour matrix that can actually fail.
 
 **Architecture:** The movement geometry core is already a byte-comparable port and stays as it is. What is added is the fork's **second** snapping engine — scale/resize — as a sibling subsystem under `snap-manager/scaling/`, sharing the existing candidate, guide and bounds helpers rather than duplicating them. Coupling is stripped at exactly two seams: the fork's `ImageEditor` accessor and its `CropFrame` dependency.
 
@@ -51,7 +51,7 @@ and `:12633-12636`, the fork's `index.ts` fallback chain, and the
 
 - The fork's snapping tree is the specification for behaviour. Where this plan says "port", the requirement is **practical parity**, not transcription: strip fork coupling, keep the algorithms and thresholds.
 - Russian comments become English or none.
-- `renderer-core` stays Fabric/DOM-free; this work is entirely inside `@vigilia/editor`.
+- `renderer-core` stays Fabric/DOM-free; this work is entirely inside `@yunari/editor`.
 - Vendored geometry files stay byte-comparable with their source where no coupling forces a change — the existing rule in `docs/superpowers/specs/2026-09-24-editor-behaviour-review.md` (see "Vendored snapping geometry split"). A ported file that acquires an edit gets `// ported: fork 9efdd78a <path>` above the change.
 - Snapping is runtime/derived state: guides, hold state and gesture context never enter authored history (§67) or the envelope.
 - Refuse invalid numeric input rather than coercing it to zero.
@@ -214,7 +214,7 @@ Removing the `selectable` gate makes decorative `selectable: false` objects alig
 
 ```bash
 cd src/web && npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium \
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium \
   --grep "snaps a dragged object" --workers=1
 ```
 
@@ -236,7 +236,7 @@ git commit -m "fix(editor): align to locked objects, ignore the artboard plate"
 > **Landed** - `4fcd162`. Task review: spec compliant, quality approved, 0 Critical, 0 Important.
 > Six Minor findings dispositioned in the ledger; one (a claimed unreachable clause) was **rejected**
 > against Fabric's source. One out-of-scope observation — the fork's `isSupportedTarget` clause
-> (`!target || target.group`) has no Vigilia equivalent — is carried to Task 7's ledger as a
+> (`!target || target.group`) has no Yunari equivalent — is carried to Task 7's ledger as a
 > `ponytail:` note on the delta-application path, not as new work here.
 
 **Files:**
@@ -255,7 +255,7 @@ git commit -m "fix(editor): align to locked objects, ignore the artboard plate"
   }): boolean;
   ```
 
-The fork refused a multi-selection when any child was parented, when the selection scale was not unit and a child was text, or when the children were of an unsupported kind. Vigilia's comment claims "Vigilia has no composite type to allow-list" — true for the *kind* clause, since every Vigilia object is text, shape, chart, group or image, but not for the other two clauses.
+The fork refused a multi-selection when any child was parented, when the selection scale was not unit and a child was text, or when the children were of an unsupported kind. Yunari's comment claims "Yunari has no composite type to allow-list" — true for the *kind* clause, since every Yunari object is text, shape, chart, group or image, but not for the other two clauses.
 
 - [x] **Step 1: Write the failing test**
 
@@ -316,12 +316,12 @@ Expected: FAIL — module does not resolve.
 
 - [x] **Step 3: Port the guard**
 
-Adapt the fork's `_isSupportedActiveSelection`. Keep the member-count, no-parented-child and unit-scale-with-text clauses; drop the kind allow-list clause (every Vigilia object is supported) and record that decision in the file's header comment, since §175 requires the dropped clause to be accounted for rather than silently missing:
+Adapt the fork's `_isSupportedActiveSelection`. Keep the member-count, no-parented-child and unit-scale-with-text clauses; drop the kind allow-list clause (every Yunari object is supported) and record that decision in the file's header comment, since §175 requires the dropped clause to be accounted for rather than silently missing:
 
 ```ts
 // src/web/packages/editor/src/snap-manager/selection-eligibility.ts
 // Ported: fork 9efdd78a src/editor/snapping-manager/movement/movement-snapping-controller.ts:180-197
-// Dropped clause: the fork's per-child kind allow-list, because every Vigilia
+// Dropped clause: the fork's per-child kind allow-list, because every Yunari
 // scene object is text, shape, chart, group or image, all of which support
 // movement snapping.
 ```
@@ -652,7 +652,7 @@ Read both in full before adapting. They are the specification.
 Changes permitted, and only these:
 
 - `import type { ObjectBounds } from '../../utils/geometry'` → `from "../bounds.js"`.
-- Every other relative import is rewritten to its Vigilia equivalent under `snap-manager/`; if a target does not exist yet, that is a signal the module belongs to a later task, so split rather than inventing it.
+- Every other relative import is rewritten to its Yunari equivalent under `snap-manager/`; if a target does not exist yet, that is a signal the module belongs to a later task, so split rather than inventing it.
 - Russian comments become English or are dropped.
 - `exactOptionalPropertyTypes` fixes: omit optional properties instead of setting them to `undefined`.
 - `noUncheckedIndexedAccess` guards where an indexed read is now possibly `undefined`.
@@ -678,7 +678,7 @@ git -C D:/git-repos/fabricjs-image-editor show \
   9efdd78a:specs/src/editor/snapping-manager/scaling/scale-snap-candidates.spec.ts > "$TEMP/fork-candidates.spec.ts"
 ```
 
-`scale-snapping-core.ts` (167 lines) is this task's direct model: it exports `createScaleBounds`, which is `ObjectBounds` with `centerX`/`centerY` derived — the same shape this task's `bounds` argument takes. Do **not** port that file into Vigilia; it lives under the fork's `specs/`, and Vigilia's test files build their fixtures inline as the neighbouring tests do. Read it, copy the convention, and inline what you need.
+`scale-snapping-core.ts` (167 lines) is this task's direct model: it exports `createScaleBounds`, which is `ObjectBounds` with `centerX`/`centerY` derived — the same shape this task's `bounds` argument takes. Do **not** port that file into Yunari; it lives under the fork's `specs/`, and Yunari's test files build their fixtures inline as the neighbouring tests do. Read it, copy the convention, and inline what you need.
 
 For the hand-written case below, note the coefficients the fork's `createScaleBaseline` uses: `edges: [{ edge: "right", coefficients: [width, 0] }, { edge: "bottom", coefficients: [0, height] }]` — the coefficient is the lever arm in scene units, one slot per variable, and a variable that does not move that edge gets `0`. That is what makes `left` immovable below. Read the fork's cases for the expected numbers rather than inventing your own:
 
@@ -919,7 +919,7 @@ export function createScaleProjectionConstraints(input: {                      /
 
 **Every type this block references is now written out somewhere in the plan** — the resolver's own types are in the block above or the list just below it, and the projection types it consumes come from Task 4. Nothing here is left for you to infer; if a name you need is genuinely absent, say so in the report rather than inventing a shape a later task will disagree with.
 
-`stepProjection` is optional on the fork and `exactOptionalPropertyTypes` is on in Vigilia: callers omit it rather than passing `undefined`.
+`stepProjection` is optional on the fork and `exactOptionalPropertyTypes` is on in Yunari: callers omit it rather than passing `undefined`.
 
 The key contract: `resolveScaleSnapPlan` produces a plan, and `verifyScaleSnapPlan` decides which of its constraints the object **actually** reached, returning `guides` only for those. Guides come from `verification.guides`, never from `plan.constraints` — Review Focus item 1.
 
@@ -936,7 +936,7 @@ done
 
 - [x] **Step 2: Adapt with the same permitted changes as Task 4**
 
-Import paths to Vigilia's `bounds.js` and `constants.ts`, English comments, `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` fixes, provenance line. Thresholds and tolerances are copied **verbatim** — a changed tolerance is precisely the "weaker tolerances" failure §175 names.
+Import paths to Yunari's `bounds.js` and `constants.ts`, English comments, `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` fixes, provenance line. Thresholds and tolerances are copied **verbatim** — a changed tolerance is precisely the "weaker tolerances" failure §175 names.
 
 Cross-check each constant the resolver imports against `snap-manager/constants.ts`. `scaling-step-snap-guards.ts` needs `SNAP_GUARD_POSITION_EPSILON`, `SOURCE_SCALED_GUIDE_HOLD_EPSILON` and `getBoundsSnapGuardDistance`. **These are not in the fork's `constants.ts`** — all three are declared in `scaling-snap-guard.ts` (`:2`, `:5`, `:23`), which this task already creates as a ported file, so they arrive with it and **nothing needs adding to `snap-manager/constants.ts`**. Do not re-declare them there: two homes for one constant is exactly the drift this step exists to prevent. The instruction to port them into `constants.ts` is struck.
 
@@ -951,7 +951,7 @@ git -C D:/git-repos/fabricjs-image-editor show \
   9efdd78a:specs/test-utils/snapping/scale-snapping-core.ts > "$TEMP/fork-scale-core.ts"
 ```
 
-Read both in full. `scale-snapping-core.ts` (167 lines) builds the baseline, candidates, raw intents and final geometry these cases consume; **do not port it into Vigilia** — it lives under the fork's `specs/`, and Vigilia's tests build their fixtures inline, as the neighbouring tests do. Reproduce the fixture helpers this task's cases need directly in `scale-snapping-resolver.test.ts`, keeping the fork's defaults (`width: 100`, `height: 100`, `zoom: 1`, `fixedAnchor` at `(left, top)`) so the ported numbers stay valid.
+Read both in full. `scale-snapping-core.ts` (167 lines) builds the baseline, candidates, raw intents and final geometry these cases consume; **do not port it into Yunari** — it lives under the fork's `specs/`, and Yunari's tests build their fixtures inline, as the neighbouring tests do. Reproduce the fixture helpers this task's cases need directly in `scale-snapping-resolver.test.ts`, keeping the fork's defaults (`width: 100`, `height: 100`, `zoom: 1`, `fixedAnchor` at `(left, top)`) so the ported numbers stay valid.
 
 Select from that spec the cases matching the list below, and where the fork has a sharper case for the same behaviour, prefer it over the sketch. Port at minimum:
 
@@ -1053,7 +1053,7 @@ done
 
 `standard-scale-control.ts` is the fork's own answer and ports **unchanged**: it compares `target.controls[transform.corner]` against `controlsUtils.createObjectDefaultControls()` field by field, and refuses a control whose handlers were replaced. That is what guarantees the snapping only engages over a genuinely standard Fabric resize handle — a custom control that changes resize semantics is declined.
 
-Vigilia's `controls-manager/index.ts` may therefore be a problem: if it replaces or reconfigures the default controls, `isStandardRectangularScaleControl` will return false for every handle and snapping will silently never engage. **Check that before writing the adapter.** If Vigilia's controls differ, the choices in order of preference are: keep Fabric's defaults where they already satisfy the need; extend `STANDARD_RECTANGULAR_SCALE_CONTROLS` with the exact Vigilia control definitions so the comparison still tests something real; or, last, relax the check — which loses the guard, so say so in the commit message if it comes to that.
+Yunari's `controls-manager/index.ts` may therefore be a problem: if it replaces or reconfigures the default controls, `isStandardRectangularScaleControl` will return false for every handle and snapping will silently never engage. **Check that before writing the adapter.** If Yunari's controls differ, the choices in order of preference are: keep Fabric's defaults where they already satisfy the need; extend `STANDARD_RECTANGULAR_SCALE_CONTROLS` with the exact Yunari control definitions so the comparison still tests something real; or, last, relax the check — which loses the guard, so say so in the commit message if it comes to that.
 
 Note that the fork does **not** export `STANDARD_RECTANGULAR_SCALE_CONTROLS` — `standard-scale-control.ts:10-12` declares it module-private. Taking the middle option therefore means editing a ported file, which under the global constraint at `:20` requires a `// ported: fork 9efdd78a …` marker naming the change above it.
 
@@ -1151,7 +1151,7 @@ git commit -m "feat(editor): port the rectangular scale gesture projection"
 > 1. Import paths.
 > 2. Comment language (Russian → English).
 > 3. Comment **form**: five fork `/**` blocks became `//**` line comments, matching the existing
->    Vigilia convention in `movement-snapping-runtime.ts`, `movement-spacing-correction.ts`,
+>    Yunari convention in `movement-snapping-runtime.ts`, `movement-spacing-correction.ts`,
 >    `spacing-chains.ts` and `spacing-patterns.ts`.
 > 4. `exactOptionalPropertyTypes` widenings.
 > 5. Biome formatting (five trailing commas; the `ScaleRuntimeStep` union split with a leading `|`).
@@ -1175,7 +1175,7 @@ git commit -m "feat(editor): port the rectangular scale gesture projection"
 - Consumes: Tasks 4–6, `MovementSnappingRuntime`'s two-phase pattern (`resolveMovementPlan` → `verifyMovementPlan`, `movement-snapping-runtime.ts:115,159`).
 - Produces: `ScaleSnappingRuntime` (ported) and `createScaleSnappingController` (new), bound to `object:scaling` (plus the existing `mouse:up` teardown — see Step 4).
 
-The fork's runtime is the direct sibling of the movement runtime Vigilia already has, so it ports with no shape change:
+The fork's runtime is the direct sibling of the movement runtime Yunari already has, so it ports with no shape change:
 
 ```ts
 export type ScalePlanToken = Readonly<{ sessionId: number; step: number }>;
@@ -1214,7 +1214,7 @@ Three things differ from the movement runtime, and all three matter:
 
 **Skip refinement in the first port.** Pass no `refinement`, so `refineScalePlan` goes unused. Fabric can then block a constraint, and `verifyScalePlan` reports it through `blockedAxes` — the guide is simply not published. That fails closed and is the correct first behaviour. Add refinement only if a real gesture shows a guide the author expects and does not get; mark the omission with a `ponytail:` comment naming that ceiling.
 
-The fork's `image-scale-snapping-controller.ts` imports `ImageEditor` and is vigilia-specific; `legacy-scale-snapping.ts` imports the crop manager's `CropFrame` helpers. **Neither is ported.** What is ported is the runtime, and what is written fresh is a Vigilia controller that follows the movement controller's shape.
+The fork's `image-scale-snapping-controller.ts` imports `ImageEditor` and is yunari-specific; `legacy-scale-snapping.ts` imports the crop manager's `CropFrame` helpers. **Neither is ported.** What is ported is the runtime, and what is written fresh is a Yunari controller that follows the movement controller's shape.
 
 The fork's `movement-snapping-controller.ts:127` marker pattern applies here identically: **one marker per native pointer event**, taken from the browser event (`event.e`), never a per-gesture constant. `83248dc` fixed that exact bug on the movement path; do not reintroduce it here.
 
@@ -1324,16 +1324,16 @@ Expected: FAIL — nothing resizes the object.
 
 Port `ScaleSnappingRuntime` from the fork with its mechanics intact — the `WeakMap` keyed on marker identity, `pendingStep`, token issuance and consumption, and `finishSession` returning the guides to hide. It has no `ImageEditor` import to drop: the runtime is already coupling-free, and the explicit inputs it takes are exactly the movement runtime's shape. The coupling lives in `image-scale-snapping-controller.ts`, which is not ported.
 
-**Name every deviation from the fork in the commit message, and make the list exhaustive — Task 6's review found one deviation that its commit message did not list.** On the ported files in that task the message said "The only edits to the fork's text are …" and then enumerated them; the actual file contained one more, four hoisted `RECTANGULAR_SCALE_CONTROL_COORDINATES` bindings in `projectRectangularScaleBounds`, which `noUncheckedIndexedAccess` did not require (a literal-key dot access on a `Readonly<Record<…>>` is not `| undefined`). It was a gratuitous edit that broke the byte-comparability the same message names as the reason for the file-size exception, and it took a token-stream diff against the pinned fork to find it. The lesson is not "avoid deviations" — the typing guards are real and expected — but that **a completeness claim in the commit message is checkable and will be checked**, so enumerate from a diff against the fork rather than from memory. The two deviation classes that *are* expected on every ported file are the `noUncheckedIndexedAccess` guards and the `exactOptionalPropertyTypes` widenings, plus Vigilia's import specifiers and English comments; a deviation outside those classes needs a sentence saying why.
+**Name every deviation from the fork in the commit message, and make the list exhaustive — Task 6's review found one deviation that its commit message did not list.** On the ported files in that task the message said "The only edits to the fork's text are …" and then enumerated them; the actual file contained one more, four hoisted `RECTANGULAR_SCALE_CONTROL_COORDINATES` bindings in `projectRectangularScaleBounds`, which `noUncheckedIndexedAccess` did not require (a literal-key dot access on a `Readonly<Record<…>>` is not `| undefined`). It was a gratuitous edit that broke the byte-comparability the same message names as the reason for the file-size exception, and it took a token-stream diff against the pinned fork to find it. The lesson is not "avoid deviations" — the typing guards are real and expected — but that **a completeness claim in the commit message is checkable and will be checked**, so enumerate from a diff against the fork rather than from memory. The two deviation classes that *are* expected on every ported file are the `noUncheckedIndexedAccess` guards and the `exactOptionalPropertyTypes` widenings, plus Yunari's import specifiers and English comments; a deviation outside those classes needs a sentence saying why.
 
 Then write `scale-snapping-controller.ts`, a thin orchestrator over Tasks 4–6 mirroring `movement-snapping-controller.ts`. Per `object:scaling` step:
 
 1. **Marker.** `readMovementMarker({ event })` — the browser event, one per native pointer event. Never a per-gesture constant; that is the `83248dc` bug. **Both `readMovementMarker` and `readMovementModifiers` are module-private to `index.ts` today** (`:63-76` and `:79-90`; `index.ts` exports only `SnapManager`, `SnapManagerOptions` and `createSnapManager`). Export them and import them in the controller — reuse the one reader rather than copying it.
 2. **Gesture start**, on the first step of a session: Fabric's `object:scaling` event is `BasicTransformEvent`, which carries exactly `{ e, transform, pointer }` (`EventTypeDefs.d.ts:69-72`). `transform` has `target`, `corner`, `action`, `original`, `originX`, `originY` — the `RectangularScaleGestureTransform` shape — and `pointer` is the `pointerStart` argument. Pass them straight through; if `createRectangularScaleGestureProjection` returns `null` (unsupported control, or Alt-skew), end the session and do nothing.
 
-   **Carried from Task 2's review — decide whether to guard the moving object, and state the decision.** The fork refuses a gesture whose target is a group child (`isSupportedTarget`, `movement-snapping-controller.ts:170-172`: `!target || target.group`); Vigilia has no equivalent, and `grouping-manager/index.ts:54-57` sets `subTargetCheck`/`interactive`, so a group's child **is** individually selectable and draggable. Measured: `runStep` applies the snap as a delta (`nextPosition.left - currentLeft`) and the resolver computes that delta in scene space from `getBoundingRect()`, which includes the group's transform — while the delta is applied in the child's group-local plane. For an **unrotated, unscaled** group those planes share axes and the result is correct; for a group carrying rotation or scale the child lands off the guide. Decide whether this path guards it or documents it, and say which. Do not write a source comment describing the wrong-answer case without also saying it is unfixed — a comment that states a caveat reads as an endorsement of it.
+   **Carried from Task 2's review — decide whether to guard the moving object, and state the decision.** The fork refuses a gesture whose target is a group child (`isSupportedTarget`, `movement-snapping-controller.ts:170-172`: `!target || target.group`); Yunari has no equivalent, and `grouping-manager/index.ts:54-57` sets `subTargetCheck`/`interactive`, so a group's child **is** individually selectable and draggable. Measured: `runStep` applies the snap as a delta (`nextPosition.left - currentLeft`) and the resolver computes that delta in scene space from `getBoundingRect()`, which includes the group's transform — while the delta is applied in the child's group-local plane. For an **unrotated, unscaled** group those planes share axes and the result is correct; for a group carrying rotation or scale the child lands off the guide. Decide whether this path guards it or documents it, and say which. Do not write a source comment describing the wrong-answer case without also saying it is unfixed — a comment that states a caveat reads as an endorsement of it.
 
-   **Decide what happens to `scaling/standard-scale-control.ts`, and state the decision in the report.** It is already ported (Tasks 4–6) and has **zero importers** today. In the fork its only three consumers are `image-scale-snapping-controller.ts` and the two `selection-manager/scaling/active-selection-*` files — all three controllers this plan does not port. So if your fresh controller does not call `isStandardRectangularScaleControl` or `didSideScaleSwitchToSkew`, that file is dead code in Vigilia under exactly the condition Task 10 Step 3 asks you to decide for `scaling-step-snap-guards.ts`. Either consume it (the fork uses the first to gate which controls may scale and the second to abandon a gesture whose side handle became a skew) or say why the projection's own `null` is sufficient and leave it for Task 10 to dispose of with the guard family. Do not leave it unstated — a ported file with no importer is the same defect this plan exists to remove.
+   **Decide what happens to `scaling/standard-scale-control.ts`, and state the decision in the report.** It is already ported (Tasks 4–6) and has **zero importers** today. In the fork its only three consumers are `image-scale-snapping-controller.ts` and the two `selection-manager/scaling/active-selection-*` files — all three controllers this plan does not port. So if your fresh controller does not call `isStandardRectangularScaleControl` or `didSideScaleSwitchToSkew`, that file is dead code in Yunari under exactly the condition Task 10 Step 3 asks you to decide for `scaling-step-snap-guards.ts`. Either consume it (the fork uses the first to gate which controls may scale and the second to abandon a gesture whose side handle became a skew) or say why the projection's own `null` is sufficient and leave it for Task 10 to dispose of with the guard family. Do not leave it unstated — a ported file with no importer is the same defect this plan exists to remove.
 
    Be precise about which point `pointer` is, because it is *not* the canvas scene point. Fabric builds it in `commonEventInfo` (`fabric/dist/index.mjs:3193-3199`) as `new Point(x, y)` from the `x`/`y` handed to the action handler, and `_transformObject` (`:12633-12636`) passes `localPointer` — the scene point sent through `target.group.calcTransformMatrix()` when the target has a group, and the plain scene point otherwise. For an ungrouped target the two coincide; inside a group, `pointer` is already in the group's own plane, which is the plane the projection and the object's own bounds live in. That is the point the fork's own controller uses, so passing it through is correct — but do not "fix" it to the canvas scene point, which would be wrong for a grouped target.
 
@@ -1341,7 +1341,7 @@ Then write `scale-snapping-controller.ts`, a thin orchestrator over Tasks 4–6 
 3. **Baseline**, once: `createScaleGestureBaseline({ bounds: getObjectExactBounds(...), fixedAnchor: projection.fixedAnchor, projectionModes, candidates: createScaleSnapCandidates({ targetEdges: resolveRectangularScaleMovingEdges({ projectionModes }), sources }), zoom })`. Build `sources` the way `startGesture` does: `collectExcludedObjects`, then a `canvas.forEachObject` loop through `toSnapSource`, then the artboard pushed as a `domain-boundary` source (search `"artboard"` inside that function). Locate it by name — `snap-manager/index.ts` moved under this plan when Task 2 landed, and every line citation written for it is stale.
 4. **Intent.** `projectionMode` from the modes `createRectangularScaleProjectionModes` returned for this control and mode; `values` from `resolveRectangularScaleMultipliers`; `modifiers` from `readMovementModifiers({ event })` — widen that helper to return `shiftKey` alongside `ctrlKey` (it currently returns `ctrlKey` only), since `ScaleSnapModifiers` needs both. One modifier reader, used by both paths.
 5. **Apply.** Call the ported `applyRectangularScalePlan({ plan, projection, target, transform })` (in `rectangular-scale-interaction.ts`; locate by name) — do **not** hand-roll the two-line `target.set(...)`. The plan's `effectiveValues` are snap-resolver variables (`scale-x` / `scale-y` / `uniform-scale`, `scale-projection.ts:12-16`), not rectangular multipliers, so the fork's own applier decodes them through `resolveRectangularScaleMultipliers({ projectionMode, effectiveValues })` first, and then restores the gesture's fixed point with `target.setPositionByOrigin(new Point(projection.fixedAnchor.x, projection.fixedAnchor.y), transform.originX, transform.originY)` before `setCoords()`. Reading `effectiveValues[0]`/`[1]` straight into `scaleX`/`scaleY` is wrong in two ways: a `uniform` step carries a single value and `effectiveValues[1]` is `undefined`, giving `NaN` under `noUncheckedIndexedAccess`; and a `vertical` (`mt`/`mb`) step's one value is the **Y** multiplier, which the positional read would apply to `scaleX`. The missing `setPositionByOrigin` also drops the fixed-point restoration Task 5 Step 3 requires the resolver to prove.
-6. **Verify.** Build the whole `FinalScaleGeometry` through `readFinalRectangularScaleGeometry` (in `rectangular-scale-interaction.ts`; locate by name). It already produces `measuredValues` by calling `createRectangularScaleValues` — which lives in `rectangular-scale-gesture-projection.ts`, **not** in the interaction file an earlier revision of this step named — so pass it the multipliers and do not call that function yourself. Do **not** derive `measuredValues` from a raw `target.scaleX / originalScaleX` ratio: the ratio is wrong for the same axis reason as item 5. Pass `protectedStatePreserved` too — the fork supplies it from `isProtectedImageScaleStatePreserved`, an image-editor concern; for Vigilia give the equivalent "did the gesture's protected state survive" answer, and if there is no such state, `true` with a comment naming why. Then `verifyScalePlan({ token, finalGeometry })`, and take guides from `verification.guides` only.
+6. **Verify.** Build the whole `FinalScaleGeometry` through `readFinalRectangularScaleGeometry` (in `rectangular-scale-interaction.ts`; locate by name). It already produces `measuredValues` by calling `createRectangularScaleValues` — which lives in `rectangular-scale-gesture-projection.ts`, **not** in the interaction file an earlier revision of this step named — so pass it the multipliers and do not call that function yourself. Do **not** derive `measuredValues` from a raw `target.scaleX / originalScaleX` ratio: the ratio is wrong for the same axis reason as item 5. Pass `protectedStatePreserved` too — the fork supplies it from `isProtectedImageScaleStatePreserved`, an image-editor concern; for Yunari give the equivalent "did the gesture's protected state survive" answer, and if there is no such state, `true` with a comment naming why. Then `verifyScalePlan({ token, finalGeometry })`, and take guides from `verification.guides` only.
 
 Guides must not be published from the plan. The fork publishes after exact-bound verification, and Review Focus item 1 is exactly this mistake.
 
@@ -1378,7 +1378,7 @@ Then rebuild and capture:
 
 ```bash
 cd src/web && npm run build
-VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium \
+YUNARI_CAPTURE=1 npx playwright test --project=desktop-chromium \
   --grep "snaps a resized object" --workers=1
 ```
 
@@ -1500,16 +1500,16 @@ git -C D:/git-repos/fabricjs-image-editor ls-tree -r --name-only 9efdd78a \
 
 Group them by behaviour class. Moving cases cover geometry (does the position land where the guide says), hold (does it stick and then release), lifecycle (does it start and end cleanly), and spacing (equal-spacing detection). Scaling follows the fork's actual matrix: geometry, hold, lifecycle, no-guide, Ctrl, minimum-size, round-trip and modes; it has no equal-spacing candidate or guide path.
 
-- [x] **Step 2: Write the Vigilia matrix**
+- [x] **Step 2: Write the Yunari matrix**
 
 New file `src/web/tests/e2e/snapping.spec.ts`, skipping every test on non-desktop projects the way `editor.spec.ts` does: `import { isDesktopSurface } from "./surface.js"` and `test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface")`. **Do not write a project-name comparison.** `isDesktopSurface` is the shared owner of the desktop surface set (`tests/e2e/surface.ts:13`, exported) and every editor case calls it; a second skip expression would be a second place for that set to be defined, and the two would drift. Follow the existing conventions:
 
-- Real gestures: `page.mouse.move/down/move({steps})/up` over `#vigilia-fabric-editor canvas.upper-canvas`. **Get artboard coordinates through `artboardScreenRect()`, not canvas box.** The canvas is host-sized and artboard contain-fitted inside it, so `box.x + (n / W) * box.width` drops `ty`. Put `artboardScreenRect`, `sceneToClient`, `clientOfScene` and `captureVisualReview` in one non-`.spec.ts` helper module consumed by both specs; a raw mapping or importing an executable `*.spec.ts` is forbidden.
-- Read resulting geometry through the debug handle found by `key.startsWith("vigilia-fabric-editor-")` (the same lookup `editor.spec.ts` uses in several places), which exposes `canvas.item(i)` and `canvas.getObjects()`. Prefer `getObjects().find(o => o.get("id") === …)` over `item(i)` — an index is a fixture-order assumption that a scene change silently breaks, and the id is what the case is about.
+- Real gestures: `page.mouse.move/down/move({steps})/up` over `#yunari-fabric-editor canvas.upper-canvas`. **Get artboard coordinates through `artboardScreenRect()`, not canvas box.** The canvas is host-sized and artboard contain-fitted inside it, so `box.x + (n / W) * box.width` drops `ty`. Put `artboardScreenRect`, `sceneToClient`, `clientOfScene` and `captureVisualReview` in one non-`.spec.ts` helper module consumed by both specs; a raw mapping or importing an executable `*.spec.ts` is forbidden.
+- Read resulting geometry through the debug handle found by `key.startsWith("yunari-fabric-editor-")` (the same lookup `editor.spec.ts` uses in several places), which exposes `canvas.item(i)` and `canvas.getObjects()`. Prefer `getObjects().find(o => o.get("id") === …)` over `item(i)` — an index is a fixture-order assumption that a scene change silently breaks, and the id is what the case is about.
 - Assert **values**, not counts: after the gesture, read the object's `left`/`top` (move) or `width`/`height` (resize) and compare with the expected number.
 - For guide presence, assert on the rendered pixels the guide occupies — sample the artboard row or column the guide should run along — not on `screenshot.byteLength`. A byte-length assertion is the defect this task exists to replace.
 
-One test per `(active target kind, behaviour)` case, named after the fork's case so the two can be compared. For both **moving** and **resizing**, run geometry, multi-step re-plan, release, no-guide and Ctrl against a shape, a text object and a group. The active target itself must change; varying only source fixtures is insufficient. Moving additionally runs equal-spacing against all three active target kinds. Resize does not claim equal-spacing: neither the fork nor Vigilia's scale candidate/guide path supports it.
+One test per `(active target kind, behaviour)` case, named after the fork's case so the two can be compared. For both **moving** and **resizing**, run geometry, multi-step re-plan, release, no-guide and Ctrl against a shape, a text object and a group. The active target itself must change; varying only source fixtures is insufficient. Moving additionally runs equal-spacing against all three active target kinds. Resize does not claim equal-spacing: neither the fork nor Yunari's scale candidate/guide path supports it.
 
 The resize half needs Task 7, so write it after that task lands.
 
@@ -1517,7 +1517,7 @@ The resize half needs Task 7, so write it after that task lands.
 carries one acceptance item that plan closed without meeting — "Object actions appear in the layer
 panel's bottom row, not per row, and render from the same registry the canvas dock uses" — verified in
 jsdom but never in a browser. One case: select an object; assert bridge active id and visible canvas dock;
-assert visible `[data-vigilia-layer-actions]` is contained by visible `[data-vigilia-panel="layers"]`, is
+assert visible `[data-yunari-layer-actions]` is contained by visible `[data-yunari-panel="layers"]`, is
 not inside any layer row, and is below the rendered tree/last row within panel bounds; then compare footer
 and dock **entry sets**, not a hard-coded list. Record result in that spec's acceptance section during
 Task 10 close-out.
@@ -1533,7 +1533,7 @@ Reintroduce the `83248dc` bug — a per-gesture marker — and rerun. Expected: 
 
 - [x] **Step 5: Register the evidence and commit**
 
-The matrix's cases assert on rendered pixels and read geometry, so most need no capture. **The resize capture is already registered and committed by Task 7** — do not add it again. If Step 2 introduces capture titles, register each under `Editor mechanics` in `docs/evidence/screenshots/README.md`. Capture titles use shared `captureVisualReview(page, testInfo, "<name>")`; it remains gated by `VIGILIA_CAPTURE`. Move `captureVisualReview`, `artboardScreenRect`, `sceneToClient` and `clientOfScene` from `editor.spec.ts` to the one non-`.spec.ts` helper module, then import it from both specs. This preserves one coordinate/capture owner without importing executable test declarations. No raw `box.x + …` mapping or ungated `page.screenshot` is permitted.
+The matrix's cases assert on rendered pixels and read geometry, so most need no capture. **The resize capture is already registered and committed by Task 7** — do not add it again. If Step 2 introduces capture titles, register each under `Editor mechanics` in `docs/evidence/screenshots/README.md`. Capture titles use shared `captureVisualReview(page, testInfo, "<name>")`; it remains gated by `YUNARI_CAPTURE`. Move `captureVisualReview`, `artboardScreenRect`, `sceneToClient` and `clientOfScene` from `editor.spec.ts` to the one non-`.spec.ts` helper module, then import it from both specs. This preserves one coordinate/capture owner without importing executable test declarations. No raw `box.x + …` mapping or ungated `page.screenshot` is permitted.
 
 ```bash
 git add src/web/tests/e2e/snapping.spec.ts \
@@ -1631,11 +1631,11 @@ over `line-snapping.ts`, `anchor-buckets.ts`, `snap-target-resolver.ts` and `pix
 
 **The answer is already measured: DROP.** Verify the measurement below rather than re-deriving it — the chain above is context for *why* the fallback existed, not a decision still to be made.
 
-- All four fallback modules are **absent** from Vigilia: `line-snapping.ts`, `anchor-buckets.ts`, `pixel-grid.ts` and `snap-target-resolver.ts` — none exists under `snap-manager/`. The spec already classifies the fallback as absent and names these four modules.
+- All four fallback modules are **absent** from Yunari: `line-snapping.ts`, `anchor-buckets.ts`, `pixel-grid.ts` and `snap-target-resolver.ts` — none exists under `snap-manager/`. The spec already classifies the fallback as absent and names these four modules.
 - `scaling/scaling-step-snap-guards.ts` (1,322 lines, ported in Tasks 4–6) has **zero importers**: `grep -rn "scaling-step-snap-guards" packages/` returns only its own provenance comment. Its sole fork caller was `pixel-grid.ts`, which is absent. The ported guard family is unreachable by design.
 - **Also dispose of every other ported `scaling/` file Task 7's report leaves unconsumed** — `scaling/standard-scale-control.ts` is the known one (zero importers today; its three fork consumers are all controllers this plan does not port), and Task 7 was asked to state whether its fresh controller consumes it. Re-measure rather than trusting that note: a ported file with no importer is the defect this plan exists to remove, and Task 3 already set the precedent by deleting every dead spacing port.
 
-Record **drop** in the spec's `## Key decisions to make in planning` §3, with that reason — the fallback's entry point does not exist in Vigilia, and the guard family only it consumed is unreachable code. Vigilia's broader candidate filter is precisely why fewer objects are declined, which is the spec's own argument for why the fallback's justification is weaker. Do not leave it unstated — that is how the defects this plan fixes survived.
+Record **drop** in the spec's `## Key decisions to make in planning` §3, with that reason — the fallback's entry point does not exist in Yunari, and the guard family only it consumed is unreachable code. Yunari's broader candidate filter is precisely why fewer objects are declined, which is the spec's own argument for why the fallback's justification is weaker. Do not leave it unstated — that is how the defects this plan fixes survived.
 
 **Do not write a test asserting the guard family works.** A test for unreachable code is green-and-wrong: it passes while proving nothing about shipped behaviour.
 
@@ -1647,7 +1647,7 @@ Record **drop** in the spec's `## Key decisions to make in planning` §3, with t
 
 §175's body needs no change — it is the requirement this work satisfies — but it has no design link, unlike its neighbours §172–§174, which each end `Design: [<name>](../superpowers/specs/<file>.md).` Add that line to §175, pointing at `2026-09-25-snapping-fidelity.md`, in the same shape.
 
-In the behaviour review, move the **Resize-time snapping** candidate out of `## Candidates` (it is at `:14-21`) and add it to the `## Promoted to requirements` bullet list, in the same shape as the existing two entries (name, one clause of history, the requirement it became). Its current text also carries the disproved claim that resize snapping was skipped because the scaling subsystem was "coupled to object types Vigilia does not have" — Tasks 4–6 showed only two modules carry real coupling, so state that instead. Leave `### Rulers, configurable grid/guides and pixel snapping` where it is; this plan does not touch it. Keep `### Vendored snapping geometry split` (`:48-52`) where it is — that is the rule this plan's ported files are the explicit exception under, and Task 7's `// ported: fork 9efdd78a …` marker is what cites it.
+In the behaviour review, move the **Resize-time snapping** candidate out of `## Candidates` (it is at `:14-21`) and add it to the `## Promoted to requirements` bullet list, in the same shape as the existing two entries (name, one clause of history, the requirement it became). Its current text also carries the disproved claim that resize snapping was skipped because the scaling subsystem was "coupled to object types Yunari does not have" — Tasks 4–6 showed only two modules carry real coupling, so state that instead. Leave `### Rulers, configurable grid/guides and pixel snapping` where it is; this plan does not touch it. Keep `### Vendored snapping geometry split` (`:48-52`) where it is — that is the rule this plan's ported files are the explicit exception under, and Task 7's `// ported: fork 9efdd78a …` marker is what cites it.
 
 The spec's status line already names this plan (`2026-09-25-snapping-fidelity.md:3` — "planned; see [the snapping fidelity plan]"), so there is nothing to flip there; confirm it still reads that way and move on.
 
@@ -1655,7 +1655,7 @@ The spec's status line already names this plan (`2026-09-25-snapping-fidelity.md
 
 Open, in the editor, and record what each shows: guides during a drag, guides during a resize, an equal-spacing guide with its distance label, Ctrl-drag and Ctrl-resize with no guides. Each is a visible behaviour; none is proven by a unit test asserting a guide array.
 
-`captureVisualReview` is gated on `VIGILIA_CAPTURE`, so a plain `--grep` run produces no file — four of these five also have no registered capture name. Run the interactive walkthrough rather than inventing names: `node packages/host/bin/vigilia.js` (build the host first), then perform each gesture by hand. A screenshot the capture gate did not ask for and the README does not register is not evidence, and adding a name for it is Task 9's job, not this one's.
+`captureVisualReview` is gated on `YUNARI_CAPTURE`, so a plain `--grep` run produces no file — four of these five also have no registered capture name. Run the interactive walkthrough rather than inventing names: `node packages/host/bin/yunari.js` (build the host first), then perform each gesture by hand. A screenshot the capture gate did not ask for and the README does not register is not evidence, and adding a name for it is Task 9's job, not this one's.
 
 - [x] **Step 6: Update STATUS.md**
 
@@ -1682,7 +1682,7 @@ git commit -m "docs(product): close the snapping fidelity review"
 - Create: `src/web/packages/editor/src/snap-manager/text-width-resize.dom.test.ts`
 - Modify: `src/web/tests/e2e/snapping.spec.ts`
 - Modify: the bug index and the BR-002 record, which later became
-  [issues #5](https://github.com/peterng1618/vigilia/issues/5)
+  [issues #5](https://github.com/peterng1618/yunari/issues/5)
 
 **Interfaces:**
 - Consumes: `ScaleSnappingRuntime` (`resolveScalePlan`/`refineScalePlan`/`verifyScalePlan`),
@@ -1691,7 +1691,7 @@ git commit -m "docs(product): close the snapping fidelity review"
   landed. Produces: verified guides for the `object:resizing` gesture.
 
 **Outcome.** Resizing a Textbox by `ml`/`mr` snaps the same way a shape or group
-resizes by the same handle. This closes [BR-002](https://github.com/peterng1618/vigilia/issues/5).
+resizes by the same handle. This closes [BR-002](https://github.com/peterng1618/yunari/issues/5).
 
 **Why the gap exists.** Fabric gives a Textbox `changeWidth` side controls
 (`createResizeControls`, `actionName: RESIZING`) instead of the `scaleX` controls a
@@ -1709,7 +1709,7 @@ whole of the gap.
   re-wrap.
 - The fork's four `text-width-resize-*` modules are **not** a transcription. They read
   `EditorTextbox`/`BackgroundTextbox` (`autoExpand`, `dynamicMinWidth`, padding and
-  corner radii) and publish guides through `editor.snappingManager`. Vigilia has plain
+  corner radii) and publish guides through `editor.snappingManager`. Yunari has plain
   `fabric/es` `Textbox` and returns guides. Strip that coupling; keep the algorithm
   and thresholds. The fork stays read-only.
 - Fabric applies the resize before `object:resizing` fires, so the raw step value is

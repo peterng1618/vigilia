@@ -1,4 +1,4 @@
-# Wallpaper Engine as a source of Vigilia background media — design
+# Wallpaper Engine as a source of Yunari background media — design
 
 - **Date:** 2026-10-21
 - **Status:** proposed
@@ -10,7 +10,7 @@
 ## What this is, and is not
 
 **This is** an importer that reads the Wallpaper Engine library already sitting
-on the author's disk and produces Vigilia assets: images directly, videos through
+on the author's disk and produces Yunari assets: images directly, videos through
 the shared media normalizer, and a guided path for scene themes that uses
 Wallpaper Engine's own export — PNG when the scene is still at rest, MP4 when it
 is animated.
@@ -23,13 +23,13 @@ sections after it exist because those two doors are shut.
 
 These were decided during the investigation and this spec does not re-open them.
 
-**R1 — Vigilia never drives, injects into or patches Wallpaper Engine.** The only
+**R1 — Yunari never drives, injects into or patches Wallpaper Engine.** The only
 supported automation surface was removed by the vendor on purpose (§2). The
 importer reads the library, writes one project directory of its own (§8), and
 launches the editor at it. It never sends input to a running Wallpaper Engine,
 never edits the app's configuration, and never touches the app's own files.
 
-**R2 — Vigilia does not render Wallpaper Engine scenes.** 98% of the local
+**R2 — Yunari does not render Wallpaper Engine scenes.** 98% of the local
 library's parsed scenes carry a particle system, an animation layer, a text
 object or an effect chain — the engine itself, not a video encoder (§3). Scene
 themes resolve to a guided export.
@@ -170,7 +170,7 @@ A CLI path would require injecting a DLL or patching `wallpaperui.exe`. That is
 fragile across every Wallpaper Engine update, and it contradicts an explicit,
 vendor-enforced refusal.
 
-## 3. Why Vigilia does not render scenes
+## 3. Why Yunari does not render scenes
 
 The video export itself is trivial — allocate frames, step the scene, read back,
 crossfade, encode. Every cost is in producing the frames.
@@ -232,7 +232,7 @@ These are not exceptions being tolerated one by one. They are elements that make
 no difference on a non-interactive display: parallax and mouse layers only move
 when the pointer does, sound is not in the picture, and a clock is whatever the
 frame caught it at. Their presence beside a texture does not stop the theme being
-a static image **in Vigilia's terms** — a theme we flatten to one frame and
+a static image **in Yunari's terms** — a theme we flatten to one frame and
 accept the result.
 
 So the test is not "the picture never changes". It is: does anything animate on
@@ -258,7 +258,7 @@ moving thing. Adding `model` and `light` to the test changes the count by zero �
 no still scene carries either key — so the test is those three.
 
 **A clock must not reach the background, in either format.** Text does not
-disqualify the theme, but it must not be exported into the asset. Vigilia draws
+disqualify the theme, but it must not be exported into the asset. Yunari draws
 its own clock, so a burnt-in one is at best a duplicate and at worst a wrong
 time — frozen at one instant in a PNG, and looping the same minute forever in an
 MP4. Both are worse than the weather label it often sits beside. So the export
@@ -389,7 +389,7 @@ Add pane looks exactly as it does today on a machine without Wallpaper Engine.
 
 ## 6. The video budget
 
-Vigilia's existing caps are **32 MiB per asset**, **128 assets**, **128 MiB
+Yunari's existing caps are **32 MiB per asset**, **128 assets**, **128 MiB
 total** (`host/src/themes/store.ts`). Measured across the 156 local video
 wallpapers:
 
@@ -444,7 +444,7 @@ it does not name, is refused for the same reason a stray thumbnail is.
 
 ```json
 {
-  "format": "vigilia-theme-credits",
+  "format": "yunari-theme-credits",
   "version": 1,
   "entries": [
     {
@@ -467,7 +467,7 @@ it does not name, is refused for the same reason a stray thumbnail is.
   later asset finder adds its own without a format change.
 - `license` is `unknown` when nothing was recorded. It is never guessed and
   never omitted — an absent licence is a fact worth showing.
-- `changes` records what Vigilia did to the bytes. Re-encoding is a derivative
+- `changes` records what Yunari did to the bytes. Re-encoding is a derivative
   work; the file says so.
 
 ### 7.3 What the importer writes
@@ -490,13 +490,13 @@ future addition that needs a Steam Web API key, and is out of scope here.
 ## 8. Scene themes: the guided export
 
 A scene cannot be imported; the author must render it once with the tool that
-can. The flow reduces that to a sequence of clicks, and Vigilia does every part
+can. The flow reduces that to a sequence of clicks, and Yunari does every part
 of it that does not need the author's hands.
 
 1. **The author selects the theme as a background.** That is the trigger. There
    is no separate "import a Wallpaper Engine theme" errand, and no confirmation
    before the unpack (R8).
-2. **Vigilia unpacks it, silently.** The host extracts `scene.pkg` into
+2. **Yunari unpacks it, silently.** The host extracts `scene.pkg` into
    `projects/myprojects/<workshopId>/` and writes the item's `project.json`
    beside the members with its one packed-only field rewritten: `file` becomes
    `scene.json`. A subscribed project says `"file": "scene.pkg"` while a source
@@ -507,7 +507,7 @@ of it that does not need the author's hands.
    be opened without this (§8.1). If the directory is already there, it is an
    earlier unpack of the same item: nothing is rewritten and the flow goes
    straight on (R8).
-3. **Vigilia opens the editor on it** — `wallpaperui.exe`, with `-project <path>`
+3. **Yunari opens the editor on it** — `wallpaperui.exe`, with `-project <path>`
    if that flag selects the project (§14.1) and otherwise with the author picking
    it from the list. A launch, not a drive (R1).
 4. **The sheet guides the export**, with the settings §4.1's still test chooses:
@@ -526,17 +526,17 @@ of it that does not need the author's hands.
 
    **First: delete the dynamic text.** A clock, a weather label or a media title
    is a wrong time frozen in a PNG and a wrong time looping forever in an MP4,
-   and Vigilia draws its own clock either way (§4.1). The sheet lists the
+   and Yunari draws its own clock either way (§4.1). The sheet lists the
    deletion as a step — not a suggestion — whenever the item's `hasText` is
    true, for both formats, and says nothing about it for a scene without text.
    The author deletes those objects in Wallpaper Engine's own editor, which is
    also the answer to the deferred element-removal request without any change to
-   policy (R1); Vigilia never edits the scene for them.
+   policy (R1); Yunari never edits the scene for them.
 5. **The sheet watches for the result.** While it is open, it polls the host for
    files modified since it opened — `.png` or `.mp4` according to the format
    above — in `<install>/projects/temp/`, `<install>/projects/myprojects/`, and
    the Windows `Videos` folder only. The newest match is offered as the import.
-   The polling scope is fixed and small on purpose; Vigilia does not roam the
+   The polling scope is fixed and small on purpose; Yunari does not roam the
    author's profile.
 6. **The asset arrives through the ordinary path.** A PNG becomes an image asset;
    an MP4 goes through the shared media normalizer (§6) and becomes a video
@@ -561,7 +561,7 @@ Wallpaper Engine refuses a downloaded scene twice, by design:
   image editor: a `.pkg` is the compiled output, and the author's project data
   was never in it.
 
-The vendor's own help page points at unpacking, and that is the one step Vigilia
+The vendor's own help page points at unpacking, and that is the one step Yunari
 can take. The container is small enough to be unambiguous, and was decoded and
 validated against two real packages while writing this:
 
@@ -583,9 +583,9 @@ author's Installed tab, so the flow leaves something behind on their machine.
 The sheet says so once, where it lists the export steps, rather than asking
 before it starts (R8).
 
-Element removal is a **step the author takes and Vigilia only names** (§8, step
+Element removal is a **step the author takes and Yunari only names** (§8, step
 4): no scene is edited by the importer, and nothing about the removal is data
-Vigilia stores. The author's own Wallpaper Engine property values (§1.3) are what
+Yunari stores. The author's own Wallpaper Engine property values (§1.3) are what
 the render reads.
 
 ## 9. What already exists, and must not be rebuilt
@@ -608,7 +608,7 @@ Required because the work touches `theme-package/src/index.ts` and proposes a
 change to the normalizer. Recorded here; the decision note lands before the first
 write.
 
-**Rung 1 — Vigilia.** Searched for an existing library scanner, asset source,
+**Rung 1 — Yunari.** Searched for an existing library scanner, asset source,
 transcoder and credits model. Found: asset manager (import, caps), theme store
 (import, thumbnails, trash), background media (video playback), no scanner, no
 transcoder, no credits model anywhere.
@@ -667,7 +667,7 @@ No failure is silent. Every refusal names the item and the reason, in the editor
 
 ## 12. What this does not decide
 
-- Whether a Vigilia theme can be *published* with a Wallpaper Engine derivative
+- Whether a Yunari theme can be *published* with a Wallpaper Engine derivative
   in it. The credits file records provenance; the legal question is not answered
   here.
 - Author display names (§7.3).

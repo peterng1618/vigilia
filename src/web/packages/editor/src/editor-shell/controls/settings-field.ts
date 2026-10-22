@@ -1,7 +1,7 @@
 import {
   readSetting,
   type SettingsFieldDescriptor,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { uiCopy } from "../../ui-copy.js";
 import { numberField } from "./number-field.js";
 import { tooltip } from "./tooltip.js";
@@ -62,7 +62,7 @@ export function settingsField(
   // existed, so the specs, the screenshots and `rebuild-driver` keep addressing
   // the same controls. A nested setting's `property` is its dotted path, so its
   // id carries the dots too.
-  const id = `vigilia-chart-setting-${descriptor.property}`;
+  const id = `yunari-chart-setting-${descriptor.property}`;
   const disabled = options.disabledReason !== undefined;
   const parts =
     descriptor.kind === "number"
@@ -115,7 +115,7 @@ function numberParts(
   const field = numberField({
     label: descriptor.label,
     value: initial,
-    data: "vigiliaChartSetting",
+    data: "yunariChartSetting",
     dataValue: descriptor.property,
     ...(descriptor.step === undefined ? {} : { step: descriptor.step }),
     ...(descriptor.min === undefined ? {} : { min: descriptor.min }),
@@ -171,7 +171,7 @@ function checkParts(
   const input = document.createElement("input");
   input.type = "checkbox";
   input.id = label.htmlFor = id;
-  input.dataset["vigiliaChartSetting"] = descriptor.property;
+  input.dataset["yunariChartSetting"] = descriptor.property;
   const current = options.value === true;
   input.checked = current;
   input.addEventListener("change", () => {
@@ -195,7 +195,7 @@ function selectParts(
   const { row, label } = fieldRow(descriptor.label);
   const select = document.createElement("select");
   select.id = label.htmlFor = id;
-  select.dataset["vigiliaChartSetting"] = descriptor.property;
+  select.dataset["yunariChartSetting"] = descriptor.property;
 
   if (descriptor.optional === true) {
     // A select has no empty value of its own, and the absent state is one the
@@ -233,7 +233,7 @@ function fieldRow(labelText: string): {
   readonly label: HTMLLabelElement;
 } {
   const row = document.createElement("div");
-  row.className = "vigilia-field";
+  row.className = "yunari-field";
   const label = document.createElement("label");
   label.textContent = labelText;
 
@@ -245,7 +245,7 @@ function fieldRow(labelText: string): {
     this panel does not have. Returns the id the control describes itself by. */
 function describe(row: HTMLElement, id: string, text: string): string {
   const note = document.createElement("p");
-  note.className = "vigilia-field-hint";
+  note.className = "yunari-field-hint";
   note.id = id;
   note.textContent = text;
   note.style.cssText =

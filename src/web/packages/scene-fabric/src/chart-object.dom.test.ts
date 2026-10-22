@@ -10,10 +10,10 @@ import {
   defaultLineSettings,
   defaultPieSettings,
   type Sample,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { Group, StaticCanvas } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
-import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
+import { YunariChart, type YunariChartOptions } from "./chart-object.js";
 
 /**
  * The chart object, actually mounted.
@@ -60,8 +60,8 @@ const LINE_OPTION = buildLineOption(
 );
 
 function chartOptions(
-  overrides: Partial<VigiliaChartOptions> = {},
-): VigiliaChartOptions {
+  overrides: Partial<YunariChartOptions> = {},
+): YunariChartOptions {
   return {
     family: "line",
     settings: defaultLineSettings,
@@ -69,7 +69,7 @@ function chartOptions(
     height: 180,
     option: LINE_OPTION,
     ...overrides,
-  } as VigiliaChartOptions;
+  } as YunariChartOptions;
 }
 
 describe("constructing a chart", () => {
@@ -82,7 +82,7 @@ describe("constructing a chart", () => {
       undefined,
       1_000,
     );
-    const chart = new VigiliaChart(chartOptions({ option }));
+    const chart = new YunariChart(chartOptions({ option }));
     const element = (chart as unknown as { _element: HTMLCanvasElement })
       ._element;
 
@@ -97,7 +97,7 @@ describe("constructing a chart", () => {
     // instance. When `option` was a getter with no setter this threw
     // `TypeError: Cannot set property option … which has only a getter` —
     // every single time, and nothing noticed.
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
 
     expect(chart.disposed).toBe(false);
     expect(chart.option).toBe(LINE_OPTION);
@@ -109,7 +109,7 @@ describe("constructing a chart", () => {
     // not `this.constructor.getDefaults()`, so a subclass must assign its own.
     // Measured here rather than read off the static, because the whole point is
     // that the constructor path applies them.
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
 
     expect(chart.originX).toBe("center");
     expect(chart.originY).toBe("center");
@@ -122,7 +122,7 @@ describe("constructing a chart", () => {
     // The previous constructor re-set origin and caching *after* applying the
     // caller's options, so it silently overrode them. Nothing needs a different
     // origin today; this asserts the mechanism, not a use case.
-    const chart = new VigiliaChart(
+    const chart = new YunariChart(
       chartOptions({ angle: 37, left: 10, top: 20 }),
     );
 
@@ -135,16 +135,16 @@ describe("constructing a chart", () => {
   it("refuses a box it cannot draw in", () => {
     // `echarts.init` on a 0-sized element does not fail loudly, it just never
     // draws. Refuse rather than coerce.
-    expect(() => new VigiliaChart(chartOptions({ width: 0 }))).toThrow(
+    expect(() => new YunariChart(chartOptions({ width: 0 }))).toThrow(
       /positive width and height/,
     );
-    expect(() => new VigiliaChart(chartOptions({ height: 0 }))).toThrow(
+    expect(() => new YunariChart(chartOptions({ height: 0 }))).toThrow(
       /positive width and height/,
     );
   });
 
   it("clamps the render scale against its own box", () => {
-    const chart = new VigiliaChart(chartOptions({ renderScale: 99 }));
+    const chart = new YunariChart(chartOptions({ renderScale: 99 }));
 
     expect(chart.renderScale).toBeLessThanOrEqual(3);
     chart.dispose();
@@ -154,7 +154,7 @@ describe("constructing a chart", () => {
     // `chart-engine.ts` registers four families and `GridComponent`. A missing
     // registration does not throw on `init` — the chart just never draws — so
     // the only honest check is to build each family's real option and mount it.
-    const built: readonly VigiliaChartOptions[] = [
+    const built: readonly YunariChartOptions[] = [
       chartOptions(),
       chartOptions({
         family: "gauge",
@@ -182,7 +182,7 @@ describe("constructing a chart", () => {
     ];
 
     for (const options of built) {
-      const chart = new VigiliaChart(options);
+      const chart = new YunariChart(options);
 
       expect(chart.disposed, `${String(options.family)} failed to mount`).toBe(
         false,
@@ -194,10 +194,10 @@ describe("constructing a chart", () => {
 
 describe("the serialised object", () => {
   it("emits the custom properties and nothing derived", () => {
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
     const json = chart.toObject();
 
-    expect(json).toMatchObject({ type: "VigiliaChart", family: "line" });
+    expect(json).toMatchObject({ type: "YunariChart", family: "line" });
     expect(json.settings).toEqual(defaultLineSettings);
 
     // The §67 rule, measured on the real output rather than on the key list:
@@ -220,7 +220,7 @@ describe("the serialised object", () => {
     // What makes this worth asserting rather than deleting is that the chart
     // must behave like `Rect` and `Group` here. A single class still writing
     // its origin is how the withdrawn rule comes back for one object.
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
 
     chart.includeDefaultValues = false;
 
@@ -238,15 +238,15 @@ describe("the serialised object", () => {
     // `FabricObject._fromObject` — including `enlivenObjectEnlivables`, which
     // an override would have skipped. A revived chart carries configuration,
     // not pixels: the option is derived and `plan.ts` re-supplies it.
-    const chart = new VigiliaChart(chartOptions({ angle: 37 }));
+    const chart = new YunariChart(chartOptions({ angle: 37 }));
     const json = chart.toObject();
     chart.dispose();
 
     // Cast because the inherited static keeps `FabricObject`'s return type; the
     // point of the assertion below is that the instance is the right class.
-    const revived = (await VigiliaChart.fromObject(json)) as VigiliaChart;
+    const revived = (await YunariChart.fromObject(json)) as YunariChart;
 
-    expect(revived).toBeInstanceOf(VigiliaChart);
+    expect(revived).toBeInstanceOf(YunariChart);
     expect(revived.family).toBe("line");
     expect(revived.settings).toEqual(defaultLineSettings);
     expect(revived.angle).toBe(37);
@@ -259,13 +259,13 @@ describe("the serialised object", () => {
 describe("the canvas round trip", () => {
   it("revives a chart through StaticCanvas.loadFromJSON", async () => {
     // The path stage 3 actually depends on, which had no test: only
-    // `VigiliaChart.fromObject` did, and calling that directly proves the class
+    // `YunariChart.fromObject` did, and calling that directly proves the class
     // can revive itself while saying nothing about whether the *canvas* can
     // find it. That needs `classRegistry.setClass` to have run — which happens
     // on import of `chart-object.ts`, and is exactly what `package.json`'s
     // `sideEffects` entry stops a bundler from dropping.
     const source = new StaticCanvas(undefined, { width: 400, height: 300 });
-    const chart = new VigiliaChart(
+    const chart = new YunariChart(
       chartOptions({ left: 150, top: 90, angle: 37 }),
     );
 
@@ -283,15 +283,15 @@ describe("the canvas round trip", () => {
 
     const [first] = objects;
 
-    // The assertion that matters: a real `VigiliaChart`, not the plain
+    // The assertion that matters: a real `YunariChart`, not the plain
     // `FabricObject` the registry falls back to when a class is unknown.
-    expect(first).toBeInstanceOf(VigiliaChart);
-    expect((first as VigiliaChart).family).toBe("line");
-    expect((first as VigiliaChart).settings).toEqual(defaultLineSettings);
+    expect(first).toBeInstanceOf(YunariChart);
+    expect((first as YunariChart).family).toBe("line");
+    expect((first as YunariChart).settings).toEqual(defaultLineSettings);
     expect(first?.angle).toBe(37);
     // Derived, so it does not survive — `plan.ts` re-supplies it, which is the
     // normal render path.
-    expect((first as VigiliaChart).option).toBeUndefined();
+    expect((first as YunariChart).option).toBeUndefined();
 
     await revived.dispose();
   });
@@ -305,7 +305,7 @@ describe("an engine repaint reaches the canvas", () => {
     // group would have kept redrawing a stale bitmap while the chart repainted
     // underneath it: a live chart frozen the moment it is grouped, and visible
     // nowhere else.
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
     const group = new Group([chart]);
 
     group.set("dirty", false);
@@ -330,7 +330,7 @@ describe("an engine repaint reaches the canvas", () => {
     // pixels instead, so a repaint it did not ask for invalidates the object
     // (which is what an enclosing group's cache reads) without redrawing the
     // scene.
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
     const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
     canvas.add(chart);
     const render = vi
@@ -364,7 +364,7 @@ describe("a gauge crossing from no value to a value", () => {
   }
 
   function gaugeChart(option: ReturnType<typeof buildGaugeOption>) {
-    return new VigiliaChart(
+    return new YunariChart(
       chartOptions({
         family: "gauge",
         settings: defaultGaugeSettings,
@@ -415,7 +415,7 @@ describe("a gauge crossing from no value to a value", () => {
 describe("disposal", () => {
   it("is idempotent and refuses further work", () => {
     // Whatever owns the canvas must call this: `canvas.remove()` does not.
-    const chart = new VigiliaChart(chartOptions());
+    const chart = new YunariChart(chartOptions());
 
     chart.dispose();
     expect(chart.disposed).toBe(true);

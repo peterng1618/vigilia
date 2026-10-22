@@ -28,7 +28,7 @@ façade** (one owner), or **the façade returns an outcome each caller reports**
 owns the words is the decision; the row is filed rather than fixed because it is
 that question rather than a line.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** `constructing`, `insertObject`, `insertNewText`, `insertNewShape`
 (`new-object-panel.ts`); `EditorDocument.insertCard` (`editor-document.ts`);

@@ -1,4 +1,4 @@
-import type { PlanBox, PlanNode, ScenePlan } from "@vigilia/renderer-core";
+import type { PlanBox, PlanNode, ScenePlan } from "@yunari/renderer-core";
 import {
   Ellipse,
   FabricImage,
@@ -9,7 +9,7 @@ import {
   type StaticCanvas,
   Textbox,
 } from "fabric/es";
-import { VigiliaChart } from "./chart-object.js";
+import { YunariChart } from "./chart-object.js";
 import {
   createNodeObject,
   type NodeContext,
@@ -182,7 +182,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
       renderScale = scale;
 
       for (const object of objects.values()) {
-        if (object instanceof VigiliaChart) {
+        if (object instanceof YunariChart) {
           object.setRenderScale(scale);
         }
       }
@@ -295,7 +295,7 @@ function createApplyArtboard(canvas: StaticCanvas): (plan: ScenePlan) => void {
   };
 }
 
-/** Index revived Fabric objects by persisted Vigilia id, including group children. */
+/** Index revived Fabric objects by persisted Yunari id, including group children. */
 function adoptExisting(
   canvas: StaticCanvas,
   objects: Map<string, FabricObject>,
@@ -374,7 +374,7 @@ function classFor(node: PlanNode): FabricObjectClass | undefined {
       return node.content.layout.wrap ? Textbox : FabricText;
 
     case "chart":
-      return VigiliaChart;
+      return YunariChart;
 
     case "image":
       return FabricImage;

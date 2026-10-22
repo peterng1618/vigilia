@@ -9,7 +9,7 @@ file is insufficient for sharing or future distribution.
 
 ## Decision
 
-`@vigilia/theme-package` owns the bounded ZIP layout and validation for
+`@yunari/theme-package` owns the bounded ZIP layout and validation for
 asset-bearing themes. A validated package ZIP is the immutable portable/share
 artifact. Local folders may be authoring workspaces but never a competing
 published format.

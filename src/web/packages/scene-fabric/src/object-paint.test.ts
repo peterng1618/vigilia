@@ -9,13 +9,13 @@
  * a different key than it used to.
  */
 
-import type { Globals } from "@vigilia/renderer-core";
+import type { Globals } from "@yunari/renderer-core";
 import { Circle, Path, Polyline, Rect, StaticCanvas } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
   applyObjectPalettePaints,
   paintPropertyFor,
-  VIGILIA_PAINT_PROPERTY,
+  YUNARI_PAINT_PROPERTY,
 } from "./object-paint.js";
 import { reviveScene, serialiseScene } from "./persist.js";
 import { Arc, Wedge } from "./sector-object.js";
@@ -82,7 +82,7 @@ describe("a stroke reference round-trips like a fill one", () => {
       stroke: "#4da3ff",
       strokeWidth: 3.3,
     });
-    icon.set(VIGILIA_PAINT_PROPERTY, { stroke: "palette.text" });
+    icon.set(YUNARI_PAINT_PROPERTY, { stroke: "palette.text" });
 
     const scene = serialiseScene(canvasOf(icon));
     const revived = new StaticCanvas(undefined, { width: 200, height: 200 });
@@ -91,7 +91,7 @@ describe("a stroke reference round-trips like a fill one", () => {
 
     // The map is persisted whole, so which key the panel filed it under does
     // not change the guarantee; this is the same path a fill reference takes.
-    expect(scene.objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({
+    expect(scene.objects[0]![YUNARI_PAINT_PROPERTY]).toEqual({
       stroke: "palette.text",
     });
     const back = revived.getObjects()[0]!;
@@ -127,7 +127,7 @@ describe("an arc that carries a fill", () => {
       fill: "#4da3ff",
       stroke: "",
     });
-    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    arc.set(YUNARI_PAINT_PROPERTY, { fill: "palette.cpu" });
     return arc;
   };
 
@@ -162,7 +162,7 @@ describe("an arc that carries a fill", () => {
   it("keeps the authored reference, because refusing a fill is not deleting it", () => {
     // The refusal is about what is **drawn**, and it is re-applied on every load,
     // so nothing depends on the reference being removed to survive. Removing it
-    // costs the author their document instead: `vigiliaPaint` is a persisted
+    // costs the author their document instead: `yunariPaint` is a persisted
     // property, so dropping the key is written into the next save, and an author
     // who opens a theme carrying a hand-authored filled arc loses that fill for
     // good with nothing said. A retained reference paints nothing either way.
@@ -174,13 +174,13 @@ describe("an arc that carries a fill", () => {
       const back = revived.getObjects()[0] as Arc;
 
       expect(back.fill, "paints no fill").toBe("");
-      expect(back.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+      expect(back.get(YUNARI_PAINT_PROPERTY)).toEqual({
         fill: "palette.cpu",
       });
       // And the assertion that would have caught it: the reference survives a
       // further save, so a document opened and closed is not quietly rewritten.
       const saved = serialiseScene(revived);
-      expect(saved.objects[0]![VIGILIA_PAINT_PROPERTY]).toEqual({
+      expect(saved.objects[0]![YUNARI_PAINT_PROPERTY]).toEqual({
         fill: "palette.cpu",
       });
     });
@@ -195,7 +195,7 @@ describe("an arc that carries a fill", () => {
       { x: 40, y: 40 },
     ]);
     polyline.set({ fill: "#4da3ff", stroke: "" });
-    polyline.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    polyline.set(YUNARI_PAINT_PROPERTY, { fill: "palette.cpu" });
 
     applyObjectPalettePaints(canvasOf(polyline), globals);
 
@@ -211,7 +211,7 @@ describe("an arc that carries a fill", () => {
       endAngle: 90,
       fill: "#4da3ff",
     });
-    wedge.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    wedge.set(YUNARI_PAINT_PROPERTY, { fill: "palette.cpu" });
 
     applyObjectPalettePaints(canvasOf(wedge), globals);
 
@@ -259,7 +259,7 @@ describe("a refusal the author is told about", () => {
       endAngle: 90,
       fill: "#4da3ff",
     });
-    wedge.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    wedge.set(YUNARI_PAINT_PROPERTY, { fill: "palette.cpu" });
 
     applyObjectPalettePaints(canvasOf(wedge), globals, {
       onRefusedPaint: (message) => reported.push(message),
@@ -280,6 +280,6 @@ function filledArcForRefusal(): Arc {
     fill: "#4da3ff",
     stroke: "",
   });
-  arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+  arc.set(YUNARI_PAINT_PROPERTY, { fill: "palette.cpu" });
   return arc;
 }

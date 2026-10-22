@@ -32,7 +32,7 @@ scripts**:
 A blank page. The shape worth solving: **a guard whose credential cannot reach
 the very request it is protecting.**
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `server.ts` (every `403`), `isLoopbackRemote`, `allowed`,
 `displaySession`, `SAMPLE_STREAM_PATH`.

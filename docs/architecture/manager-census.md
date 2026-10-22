@@ -182,7 +182,7 @@ reads **9 files in 7 directories, only 5 of which are managers**.
    document geometry, and the map's row for this module says handle styling.
 8. **A text box's authored height.** `controls-manager/index.ts:255` calls
    `writeAuthoredBoxDimension`; it is one of **three** writers of
-   `vigiliaText.box` — the shared helper, `selection-inspector/index.ts`, and
+   `yunariText.box` — the shared helper, `selection-inspector/index.ts`, and
    `text-manager/index.ts:88-91`, which stores `width * scaleX`, the value
    `scene-fabric/src/authored-box.ts` says would grow the box on every pass.
 9. **Two persisted object properties and layer reordering.**
@@ -282,7 +282,7 @@ Is any concept it owns also decided by another manager? Answered for all twenty.
 | `object-lock-manager` | **Yes.** It writes the flag but does not own the predicate: 8 other files spell the test, in two polarities. |
 | `indicator-manager` | **Yes.** Reads `locked` (`:93`) *and* Fabric's `lockRotation`/`lockMovementX`/`lockMovementY`/`lockScalingX`/`lockScalingY` directly — it decides what a lock means for a tooltip, separately from the manager that derives those flags. |
 | `clipboard-manager` | **Yes.** `get("locked") === true` twice (`:310`, `:338`); also consumes `deletion-manager` for cut, which is correct delegation rather than a second owner. |
-| `controls-manager` | **Yes.** `get("locked") !== true` twice (`:82`, `:157`), and it is one of the three writers of `vigiliaText.box`. |
+| `controls-manager` | **Yes.** `get("locked") !== true` twice (`:82`, `:157`), and it is one of the three writers of `yunariText.box`. |
 | `history-manager` | **Yes.** `selectedIds`/`reselect` (`:113`) re-spell the `ActiveSelection` membership rule. |
 | `grouping-manager` | **Yes.** Writes `selectable`/`evented` — the lock manager's idiom — and `editRefusal` returns `"locked"` as a refusal reason in a fourth module. |
 | `viewport-manager` | **Yes.** Re-derives contain and centring, which `renderer-core/src/artboard.ts` owns; the editor version has none of that guard. |
@@ -395,7 +395,7 @@ shape; the claim above rests on the two true shelves.
 | Row | At HEAD | Note |
 |---|---|---|
 | `vg-232` | **Confirmed, and worse.** | Six/three/two owners per path, and the six-owner block is now written twice (`:1188-1193`, `:1214-1219`). |
-| `vg-233` | **Confirmed.** | `text-manager/index.ts:88-91` still stores `width * scaleX`; three writers of `vigiliaText.box` at HEAD. |
+| `vg-233` | **Confirmed.** | `text-manager/index.ts:88-91` still stores `width * scaleX`; three writers of `yunariText.box` at HEAD. |
 | `vg-234` | **Confirmed — the complaint stands.** | The second writer moved from `appearance.ts` to `selection-inspector/index.ts:384`, and the guard **is** now shared — `view.ts:456` and `bridge.ts:346` both call `isObjectName`. The code half is as the row says. The row's other half — "the validity guard lives in a module the ownership map does not name" — also stands: `object-name.ts` is a sibling inside `renderer-core/src/theme/`, a shelf under §1.1's rule, so the registry row for that directory names no module. It is the same standard §1.2 items 3, 4 and 16 are held to. Two writers and two notification behaviours survive. |
 | `vg-235` | **Confirmed.** | The base, `#saveLibrary`, `#writeLibrary`, `#libraryPayload`, `#resolveConflict`, `#openLibrary` are all still in `editor-session.ts`, and the map has no row for them. |
 | `vg-236` | **Confirmed.** | `bridge.ts` writes `name`, `visible`, `locked` and owns `reorderLayer`. |
@@ -460,7 +460,7 @@ what Task 9 should order by.
 | 1 | **The `locked` predicate** — export one predicate from `object-lock-manager` (or drop it to a shared Fabric-facts module, which is the same question `vg-248` raises) | **11 sites in 9 files, in 7 directories — 5 of them managers**; owner reach 2 files. Search: `get\(\s*["`']locked["`']\s*\)` over non-test `.ts`/`.tsx`. | **Cross-cutting.** Every reader is a manager or an inspector surface. The ordering question is real: `object-lock-manager` may sit above some of its readers. |
 | 2 | **The Fabric membership fact** — one `ownerOf`/`targetsOf` | **8 spellings in 6 files** (4 `parent instanceof Group` + 4 `ActiveSelection` companions; `layer-manager`, `deletion-manager`, `layer-tree`, `bridge`, `canvas-nudge`, `history-manager`). | **Cross-cutting.** The fact is pure Fabric knowledge, so `scene-fabric` is a candidate owner alongside `layer-manager`. `deletion-manager`'s divergent signature is the mechanism, not a style difference. |
 | 3 | **The globals fan-out** — one "globals changed" signal the session owns | **7 files**: `editor-session.ts` plus the six receivers it names by hand (`editor-shell.ts`, `live-runtime.ts`, `chart-manager/index.ts`, `new-object-panel.ts`, `artboard-panel.ts`, `selection-inspector/index.ts`). Search: `setGlobals` over non-test `.ts`/`.tsx`, then read the four call paths. | **Cross-cutting.** Cheapest to fix by deleting three lists, not by adding an abstraction. |
-| 4 | **The three writers of `vigiliaText.box`** | **3 files**: `scene-fabric/src/authored-box.ts`, `selection-inspector/index.ts`, `text-manager/index.ts:88-91`. | **Clean extraction.** `authored-box.ts` already claims the job; the other two call it and stop writing inline. |
+| 4 | **The three writers of `yunariText.box`** | **3 files**: `scene-fabric/src/authored-box.ts`, `selection-inspector/index.ts`, `text-manager/index.ts:88-91`. | **Clean extraction.** `authored-box.ts` already claims the job; the other two call it and stop writing inline. |
 | 5 | **The save protocol / library base** | **1 file** — `editor-session.ts`, ~250 lines. | **Clean extraction** into its own owner, and the only candidate whose move *creates* a manager rather than merging one. Its size is a fact about it, not the reason it is numbered 5. |
 | 6 | **`controls-manager`'s document writes** | **1 file** for the Line scalars (`controls-manager/index.ts:107-197`); the text-box height is the same file's call at `:255` and follows candidate 4. | **Clean-ish.** Moving the Line scalars out means the controls module stops writing document state. |
 | 7 | **The contain rule** | **2 files**: `viewport-manager/index.ts` (the re-derivation) and `renderer-core/src/artboard.ts` (the owner, reached by neither). | **Cross-cutting and a decision first.** The editor's fit is deliberately "the display's screen, not the host" — so this may be a second rule that needs its own row and guard rather than a caller of the first. |

@@ -52,7 +52,7 @@ describe("display session token", () => {
     await session.fetch("/api/themes", { method: "GET" });
 
     const [, init] = fetcher.mock.calls[0] ?? [];
-    expect(new Headers(init?.headers).get("x-vigilia-session")).toBe("abc123");
+    expect(new Headers(init?.headers).get("x-yunari-session")).toBe("abc123");
     expect(init?.method).toBe("GET");
   });
 

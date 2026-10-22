@@ -21,7 +21,7 @@
  * does not understand is worse than one that misses a case.
  *
  * Escape hatch, for scratch that genuinely belongs somewhere else: set
- * `VIGILIA_ALLOW_SCRATCH=1` for the invocation, so using it is visible.
+ * `YUNARI_ALLOW_SCRATCH=1` for the invocation, so using it is visible.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -43,7 +43,7 @@ const SANCTIONED = [tmpdir(), "C:\\tmp", join(homedir(), ".claude")];
  * A path segment that marks scratch **anywhere it appears**. Deliberately short:
  * these are the names the debris actually used, plus the stores a build writes.
  * `-scratch` is matched as a suffix, because the debris spelled it four ways
- * (`scratch/`, `.agent-scratch/`, `.task252-scratch/`, `vigilia-scratch/`).
+ * (`scratch/`, `.agent-scratch/`, `.task252-scratch/`, `yunari-scratch/`).
  */
 const SCRATCH_SEGMENTS = new Set([
   "tmp",
@@ -256,9 +256,9 @@ function selfTest() {
     ["docs/tmp/probe.md", true],
     ["gate.log", true],
     ["src/web/coverage/index.html", true],
-    ["D:\\vigilia-tester\\aspect.mjs", true],
+    ["D:\\yunari-tester\\aspect.mjs", true],
     ["D:\\scratch\\fontpicker-mut\\mutate.mjs", true],
-    ["C:\\tmp\\vigilia\\probe.mjs", false],
+    ["C:\\tmp\\yunari\\probe.mjs", false],
     ["C:\\Users\\peter\\AppData\\Local\\Temp\\claude\\x\\probe.mjs", false],
     ["C:\\Users\\peter\\.claude\\projects\\x\\memory\\note.md", false],
     ["C:\\Users\\peter\\Documents\\probe.mjs", true],
@@ -283,7 +283,7 @@ function selfTest() {
   };
   command("npm run gate > C:\\tmp\\gate.log 2>&1", false);
   command("npx vitest run > /dev/null 2>&1", false);
-  command("git diff > D:\\vigilia-pass\\diff.txt", true);
+  command("git diff > D:\\yunari-pass\\diff.txt", true);
   command("npx vitest run --outputFile=/tmp/full.json", true);
   command("npm run build 2>&1 | tee C:\\tmp\\build.log", false);
 
@@ -377,7 +377,7 @@ try {
     process.exit(1);
   }
 
-  if (process.env.VIGILIA_ALLOW_SCRATCH === "1") process.exit(0);
+  if (process.env.YUNARI_ALLOW_SCRATCH === "1") process.exit(0);
   const input = JSON.parse(readFileSync(0, "utf8") || "{}");
   const verdict = decide(input);
   if (verdict === undefined) process.exit(0);
@@ -395,7 +395,7 @@ try {
       "  file a reviewer or a walk will pick up as if it were evidence, and",
       "  gitignoring it hides it from git and from nothing else.",
       "",
-      "  If this is genuinely not scratch, set VIGILIA_ALLOW_SCRATCH=1 and say",
+      "  If this is genuinely not scratch, set YUNARI_ALLOW_SCRATCH=1 and say",
       "  why in the commit.",
       "",
     ].join("\n"),

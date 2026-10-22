@@ -23,7 +23,7 @@ against the real tree — `the walk found the tree` counts > 400 files and `the 
 suite` counts > 200 test files — so every case it names is a live file whose status the sweep does not
 control and the product is free to change for good reasons.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scripts/dead-code-sweep.mjs`'s self-test block (`:911-1000`), its `--json` candidate
 report at `014d38b3`, and every other check that names a file (`SETTINGS_FIELD`, `LIVE`,

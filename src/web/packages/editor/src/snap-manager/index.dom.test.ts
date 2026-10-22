@@ -327,7 +327,7 @@ describe("collectSnapSources", () => {
       new Rect({ id: "card-body", left: 0, top: 0, width: 300, height: 200 }),
       part,
     ]);
-    // `id` is Vigilia's own persisted property, not a Fabric GroupProps key.
+    // `id` is Yunari's own persisted property, not a Fabric GroupProps key.
     card.set("id", "card");
     return card;
   }

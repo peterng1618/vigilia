@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
@@ -43,7 +43,7 @@ test.describe("glass lifecycle in the real editor", () => {
     await page.waitForFunction(
       () => {
         const image = document.querySelector<HTMLImageElement>(
-          "[data-vigilia-background-media] img",
+          "[data-yunari-background-media] img",
         );
         return image !== null && image.complete && image.naturalWidth > 0;
       },
@@ -56,7 +56,7 @@ test.describe("glass lifecycle in the real editor", () => {
       const canvas = (
         Object.entries(scope).find(
           ([name, value]) =>
-            name.startsWith("vigilia-fabric-editor") &&
+            name.startsWith("yunari-fabric-editor") &&
             (value as { canvas?: { upperCanvasEl?: HTMLCanvasElement } }).canvas
               ?.upperCanvasEl?.isConnected,
         )?.[1] as
@@ -79,7 +79,7 @@ test.describe("glass lifecycle in the real editor", () => {
       // complaint about the fixture made by a search that never looked at it.
       const panel = canvas
         .getObjects()
-        .find((object) => object["vigiliaGlass"] !== undefined);
+        .find((object) => object["yunariGlass"] !== undefined);
       if (panel === undefined)
         throw new Error("the fixture has no glass panel");
 

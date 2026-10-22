@@ -61,7 +61,7 @@ exists.
    switch actually is and does not move it.** See *Out of scope*.
 3. **Nothing user-visible says "fake data".** `rg -i "fake"` over editor, host,
    renderer-core and player source returns: `preview-source.ts` importing
-   `FakeSampleSource` from `@vigilia/fake-source`, three identifiers in
+   `FakeSampleSource` from `@yunari/fake-source`, three identifiers in
    `player/src/main.ts`, and **one visible string** — `player/src/ui-copy.ts:74`,
    `syntheticData`, which is the player's §97 disclosure that a *fixture* display is showing
    invented values, not the editor's switch. So §6's "stop describing it as 'fake data'" is
@@ -76,7 +76,7 @@ exists.
    should still say where it is.
 5. **`pairing.ts` is §145's own owner and is complete.** 32 bytes of CSPRNG, base64url,
    constant-time comparison, a 12-hour default TTL, minted and revoked only from loopback
-   (`server.ts:406-447`), read from a `?session=` query or an `x-vigilia-session` header
+   (`server.ts:406-447`), read from a `?session=` query or an `x-yunari-session` header
    (`server.ts:378-391`). **Do not touch it.** The control *mints from* it; it does not
    change it.
 6. **The header is `shell-layout.tsx:459-478`** — `<header className="editor-shell-header
@@ -242,7 +242,7 @@ task that owns the code** — the task is named in brackets.
    palettes. A QR drawn from palette tokens inverts to light-on-dark, which many scanners
    refuse, and the editor that produced it looks perfectly fine. A person expects the code
    to scan whatever palette they are in. [Task 2.3 — pinned by a test that the rendered
-   modules and background are the fixed ink and paper, not a `--vigilia-*` token.]
+   modules and background are the fixed ink and paper, not a `--yunari-*` token.]
 3. **The address changing under a live publish.** DHCP re-leases, a dock is unplugged and
    Wi-Fi joins, a VPN connects. The header shows an address it read once, and the QR goes
    stale without anything on screen changing. A person expects the header to say where the
@@ -271,7 +271,7 @@ task that owns the code** — the task is named in brackets.
   names does not exist (see *What is already true*, 2). The work that would land it is
   **`vg-161`**, which this plan's brief lists as deliberately not ours. This plan changes
   the copy where the switch actually is.
-- **Renaming `@vigilia/fake-source`, `FakeSampleSource`, `createPreviewSource`, or the
+- **Renaming `@yunari/fake-source`, `FakeSampleSource`, `createPreviewSource`, or the
   `"preview"` discriminant.** §6 asks to stop *describing* the source as fake, not to
   rename the owner. A rename would touch the player, both build configs and every fixture
   for no user-visible gain.
@@ -562,7 +562,7 @@ resolver. Either message is the dependency being absent, which is the point of t
 
 ```bash
 cd src/web
-npm install --workspace @vigilia/editor qr
+npm install --workspace @yunari/editor qr
 npm install --save-dev jsqr
 ```
 
@@ -960,7 +960,7 @@ proved by starting a host bound to the LAN.
 - Create: `src/web/packages/editor/src/hosting-client.test.ts`
 
 **Interfaces:**
-- Consumes: `HostingState` from `@vigilia/host`'s `GET /api/hosting` — over the wire, not
+- Consumes: `HostingState` from `@yunari/host`'s `GET /api/hosting` — over the wire, not
   as an import; the editor does not depend on the host package.
 - Produces:
   ```ts
@@ -1152,7 +1152,7 @@ git commit -m "feat(editor): read this host's address, and mint a display creden
 shapes were read from `server.ts` rather than assumed: `GET /api/hosting` answers
 `{ lan, address, port, sessions[] }`, and `POST /api/pairing/sessions?label=display` answers
 `201 { session: { token, expiresAt } }`. The client reaches both over HTTP and imports nothing
-from `@vigilia/host` — the editor package must not gain that edge.
+from `@yunari/host` — the editor package must not gain that edge.
 
 Note that `HostingAnswer` deliberately drops the `sessions` array the route returns. If no
 surface ends up reading it, the field is dead weight on a route whose whole reason for
@@ -1181,7 +1181,7 @@ existing is the address — worth settling when Task 2.3 renders the header.
   Rendering an `<svg role="img">` whose accessible name is the URL it carries.
 
 **Constraints.** **The QR never takes shell palette tokens.** The editor ships six
-palettes and a QR drawn in `--vigilia-*` foreground inverts to light-on-dark under the
+palettes and a QR drawn in `--yunari-*` foreground inverts to light-on-dark under the
 dark ones, which many scanners refuse — and the editor that produced it looks correct. Ink
 and paper are fixed: `#101418` on `#ffffff`. The accessible name is the URL, because a
 code a sighted reader can scan is a code a voice user must still be able to hear.
@@ -1240,7 +1240,7 @@ it("draws the ink on the paper, whatever palette the shell is in", () => {
   const module = svg?.querySelectorAll("path")[0];
   expect(module?.getAttribute("fill")).toBe("#101418");
   // A token here would invert under a dark shell palette and stop scanning.
-  expect(module?.getAttribute("fill")).not.toContain("var(--vigilia");
+  expect(module?.getAttribute("fill")).not.toContain("var(--yunari");
 });
 
 it("names the URL it carries, so the code is not only a picture", () => {
@@ -1303,7 +1303,7 @@ export function QrCode({
       height={side}
       viewBox={`0 0 ${modules} ${modules}`}
       style={style}
-      data-vigilia-qr=""
+      data-yunari-qr=""
     >
       <rect width={modules} height={modules} fill={PAPER} />
       {/* One path for every dark module: a version-5 symbol is over a thousand
@@ -1346,8 +1346,8 @@ Expected: PASS, two tests.
 
 - [ ] **Step 5: Prove the tests can fail**
 
-Change `INK` to `"var(--vigilia-text, #101418)"`. Re-run Step 4. Expected: FAIL on the `toBe`
-that pins the fill — `expected 'var(--vigilia-text, #101418)' to be '#101418'`. The
+Change `INK` to `"var(--yunari-text, #101418)"`. Re-run Step 4. Expected: FAIL on the `toBe`
+that pins the fill — `expected 'var(--yunari-text, #101418)' to be '#101418'`. The
 `not.toContain` line would fail too, but it is asserted second and never reached. Restore
 `#101418` and re-run to green.
 
@@ -1443,7 +1443,7 @@ it("shows the address the host named, with a code for it", async () => {
   const { getByText, container } = render(<PublishControl />);
 
   await waitFor(() => expect(getByText("http://192.168.1.42:5227")).toBeTruthy());
-  expect(container.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label")).toBe(
+  expect(container.querySelector("[data-yunari-qr]")?.getAttribute("aria-label")).toBe(
     `QR code: http://192.168.1.42:5227/?session=${token}`,
   );
   expect(getByText(uiCopy.publish.warning)).toBeTruthy();
@@ -1536,7 +1536,7 @@ export function PublishControl(): React.JSX.Element | null {
   if (shown === undefined) return null;
 
   return (
-    <div className="editor-shell-publish editor-glass" data-vigilia-publish="">
+    <div className="editor-shell-publish editor-glass" data-yunari-publish="">
       <div className="editor-shell-publish-text">
         <span className="editor-shell-publish-label">{uiCopy.publish.address}</span>
         <code className="editor-shell-publish-url">{`http://${shown.address}:${shown.port}`}</code>
@@ -1573,7 +1573,7 @@ import { PublishControl } from "./publish-control.js";
 
 In `editor-shell.css`, add a block beside `.editor-shell-menubar` (`:292`) that lays the
 surface out as a row with the text stack on the left and the code on the right, sized by
-its own content, using the existing `--vigilia-*` chrome tokens — **except** inside the
+its own content, using the existing `--yunari-*` chrome tokens — **except** inside the
 `svg`, which Task 2.2 has already fixed.
 
 - [ ] **Step 4: Run the tests to verify they pass**
@@ -1609,21 +1609,21 @@ const APP_DIR = path.join(here, "..", "..", ".e2e-publish-app");
 ```
 
 Seed `APP_DIR/themes` with one package (reuse `writeThemePackage` from
-`@vigilia/theme-package` the way `tests/e2e/host-theme.ts` does), spawn
-`node packages/host/bin/vigilia.js --no-browser --port ${PORT} --host 0.0.0.0
+`@yunari/theme-package` the way `tests/e2e/host-theme.ts` does), spawn
+`node packages/host/bin/yunari.js --no-browser --port ${PORT} --host 0.0.0.0
 --themes-dir … --settings-dir …`, wait for `/api/health`, then:
 
 ```ts
 test("the header carries the address and a code for it", async ({ page }) => {
   await page.goto(`http://127.0.0.1:${PORT}/editor/`);
 
-  const publish = page.locator("[data-vigilia-publish]");
+  const publish = page.locator("[data-yunari-publish]");
   await expect(publish).toBeVisible();
 
   const shown = await publish.locator("code").textContent();
   expect(shown).toMatch(/^http:\/\/\d+\.\d+\.\d+\.\d+:\d+$/);
 
-  const qr = publish.locator("[data-vigilia-qr]");
+  const qr = publish.locator("[data-yunari-qr]");
   const box = await qr.boundingBox();
   // A camera needs modules, not a thumbnail: 45 modules at 3 px.
   expect(box?.width).toBeGreaterThanOrEqual(120);
@@ -1669,7 +1669,7 @@ unfinished:
 - **The spec's host flags were wrong.** It spawns with `--themes-dir … --settings-dir …`; the
   real flag is `--app-dir`. The fixture envelope must also carry the immutable `palette.none`
   token or `writeThemePackage` refuses it.
-- **The CSS tokens are `--shell-*`, not `--vigilia-*`.** `editor-shell.css` has never used the
+- **The CSS tokens are `--shell-*`, not `--yunari-*`.** `editor-shell.css` has never used the
   latter; §35's separation is between the *shell* palette and the authored theme globals, and
   the shell's own tokens are the right ones for chrome.
 - **`ui-copy.publish.copy` ("Copy link") and `.copied` are rendered by nothing**, here or in
@@ -1738,7 +1738,7 @@ import { createHostingSettingsStore } from "./hosting.js";
 let directory: string;
 
 beforeEach(async () => {
-  directory = await mkdtemp(path.join(os.tmpdir(), "vigilia-hosting-"));
+  directory = await mkdtemp(path.join(os.tmpdir(), "yunari-hosting-"));
 });
 
 afterEach(async () => {
@@ -2696,7 +2696,7 @@ add:
 test("the LAN is turned on from the editor, and the port does not move", async ({ page }) => {
   await page.goto(`http://127.0.0.1:${PORT}/editor/`);
 
-  const publish = page.locator("[data-vigilia-publish]");
+  const publish = page.locator("[data-yunari-publish]");
   const toggle = publish.getByRole("button");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await expect(publish.locator("code")).toHaveCount(0);
@@ -2705,7 +2705,7 @@ test("the LAN is turned on from the editor, and the port does not move", async (
 
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect(publish.locator("code")).toHaveText(new RegExp(`:${PORT}$`));
-  await expect(publish.locator("[data-vigilia-qr]")).toBeVisible();
+  await expect(publish.locator("[data-yunari-qr]")).toBeVisible();
 
   // Still the same origin, which is the claim `createHostBinding` makes.
   expect(page.url()).toContain(`127.0.0.1:${PORT}/editor/`);
@@ -2810,7 +2810,7 @@ stored theme; the editor pushes on change and stops when asked.
 **Interfaces:**
 - Consumes: `decodeThemeSave` (`themes/wire.ts`) — the editor already speaks this wire
   for a save, and publishing is the same document; `validateFabricThemeEnvelope`
-  (`@vigilia/renderer-core`).
+  (`@yunari/renderer-core`).
 - Produces:
   ```ts
   export interface PublishedDocument {
@@ -2890,7 +2890,7 @@ closes the host and removes the directory in a `finally`.
 
 ```ts
 it("publishes a theme this library has, and says no to everything else", async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-publish-"));
   const hosted = createHostServer({
     registry: new ProviderRegistry([]),
     bundles: { player: dir, editor: dir },
@@ -2963,7 +2963,7 @@ it("publishes a theme this library has, and says no to everything else", async (
 });
 
 it("refuses a document it cannot validate", async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-publish-"));
   const hosted = createHostServer({
     registry: new ProviderRegistry([]),
     bundles: { player: dir, editor: dir },
@@ -3011,7 +3011,7 @@ which of the two it is.
 Create `src/web/packages/host/src/serve/published.ts`:
 
 ```ts
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 
 /**
  * The document an author is looking at, held while they are looking at it.
@@ -3715,7 +3715,7 @@ Expected: FAIL — `Failed to resolve import "./publish-client.js"`.
 Create `src/web/packages/editor/src/publish-client.ts`:
 
 ```ts
-import type { FabricThemeEnvelopeInput } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelopeInput } from "@yunari/renderer-core";
 
 /**
  * Pushes the document being edited to the host, at most once per burst.
@@ -3911,8 +3911,8 @@ builders, which this spec does not need):
 test("an edit reaches the display while the editor has it open", async ({ page, context }) => {
   // Author: open the stored theme, publish, move something.
   await page.goto(`${HOST}/editor/`);
-  await page.locator("[data-vigilia-publish]").getByRole("button").click();
-  await expect(page.locator("[data-vigilia-qr]")).toBeVisible();
+  await page.locator("[data-yunari-publish]").getByRole("button").click();
+  await expect(page.locator("[data-yunari-qr]")).toBeVisible();
 
   const display = await context.newPage();
   await display.setViewportSize({ width: 390, height: 844 });
@@ -3954,11 +3954,11 @@ test("an edit reaches the display while the editor has it open", async ({ page, 
   // and fires `input` alone. `controls/number-field.ts:92` sets
   // `input.type = "number"`, so these two boxes take the type-into path and the
   // blur is the only thing that produces the `change` they listen for.
-  await page.locator("[data-vigilia-artboard-width]").fill("320");
-  await page.locator("[data-vigilia-artboard-width]").blur();
-  await page.locator("[data-vigilia-artboard-height]").fill("240");
-  await page.locator("[data-vigilia-artboard-height]").blur();
-  await expect(page.locator("[data-vigilia-publish]")).toContainText(/publishing|live/i);
+  await page.locator("[data-yunari-artboard-width]").fill("320");
+  await page.locator("[data-yunari-artboard-width]").blur();
+  await page.locator("[data-yunari-artboard-height]").fill("240");
+  await page.locator("[data-yunari-artboard-height]").blur();
+  await expect(page.locator("[data-yunari-publish]")).toContainText(/publishing|live/i);
 
   await expect
     .poll(
@@ -3989,14 +3989,14 @@ test("an edit reaches the display while the editor has it open", async ({ page, 
 ```
 
 **The handles in that snippet were read out of the source rather than remembered, and every
-one of them is real at `ffd62db6`** — `[data-vigilia-publish]` (`publish-control.tsx:117`),
-`[data-vigilia-qr]` (`qr-symbol.tsx:48`), `#artboard` (`player/index.html:35`),
-`[data-vigilia-artboard-width]` and `[data-vigilia-artboard-height]`
+one of them is real at `ffd62db6`** — `[data-yunari-publish]` (`publish-control.tsx:117`),
+`[data-yunari-qr]` (`qr-symbol.tsx:48`), `#artboard` (`player/index.html:35`),
+`[data-yunari-artboard-width]` and `[data-yunari-artboard-height]`
 (`artboard-panel.ts:155,160`). `tests/e2e/publish-header.spec.ts` already drives the first
 two, so copy its arrangement rather than inventing one.
 
-**What was not real, and is why this paragraph exists:** `window.__vigilia` is not a global
-this repo has, and the editor's diagnostic handle is `vigilia-fabric-editor-<N>` — N per
+**What was not real, and is why this paragraph exists:** `window.__yunari` is not a global
+this repo has, and the editor's diagnostic handle is `yunari-fabric-editor-<N>` — N per
 instance, so a cached name reads as a live document after that document is gone.
 `rebuild-driver.ts:45-51` finds it by duck-typing `canvas` and `historyManager`, and reads
 through it only.
@@ -4018,7 +4018,7 @@ a change the display sees**:
 ```ts
 test("closing the editor puts the display back on the stored theme", async ({ page, context }) => {
   await page.goto(`${HOST}/editor/`);
-  await page.locator("[data-vigilia-publish]").getByRole("button").click();
+  await page.locator("[data-yunari-publish]").getByRole("button").click();
 
   const display = await context.newPage();
   await display.setViewportSize({ width: 390, height: 844 });
@@ -4146,7 +4146,7 @@ and the task is not complete until it is.**
   (`.gitignore:11`), so `test-results/publish/display-390.png` persisted nothing. This
   repo's evidence path is `captureVisualReview` (`tests/e2e/editor-canvas.ts:297`), which
   writes `docs/evidence/screenshots/<name>-<project>.png` and attaches it to the test info,
-  under `VIGILIA_CAPTURE=1` — and it admits only captures whose action is listed in
+  under `YUNARI_CAPTURE=1` — and it admits only captures whose action is listed in
   `docs/evidence/screenshots/README.md`. Task 1.1 hit the same wall and recorded it; here it
   is not a gap to note but the delivery of §6's acceptance item, *the phone shows the theme
   while the editor has it open*.
@@ -4163,7 +4163,7 @@ report that misdescribes its own artifact is the whole reason a controller opens
 artifact rather than the report.
 
 **The remedy, once `vg-176` lands:** add a capture row to the README's Player section, call
-`captureVisualReview` from the spec with that title, re-run under `VIGILIA_CAPTURE=1` and
+`captureVisualReview` from the spec with that title, re-run under `YUNARI_CAPTURE=1` and
 `--workers=1`, and read the PNG. The published frame is 320×240 against a stored 640×360, so
 the 4:3 light band against the page is the one thing in the picture that proves the display
 followed the editor.

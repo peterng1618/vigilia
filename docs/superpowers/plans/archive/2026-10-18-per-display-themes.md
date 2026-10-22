@@ -2298,7 +2298,7 @@ never probed, and that is the reason for the number rather than the number being
 `session.ts` gains an **optional third `storage` parameter**, and the URL wins when it carries
 a token, so a fresh pairing link can replace a stale stored one. **The probe never carries the
 display's credential**: `GET /api/host` is unauthenticated and CORS `*`, so it needs none, and
-attaching `x-vigilia-session` would offer this display's token to every address that answers —
+attaching `x-yunari-session` would offer this display's token to every address that answers —
 the opposite of what the stored `hostId` exists to prevent. Step 4 runs `main.dom.test.ts`;
 there is no `main.test.ts` in the player.
 
@@ -2790,7 +2790,7 @@ The seven rungs are worked and recorded in the note; the gate's own rule is that
 searches are the evidence.
 
 **Interfaces:**
-- Consumes: `glassTreatment`, `VIGILIA_GLASS_PROPERTY` (`renderer-core/src/theme/glass.ts`);
+- Consumes: `glassTreatment`, `YUNARI_GLASS_PROPERTY` (`renderer-core/src/theme/glass.ts`);
   the envelope's `artboard.backgroundMedia` and its asset declarations;
   `ThemeStore.list()`'s existing `readEnvelope`; the display row's `kind` (Task 4.1).
 - Produces:
@@ -2815,7 +2815,7 @@ found by walking the **envelope's own JSON tree**, not `glass.ts`'s `walk`: that
 private (`scene-fabric/src/glass.ts:746`) and yields `FabricObject`, and `renderer-core` is
 Fabric-free. **Two files are named `glass.ts`** — the walker is the scene-fabric one;
 `renderer-core/src/theme/glass.ts` is 90 lines and has no walker at all. The
-reuse that is real is `isGlassTreatment` / `VIGILIA_GLASS_PROPERTY`, which are exported
+reuse that is real is `isGlassTreatment` / `YUNARI_GLASS_PROPERTY`, which are exported
 (`renderer-core/src/theme/glass.ts:8,78`) — `glassTreatment` takes a `get(name)` accessor
 and is for revived objects only. The background's asset is
 `artboard.backgroundMedia.assetId` resolved against the envelope's **top-level `assets`**
@@ -2911,12 +2911,12 @@ against the envelope's own top-level `assets` to an entry whose **declared** `ki
 `"video"` — the declaration decides, because the model already refuses to infer an
 asset's type from its path (`AssetKind`'s own comment), and `gif` is refused as a
 background outright rather than being a second animated kind to reason about. Glass is
-any object carrying a treatment under `VIGILIA_GLASS_PROPERTY`, found by walking **the
+any object carrying a treatment under `YUNARI_GLASS_PROPERTY`, found by walking **the
 envelope's own JSON tree** — the tree is `envelope.scene` (`fabric-envelope.ts:35`, the
 opaque Fabric-authored scene, whose own objects are under its `objects` key) — because
 `renderer-core` is Fabric-free and `scene-fabric/src/glass.ts`'s walker is therefore
 neither reachable nor applicable. Each node is tested with **`isGlassTreatment` on its
-`VIGILIA_GLASS_PROPERTY` value**, not by re-testing the shape by hand.
+`YUNARI_GLASS_PROPERTY` value**, not by re-testing the shape by hand.
 `glassTreatment` itself is for revived objects and takes a `get(name)` accessor
 (`renderer-core/src/theme/glass.ts:69`), so it does not apply to raw JSON;
 `isGlassTreatment` (`renderer-core/src/theme/glass.ts:78`) does. Both live in the same

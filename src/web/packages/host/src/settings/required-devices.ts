@@ -1,5 +1,5 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { describeSemanticKey } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { describeSemanticKey } from "@yunari/renderer-core";
 import { ASSIGNABLE_GROUPS, type AssignableGroup } from "./devices.js";
 
 /**

@@ -1,4 +1,4 @@
-import type { ResolvedStyle } from "@vigilia/renderer-core";
+import type { ResolvedStyle } from "@yunari/renderer-core";
 import { Shadow } from "fabric/es";
 
 /**

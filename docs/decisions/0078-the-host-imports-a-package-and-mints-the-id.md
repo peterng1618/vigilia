@@ -6,7 +6,7 @@
 
 ## The problem
 
-A `.vigilia-theme` package the author brings in has to land in the library as a
+A `.yunari-theme` package the author brings in has to land in the library as a
 **host write** — it must survive the editor closing (the spec's *Import lands in
 the library*) — and it must **never overwrite**. Two mechanisms had to be chosen,
 and neither is obvious:
@@ -22,10 +22,10 @@ and neither is obvious:
    names the document it descends from, and a base-less save onto a taken id
    still replaces silently (vg-642, open, not this note's to fix).
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `theme-import.ts`, `parseThemePackage` / `serializeThemePackage`
-(`editor/src/persist.ts`), `readThemePackage` (`@vigilia/theme-package`),
+(`editor/src/persist.ts`), `readThemePackage` (`@yunari/theme-package`),
 `ThemeLibraryClient.save`, `ThemeStore.write` and its `base` / `overwrite`
 options, `isValidThemeId`, `THEME_ID_REGEX`, `fileNameFor`, `mintedDisplayId`
 (`settings/displays.ts`), `createThumbnailStore`, `repairScratch`.
@@ -53,7 +53,7 @@ Searched: `src/web/package.json`, `packages/*/package.json`, and
 Found: `nanoid` is in the tree (transitive), but it generates random ids rather
 than name-derived ones, and a random id would not be the name the author
 recognises in the library. **No slug or unique-name library is a direct
-dependency**, and none is in the tree. `@vigilia/theme-package` is a direct host
+dependency**, and none is in the tree. `@yunari/theme-package` is a direct host
 dependency and exports `readThemePackage` from its `src/index.ts`.
 
 ## Rung 3 — platform
@@ -115,7 +115,7 @@ being part of the write.
 
 ## Rung 6 — probe
 
-`C:\tmp\vigilia-a7-probe.mjs`, Node 22, Windows 11 (NTFS):
+`C:\tmp\yunari-a7-probe.mjs`, Node 22, Windows 11 (NTFS):
 
 - `fs.mkdir` onto an existing directory → **`EEXIST`** (the exclusive create is
   real).

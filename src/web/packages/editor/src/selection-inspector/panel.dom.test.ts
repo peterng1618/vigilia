@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { VIGILIA_PAINT_PROPERTY } from "@vigilia/scene-fabric";
+import { YUNARI_PAINT_PROPERTY } from "@yunari/scene-fabric";
 import {
   Circle,
   Ellipse,
@@ -177,23 +177,23 @@ describe("panel fields in the selection inspector", () => {
     // Non-vacuous: the selection must actually be a rectangle, or a gate that
     // refuses everything would satisfy the field assertions below.
     expect(rect).toBeInstanceOf(Rect);
-    expect(host.querySelector("[data-vigilia-panel-fill]")).not.toBeNull();
-    expect(host.querySelector("[data-vigilia-panel-stroke]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-panel-fill]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-panel-stroke]")).not.toBeNull();
     // A bounded pixel measure is a slider whose bound is the panel's own drawn
     // box — a border can be as wide as the object's smaller edge, a corner no
     // more than half of it (vg-478) — and the well beside the track is the
     // typed route, a text input that takes a decimal rather than a
     // native `<input type=number>`.
-    const border = field<HTMLInputElement>("[data-vigilia-panel-border]");
+    const border = field<HTMLInputElement>("[data-yunari-panel-border]");
     expect(border.type).toBe("range");
     expect(border.min).toBe("0");
     expect(border.max).toBe("200");
-    const radius = field<HTMLInputElement>("[data-vigilia-panel-radius]");
+    const radius = field<HTMLInputElement>("[data-yunari-panel-radius]");
     expect(radius.type).toBe("range");
     expect(radius.max).toBe("100");
     for (const selector of [
-      "[data-vigilia-panel-border-well]",
-      "[data-vigilia-panel-radius-well]",
+      "[data-yunari-panel-border-well]",
+      "[data-yunari-panel-radius-well]",
     ]) {
       expect(field<HTMLInputElement>(selector).inputMode, selector).toBe(
         "decimal",
@@ -206,13 +206,13 @@ describe("panel fields in the selection inspector", () => {
     rect.set({ shadow: new Shadow({ color: "#ecf5ff", blur: 8, offsetY: 4 }) });
     const { host } = setup(rect);
     for (const selector of [
-      "[data-vigilia-panel-fill]",
-      "[data-vigilia-panel-stroke]",
-      "[data-vigilia-panel-border]",
-      "[data-vigilia-panel-radius]",
-      "[data-vigilia-panel-shadow]",
-      "[data-vigilia-panel-shadow-blur]",
-      "[data-vigilia-panel-shadow-offset]",
+      "[data-yunari-panel-fill]",
+      "[data-yunari-panel-stroke]",
+      "[data-yunari-panel-border]",
+      "[data-yunari-panel-radius]",
+      "[data-yunari-panel-shadow]",
+      "[data-yunari-panel-shadow-blur]",
+      "[data-yunari-panel-shadow-offset]",
     ]) {
       const control = host.querySelector<HTMLElement>(selector)!;
       // A row's label is a `<label for>` where the control is labelable and the
@@ -243,9 +243,9 @@ describe("panel fields in the selection inspector", () => {
     // the panel offers is a slider with a typeable well beside it, because a
     // rule applied to some of them is the defect this sweep ends.
     for (const hook of [
-      "data-vigilia-panel-border",
-      "data-vigilia-panel-radius",
-      "data-vigilia-panel-shadow-blur",
+      "data-yunari-panel-border",
+      "data-yunari-panel-radius",
+      "data-yunari-panel-shadow-blur",
     ]) {
       const track = host.querySelector<HTMLInputElement>(`[${hook}]`)!;
       expect(track.type, hook).toBe("range");
@@ -259,11 +259,11 @@ describe("panel fields in the selection inspector", () => {
     // And the one that is deliberately typed-only: Fabric's offsetY is
     // unbounded, so a slider would offer a range nothing honours.
     const offset = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-panel-shadow-offset]",
+      "[data-yunari-panel-shadow-offset]",
     )!;
     expect(offset.type).toBe("text");
     expect(
-      host.querySelector("[data-vigilia-panel-shadow-offset-well]"),
+      host.querySelector("[data-yunari-panel-shadow-offset-well]"),
     ).toBeNull();
   });
 
@@ -271,12 +271,12 @@ describe("panel fields in the selection inspector", () => {
     const rect = panel();
     const { host, history } = setup(rect);
 
-    await choose(host, "data-vigilia-panel-fill", "Text");
+    await choose(host, "data-yunari-panel-fill", "Text");
 
     // The resolved paint and the authored reference both move, so the panel
     // still follows the token after the next palette edit.
     expect(rect.fill).toBe("#ecf5ff");
-    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.text" });
+    expect(rect.get(YUNARI_PAINT_PROPERTY)).toEqual({ fill: "palette.text" });
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
@@ -287,7 +287,7 @@ describe("panel fields in the selection inspector", () => {
     // disappear because they had recoloured something else was told nothing.
     const arc = createNewShape("arc", globals, "arc", { left: 0, top: 0 });
     arc.set({ fill: "#ecf5ff" });
-    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.text" });
+    arc.set(YUNARI_PAINT_PROPERTY, { fill: "palette.text" });
     const rect = panel();
     const { host, editor } = setup(rect, [arc]);
 
@@ -295,7 +295,7 @@ describe("panel fields in the selection inspector", () => {
     // could not satisfy this.
     expect(arc.fill, "the arc starts filled").toBe("#ecf5ff");
 
-    await choose(host, "data-vigilia-panel-fill", "Text");
+    await choose(host, "data-yunari-panel-fill", "Text");
 
     expect(arc.fill, "the arc's fill is withheld").toBe("");
     expect(
@@ -307,7 +307,7 @@ describe("panel fields in the selection inspector", () => {
   it("keeps the other references when one paint changes", async () => {
     const rect = panel();
     rect.set({
-      [VIGILIA_PAINT_PROPERTY]: {
+      [YUNARI_PAINT_PROPERTY]: {
         fill: "palette.background",
         stroke: "palette.text",
         shadowColor: "palette.text",
@@ -316,11 +316,11 @@ describe("panel fields in the selection inspector", () => {
     });
     const { host } = setup(rect);
 
-    await choose(host, "data-vigilia-panel-fill", "Text");
+    await choose(host, "data-yunari-panel-fill", "Text");
 
     // Palette identity is per property: choosing a fill must not silently
     // re-point the border or the shadow an author already set.
-    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(rect.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.text",
       stroke: "palette.text",
       shadowColor: "palette.text",
@@ -331,25 +331,21 @@ describe("panel fields in the selection inspector", () => {
     const rect = panel();
     rect.set({
       fill: "#0c0e13",
-      [VIGILIA_PAINT_PROPERTY]: { fill: "palette.background" },
+      [YUNARI_PAINT_PROPERTY]: { fill: "palette.background" },
     });
     const { host } = setup(rect);
 
-    await choose(
-      host,
-      "data-vigilia-panel-fill",
-      uiCopy.inspectorFields.notSet,
-    );
+    await choose(host, "data-yunari-panel-fill", uiCopy.inspectorFields.notSet);
 
     expect(rect.fill).toBe("");
-    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({});
+    expect(rect.get(YUNARI_PAINT_PROPERTY)).toEqual({});
   });
 
   it("sets the corner radius on both axes in one committed edit", async () => {
     const rect = panel();
     const { history, field } = setup(rect);
 
-    await edit(field<HTMLInputElement>("[data-vigilia-panel-radius]"), "24");
+    await edit(field<HTMLInputElement>("[data-yunari-panel-radius]"), "24");
 
     expect(rect.get("rx")).toBe(24);
     expect(rect.get("ry")).toBe(24);
@@ -364,13 +360,13 @@ describe("panel fields in the selection inspector", () => {
     // box rather than written here, so a resized panel re-bounds its own field.
     const rect = panel(); // 360 × 200, so the smaller edge is 200
     const { editor, field } = setup(rect);
-    const track = field<HTMLInputElement>("[data-vigilia-panel-radius]");
+    const track = field<HTMLInputElement>("[data-yunari-panel-radius]");
     expect(track.max).toBe("100");
 
     // A draft past the bound is kept with its reason rather than clamped (§5),
     // which is the rule every other bounded number in the column keeps.
     rect.set({ rx: 8, ry: 8 });
-    const well = field<HTMLInputElement>("[data-vigilia-panel-radius-well]");
+    const well = field<HTMLInputElement>("[data-yunari-panel-radius-well]");
     await edit(well, "240");
     expect(rect.get("rx")).toBe(8);
     expect(
@@ -394,7 +390,7 @@ describe("panel fields in the selection inspector", () => {
   it("refuses a negative border width, and the boundary clamps one that bypasses it", async () => {
     const rect = panel();
     const { editor, history, field } = setup(rect);
-    const width = field<HTMLInputElement>("[data-vigilia-panel-border-well]");
+    const width = field<HTMLInputElement>("[data-yunari-panel-border-well]");
     const before = rect.get("strokeWidth") as number;
 
     await edit(width, "-4");
@@ -435,9 +431,9 @@ describe("panel fields in the selection inspector", () => {
     // stores nothing either. Rounding would be a different act from displaying a
     // value a gesture left fractional.
     for (const selector of [
-      "[data-vigilia-panel-border-well]",
-      "[data-vigilia-panel-radius-well]",
-      "[data-vigilia-panel-shadow-blur-well]",
+      "[data-yunari-panel-border-well]",
+      "[data-yunari-panel-radius-well]",
+      "[data-yunari-panel-shadow-blur-well]",
     ]) {
       const box = host.querySelector<HTMLInputElement>(selector)!;
       await edit(box, "4.5");
@@ -461,7 +457,7 @@ describe("panel fields in the selection inspector", () => {
     const rect = panel();
     rect.set({ rx: 18, ry: 18 });
     const { history, field } = setup(rect);
-    const radius = field<HTMLInputElement>("[data-vigilia-panel-radius-well]");
+    const radius = field<HTMLInputElement>("[data-yunari-panel-radius-well]");
 
     await edit(radius, "");
 
@@ -472,7 +468,7 @@ describe("panel fields in the selection inspector", () => {
 
   it("offers only solid tokens for a shadow colour", async () => {
     const { host } = setup(panel());
-    const names = await optionsOf(host, "data-vigilia-panel-shadow");
+    const names = await optionsOf(host, "data-yunari-panel-shadow");
 
     expect(names).toContain("Text");
     // Fabric's Shadow colour is a string; the envelope refuses a gradient
@@ -484,7 +480,7 @@ describe("panel fields in the selection inspector", () => {
     const rect = panel();
     const { host, history } = setup(rect);
 
-    await choose(host, "data-vigilia-panel-shadow", "Text");
+    await choose(host, "data-yunari-panel-shadow", "Text");
     history.saveState.mockClear();
 
     const shadow = rect.get("shadow");
@@ -497,7 +493,7 @@ describe("panel fields in the selection inspector", () => {
     expect((shadow as Shadow).offsetY).toBeGreaterThan(0);
 
     await edit(
-      host.querySelector<HTMLInputElement>("[data-vigilia-panel-shadow-blur]")!,
+      host.querySelector<HTMLInputElement>("[data-yunari-panel-shadow-blur]")!,
       "24",
     );
 
@@ -508,13 +504,13 @@ describe("panel fields in the selection inspector", () => {
   it("moves the shadow down without touching its blur", async () => {
     const rect = panel();
     rect.set({
-      [VIGILIA_PAINT_PROPERTY]: { shadowColor: "palette.text" },
+      [YUNARI_PAINT_PROPERTY]: { shadowColor: "palette.text" },
       shadow: new Shadow({ color: "#ecf5ff", blur: 18, offsetY: 6 }),
     });
     const { field } = setup(rect);
 
     await edit(
-      field<HTMLInputElement>("[data-vigilia-panel-shadow-offset]"),
+      field<HTMLInputElement>("[data-yunari-panel-shadow-offset]"),
       "12",
     );
 
@@ -526,13 +522,11 @@ describe("panel fields in the selection inspector", () => {
   it("accepts a negative offset, which an imported shadow may already carry", async () => {
     const rect = panel();
     rect.set({
-      [VIGILIA_PAINT_PROPERTY]: { shadowColor: "palette.text" },
+      [YUNARI_PAINT_PROPERTY]: { shadowColor: "palette.text" },
       shadow: new Shadow({ color: "#ecf5ff", blur: 8, offsetY: -6 }),
     });
     const { history, field } = setup(rect);
-    const offset = field<HTMLInputElement>(
-      "[data-vigilia-panel-shadow-offset]",
-    );
+    const offset = field<HTMLInputElement>("[data-yunari-panel-shadow-offset]");
     expect(offset.value).toBe("-6");
 
     await edit(offset, "-3");
@@ -547,14 +541,14 @@ describe("panel fields in the selection inspector", () => {
     const { host } = setup(panel());
 
     // A blur box over a panel with no shadow accepts an edit and applies none.
-    expect(host.querySelector("[data-vigilia-panel-shadow-blur]")).toBeNull();
-    expect(host.querySelector("[data-vigilia-panel-shadow-offset]")).toBeNull();
+    expect(host.querySelector("[data-yunari-panel-shadow-blur]")).toBeNull();
+    expect(host.querySelector("[data-yunari-panel-shadow-offset]")).toBeNull();
   });
 
   it("removes the shadow and its reference when the token is cleared", async () => {
     const rect = panel();
     rect.set({
-      [VIGILIA_PAINT_PROPERTY]: {
+      [YUNARI_PAINT_PROPERTY]: {
         fill: "palette.background",
         shadowColor: "palette.text",
       },
@@ -564,16 +558,16 @@ describe("panel fields in the selection inspector", () => {
 
     await choose(
       host,
-      "data-vigilia-panel-shadow",
+      "data-yunari-panel-shadow",
       uiCopy.inspectorFields.notSet,
     );
 
     expect(rect.get("shadow")).toBeNull();
-    expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(rect.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.background",
     });
-    expect(host.querySelector("[data-vigilia-panel-shadow-blur]")).toBeNull();
-    expect(host.querySelector("[data-vigilia-panel-shadow-offset]")).toBeNull();
+    expect(host.querySelector("[data-yunari-panel-shadow-blur]")).toBeNull();
+    expect(host.querySelector("[data-yunari-panel-shadow-offset]")).toBeNull();
   });
 
   it("offers a selection that is not a panel no panel controls at all", () => {
@@ -583,22 +577,22 @@ describe("panel fields in the selection inspector", () => {
     // A text object has no corner radius and no border; a control that cannot
     // apply is worse than an absent one.
     for (const selector of [
-      "[data-vigilia-panel-fill]",
-      "[data-vigilia-panel-stroke]",
-      "[data-vigilia-panel-border]",
-      "[data-vigilia-panel-radius]",
-      "[data-vigilia-panel-shadow]",
+      "[data-yunari-panel-fill]",
+      "[data-yunari-panel-stroke]",
+      "[data-yunari-panel-border]",
+      "[data-yunari-panel-radius]",
+      "[data-yunari-panel-shadow]",
     ]) {
       expect(host.querySelector(selector), selector).toBeNull();
     }
     // And the fields it does own are untouched by that gate.
-    expect(host.querySelector("[data-vigilia-opacity]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-opacity]")).not.toBeNull();
   });
 
   it("disconnects the panel's controls when the selection moves under them", () => {
     const first = panel();
     const { host, history, editor, inspector } = setup(first);
-    const fill = host.querySelector<HTMLElement>("[data-vigilia-panel-fill]")!;
+    const fill = host.querySelector<HTMLElement>("[data-yunari-panel-fill]")!;
     const second = panel();
     second.set("id", "second");
     (editor.canvas as { getActiveObject: () => unknown }).getActiveObject =
@@ -610,12 +604,12 @@ describe("panel fields in the selection inspector", () => {
     // describes, and it cannot write to the one it has left.
     inspector.render();
 
-    expect(first.get(VIGILIA_PAINT_PROPERTY)).toBeUndefined();
+    expect(first.get(YUNARI_PAINT_PROPERTY)).toBeUndefined();
     expect(history.saveState).not.toHaveBeenCalled();
     expect(fill.isConnected).toBe(false);
     // And the column now describes the object that is actually selected.
     expect(
-      host.querySelector<HTMLElement>("[data-vigilia-panel-fill]"),
+      host.querySelector<HTMLElement>("[data-yunari-panel-fill]"),
     ).not.toBe(fill);
   });
 
@@ -655,8 +649,8 @@ describe("shape material and a shape's own fields", () => {
     // shadow. Offering them for one kind only would leave a shape that can be
     // placed and not coloured.
     for (const selector of [
-      "[data-vigilia-panel-border]",
-      "[data-vigilia-panel-shadow]",
+      "[data-yunari-panel-border]",
+      "[data-yunari-panel-shadow]",
     ]) {
       expect(host.querySelector(selector), selector).not.toBeNull();
     }
@@ -668,12 +662,9 @@ describe("shape material and a shape's own fields", () => {
     // closed shape legitimately paints either. `ink.dom.test.ts` is what
     // proves the unfilled case does not flood.
     const strokeOnly = kind === "arc";
+    expect(host.querySelector("[data-yunari-panel-fill]"), kind).not.toBeNull();
     expect(
-      host.querySelector("[data-vigilia-panel-fill]"),
-      kind,
-    ).not.toBeNull();
-    expect(
-      host.querySelector("[data-vigilia-panel-stroke]") !== null,
+      host.querySelector("[data-yunari-panel-stroke]") !== null,
       kind,
     ).toBe(!strokeOnly);
   });
@@ -682,7 +673,7 @@ describe("shape material and a shape's own fields", () => {
     "offers a corner radius for a %s only when it is a rectangle",
     (kind, build) => {
       const { host } = setup(build());
-      const radius = host.querySelector("[data-vigilia-panel-radius]");
+      const radius = host.querySelector("[data-yunari-panel-radius]");
 
       // A radius box over a shape Fabric gives no `rx` to would show `NaN` and
       // write a property the object does not read.
@@ -715,16 +706,14 @@ describe("shape material and a shape's own fields", () => {
       // already writes the stroke and is labelled `Ink` — and the corner radius
       // is a `Rect`'s alone.
       const expected = [
-        "[data-vigilia-panel-fill]",
-        "[data-vigilia-panel-border]",
-        "[data-vigilia-panel-shadow]",
-        "[data-vigilia-panel-shadow-blur]",
-        "[data-vigilia-panel-shadow-offset]",
-        ...(supportsGlassControl(shape)
-          ? ["[data-vigilia-glass-enabled]"]
-          : []),
-        ...(kind === "arc" ? [] : ["[data-vigilia-panel-stroke]"]),
-        ...(kind === "rect" ? ["[data-vigilia-panel-radius]"] : []),
+        "[data-yunari-panel-fill]",
+        "[data-yunari-panel-border]",
+        "[data-yunari-panel-shadow]",
+        "[data-yunari-panel-shadow-blur]",
+        "[data-yunari-panel-shadow-offset]",
+        ...(supportsGlassControl(shape) ? ["[data-yunari-glass-enabled]"] : []),
+        ...(kind === "arc" ? [] : ["[data-yunari-panel-stroke]"]),
+        ...(kind === "rect" ? ["[data-yunari-panel-radius]"] : []),
       ];
       for (const hook of expected) {
         expect(host.querySelector(hook), `${kind}: ${hook}`).not.toBeNull();
@@ -733,7 +722,7 @@ describe("shape material and a shape's own fields", () => {
       // back `NaN`.
       if (kind !== "rect") {
         expect(
-          host.querySelector("[data-vigilia-panel-radius]"),
+          host.querySelector("[data-yunari-panel-radius]"),
           kind,
         ).toBeNull();
       }
@@ -741,7 +730,7 @@ describe("shape material and a shape's own fields", () => {
       // listing a hook nothing draws.
       if (!supportsGlassControl(shape)) {
         expect(
-          host.querySelector("[data-vigilia-glass-enabled]"),
+          host.querySelector("[data-yunari-glass-enabled]"),
           `${kind} is offered no glass control`,
         ).toBeNull();
       }
@@ -767,17 +756,17 @@ describe("shape material and a shape's own fields", () => {
     // fields are not a lesser selection, and they are not one section either.
     expect(
       field<HTMLElement>(
-        '[data-vigilia-section="paint"] [data-vigilia-panel-fill]',
+        '[data-yunari-section="paint"] [data-yunari-panel-fill]',
       ),
     ).not.toBeNull();
     expect(
       field<HTMLElement>(
-        '[data-vigilia-section="position"] [data-vigilia-shape-sides]',
+        '[data-yunari-section="position"] [data-yunari-shape-sides]',
       ),
     ).not.toBeNull();
     expect(
       host.querySelector(
-        '[data-vigilia-section="paint"] [data-vigilia-shape-sides]',
+        '[data-yunari-section="paint"] [data-yunari-shape-sides]',
       ),
     ).toBeNull();
   });
@@ -786,10 +775,10 @@ describe("shape material and a shape's own fields", () => {
     const triangle = new Triangle({ ...PLACED, width: 360, height: 200 });
     const { host, history } = setup(triangle);
 
-    await choose(host, "data-vigilia-panel-fill", "Text");
+    await choose(host, "data-yunari-panel-fill", "Text");
 
     expect(triangle.fill).toBe("#ecf5ff");
-    expect(triangle.get(VIGILIA_PAINT_PROPERTY)).toEqual({
+    expect(triangle.get(YUNARI_PAINT_PROPERTY)).toEqual({
       fill: "palette.text",
     });
     expect(history.saveState).toHaveBeenCalledTimes(1);
@@ -798,7 +787,7 @@ describe("shape material and a shape's own fields", () => {
   it("offers a polygon's side count as a slider, bounded at both ends", () => {
     const polygon = new Polygon([...CORNERS], PLACED);
     const { field } = setup(polygon);
-    const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
+    const sides = field<HTMLInputElement>("[data-yunari-shape-sides]");
 
     // A bounded number is DESIGN.md's slider (§5), and the pre-plan field drew
     // one because both bounds were present. The bound is the control's now, so
@@ -816,7 +805,7 @@ describe("shape material and a shape's own fields", () => {
       top: 30,
     });
     const { history, field } = setup(polygon);
-    const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
+    const sides = field<HTMLInputElement>("[data-yunari-shape-sides]");
 
     // Three one-step key presses are a three-to-six gesture; jsdom has no
     // layout, so a pointer drag ends on no value at all (see `slide`).
@@ -854,7 +843,7 @@ describe("shape material and a shape's own fields", () => {
   it("refuses a non-numeric endpoint through the control, and says so in the field", async () => {
     const line = new Line([0, 0, 100, 50], PLACED);
     const { history, field } = setup(line);
-    const endpoint = field<HTMLInputElement>('[data-vigilia-shape-line="x1"]');
+    const endpoint = field<HTMLInputElement>('[data-yunari-shape-line="x1"]');
 
     await edit(endpoint, "abc");
 
@@ -868,7 +857,7 @@ describe("shape material and a shape's own fields", () => {
   it("shows a polyline's own points and writes back the ones typed", async () => {
     const polyline = new Polyline([...CORNERS], PLACED);
     const { history, field } = setup(polyline);
-    const points = field<HTMLTextAreaElement>("[data-vigilia-shape-points]");
+    const points = field<HTMLTextAreaElement>("[data-yunari-shape-points]");
 
     expect(points.value).toBe("0, 0\n100, 0\n50, 100");
 
@@ -889,7 +878,7 @@ describe("shape material and a shape's own fields", () => {
       const { history, editor, field } = setup(polyline);
 
       await edit(
-        field<HTMLTextAreaElement>("[data-vigilia-shape-points]"),
+        field<HTMLTextAreaElement>("[data-yunari-shape-points]"),
         typed,
       );
 
@@ -903,10 +892,7 @@ describe("shape material and a shape's own fields", () => {
     const line = new Line([0, 0, 100, 50], PLACED);
     const { history, field } = setup(line);
 
-    await edit(
-      field<HTMLInputElement>('[data-vigilia-shape-line="x2"]'),
-      "200",
-    );
+    await edit(field<HTMLInputElement>('[data-yunari-shape-line="x2"]'), "200");
 
     expect(line.x2).toBe(200);
     expect(line.x1).toBe(0);
@@ -917,7 +903,7 @@ describe("shape material and a shape's own fields", () => {
   it("shows a path's own data as editable path data", async () => {
     const path = new Path("M 0 0 L 100 0 L 0 50 Z", PLACED);
     const { history, field } = setup(path);
-    const data = field<HTMLTextAreaElement>("[data-vigilia-shape-path]");
+    const data = field<HTMLTextAreaElement>("[data-yunari-shape-path]");
 
     expect(data.value).toBe("M 0 0 L 100 0 L 0 50 Z");
 
@@ -938,7 +924,7 @@ describe("shape material and a shape's own fields", () => {
       const path = new Path("M 0 0 L 100 0 L 0 50 Z", PLACED);
       const before = path.path;
       const { history, editor, field } = setup(path);
-      const data = field<HTMLTextAreaElement>("[data-vigilia-shape-path]");
+      const data = field<HTMLTextAreaElement>("[data-yunari-shape-path]");
 
       await edit(data, typed);
 
@@ -972,7 +958,7 @@ describe("a shape whose geometry the author retypes", () => {
     const { host } = setup(path);
 
     const data = host.querySelector<HTMLTextAreaElement>(
-      "[data-vigilia-shape-path]",
+      "[data-yunari-shape-path]",
     )!;
     await edit(data, "M 7 7 L 21 7 L 21 21 L 7 21 Z");
 
@@ -995,7 +981,7 @@ describe("a shape whose geometry the author retypes", () => {
     const { host } = setup(line);
 
     const points = host.querySelector<HTMLTextAreaElement>(
-      "[data-vigilia-shape-points]",
+      "[data-yunari-shape-points]",
     )!;
     await edit(points, "10, 20\n30, 40");
 
@@ -1020,8 +1006,8 @@ describe("the angles of a swept shape", () => {
    * unrelated names that could drift apart.
    */
   const ANGLE = {
-    start: '[data-vigilia-shape-angle="startAngle"]',
-    end: '[data-vigilia-shape-angle="endAngle"]',
+    start: '[data-yunari-shape-angle="startAngle"]',
+    end: '[data-yunari-shape-angle="endAngle"]',
   } as const;
 
   /** A new shape of a swept kind, narrowed to the class that owns the angles. */

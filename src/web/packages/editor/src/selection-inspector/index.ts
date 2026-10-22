@@ -2,14 +2,14 @@ import type {
   Binding,
   FabricGlobals,
   SampleSource,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   applyAuthoredText,
   isLocked,
   type PlanTextObject,
   scaleOf,
   writeAuthoredBoxDimension,
-} from "@vigilia/scene-fabric";
+} from "@yunari/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import { type ArrangeAction, canArrange } from "../arrange.js";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
@@ -177,7 +177,7 @@ export function createSelectionInspector(
   /** The document's language; a format preview is spelled in it. */
   let locale: string | undefined;
   const root = document.createElement("section");
-  root.dataset["vigiliaPanel"] = "selection";
+  root.dataset["yunariPanel"] = "selection";
   host.append(root);
 
   // Three React roots share the column, in document order: the subject and the
@@ -202,7 +202,7 @@ export function createSelectionInspector(
    * The last object the fields described, kept only so a history restore can
    * re-bind. Restoring rebuilds the scene and drops Fabric's selection, so an
    * author who undoes an edit would otherwise lose the panel they were working
-   * in; the object's Vigilia id survives the restore, so the fields find it
+   * in; the object's Yunari id survives the restore, so the fields find it
    * again.
    *
    * **Deliberately not cleared when the selection goes away.** A restore fires

@@ -161,7 +161,7 @@ export function SelectControl(
             // rather than by the `font-mono` beside it — a presentation class
             // is the design language's to rename, and an assertion keyed on one
             // would be a timeout naming nothing.
-            data-vigilia-value={value}
+            data-yunari-value={value}
           />
           <Select.Icon aria-hidden className="flex-none text-2xs text-faint">
             ▼
@@ -200,7 +200,7 @@ export function SelectControl(
                     // be named by copying the document's glossary into the suite.
                     // Namespaced like every other hook, so the string a locator
                     // names and the string the control commits are one string.
-                    data-vigilia-option={option.id}
+                    data-yunari-option={option.id}
                     className="cursor-default rounded-sm px-[var(--space-8)] py-[var(--space-4)] data-[highlighted]:bg-panel-2"
                   >
                     <Select.ItemText>{option.name}</Select.ItemText>

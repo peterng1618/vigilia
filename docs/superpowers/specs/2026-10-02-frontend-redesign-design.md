@@ -1,7 +1,7 @@
 # Frontend redesign — the editor leads
 
 - **Status:** superseded
-- **Superseded by:** [Vigilia — authoring a dashboard, not a canvas](2026-10-03-dashboard-authoring-design.md) — the diagnosis was right and the response was wrong. It diagnosed "Vigilia has no concept of the display it designs for" and then scheduled the fix for that fifth, behind a rail removal, a layer panel and a keyboard pass. It re-arranged chrome rather than changing the product. Kept for its evidence tables, which the successor uses.
+- **Superseded by:** [Yunari — authoring a dashboard, not a canvas](2026-10-03-dashboard-authoring-design.md) — the diagnosis was right and the response was wrong. It diagnosed "Yunari has no concept of the display it designs for" and then scheduled the fix for that fifth, behind a rail removal, a layer panel and a keyboard pass. It re-arranged chrome rather than changing the product. Kept for its evidence tables, which the successor uses.
 - **Amends:** §35 (application shell), §47 (small display bundle), §64 (rulers/grid/guides
   and snapping), §145 (hosting and settings), §172 (layer tree and one action owner),
   §173 (authored density over decoration), §174 (canvas navigation)
@@ -28,15 +28,15 @@ Seven of the eight observations are the editor.
 |---|---|---|
 | **C** | The layer panel lists **52 rows, every one `aria-level="1"`**, with 165 icons and 127 buttons in one 280px column. `ram-card`, `ram-card-title`, `ram-card-icon`, `ram-value` and `ram-gauge` are indistinguishable but for a 12px glyph. | editor, Layers pane |
 | **D** | **18 unlabelled icons sit on the canvas at once**: 9 in the dock, 9 in the arrange toolbar, two arrow-ups and two arrow-downs adjacent. | editor, stage |
-| **E** | The chrome is warm cream glass; the dashboards it makes are dark and neon. `editor-shell.css` holds **50 hex colours, 35 px literals, 8 radii and 0 spacing/radius/type/elevation tokens**. The 16 `--vigilia-*` tokens are declared only under `[data-shell-palette="editorial"]` and are defined nowhere else in the tree, so under the other five palettes every reference resolves to nothing. `index.html` declares `content-scheme="light dark"`; there is no `prefers-color-scheme` rule in the editor at all. Tailwind 4.3.3 and a shadcn config are installed; **zero utility classes are used**. | editor, source |
+| **E** | The chrome is warm cream glass; the dashboards it makes are dark and neon. `editor-shell.css` holds **50 hex colours, 35 px literals, 8 radii and 0 spacing/radius/type/elevation tokens**. The 16 `--yunari-*` tokens are declared only under `[data-shell-palette="editorial"]` and are defined nowhere else in the tree, so under the other five palettes every reference resolves to nothing. `index.html` declares `content-scheme="light dark"`; there is no `prefers-color-scheme` rule in the editor at all. Tailwind 4.3.3 and a shadcn config are installed; **zero utility classes are used**. | editor, source |
 | **F** | `New theme · New from starter · Open package · Save package · Release package · Open library · Save to library`. Three save verbs, unexplained, unseparated. Success is one line of text in the bottom-left of a 1512px window. | editor, File menu |
 | **G** | The Design tab scrolls `SELECTION` (12 fields) → a `Paint:` provenance line → a hint sentence → `THEME SETTINGS`, a different scope, same scroll, no divider. The 280px panel also has a horizontal scrollbar. | editor, inspector |
-| **H** | The header is `Vigilia · Editor · File Edit Insert View · Save package`: five menus, one of them duplicating a panel, and a label naming the window. | editor, header |
+| **H** | The header is `Yunari · Editor · File Edit Insert View · Save package`: five menus, one of them duplicating a panel, and a label naming the window. | editor, header |
 | I | The settings page is the bar the editor does not reach: *"Only one found — dashboards use NVIDIA GeForce RTX 3080 Ti."* Every control explains itself. | host, settings page |
 | A | On a 390×844 phone the 1672×941 artboard renders as a ~390×190 strip: **22% of the screen height, 78% black**, with a full-bleed amber LibreHardwareMonitor diagnostic across the top. | player, 390×844 |
 | B | The host binds loopback only; reaching a phone needs `--host 0.0.0.0`. **No pairing UI, no QR, no LAN address, no device preview** — zero matches in `host/public/` or the editor. | host, editor |
 
-**One defect, four symptoms.** Vigilia has no concept of the display it is designing for.
+**One defect, four symptoms.** Yunari has no concept of the display it is designing for.
 A says the author never sees the consequence of choosing an orientation. B says there is
 nowhere to see it. C says the panel shows the document's innards rather than its
 composition. F says saving never says where the result went.
@@ -138,7 +138,7 @@ makes them more findable, not less.
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│ Vigilia ▸ System dashboard •    File  Edit    ?        [ Publish ] │
+│ Yunari ▸ System dashboard •    File  Edit    ?        [ Publish ] │
 ├──────────────┬──────────────────────────────────┬──────────────────┤
 │ Layers  +  ⋯ │                                  │  Properties of   │
 │ Assets       │            canvas                │  the selection   │
@@ -253,7 +253,7 @@ live variable rather than a copy of it:
 ```css
 @theme inline {
   --color-surface: var(--shell-surface);
-  --color-canvas:  var(--vigilia-canvas-bg);
+  --color-canvas:  var(--yunari-canvas-bg);
 }
 ```
 
@@ -262,7 +262,7 @@ That is what palette switching needs. `applyShellPalette` sets one data attribut
 value, so changing `data-shell-palette` recolours the shell without Tailwind knowing a
 palette exists. Without it, each palette would need its own generated utility set.
 
-- `--vigilia-*` moves into `:root`; `editorial` keeps only what it overrides. Every
+- `--yunari-*` moves into `:root`; `editorial` keeps only what it overrides. Every
   palette then resolves.
 - `--shell-flat` is wired to its evident purpose — collapsing the 6-selector glass lists
   repeated four times — or deleted if it cannot be.
@@ -274,7 +274,7 @@ palette exists. Without it, each palette would need its own generated utility se
   resolves to nothing.
 
 Density stays what §173 set — more of it, not less. Figma UI3 remains the reference where
-Vigilia has no answer of its own.
+Yunari has no answer of its own.
 
 ## Keyboard — an authoring surface is a keyboard surface
 
@@ -418,7 +418,7 @@ The editor carries the first eight.
 - Selecting a layer, switching panes, and collapsing restore scroll and refit as they do
   today.
 - Every chrome colour resolves under all six shell palettes — no unresolved
-  `--vigilia-*` in any palette.
+  `--yunari-*` in any palette.
 - With the OS in dark mode and no palette override the chrome is dark; under
   `prefers-reduced-motion: reduce` no motion runs.
 - The File menu offers Publish and Export, publishing raises a toast naming the live

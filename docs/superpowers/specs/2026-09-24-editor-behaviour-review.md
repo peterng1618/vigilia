@@ -47,7 +47,7 @@ transcription errors.
 ### Size-indicator refresh
 
 The old fork used a private Fabric transform hook for a late text pipeline that
-Vigilia does not have. Restore extra refresh work only if the label is observed
+Yunari does not have. Restore extra refresh work only if the label is observed
 stale during real authoring.
 
 ### Alt-drag distance measurement guides
@@ -69,7 +69,7 @@ becomes a problem.
   per-row lock/visibility state, and one action registry behind the dock, the
   layer-panel action row and the canvas context menu.
 - **Resize-time snapping** — skipped because the fork's scaling subsystem was
-  large; only two of its modules carried real coupling to object types Vigilia
+  large; only two of its modules carried real coupling to object types Yunari
   lacks, and those seams are strippable. Ported and recorded as present in §64,
   under the fidelity constraint §175 sets.
 
@@ -78,8 +78,8 @@ becomes a problem.
 - custom hit-testing/transform/group math from the original editor;
 - immutable-document history and the old DOM renderer;
 - the old inspector layout and multi-selection property editing;
-- the fork template manager until Vigilia has an actual templates feature;
+- the fork template manager until Yunari has an actual templates feature;
 - a generic interaction blocker without a long-running operation that needs it;
-- fork-specific pixel-grid/type heuristics that do not match Vigilia objects.
+- fork-specific pixel-grid/type heuristics that do not match Yunari objects.
 
 Git retains the original implementations and migration detail.

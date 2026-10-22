@@ -4,8 +4,8 @@ import {
   type SampleSource,
   SEMANTIC_KEYS,
   type TextRun,
-} from "@vigilia/renderer-core";
-import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { YUNARI_TEXT_PROPERTY } from "@yunari/scene-fabric";
 import { Canvas, Textbox } from "fabric/es";
 import { act } from "react";
 import { flushSync } from "react-dom";
@@ -106,7 +106,7 @@ export function mountRunEditor(options: {
 
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });
-  object.set(VIGILIA_TEXT_PROPERTY, { runs: options.runs });
+  object.set(YUNARI_TEXT_PROPERTY, { runs: options.runs });
   canvas.add(object);
 
   let bindings: readonly Binding[] = [...(options.declared ?? [])];
@@ -182,25 +182,23 @@ export function mountRunEditor(options: {
     object,
     render,
     runs: () => {
-      const content = object.get(VIGILIA_TEXT_PROPERTY) as {
+      const content = object.get(YUNARI_TEXT_PROPERTY) as {
         readonly runs?: readonly TextRun[];
       };
       return content.runs ?? [];
     },
     content: () =>
-      (object.get(VIGILIA_TEXT_PROPERTY) ?? {}) as Record<string, unknown>,
+      (object.get(YUNARI_TEXT_PROPERTY) ?? {}) as Record<string, unknown>,
     stored: () => bindings,
     notes: () =>
-      [...host.querySelectorAll<HTMLElement>("[data-vigilia-run-note]")].map(
+      [...host.querySelectorAll<HTMLElement>("[data-yunari-run-note]")].map(
         (note) => note.textContent ?? "",
       ),
     binding: () => {
-      const note = host.querySelector<HTMLElement>(
-        "[data-vigilia-run-binding]",
-      );
+      const note = host.querySelector<HTMLElement>("[data-yunari-run-binding]");
       return {
         text: note?.textContent ?? undefined,
-        problem: note?.dataset["vigiliaRunProblem"],
+        problem: note?.dataset["yunariRunProblem"],
       };
     },
     pick: <T extends HTMLElement>(selector: string): T =>

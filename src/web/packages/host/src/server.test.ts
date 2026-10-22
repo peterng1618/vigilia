@@ -18,8 +18,8 @@ import {
   decodeBatch,
   type FabricThemeEnvelope,
   SAMPLE_STREAM_PATH,
-} from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+} from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHostBinding, type HostBinding } from "./cli/hosting.js";
 import { type ListenableServer, listenWithFallback } from "./cli/net.js";
@@ -125,8 +125,8 @@ function createValidPackage(
                 height: 40,
                 text: "--",
                 id: "readout",
-                vigiliaPaint: { fill: "palette.ink" },
-                vigiliaText: {
+                yunariPaint: { fill: "palette.ink" },
+                yunariText: {
                   runs: [
                     {
                       kind: "value" as const,
@@ -440,7 +440,7 @@ describe("Host theme routes", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-host-theme-test-"),
+      path.join(os.tmpdir(), "yunari-host-theme-test-"),
     );
     validEmptyAssetTheme = createValidPackage("living-room", "Living Room");
     const store = createThemeStore(tmpDir);
@@ -887,7 +887,7 @@ describe("Host theme routes", () => {
   it("moves a theme to the trash on DELETE, and takes it out of the listing", async () => {
     const trashed: string[] = [];
     const dir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-host-delete-test-"),
+      path.join(os.tmpdir(), "yunari-host-delete-test-"),
     );
     // The real trash is a child process and a real recycle bin; what is under
     // test here is the route and the store's decision, so the platform is
@@ -981,8 +981,8 @@ describe("Host theme routes", () => {
     // Two directories, because the two facts live apart: the theme is the
     // author's work, and where the copy came from is this machine's own record.
     beforeEach(async () => {
-      originsDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-origins-"));
-      libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-library-"));
+      originsDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-origins-"));
+      libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-library-"));
       origins = createThemeOriginsStore(originsDir);
       listing = createHostServer({
         registry: new ProviderRegistry([]),
@@ -1231,16 +1231,16 @@ describe("Host theme routes", () => {
 
   describe("The install route", () => {
     const PACKAGE_URL =
-      "https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip";
+      "https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/aurora/aurora.zip";
     let library: string;
     let settings: string;
     let installing: ReturnType<typeof createHostServer>;
     let answer: () => Response;
 
     beforeEach(async () => {
-      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-install-ui-"));
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-install-ui-"));
       settings = await fs.mkdtemp(
-        path.join(os.tmpdir(), "vigilia-install-origins-ui-"),
+        path.join(os.tmpdir(), "yunari-install-origins-ui-"),
       );
       const bytes = packageBytes(
         createValidPackage("family-room", "Family Room"),
@@ -1505,7 +1505,7 @@ describe("Host theme routes", () => {
     let normalizing: ReturnType<typeof createHostServer>;
 
     beforeEach(async () => {
-      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-normalize-"));
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-normalize-"));
       normalizing = createHostServer({
         registry: new ProviderRegistry([]),
         bundles: { player: library, editor: library },
@@ -1604,9 +1604,9 @@ describe("Host theme routes", () => {
     }
 
     beforeEach(async () => {
-      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-github-ui-"));
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-github-ui-"));
       settings = await fs.mkdtemp(
-        path.join(os.tmpdir(), "vigilia-github-settings-ui-"),
+        path.join(os.tmpdir(), "yunari-github-settings-ui-"),
       );
       token = createGithubTokenStore(settings);
       calls = [];
@@ -1772,8 +1772,8 @@ describe("Host theme routes", () => {
     });
 
     it("answers 503 naming registration when no client id is configured", async () => {
-      const saved = process.env.VIGILIA_GITHUB_CLIENT_ID;
-      delete process.env.VIGILIA_GITHUB_CLIENT_ID;
+      const saved = process.env.YUNARI_GITHUB_CLIENT_ID;
+      delete process.env.YUNARI_GITHUB_CLIENT_ID;
       const unregistered = createHostServer({
         registry: new ProviderRegistry([]),
         bundles: { player: library, editor: library },
@@ -1791,20 +1791,19 @@ describe("Host theme routes", () => {
         expect(res.text().toLowerCase()).toContain("register");
       } finally {
         await unregistered.close();
-        if (saved !== undefined) process.env.VIGILIA_GITHUB_CLIENT_ID = saved;
+        if (saved !== undefined) process.env.YUNARI_GITHUB_CLIENT_ID = saved;
       }
     });
   });
 
   describe("The submit route", () => {
     const CLIENT_ID = "client-from-the-registry";
-    const PR_URL = "https://github.com/peterng1618/vigilia-store/pull/7";
+    const PR_URL = "https://github.com/peterng1618/yunari-store/pull/7";
     const SECRET = "ghs_the-access-token";
     // New documents get UUID ids; these fixtures mirror that.
     const THEME_ID = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
     const BARE_ID = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
-    const FORK_PATH =
-      "https://api.github.com/repos/aurora-author/vigilia-store";
+    const FORK_PATH = "https://api.github.com/repos/aurora-author/yunari-store";
     // The store's own check: a picture is any file that starts with a PNG's
     // eight magic bytes, and a submission refuses a theme without one.
     const PNG = new Uint8Array([
@@ -1835,9 +1834,9 @@ describe("Host theme routes", () => {
     }
 
     beforeEach(async () => {
-      library = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-submit-ui-"));
+      library = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-submit-ui-"));
       settings = await fs.mkdtemp(
-        path.join(os.tmpdir(), "vigilia-submit-settings-ui-"),
+        path.join(os.tmpdir(), "yunari-submit-settings-ui-"),
       );
       token = createGithubTokenStore(settings);
       calls = [];
@@ -2093,8 +2092,8 @@ describe("Host theme routes", () => {
 
     it("answers 503 naming registration when no client id is configured", async () => {
       await signedIn();
-      const saved = process.env.VIGILIA_GITHUB_CLIENT_ID;
-      delete process.env.VIGILIA_GITHUB_CLIENT_ID;
+      const saved = process.env.YUNARI_GITHUB_CLIENT_ID;
+      delete process.env.YUNARI_GITHUB_CLIENT_ID;
       const unregistered = createHostServer({
         registry: new ProviderRegistry([]),
         bundles: { player: library, editor: library },
@@ -2114,7 +2113,7 @@ describe("Host theme routes", () => {
         expect(res.text().toLowerCase()).toContain("register");
       } finally {
         await unregistered.close();
-        if (saved !== undefined) process.env.VIGILIA_GITHUB_CLIENT_ID = saved;
+        if (saved !== undefined) process.env.YUNARI_GITHUB_CLIENT_ID = saved;
       }
     });
   });
@@ -2143,7 +2142,7 @@ describe("Host theme routes", () => {
 
     beforeEach(async () => {
       lanDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "vigilia-host-lan-test-"),
+        path.join(os.tmpdir(), "yunari-host-lan-test-"),
       );
       displays = createDisplayStore(lanDir);
       paired = createHostServer({
@@ -2195,7 +2194,7 @@ describe("Host theme routes", () => {
         (
           await request(paired.server, "GET", "/api/themes", undefined, {
             ...lan,
-            headers: { "x-vigilia-session": token },
+            headers: { "x-yunari-session": token },
           })
         ).status,
       ).toBe(200);
@@ -2221,7 +2220,7 @@ describe("Host theme routes", () => {
       const lan = { remoteAddress: "192.168.1.50" };
       const pairedPhone = {
         ...lan,
-        headers: { "x-vigilia-session": token },
+        headers: { "x-yunari-session": token },
       };
 
       // A display obeys the units and the zone, so it must be able to read
@@ -2261,7 +2260,7 @@ describe("Host theme routes", () => {
       const lan = { remoteAddress: "192.168.1.50" };
       const pairedPhone = {
         ...lan,
-        headers: { "x-vigilia-session": token },
+        headers: { "x-yunari-session": token },
       };
 
       // Same asymmetry as `/api/display`, for the same reason: a paired reader
@@ -2319,7 +2318,7 @@ describe("Host theme routes", () => {
         (
           await request(paired.server, "GET", "/api/themes", undefined, {
             remoteAddress: "192.168.1.50",
-            headers: { "x-vigilia-session": token },
+            headers: { "x-yunari-session": token },
           })
         ).status,
       ).toBe(403);
@@ -2388,7 +2387,7 @@ describe("Host theme routes", () => {
 
     beforeEach(async () => {
       hostDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "vigilia-host-identity-test-"),
+        path.join(os.tmpdir(), "yunari-host-identity-test-"),
       );
       displays = createDisplayStore(hostDir);
     });
@@ -2703,7 +2702,7 @@ describe("A display's credential outlives the host that minted it", () => {
 
   beforeEach(async () => {
     settingsDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-display-credential-"),
+      path.join(os.tmpdir(), "yunari-display-credential-"),
     );
   });
 
@@ -2758,7 +2757,7 @@ describe("A display's credential outlives the host that minted it", () => {
       "GET",
       "/api/themes",
       undefined,
-      { ...LAN, headers: { "x-vigilia-session": token } },
+      { ...LAN, headers: { "x-yunari-session": token } },
     );
     expect(withToken.status).toBe(200);
     expect(
@@ -2883,7 +2882,7 @@ describe("The pairing routes mint, rotate, rename and remove displays (ruling 12
   const LAN = { remoteAddress: "192.168.1.50" };
 
   beforeEach(async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-display-routes-"));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-display-routes-"));
     displays = createDisplayStore(dir);
     hosted = createHostServer({
       registry: new ProviderRegistry([]),
@@ -2968,7 +2967,7 @@ describe("The pairing routes mint, rotate, rename and remove displays (ruling 12
       (
         await request(hosted.server, "GET", "/api/themes", undefined, {
           ...LAN,
-          headers: { "x-vigilia-session": first.token },
+          headers: { "x-yunari-session": first.token },
         })
       ).status,
     ).toBe(403);
@@ -2988,7 +2987,7 @@ describe("The pairing routes mint, rotate, rename and remove displays (ruling 12
       (
         await request(hosted.server, "GET", "/api/themes", undefined, {
           ...LAN,
-          headers: { "x-vigilia-session": token },
+          headers: { "x-yunari-session": token },
         })
       ).status,
     ).toBe(403);
@@ -3283,7 +3282,7 @@ describe("A local monitor is specified rather than paired", () => {
   }
 
   beforeEach(async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-local-monitor-"));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-local-monitor-"));
     displays = createDisplayStore(dir);
     hosted = host();
   });
@@ -3664,7 +3663,7 @@ describe("A local monitor is specified rather than paired", () => {
 
   it("registers the host at sign-in, once", async () => {
     const message =
-      "Registered. Windows starts Vigilia at sign-in, so every local monitor " +
+      "Registered. Windows starts Yunari at sign-in, so every local monitor " +
       "comes back with it.";
     const register = vi.fn(async () => ({ ok: true, message }));
     const hosting = host({ registerAutostart: register });
@@ -3766,7 +3765,7 @@ describe("A display with no camera pairs by typing the one-time code", () => {
   }
 
   beforeEach(async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-pairing-code-"));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-pairing-code-"));
     displays = createDisplayStore(dir);
     // The penalty is a real delay in production and no wait at all here: the
     // cases assert what it asks for, and waiting it out would only be slower.
@@ -3993,7 +3992,7 @@ describe("The templates the host serves", () => {
   let hosted: ReturnType<typeof createHostServer>;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-templates-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-templates-"));
     const store = createThemeStore(tmpDir);
     await store.write(
       "living-room",
@@ -4024,7 +4023,7 @@ describe("The templates the host serves", () => {
     // that serves templates nowhere but the editor's own library shows an
     // empty list of what the product offers.
     expect(body.templates).toEqual([
-      { id: "vigilia-starter-template", name: "Starter — System dashboard" },
+      { id: "yunari-starter-template", name: "Starter — System dashboard" },
     ]);
     // A template is not a stored theme, so it stays out of the author's own.
     expect(body.themes.map((theme) => theme.id)).toEqual([
@@ -4038,7 +4037,7 @@ describe("The templates the host serves", () => {
     const body = res.json() as { templates: readonly { id: string }[] };
 
     expect(body.templates.map((template) => template.id)).toEqual([
-      "vigilia-starter-template",
+      "yunari-starter-template",
     ]);
   });
 
@@ -4049,7 +4048,7 @@ describe("The templates the host serves", () => {
       "/api/themes/active",
       // The display the write is for is named now that the route writes one
       // entry of a map rather than an implicit default.
-      json({ display: "default", id: "vigilia-starter-template" }),
+      json({ display: "default", id: "yunari-starter-template" }),
     );
 
     // Only a theme with a file can be displayed. Accepting the id here would
@@ -4086,11 +4085,11 @@ describe("The display map", () => {
     remoteAddress: string;
     headers: Record<string, string>;
   } {
-    return { ...LAN, headers: { "x-vigilia-session": token } };
+    return { ...LAN, headers: { "x-yunari-session": token } };
   }
 
   beforeEach(async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-theme-map-"));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-theme-map-"));
     const store = createThemeStore(dir);
     await store.write(
       "living-room",
@@ -4335,7 +4334,7 @@ describe("The pages a consumer lands on", () => {
   let hosted: ReturnType<typeof createHostServer>;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-chooser-test-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-chooser-test-"));
     const store = createThemeStore(tmpDir);
     await store.write(
       "living-room",
@@ -4408,7 +4407,7 @@ describe("Display settings routes", () => {
 
   beforeEach(async () => {
     changes.length = 0;
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-display-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-display-"));
     hosted = createHostServer({
       registry: new ProviderRegistry([]),
       bundles: { player: tmpDir, editor: tmpDir },
@@ -4497,7 +4496,7 @@ describe("Font favourite routes", () => {
   let hosted: ReturnType<typeof createHostServer>;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-favorites-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-favorites-"));
     hosted = createHostServer({
       registry: new ProviderRegistry([]),
       bundles: { player: tmpDir, editor: tmpDir },
@@ -4661,7 +4660,7 @@ describe("A theme's own device answers", () => {
   }
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-answers-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-answers-"));
     activeTheme = createActiveThemeStore(tmpDir);
     themeSettings = createThemeSettingsStore(tmpDir);
     displays = createDisplayStore(tmpDir);
@@ -4953,7 +4952,7 @@ describe("The assignment a display is served", () => {
   }
 
   beforeEach(async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-assignment-"));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-assignment-"));
     displays = createDisplayStore(dir);
     themeSettings = createThemeSettingsStore(dir);
     activeTheme = createActiveThemeStore(dir);
@@ -5121,7 +5120,7 @@ it("does not keep a connection whose client left while its display was resolved"
   // there is a connection to remove — and the `close` that would have removed
   // it has already fired by then. A connection kept anyway is offered a frame
   // on every later tick, against a socket that is gone.
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-stream-drop-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-stream-drop-"));
   const store = createDisplayStore(dir);
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -5178,7 +5177,7 @@ describe("A bundle 404 names the cause it can prove", () => {
   async function server(
     built: boolean,
   ): Promise<ReturnType<typeof createHostServer>> {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-404-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-404-"));
     dirs.push(dir);
     if (built) {
       await fs.writeFile(path.join(dir, "index.html"), "<!doctype html>");
@@ -5228,7 +5227,7 @@ describe("A path the player does not declare is not the player", () => {
   });
 
   it("404s a mistyped display URL instead of serving a working dashboard", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-player-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-player-"));
     dirs.push(dir);
     await fs.writeFile(
       path.join(dir, "index.html"),
@@ -5266,8 +5265,8 @@ describe("A path the player does not declare is not the player", () => {
 describe("a pairing guard protects dashboard content, not the bundle", () => {
   /** A bundle file is served to anything that asks; content is not. */
   it("serves the bundle to an unpaired device and refuses everything else", async () => {
-    const bundle = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-bundle-"));
-    const themes = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-themes-"));
+    const bundle = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-bundle-"));
+    const themes = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-themes-"));
     // Where a bundle actually keeps them: under its own `assets/`.
     await fs.mkdir(path.join(bundle, "assets"), { recursive: true });
     await fs.writeFile(
@@ -5325,7 +5324,7 @@ describe("The hosting route answers where a phone should point (§145)", () => {
 
   beforeEach(async () => {
     hostingDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-host-hosting-test-"),
+      path.join(os.tmpdir(), "yunari-host-hosting-test-"),
     );
   });
 
@@ -5586,7 +5585,7 @@ describe("A LAN move answers before the socket it moves (vg-173)", () => {
 
   beforeEach(async () => {
     moveDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-host-move-test-"),
+      path.join(os.tmpdir(), "yunari-host-move-test-"),
     );
   });
 
@@ -5751,7 +5750,7 @@ describe("A LAN move answers before the socket it moves (vg-173)", () => {
 
 describe("The publish route", () => {
   it("publishes a theme this library has, and says no to everything else", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-publish-"));
     const hosted = createHostServer({
       registry: new ProviderRegistry([]),
       bundles: { player: dir, editor: dir },
@@ -5824,7 +5823,7 @@ describe("The publish route", () => {
   });
 
   it("refuses a document it cannot validate", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-publish-"));
     const hosted = createHostServer({
       registry: new ProviderRegistry([]),
       bundles: { player: dir, editor: dir },
@@ -5872,7 +5871,7 @@ describe("The publish route", () => {
   });
 
   it("refuses a paired display, so a phone cannot cause a publish", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-publish-"));
     const displays = createDisplayStore(dir);
     const hosted = createHostServer({
       registry: new ProviderRegistry([]),
@@ -5900,7 +5899,7 @@ describe("The publish route", () => {
         themeBody(createValidPackage()),
         {
           remoteAddress: "192.168.1.50",
-          headers: { "x-vigilia-session": token },
+          headers: { "x-yunari-session": token },
         },
       );
 
@@ -5915,7 +5914,7 @@ describe("The publish route", () => {
 
 describe("The published overlay", () => {
   it("serves the published document to a display that asks for that theme", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-published-"));
     const hosted = createHostServer({
       registry: new ProviderRegistry([]),
       bundles: { player: dir, editor: dir },
@@ -5984,7 +5983,7 @@ describe("The published overlay", () => {
   });
 
   it("hides the revision from an unpaired display", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-published-"));
     const hosted = createHostServer({
       registry: new ProviderRegistry([]),
       bundles: { player: dir, editor: dir },
@@ -6021,7 +6020,7 @@ describe("The published overlay", () => {
   });
 
   it("answers the display its own theme on /api/published", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-published-"));
     const store = createThemeStore(dir);
     const activeTheme = createActiveThemeStore(dir);
     const displays = createDisplayStore(dir);
@@ -6049,7 +6048,7 @@ describe("The published overlay", () => {
         undefined,
         {
           remoteAddress: "192.168.1.50",
-          headers: { "x-vigilia-session": token },
+          headers: { "x-yunari-session": token },
         },
       );
       expect(own.status).toBe(200);
@@ -6071,7 +6070,7 @@ describe("The published overlay", () => {
         undefined,
         {
           remoteAddress: "192.168.1.50",
-          headers: { "x-vigilia-session": other },
+          headers: { "x-yunari-session": other },
         },
       );
       expect((fallback.json() as { display: unknown }).display).toEqual({
@@ -6090,7 +6089,7 @@ describe("The published overlay", () => {
     // already makes rather than on a route of its own. A local display is in
     // front of the person using it and repaints every second; the record's own
     // rate wins once a person sets one.
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-published-"));
     const displays = createDisplayStore(dir);
     const hosted = createHostServer({
       registry: new ProviderRegistry([]),
@@ -6123,7 +6122,7 @@ describe("The published overlay", () => {
   });
 
   it("answers null for a display on an explicit ?theme= link", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-published-"));
     const store = createThemeStore(dir);
     const activeTheme = createActiveThemeStore(dir);
     const displays = createDisplayStore(dir);
@@ -6153,7 +6152,7 @@ describe("The published overlay", () => {
         undefined,
         {
           remoteAddress: "192.168.1.50",
-          headers: { "x-vigilia-session": token },
+          headers: { "x-yunari-session": token },
         },
       );
       expect(linked.status).toBe(200);
@@ -6172,7 +6171,7 @@ describe("The published overlay", () => {
         undefined,
         {
           remoteAddress: "192.168.1.50",
-          headers: { "x-vigilia-session": token },
+          headers: { "x-yunari-session": token },
         },
       );
       expect((assigned.json() as { display: unknown }).display).toEqual({
@@ -6187,7 +6186,7 @@ describe("The published overlay", () => {
   });
 
   it("does not list the library for a poll that named a theme", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-published-"));
     const store = createThemeStore(dir);
     const list = vi.fn(() => store.list());
     const displays = createDisplayStore(dir);
@@ -6203,7 +6202,7 @@ describe("The published overlay", () => {
       await displays.create("Kitchen tablet", token);
       const asked = {
         remoteAddress: "192.168.1.50",
-        headers: { "x-vigilia-session": token },
+        headers: { "x-yunari-session": token },
       };
 
       const linked = await request(
@@ -6238,7 +6237,7 @@ describe("The published overlay", () => {
   });
 
   it("resolves the root through the published theme first, then the stored choice", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-published-"));
     const store = createThemeStore(dir);
     const activeTheme = createActiveThemeStore(dir);
     const hosted = createHostServer({
@@ -6330,7 +6329,7 @@ describe("The root page resolves the display that asked", () => {
   }
 
   beforeEach(async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-root-display-"));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-root-display-"));
     store = createThemeStore(dir);
     activeTheme = createActiveThemeStore(dir);
     displays = createDisplayStore(dir);
@@ -6541,7 +6540,7 @@ describe("The host's secure origin", () => {
   let origin: Awaited<ReturnType<typeof createSecureOrigin>>;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-origin-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-origin-"));
     origin = await createSecureOrigin(tmpDir, ["localhost", "127.0.0.1"]);
   });
 

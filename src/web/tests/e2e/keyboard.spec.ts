@@ -27,8 +27,8 @@ test("the Keyboard tab arms a row into the modal's trap, on a ring that clears c
   await page.locator(SETTINGS_GEAR).click();
   await expect(dialog).toBeVisible();
 
-  const arm = dialog.locator('[data-vigilia-shortcut-arm="publish.surface"]');
-  const row = dialog.locator('[data-vigilia-shortcut-row="publish.surface"]');
+  const arm = dialog.locator('[data-yunari-shortcut-arm="publish.surface"]');
+  const row = dialog.locator('[data-yunari-shortcut-row="publish.surface"]');
   const readings: string[] = [];
   const failures: string[] = [];
   let trapProved = false;
@@ -60,7 +60,7 @@ test("the Keyboard tab arms a row into the modal's trap, on a ring that clears c
         const active = document.activeElement;
         return {
           insideDialog: active?.closest('[role="dialog"]') !== null,
-          action: active?.getAttribute("data-vigilia-shortcut-row") ?? null,
+          action: active?.getAttribute("data-yunari-shortcut-row") ?? null,
         };
       });
       expect(
@@ -217,12 +217,12 @@ test("the Keyboard tab's four states, and the sheet's chord mark that did not mo
   await expect(dialog).toBeVisible();
   await dialog.getByRole("tab", { name: uiCopy.settings.keyboard }).click();
 
-  const row = dialog.locator('[data-vigilia-shortcut-row="publish.surface"]');
+  const row = dialog.locator('[data-yunari-shortcut-row="publish.surface"]');
   const chip = row.locator("kbd");
-  const arm = dialog.locator('[data-vigilia-shortcut-arm="publish.surface"]');
+  const arm = dialog.locator('[data-yunari-shortcut-arm="publish.surface"]');
   // The node is present while the row is armed even when it says nothing, so an
   // empty one is the state before a refusal rather than an absent feature.
-  const refusal = row.locator('[data-vigilia-shortcut-reason][role="alert"]');
+  const refusal = row.locator('[data-yunari-shortcut-reason][role="alert"]');
 
   // ── 1. Empty overrides ───────────────────────────────────────────────────
   // Proves the panel renders the drawing's own state: every chord is its
@@ -238,7 +238,7 @@ test("the Keyboard tab's four states, and the sheet's chord mark that did not mo
   ).toEqual([]);
   await expect(chip).toHaveText(shortcutLabel("publish.surface"));
   await expect(
-    dialog.locator("[data-vigilia-shortcut-reset-all]"),
+    dialog.locator("[data-yunari-shortcut-reset-all]"),
   ).toBeVisible();
 
   // ── 2. An armed row ──────────────────────────────────────────────────────
@@ -332,7 +332,7 @@ test("a chord rebound in the Keyboard tab is the chord the ? sheet prints", asyn
   await expect(dialog).toBeVisible();
   await dialog.getByRole("tab", { name: uiCopy.settings.keyboard }).click();
 
-  const row = dialog.locator('[data-vigilia-shortcut-row="publish.surface"]');
+  const row = dialog.locator('[data-yunari-shortcut-row="publish.surface"]');
   const chip = row.locator("kbd");
   const fallback = shortcutLabel("publish.surface");
   await expect(chip, "the row starts on its default chord").toHaveText(
@@ -342,7 +342,7 @@ test("a chord rebound in the Keyboard tab is the chord the ? sheet prints", asyn
   // A free chord on this machine's platform, which is the spelling the tooltip
   // case below pins for `Ctrl+D` as well.
   const rebound = "Ctrl+J";
-  await dialog.locator('[data-vigilia-shortcut-arm="publish.surface"]').click();
+  await dialog.locator('[data-yunari-shortcut-arm="publish.surface"]').click();
   await expect(row).toHaveAttribute("data-armed", "");
   await page.keyboard.press("Control+j");
   await expect(chip, "the tab recorded the chord that was pressed").toHaveText(
@@ -356,7 +356,7 @@ test("a chord rebound in the Keyboard tab is the chord the ? sheet prints", asyn
   const sheet = page.getByRole("dialog", { name: uiCopy.shortcuts.reference });
   await expect(sheet).toBeVisible();
   await expect(
-    sheet.locator('[data-vigilia-reference-row="publish.surface"] kbd'),
+    sheet.locator('[data-yunari-reference-row="publish.surface"] kbd'),
     "the sheet prints the effective chord, not the default",
   ).toHaveText(rebound);
 });
@@ -372,16 +372,16 @@ test("every canvas action's tooltip names the chord that runs it", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   // A **top-level** row, so no entry is needed. `cpu-card` is a part inside
   // `group-cpu-card`, and a part's row does not exist until its group is entered
   // or expanded (`bridge.ts:198-227`, and the starter's groups ship shut) — which
   // is why the one spec that clicks that row enters first (`editor.spec.ts:1107`).
   // The group is a selection like any other, so the dock offers its actions.
-  await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+  await page.locator('[data-yunari-layer="group-cpu-card"]').click();
 
-  const toolbar = page.locator("[data-vigilia-canvas-toolbar]");
+  const toolbar = page.locator("[data-yunari-canvas-toolbar]");
   await expect(toolbar).toBeVisible();
   await toolbar.getByRole("button", { name: uiCopy.actions.duplicate }).hover();
 
@@ -419,11 +419,11 @@ test("? opens the sheet, and the document behind it does not change", async ({
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   // Inside a group first, so the Escape assertion has something to lose.
   await enterLayer(page, "group-cpu-card");
-  const selected = page.locator('[data-vigilia-layer="cpu-card"]');
+  const selected = page.locator('[data-yunari-layer="cpu-card"]');
   await expect(selected).toBeVisible();
 
   await page.keyboard.press("?");
@@ -482,13 +482,13 @@ test("the palette picker lands beside its trigger, and its tracks answer the arr
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   // The palette panel is the Tokens pane's, so it is in the Tokens pane, and
   // the picker belongs to a **solid** token — a gradient's editor is a different
   // surface, which is why the token is named rather than left at the default.
   await openPane(page, "Tokens");
-  await chooseIn(page, "[data-vigilia-palette-token]", "background");
+  await chooseIn(page, "[data-yunari-palette-token]", "background");
 
   const trigger = page.getByTestId("picker-trigger");
   await expect(trigger).toBeVisible();

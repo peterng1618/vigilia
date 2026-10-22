@@ -39,7 +39,7 @@ export function ShortcutReference({
           <h3>{group.label}</h3>
           <dl>
             {group.rows.map((row) => (
-              <div key={row.action} data-vigilia-reference-row={row.action}>
+              <div key={row.action} data-yunari-reference-row={row.action}>
                 <dt>{row.label}</dt>
                 <dd>
                   <kbd aria-label={row.spoken}>{row.chord}</kbd>

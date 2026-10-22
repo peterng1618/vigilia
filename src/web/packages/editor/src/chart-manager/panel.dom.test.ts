@@ -5,7 +5,7 @@ import {
   type FabricPalette,
   type PieSettings,
   settingsFieldsFor,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
 import type { ChartSettingView } from "./chart-fields.js";

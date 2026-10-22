@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import type { Binding, FabricGlobals } from "@vigilia/renderer-core";
-import { validateFabricThemeEnvelope } from "@vigilia/renderer-core";
-import { reviveScene, serialiseScene } from "@vigilia/scene-fabric";
+import type { Binding, FabricGlobals } from "@yunari/renderer-core";
+import { validateFabricThemeEnvelope } from "@yunari/renderer-core";
+import { reviveScene, serialiseScene } from "@yunari/scene-fabric";
 import { Canvas, type FabricObject, Group, util } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -278,7 +278,7 @@ describe("the card library", () => {
 
     let pointed = 0;
     for (const part of (copy(canvas) as Group).getObjects()) {
-      const authored = part.get("vigiliaText") as
+      const authored = part.get("yunariText") as
         | { runs: readonly { kind: string; bindingId?: string }[] }
         | undefined;
       if (authored === undefined) continue;
@@ -404,7 +404,7 @@ describe("a global this theme cannot supply", () => {
       new Set(["unmapped-global"]),
     );
     const panel = partsOf(copied.card)[0];
-    expect(panel?.["vigiliaPaint"]).toEqual({
+    expect(panel?.["yunariPaint"]).toEqual({
       fill: "palette.frost",
       stroke: "palette.panelStroke",
     });
@@ -569,7 +569,7 @@ describe("a theme whose vocabulary is not the starter's", () => {
     // token" would put the card's own surface on the theme's ink — a caption on
     // a caption, which is the failure the roles exist to prevent.
     const panel = partsOf(copied.card)[0];
-    expect(panel?.["vigiliaPaint"]).toEqual({
+    expect(panel?.["yunariPaint"]).toEqual({
       fill: "palette.surface",
       stroke: "palette.ink",
     });

@@ -4,12 +4,12 @@ import {
   isGlassTreatment,
   MAX_GLASS_BLUR_RADIUS,
   supportsGlass,
-  VIGILIA_GLASS_PROPERTY,
+  YUNARI_GLASS_PROPERTY,
 } from "./glass.js";
 
 function objectWith(value: unknown): { get(name: string): unknown } {
   return {
-    get: (name) => (name === VIGILIA_GLASS_PROPERTY ? value : undefined),
+    get: (name) => (name === YUNARI_GLASS_PROPERTY ? value : undefined),
   };
 }
 
@@ -104,7 +104,7 @@ describe("the glass treatment contract", () => {
     // These are not closed-vs-open questions: a blur behind a glyph or a
     // plotted series has no meaning at all.
     expect(supportsGlass("Textbox")).toBe(false);
-    expect(supportsGlass("VigiliaChart")).toBe(false);
+    expect(supportsGlass("YunariChart")).toBe(false);
     expect(supportsGlass("FabricImage")).toBe(false);
     // Case-exact, because the property is compared against a persisted string.
     expect(supportsGlass("rect")).toBe(false);

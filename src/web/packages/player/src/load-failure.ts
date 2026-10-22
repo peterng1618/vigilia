@@ -17,7 +17,7 @@ import { loadFailureReason, uiCopy } from "./ui-copy.js";
 export function showLoadFailure(error: unknown): void {
   // The error object, not a string of it: the stack is the part a developer
   // needs and the part `String(error)` throws away.
-  console.warn("Vigilia: theme did not load.", error);
+  console.warn("Yunari: theme did not load.", error);
   document.title = uiCopy.loadFailure.documentTitle;
   // The display's own page, not the artboard's. The artboard host is the middle
   // row of the display's column, so a page mounted in it would be a panel
@@ -62,7 +62,7 @@ export function loadFailureView(
   styleOnce();
 
   const view = document.createElement("section");
-  view.dataset["vigiliaLoadFailure"] = "";
+  view.dataset["yunariLoadFailure"] = "";
   // The whole surface is the message, and it is the only thing on the screen.
   // A landmark keeps it reachable by keyboard and by a screen reader's rotor
   // without inventing a heading level below the one below.
@@ -75,12 +75,12 @@ export function loadFailureView(
   lede.textContent = uiCopy.loadFailure.lede;
 
   const reasonLine = document.createElement("p");
-  reasonLine.dataset["vigiliaLoadFailureReason"] = "";
+  reasonLine.dataset["yunariLoadFailureReason"] = "";
   reasonLine.textContent = `${uiCopy.loadFailure.reasonLabel}: ${reason}`;
 
   const again = document.createElement("button");
   again.type = "button";
-  again.dataset["vigiliaLoadFailureRetry"] = "";
+  again.dataset["yunariLoadFailureRetry"] = "";
   again.textContent = uiCopy.loadFailure.retry;
   again.addEventListener("click", retry);
 
@@ -88,7 +88,7 @@ export function loadFailureView(
   // like text and told apart by its underline rather than by a box that would
   // read as a second button — the host's own pages already draw it that way.
   const host = document.createElement("a");
-  host.dataset["vigiliaLoadFailureHost"] = "";
+  host.dataset["yunariLoadFailureHost"] = "";
   host.href = "/";
   host.textContent = uiCopy.loadFailure.host;
 
@@ -99,7 +99,7 @@ export function loadFailureView(
   return view;
 }
 
-const STYLE_ID = "vigilia-load-failure-style";
+const STYLE_ID = "yunari-load-failure-style";
 
 /**
  * The host's `firstRunPage` is the same product answering the same question on
@@ -112,7 +112,7 @@ const STYLE_ID = "vigilia-load-failure-style";
  * this is the one page on the player that has no artboard behind it to scroll.
  */
 const STYLE = `
-[data-vigilia-load-failure] {
+[data-yunari-load-failure] {
   position: absolute;
   inset: 0;
   display: flex;
@@ -131,30 +131,30 @@ const STYLE = `
   font: 15px / 1.6 system-ui, sans-serif;
   text-align: center;
 }
-[data-vigilia-load-failure] h1 {
+[data-yunari-load-failure] h1 {
   font-size: 22px;
   letter-spacing: 0.02em;
   margin: 0 0 8px;
 }
-[data-vigilia-load-failure] p {
+[data-yunari-load-failure] p {
   color: #8a97ab;
   margin: 0 0 20px;
   max-width: 34em;
 }
-[data-vigilia-load-failure] [data-vigilia-load-failure-reason] {
+[data-yunari-load-failure] [data-yunari-load-failure-reason] {
   color: #b5c6c0;
   font: 12px / 1.5 ui-monospace, monospace;
   /* A long validator message on a 360px phone must wrap, not widen. */
   overflow-wrap: anywhere;
 }
-[data-vigilia-load-failure] > div {
+[data-yunari-load-failure] > div {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 12px 20px;
 }
-[data-vigilia-load-failure] [data-vigilia-load-failure-retry] {
+[data-yunari-load-failure] [data-yunari-load-failure-retry] {
   display: inline-block;
   padding: 12px 22px;
   border: 0;
@@ -165,11 +165,11 @@ const STYLE = `
   font-weight: 600;
   cursor: pointer;
 }
-[data-vigilia-load-failure] [data-vigilia-load-failure-host] {
+[data-yunari-load-failure] [data-yunari-load-failure-host] {
   color: inherit;
   text-underline-offset: 3px;
 }
-[data-vigilia-load-failure] :where(button, a):focus-visible {
+[data-yunari-load-failure] :where(button, a):focus-visible {
   outline: 2px solid #e8ecf3;
   outline-offset: 2px;
 }

@@ -1,7 +1,7 @@
 // Drive the tester's private Chromium over CDP on port 5312.
 // Usage: node cdp.mjs <script.mjs>   — the script gets `page`, `seenDialogs`, etc.
 import { pathToFileURL } from "node:url";
-import { chromium } from "file:///D:/git-repos/vigilia/src/web/node_modules/playwright/index.mjs";
+import { chromium } from "file:///D:/git-repos/yunari/src/web/node_modules/playwright/index.mjs";
 
 const actionPath = process.argv[2];
 const browser = await chromium.connectOverCDP("http://127.0.0.1:5312");

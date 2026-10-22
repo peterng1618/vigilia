@@ -96,7 +96,7 @@ function envelope(): Record<string, unknown> {
       version: "7.4.0",
       objects: [
         {
-          type: "VigiliaChart",
+          type: "YunariChart",
           id: "chart",
           objects: [{ type: "Rect", id: "child" }],
         },

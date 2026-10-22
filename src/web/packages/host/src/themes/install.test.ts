@@ -5,8 +5,8 @@ import path from "node:path";
 import {
   DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
-} from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+} from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createThemeOriginsStore,
@@ -24,7 +24,7 @@ import {
 } from "./store.js";
 
 const PACKAGE_URL =
-  "https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip";
+  "https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/aurora/aurora.zip";
 
 function themeOf(id: string, name: string): ThemeContent {
   const envelope: FabricThemeEnvelope = {
@@ -107,9 +107,9 @@ describe("installCatalogueItem", () => {
   let origins: ThemeOriginsStore;
 
   beforeEach(async () => {
-    libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-install-"));
+    libraryDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-install-"));
     originsDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "vigilia-install-origins-"),
+      path.join(os.tmpdir(), "yunari-install-origins-"),
     );
     store = createThemeStore(libraryDir);
     origins = createThemeOriginsStore(originsDir);

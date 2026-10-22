@@ -80,7 +80,7 @@ export async function selectInPaneByKeyboard(page: Page): Promise<void> {
 /**
  * Tabs inside the pane until focus is on a layer row, and answers its id.
  *
- * `name` is the row's own `.vigilia-layer-name`; `undefined` accepts the first
+ * `name` is the row's own `.yunari-layer-name`; `undefined` accepts the first
  * row focus reaches, which is what {@link selectInPaneByKeyboard} — the
  * census's unnamed selection — asks for. The search is by **name, not by a Tab
  * count**, so nothing here bakes in a position the shell is free to change, and
@@ -93,10 +93,10 @@ export async function focusLayerRow(
   for (let press = 0; press < TAB_BOUND; press++) {
     const id = await page.evaluate((wanted: string | undefined) => {
       const active = document.activeElement;
-      const row = active?.getAttribute("data-vigilia-layer");
+      const row = active?.getAttribute("data-yunari-layer");
       if (row === null || row === undefined) return null;
       if (wanted === undefined) return row;
-      const shown = active?.querySelector(".vigilia-layer-name")?.textContent;
+      const shown = active?.querySelector(".yunari-layer-name")?.textContent;
       return (shown ?? "") === wanted ? row : null;
     }, name);
     if (id !== null) return id;
@@ -126,14 +126,14 @@ export async function selectInComposition(
   name: string,
 ): Promise<string> {
   await expect(
-    page.locator('[data-vigilia-panel="layers"]'),
+    page.locator('[data-yunari-panel="layers"]'),
     "the Composition pane the row is selected through",
   ).toBeVisible();
   await tabUntil(page, (focus) => focus.region === "pane");
   const id = await focusLayerRow(page, name);
   await page.keyboard.press(" ");
   await expect(
-    page.locator(`[data-vigilia-layer="${id}"]`),
+    page.locator(`[data-yunari-layer="${id}"]`),
     `the row named ${name} after Space`,
   ).toHaveAttribute("aria-selected", "true");
   return id;
@@ -176,7 +176,7 @@ export const FIELD_DRAFT = "walkthrough draft";
 /** The hook the selection's own name field carries (`nameField`,
  *  `selection-inspector/appearance.ts`), on the focus target rather than a
  *  wrapper. */
-const FIELD_HOOK = "[data-vigilia-name]";
+const FIELD_HOOK = "[data-yunari-name]";
 
 /** That field **inside the inspector**, which is what the three places that
  *  reach for it mean. Scoped because the hook is the inspector's own convention
@@ -197,11 +197,11 @@ const EDIT_COMMITTED = "editor:edit-committed";
 
 /** Where the count lives on the page while the listener is attached. A
  *  test-owned name: no shell style or script reads it. */
-const WALKTHROUGH_COMMITS = "__vigiliaWalkthroughEditCommits";
+const WALKTHROUGH_COMMITS = "__yunariWalkthroughEditCommits";
 
 /** The canvas the listener above attached to, kept so {@link editCommits} can
  *  tell a live attach from one the editor has outlived. */
-const WALKTHROUGH_CANVAS = "__vigiliaWalkthroughCanvas";
+const WALKTHROUGH_CANVAS = "__yunariWalkthroughCanvas";
 
 /** Opens the File menu and presses the row whose own text names `row`, with no
  *  pointer.
@@ -258,14 +258,14 @@ export async function openDocumentByKeyboard(page: Page): Promise<void> {
  *  chooser's own pieces (`theme-library-dialog.tsx` / `control-select.tsx`). */
 const OPEN_LIBRARY_ROW = "Open library";
 /** The chooser's theme picker, on its trigger — where the value it commits is
- *  also read (`data-vigilia-value`). */
-const LIBRARY_THEME_FIELD = "data-vigilia-library-theme";
+ *  also read (`data-yunari-value`). */
+const LIBRARY_THEME_FIELD = "data-yunari-library-theme";
 /** The chooser's own Open button. */
-const LIBRARY_OPEN = "data-vigilia-library-open";
+const LIBRARY_OPEN = "data-yunari-library-open";
 /** The value behind one option of a plan-1 select. The picker renders labels,
  *  and a label here is the theme's own metadata name, which is document data
  *  rather than an id a test may match on. */
-const LIBRARY_OPTION = "data-vigilia-option";
+const LIBRARY_OPTION = "data-yunari-option";
 /** How many presses the option search spends before it reports a count. The
  *  fixture's theme is one row below the product's own template. */
 const LIBRARY_BOUND = 40;
@@ -287,7 +287,7 @@ const LIBRARY_BOUND = 40;
  * template focused), so a stored theme is always below where the list opens.
  * Which row carries focus is read from the row itself — the primitive moves DOM
  * focus onto the option, it does not point at it with `aria-activedescendant` —
- * and the row is named by `data-vigilia-option`, so the id this helper is given
+ * and the row is named by `data-yunari-option`, so the id this helper is given
  * and the id the control commits are one string.
  *
  * `id` is asserted as committed before `Open` is pressed, so a walk that
@@ -321,9 +321,9 @@ export async function openThemeFromLibrary(
   }
   await page.keyboard.press("Enter");
   await expect(
-    page.locator(`[${LIBRARY_THEME_FIELD}] [data-vigilia-value]`),
+    page.locator(`[${LIBRARY_THEME_FIELD}] [data-yunari-value]`),
     `the theme the chooser committed rather than ${id}`,
-  ).toHaveAttribute("data-vigilia-value", id);
+  ).toHaveAttribute("data-yunari-value", id);
 
   await tabToMark(page, { attribute: LIBRARY_OPEN });
   await page.keyboard.press("Enter");
@@ -343,13 +343,13 @@ export async function serializedDocument(page: Page): Promise<unknown> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: {
+        yunariEditorBridge?: {
           session?: {
             publishableDocument(): { envelope: unknown } | undefined;
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     if (bridge?.session === undefined) {
       throw new Error("no editor bridge on this mount");
     }
@@ -454,9 +454,9 @@ export async function layerTree(page: Page): Promise<readonly unknown[]> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: { layers(): readonly unknown[] };
+        yunariEditorBridge?: { layers(): readonly unknown[] };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     if (bridge === undefined) {
       throw new Error("no editor bridge on this mount");
     }
@@ -479,7 +479,7 @@ export async function watchEditCommits(page: Page): Promise<void> {
       readonly canvasKey: string;
     }) => {
       const scope = window as unknown as Record<string, unknown> & {
-        vigiliaEditorBridge?: {
+        yunariEditorBridge?: {
           readonly editor?: {
             readonly canvas?: {
               on(name: string, listener: () => void): void;
@@ -487,7 +487,7 @@ export async function watchEditCommits(page: Page): Promise<void> {
           };
         };
       };
-      const canvas = scope.vigiliaEditorBridge?.editor?.canvas;
+      const canvas = scope.yunariEditorBridge?.editor?.canvas;
       if (canvas === undefined) return false;
       scope[names.key] = 0;
       // The instance itself, so the reader can tell a live attach from a stale
@@ -525,15 +525,13 @@ export async function editCommits(page: Page): Promise<number> {
   return page.evaluate(
     (names: { readonly key: string; readonly canvasKey: string }) => {
       const scope = window as unknown as Record<string, unknown> & {
-        vigiliaEditorBridge?: {
+        yunariEditorBridge?: {
           readonly editor?: { readonly canvas?: unknown };
         };
       };
       const count = scope[names.key];
       if (count === undefined) return -1;
-      if (
-        scope[names.canvasKey] !== scope.vigiliaEditorBridge?.editor?.canvas
-      ) {
+      if (scope[names.canvasKey] !== scope.yunariEditorBridge?.editor?.canvas) {
         throw new Error(
           "the watched canvas is no longer the one the editor publishes: a cancelled edit's history cannot be observed",
         );
@@ -562,9 +560,9 @@ export async function surroundingState(
 }> {
   const chip = page.locator(".editor-shell-identity-name");
   return {
-    pane: await page.locator('[data-vigilia-panel="layers"]').isVisible(),
+    pane: await page.locator('[data-yunari-panel="layers"]').isVisible(),
     selected: await page
-      .locator(`[data-vigilia-layer="${id}"]`)
+      .locator(`[data-yunari-layer="${id}"]`)
       .getAttribute("aria-selected"),
     // Visibility is part of the reading, not a separate assertion: a hidden
     // chip still answers `textContent()`, so the leg would hold while the shell
@@ -580,13 +578,13 @@ export async function surroundingState(
  *  class or a moved control reddens here rather than quietly reaching nothing. */
 /** The Composition row's own entry control, whose value says which way it goes
  *  (`composition-pane.tsx`): `enter` into the group, `leave` back out of it. */
-const LAYER_ENTRY = "data-vigilia-layer-entry";
+const LAYER_ENTRY = "data-yunari-layer-entry";
 /** A row itself, addressed by the object id the projection gives it. */
-export const LAYER_ROW = "data-vigilia-layer";
+export const LAYER_ROW = "data-yunari-layer";
 /** The stage's display-and-zoom readout, which is a popup's trigger
  *  (`display-switch.tsx`). Marked rather than named: its accessible name
  *  carries the readout's own percentage, which moves with the camera. */
-const DISPLAY_TRIGGER = "data-vigilia-zoom";
+const DISPLAY_TRIGGER = "data-yunari-zoom";
 /** Bounds smaller than {@link TAB_BOUND}, for the one search whose answer is a
  *  handful of presses away: the controls inside a row, ahead of the row itself.
  *  It reports a count rather than hanging. */
@@ -599,9 +597,9 @@ export async function groupContext(page: Page): Promise<readonly string[]> {
   return page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge?: { groupContext(): readonly string[] };
+        yunariEditorBridge?: { groupContext(): readonly string[] };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     if (bridge === undefined) {
       throw new Error("no editor bridge on this mount");
     }
@@ -616,8 +614,8 @@ async function focusedLayerId(page: Page): Promise<string> {
     const active = document.activeElement;
     if (active === null) return null;
     return (
-      active.getAttribute("data-vigilia-layer") ??
-      active.closest("[data-vigilia-layer]")?.getAttribute("data-vigilia-layer")
+      active.getAttribute("data-yunari-layer") ??
+      active.closest("[data-yunari-layer]")?.getAttribute("data-yunari-layer")
     );
   });
   if (id === null || id === undefined) {
@@ -730,7 +728,7 @@ export async function exitGroup(page: Page): Promise<string> {
 export async function openLayerRenameField(page: Page): Promise<void> {
   for (let press = 0; press < ROW_BOUND; press++) {
     const onRow = await page.evaluate(
-      () => document.activeElement?.hasAttribute("data-vigilia-layer") === true,
+      () => document.activeElement?.hasAttribute("data-yunari-layer") === true,
     );
     if (onRow) {
       await page.keyboard.press("Enter");

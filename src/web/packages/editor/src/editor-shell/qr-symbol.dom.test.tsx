@@ -41,7 +41,7 @@ it("draws the ink on the paper, whatever palette the shell is in", () => {
   const module = svg?.querySelectorAll("path")[0];
   expect(module?.getAttribute("fill")).toBe(QR_INK);
   // A token here would invert under a dark shell palette and stop scanning.
-  expect(module?.getAttribute("fill")).not.toContain("var(--vigilia");
+  expect(module?.getAttribute("fill")).not.toContain("var(--yunari");
 });
 
 it("names the URL it carries, so the code is not only a picture", () => {

@@ -14,10 +14,10 @@ import {
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
 
 /**
- * The semantic checks over the envelope fields Vigilia owns.
+ * The semantic checks over the envelope fields Yunari owns.
  *
  * The v2 envelope's `scene` is opaque Fabric JSON, decided by
- * `fabric-envelope-validate.ts`; everything beside it is Vigilia's own data and
+ * `fabric-envelope-validate.ts`; everything beside it is Yunari's own data and
  * is decided here — metadata, id, artboard, globals, assets, background media
  * and artboard paint. The keys those checks read are declared in
  * `envelope-keys.ts`, which is the vocabulary the published schema is held to.
@@ -134,7 +134,7 @@ class Issues {
 }
 
 /**
- * Decides the Vigilia-owned half of a validated envelope, appending to `issues`.
+ * Decides the Yunari-owned half of a validated envelope, appending to `issues`.
  *
  * The caller has already walked the envelope's own key bag, so this reads fields
  * rather than re-deciding the root.

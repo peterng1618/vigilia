@@ -68,7 +68,7 @@ export function chartFamilyGlyph(family: string | undefined): LucideIcon {
  * group still takes the slot rather than collapsing it, so an eight-card
  * document has its rows in one column rather than two ragged ones.
  *
- * `data-vigilia-layer-mark` names which arm drew, so a browser case can measure
+ * `data-yunari-layer-mark` names which arm drew, so a browser case can measure
  * the treatment rather than infer it from the icon's class.
  */
 export function KindMark({
@@ -76,7 +76,7 @@ export function KindMark({
 }: {
   readonly mark: LayerMark;
 }): React.JSX.Element {
-  return <span className="vigilia-layer-mark">{treatment(mark)}</span>;
+  return <span className="yunari-layer-mark">{treatment(mark)}</span>;
 }
 
 /** The five arms: one glyph each, and nothing drawn beside it. */
@@ -105,7 +105,7 @@ function markGlyph(
   icon: LucideIcon,
 ): React.JSX.Element {
   return (
-    <span data-vigilia-layer-mark={arm}>
+    <span data-yunari-layer-mark={arm}>
       <Glyph icon={icon} size={13} />
     </span>
   );

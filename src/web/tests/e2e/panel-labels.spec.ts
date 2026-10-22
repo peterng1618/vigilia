@@ -26,45 +26,45 @@ const PANELS = ["Theme settings", "Palette", "Type presets"];
 /** The Tokens pane's controls, in the states that render them all. */
 const TOKENS_CONTROLS = [
   // Palette
-  "[data-vigilia-palette-token]",
-  "[data-vigilia-palette-name]",
-  "[data-vigilia-palette-kind]",
-  "[data-vigilia-palette-color]",
-  "[data-vigilia-palette-angle]",
-  "[data-vigilia-palette-stop-offset]",
-  "[data-vigilia-palette-stop-color]",
-  "[data-vigilia-palette-replacement]",
-  "[data-vigilia-palette-delete]",
+  "[data-yunari-palette-token]",
+  "[data-yunari-palette-name]",
+  "[data-yunari-palette-kind]",
+  "[data-yunari-palette-color]",
+  "[data-yunari-palette-angle]",
+  "[data-yunari-palette-stop-offset]",
+  "[data-yunari-palette-stop-color]",
+  "[data-yunari-palette-replacement]",
+  "[data-yunari-palette-delete]",
   // Type presets
-  "[data-vigilia-type-preset]",
-  "[data-vigilia-type-name]",
-  "[data-vigilia-type-family]",
-  "[data-vigilia-type-size]",
-  "[data-vigilia-type-weight]",
-  "[data-vigilia-type-line-height]",
-  "[data-vigilia-type-letter-spacing]",
-  "[data-vigilia-font-face]",
-  "[data-vigilia-font-trio]",
-  "[data-vigilia-type-replacement]",
-  "[data-vigilia-type-delete]",
+  "[data-yunari-type-preset]",
+  "[data-yunari-type-name]",
+  "[data-yunari-type-family]",
+  "[data-yunari-type-size]",
+  "[data-yunari-type-weight]",
+  "[data-yunari-type-line-height]",
+  "[data-yunari-type-letter-spacing]",
+  "[data-yunari-font-face]",
+  "[data-yunari-font-trio]",
+  "[data-yunari-type-replacement]",
+  "[data-yunari-type-delete]",
 ];
 
 /** The Document pane's controls: the artboard panel's theme settings. */
 const DOCUMENT_CONTROLS = [
-  "[data-vigilia-theme-name]",
-  "[data-vigilia-theme-author]",
-  "[data-vigilia-theme-description]",
-  "[data-vigilia-theme-language]",
-  "[data-vigilia-theme-language-sample]",
-  "[data-vigilia-theme-version]",
-  "[data-vigilia-artboard-ratio]",
-  "[data-vigilia-artboard-orientation]",
-  "[data-vigilia-artboard-resolution]",
-  "[data-vigilia-artboard-background]",
-  "[data-vigilia-background-asset]",
-  "[data-vigilia-background-media-fit]",
-  "[data-vigilia-artboard-width]",
-  "[data-vigilia-artboard-height]",
+  "[data-yunari-theme-name]",
+  "[data-yunari-theme-author]",
+  "[data-yunari-theme-description]",
+  "[data-yunari-theme-language]",
+  "[data-yunari-theme-language-sample]",
+  "[data-yunari-theme-version]",
+  "[data-yunari-artboard-ratio]",
+  "[data-yunari-artboard-orientation]",
+  "[data-yunari-artboard-resolution]",
+  "[data-yunari-artboard-background]",
+  "[data-yunari-background-asset]",
+  "[data-yunari-background-media-fit]",
+  "[data-yunari-artboard-width]",
+  "[data-yunari-artboard-height]",
 ];
 
 /** §7's Appearance tab, which is not one of the three panels either.
@@ -86,8 +86,8 @@ const DOCUMENT_CONTROLS = [
  *  green on a row whose name had moved, and the row only loses its name when
  *  both are gone, which is a row that announces nothing. */
 const APPEARANCE_CONTROLS = [
-  "[data-vigilia-palette-choice]",
-  "[data-vigilia-follow-system]",
+  "[data-yunari-palette-choice]",
+  "[data-yunari-follow-system]",
 ];
 
 /** The name Chromium computes for a control, or "" when it computes none.
@@ -119,7 +119,7 @@ test.describe("the settings panels name every control", () => {
       `the settings panels are hidden below ${compactViewportMaxPx()}px`,
     );
     await page.goto(EDITOR);
-    await page.waitForSelector("[data-vigilia-panel]");
+    await page.waitForSelector("[data-yunari-panel]");
     // The palette and type-preset panels are the Tokens pane's; the theme
     // settings (artboard, metadata, background) are the Document pane's. Both
     // live in the left column, hidden until their slot is asked for — not
@@ -129,10 +129,10 @@ test.describe("the settings panels name every control", () => {
     // The gradient and delete branches render controls a solid token does not,
     // so the audit has to open the same branches an author opens. A token with
     // other tokens to reassign to is what puts the delete row on screen.
-    await chooseIn(page, "[data-vigilia-palette-token]", "cpu");
+    await chooseIn(page, "[data-yunari-palette-token]", "cpu");
     // The preset chooser is a plan-1 select too, so it is opened and chosen the
     // way the palette's is rather than by `selectOption`.
-    await chooseIn(page, "[data-vigilia-type-preset]", "20-500");
+    await chooseIn(page, "[data-yunari-type-preset]", "20-500");
   });
 
   test("no control is unnamed", async ({ page }) => {
@@ -172,7 +172,7 @@ test.describe("the settings panels name every control", () => {
     // six: this count is what fails if the set shrinks under the audit's feet,
     // so "the six choice rows" stays true of what was measured and not only of
     // the comment above it.
-    await expect(page.locator("[data-vigilia-palette-choice]")).toHaveCount(6);
+    await expect(page.locator("[data-yunari-palette-choice]")).toHaveCount(6);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
@@ -192,7 +192,7 @@ test.describe("the settings panels name every control", () => {
     // The role is asserted with it because a name on the wrong role would
     // still be read, and the role is what says it is a value, not a field.
     const snapshot = await page
-      .locator("[data-vigilia-theme-version]")
+      .locator("[data-yunari-theme-version]")
       .ariaSnapshot();
     expect(snapshot.trim()).toMatch(/^- status "Release version"/);
   });
@@ -200,10 +200,10 @@ test.describe("the settings panels name every control", () => {
   test("each panel's chooser says what it lists", async ({ page }) => {
     // Both choosers are the Tokens pane's, open from the setup.
     expect(
-      await accessibleName(page.locator("[data-vigilia-palette-token]")),
+      await accessibleName(page.locator("[data-yunari-palette-token]")),
     ).toBe("Colour token");
     expect(
-      await accessibleName(page.locator("[data-vigilia-type-preset]")),
+      await accessibleName(page.locator("[data-yunari-type-preset]")),
     ).toBe("Type preset");
   });
 

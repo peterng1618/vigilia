@@ -20,7 +20,7 @@ the size choice was deliberate — "an over-large document is not a validation f
 here would be a different decision" — and that comment is the constraint, not the bug. The task is to make
 a size refusal *distinguishable* from absence without reclassifying it as a validation failure.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `readStored`, `readStoredOrAbsent`, `readEnvelope`, `MAX_THEME_FILE_BYTES`, every `themeStore.read`
 call site in `server.ts`, every typed refusal in `themes/store.ts`, and `theme-package`'s own bounds.
@@ -38,7 +38,7 @@ facts are different answers for, which is the same asymmetry `decisions/0043` fo
 
 Searched: `src/web/packages/host/package.json`'s dependencies and `server.ts`'s imports.
 
-Found: `@vigilia/renderer-core`, `@vigilia/scene-fabric`, `@vigilia/theme-package`, `node-forge` and
+Found: `@yunari/renderer-core`, `@yunari/scene-fabric`, `@yunari/theme-package`, `node-forge` and
 `systeminformation`; HTTP is `node:http` with no framework, no router and no error-mapping middleware.
 Nothing installed maps a storage error to a status, and nothing needs to be added — the store and the route
 are both ours.
@@ -83,7 +83,7 @@ refusal which is not a malformed request does not get dressed as one.
 ## Rung 6 — probe
 
 Measured 2026-10-21 against the built host at BASE `a42273b3` (`packages/host/dist`), started with a
-private app folder (`--app-dir C:/tmp/vigilia-23-11/probe-app --no-browser --port 4239`) holding **one**
+private app folder (`--app-dir C:/tmp/yunari-23-11/probe-app --no-browser --port 4239`) holding **one**
 theme whose `theme.json` is 34,603,008 bytes (33 MiB — a valid envelope padded with trailing whitespace)
 and nothing else:
 

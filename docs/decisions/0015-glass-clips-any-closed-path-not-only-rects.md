@@ -24,7 +24,7 @@ Polygon join. Polyline, Path and Line are skipped** — an open path has no
 interior to frost, and a Path is arbitrary author data whose closedness the
 product cannot know.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `localPath` in `scene-fabric/src/glass.ts`, `GLASS_OBJECT_TYPES`,
 `supportsGlass(type)`, `GLASS_TYPES`, the `scene-fabric` glass tests, the

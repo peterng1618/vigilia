@@ -1,9 +1,9 @@
-import type { TextRun } from "@vigilia/renderer-core";
+import type { TextRun } from "@yunari/renderer-core";
 
 /**
  * Which React row a run is, as runtime state.
  *
- * `vigiliaText.runs` is a plain array with no per-run id, and the ruling keeps
+ * `yunariText.runs` is a plain array with no per-run id, and the ruling keeps
  * it that way: an id in the model is editor bookkeeping written into the theme
  * file. But a row's identity has to survive a *removal*, and nothing a run
  * carries can spell that — two literal runs sharing a preset are the same

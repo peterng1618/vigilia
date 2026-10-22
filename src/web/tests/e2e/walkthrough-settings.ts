@@ -22,7 +22,7 @@ export const SETTINGS_MODAL_CLASS = ".editor-shell-dialog";
 const SETTINGS_GEAR = "data-rail-settings";
 /** The Appearance tab's six palette cards, each marked with the palette it
  *  offers (`settings.tsx`). */
-const PALETTE_CHOICE = "data-vigilia-palette-choice";
+const PALETTE_CHOICE = "data-yunari-palette-choice";
 /** The same attribute as a query for any of the six cards, which is how a tab
  *  is asked whether it is the one showing: `PALETTE_CHOICE` is a bare attribute
  *  name, and a bare name is a **tag** selector to `page.locator`, which matches
@@ -34,12 +34,12 @@ const PALETTE_ATTRIBUTE = "data-shell-palette";
 /** The Keyboard tab's own tree, which exists only while that tab is showing:
  *  Base UI unmounts an inactive panel, so its presence *is* the tab's answer
  *  and a tab's word is not needed to ask. */
-const KEYBOARD_TAB = "[data-vigilia-keyboard]";
+const KEYBOARD_TAB = "[data-yunari-keyboard]";
 /** A binding row's own pieces (`settings-keyboard.tsx`): the control that arms
  *  the capture, the row the capture listens in, and the chord it prints. */
-const SHORTCUT_ARM = "data-vigilia-shortcut-arm";
-const SHORTCUT_ROW = "data-vigilia-shortcut-row";
-const SHORTCUT_CHORD = "data-vigilia-shortcut-chord";
+const SHORTCUT_ARM = "data-yunari-shortcut-arm";
+const SHORTCUT_ROW = "data-yunari-shortcut-row";
+const SHORTCUT_CHORD = "data-yunari-shortcut-chord";
 /** The settings modal, opened from the rail's gear with no pointer.
  *
  *  Idempotent: two of §13.1's interactions live in this one popup — the palette

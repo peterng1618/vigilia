@@ -42,7 +42,7 @@ describe("acquireHostLock", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vigilia-host-lock-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "yunari-host-lock-"));
   });
 
   afterEach(async () => {

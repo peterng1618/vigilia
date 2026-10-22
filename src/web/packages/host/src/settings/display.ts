@@ -4,7 +4,7 @@ import {
   isMeasurementSystem,
   isTimeZoneName,
   type MeasurementSystem,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 
 /**
  * How this PC's readings are displayed, where the choice is the consumer's

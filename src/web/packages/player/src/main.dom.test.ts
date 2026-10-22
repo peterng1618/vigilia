@@ -48,15 +48,15 @@ const THEME_ID = "late-rejection";
 function skeleton(): HTMLElement {
   document.body.replaceChildren();
   const top = document.createElement("div");
-  top.id = "vigilia-chrome-top";
-  top.dataset["vigiliaChrome"] = "top";
+  top.id = "yunari-chrome-top";
+  top.dataset["yunariChrome"] = "top";
   const host = document.createElement("div");
   host.id = "artboard";
   Object.defineProperty(host, "clientWidth", { value: 412 });
   Object.defineProperty(host, "clientHeight", { value: 839 });
   const bottom = document.createElement("div");
-  bottom.id = "vigilia-chrome-bottom";
-  bottom.dataset["vigiliaChrome"] = "bottom";
+  bottom.id = "yunari-chrome-bottom";
+  bottom.dataset["yunariChrome"] = "bottom";
   document.body.append(top, host, bottom);
   return host;
 }
@@ -266,7 +266,7 @@ describe("the player's re-find", () => {
       .filter(
         ({ url, init }) =>
           url.includes("session") ||
-          new Headers(init?.headers).has("x-vigilia-session"),
+          new Headers(init?.headers).has("x-yunari-session"),
       )
       .map(({ url }) => url);
 
@@ -394,24 +394,24 @@ describe("the rate the display repaints at", () => {
     await import("./main.js");
     await vi.waitFor(() => {
       expect(
-        document.querySelector("[data-vigilia-load-failure]"),
+        document.querySelector("[data-yunari-load-failure]"),
         "the display mounted",
       ).toBeNull();
       expect(
-        document.querySelector("[data-vigilia-controls]"),
+        document.querySelector("[data-yunari-controls]"),
         "and reached its chrome",
       ).not.toBeNull();
     });
 
     const diagnostics = window as unknown as {
-      readonly vigilia: {
+      readonly yunari: {
         readonly handle: {
           readonly canvas: { requestRenderAll: () => void };
         };
       };
     };
     const render = vi.spyOn(
-      diagnostics.vigilia.handle.canvas,
+      diagnostics.yunari.handle.canvas,
       "requestRenderAll",
     );
 
@@ -463,14 +463,14 @@ describe("a rejection that arrives after the scene mounted", () => {
     await vi.waitFor(
       () => {
         expect(
-          document.querySelector("[data-vigilia-load-failure]"),
+          document.querySelector("[data-yunari-load-failure]"),
         ).not.toBeNull();
       },
       { timeout: 10_000 },
     );
 
     // The refusal is the real one. Nothing here mocks `reviveThemeEnvelope` or
-    // anything else `@vigilia/scene-fabric` exports; the only stubs are the
+    // anything else `@yunari/scene-fabric` exports; the only stubs are the
     // network (`fetch`, `EventSource`).
     expect(
       warned.mock.calls.find(
@@ -488,17 +488,17 @@ describe("a rejection that arrives after the scene mounted", () => {
     // comes from the deliberate break (hoisting the check above the mount), not
     // from this assertion.
     expect(
-      host.querySelector('canvas[data-vigilia="artboard"]'),
+      host.querySelector('canvas[data-yunari="artboard"]'),
       "the scene never mounted, so this is not the post-mount path",
     ).not.toBeNull();
 
     // And the failure document is what the page shows instead: the artboard,
     // its chrome and the mounted scene are all gone.
     expect(host.isConnected).toBe(false);
-    expect(document.getElementById("vigilia-chrome-top")).toBeNull();
-    expect(document.getElementById("vigilia-chrome-bottom")).toBeNull();
+    expect(document.getElementById("yunari-chrome-top")).toBeNull();
+    expect(document.getElementById("yunari-chrome-bottom")).toBeNull();
     expect(
-      document.querySelector("[data-vigilia-load-failure]")?.parentElement,
+      document.querySelector("[data-yunari-load-failure]")?.parentElement,
     ).toBe(document.body);
   });
 });
@@ -573,12 +573,8 @@ describe("the theme chooser's mount condition", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     await vi.waitFor(
       () => {
-        expect(
-          document.querySelector("[data-vigilia-load-failure]"),
-        ).toBeNull();
-        expect(
-          document.querySelector("[data-vigilia-controls]"),
-        ).not.toBeNull();
+        expect(document.querySelector("[data-yunari-load-failure]")).toBeNull();
+        expect(document.querySelector("[data-yunari-controls]")).not.toBeNull();
       },
       { timeout: 10_000 },
     );
@@ -591,28 +587,28 @@ describe("the theme chooser's mount condition", () => {
 
     await vi.waitFor(() =>
       expect(
-        document.querySelector("[data-vigilia-theme-chooser]"),
+        document.querySelector("[data-yunari-theme-chooser]"),
       ).not.toBeNull(),
     );
   });
 
   it("offers nothing on a link page, whose theme id is the person's instruction", async () => {
-    // The map case leaves `window.vigilia` set, and `vi.resetModules()` clears
+    // The map case leaves `window.yunari` set, and `vi.resetModules()` clears
     // modules, not the window: without this the check below would read the
     // previous run's signal and prove nothing.
-    Reflect.deleteProperty(window, "vigilia");
+    Reflect.deleteProperty(window, "yunari");
     // Paired, so the absence is the mount condition and not the missing token.
     await mountAt("?theme=living-room&theme-source=link&session=paired-token");
 
     // `mountAt` waits on the controls (`main.ts:186`), which mount before the
-    // chooser's condition is decided (`:204`). `window.vigilia` is set at the
+    // chooser's condition is decided (`:204`). `window.yunari` is set at the
     // end of that same start sequence (`:245`), after the decision, so awaiting
     // it is what makes the absence below a fact about the decision rather than
     // about a wait that stopped short of it.
-    const diagnostics = window as unknown as { readonly vigilia?: unknown };
-    await vi.waitFor(() => expect(diagnostics.vigilia).toBeDefined());
+    const diagnostics = window as unknown as { readonly yunari?: unknown };
+    await vi.waitFor(() => expect(diagnostics.yunari).toBeDefined());
 
-    expect(document.querySelector("[data-vigilia-theme-chooser]")).toBeNull();
+    expect(document.querySelector("[data-yunari-theme-chooser]")).toBeNull();
   });
 });
 

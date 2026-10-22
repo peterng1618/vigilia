@@ -5,7 +5,7 @@
  * palette the chart references — not styling the shell paints, so the fixture
  * lives beside the test that drives it rather than inside it.
  */
-import type { FabricPalette } from "@vigilia/renderer-core";
+import type { FabricPalette } from "@yunari/renderer-core";
 
 export const CHART_PALETTE: FabricPalette = {
   cpu: { name: "CPU", value: { kind: "solid", color: "#00b8d9" } },

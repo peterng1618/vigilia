@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
-import { createSceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
+import { createSceneAdapter, YunariChart } from "@yunari/scene-fabric";
 import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createGroupingManager, GROUP_CONTEXT_EVENT } from "./index.js";
 
 /** A chart, because dispose is what releases its ECharts instance and backing
  *  pixels: a plain `Rect` makes the defect invisible. */
-function chart(id: string, left: number): VigiliaChart {
-  return new VigiliaChart({
+function chart(id: string, left: number): YunariChart {
+  return new YunariChart({
     id,
     left,
     width: 100,

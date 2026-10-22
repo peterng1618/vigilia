@@ -9,13 +9,13 @@ import {
   isObjectName,
   MAX_OBJECT_NAME_LENGTH,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   reviveThemeEnvelope,
   serialiseThemeEnvelope,
-  VigiliaChart,
-} from "@vigilia/scene-fabric";
-import { readThemePackage } from "@vigilia/theme-package";
+  YunariChart,
+} from "@yunari/scene-fabric";
+import { readThemePackage } from "@yunari/theme-package";
 import { type FabricObject, Group, StaticCanvas } from "fabric/es";
 import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
@@ -98,13 +98,13 @@ const bindingsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
   theme.bindings ?? {};
 
 const chartsOf = (theme: ReturnType<typeof createNewFabricTheme>) =>
-  nodesOf(theme).filter((object) => object["type"] === "VigiliaChart");
+  nodesOf(theme).filter((object) => object["type"] === "YunariChart");
 
 /** Every string the document shows as authored prose, across all text runs. */
 const literalText = (theme: ReturnType<typeof createNewFabricTheme>): string =>
   nodesOf(theme)
     .flatMap((object) => {
-      const authored = object["vigiliaText"] as
+      const authored = object["yunariText"] as
         | { readonly runs?: ReadonlyArray<Record<string, unknown>> }
         | undefined;
       return (authored?.runs ?? []).map((run) => run["text"]);
@@ -197,7 +197,7 @@ describe("the new Fabric document", () => {
     for (const object of nodesOf(theme)) {
       const id = String(object["id"]);
       const runs = (
-        object["vigiliaText"] as
+        object["yunariText"] as
           | { readonly runs?: ReadonlyArray<Record<string, unknown>> }
           | undefined
       )?.runs;
@@ -301,7 +301,7 @@ describe("the new Fabric document", () => {
       const value = objectById(theme, reading);
       expect(value["type"], reading).toBe("Textbox");
       const runs = (
-        value["vigiliaText"] as { readonly runs: ReadonlyArray<ObjectJson> }
+        value["yunariText"] as { readonly runs: ReadonlyArray<ObjectJson> }
       ).runs;
       expect(runs[0]?.["kind"], reading).toBe("value");
       expect(
@@ -590,7 +590,7 @@ describe("the new Fabric document", () => {
     // Keyed off each object's own run reference, not its id: an object id is
     // `ram-value` and the preset it uses is `60-600`.
     const tracked = fabricObjectsOf(canvas).filter((object) => {
-      const authored = object.get("vigiliaText") as
+      const authored = object.get("yunariText") as
         | { readonly runs?: ReadonlyArray<{ typePreset?: string }> }
         | undefined;
       const ref = authored?.runs?.[0]?.typePreset;
@@ -632,7 +632,7 @@ describe("the new Fabric document", () => {
     const written: Array<[string, number]> = [];
     const absent: string[] = [];
     for (const object of fabricObjectsOf(canvas)) {
-      const authored = object.get("vigiliaText") as
+      const authored = object.get("yunariText") as
         | { readonly runs?: ReadonlyArray<{ typePreset?: string }> }
         | undefined;
       const presetId = authored?.runs?.[0]?.typePreset?.slice(
@@ -668,10 +668,10 @@ describe("the new Fabric document", () => {
     const card = objectById(theme, "cpu-card");
     expect(card).toMatchObject({
       type: "Rect",
-      vigiliaPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
-      vigiliaGlass: { blurRadius: expect.any(Number) },
+      yunariPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
+      yunariGlass: { blurRadius: expect.any(Number) },
     });
-    const treatment = card["vigiliaGlass"] as { blurRadius: number };
+    const treatment = card["yunariGlass"] as { blurRadius: number };
     expect(treatment.blurRadius).toBeGreaterThan(0);
     // The published bound, read from the schema the validator enforces rather
     // than from a constant this package does not own.
@@ -696,7 +696,7 @@ describe("the new Fabric document", () => {
 
     // The reading: a value run and a smaller literal unit on one text object.
     const value = objectById(theme, "cpu-card-value");
-    const runs = (value["vigiliaText"] as { runs: ReadonlyArray<ObjectJson> })
+    const runs = (value["yunariText"] as { runs: ReadonlyArray<ObjectJson> })
       .runs;
     expect(runs).toHaveLength(2);
     expect(runs[0]).toMatchObject({
@@ -713,7 +713,7 @@ describe("the new Fabric document", () => {
     // The sparkline reads the same key, so the card cannot show a percentage and
     // a waveform for two different moments.
     expect(objectById(theme, "cpu-card-sparkline")).toMatchObject({
-      type: "VigiliaChart",
+      type: "YunariChart",
       family: "line",
     });
     expect(bindingsOf(theme)["cpu-card-sparkline"]).toEqual([
@@ -745,11 +745,11 @@ describe("the new Fabric document", () => {
     // diffusing — see `docs/decisions/0013-frost-is-diffusion-grain-saturation-and-an-edge.md`.
     const authored = childrenOf(cpuCard()).find(
       (object) => object["id"] === "cpu-card",
-    )?.["vigiliaGlass"];
+    )?.["yunariGlass"];
     const revived = fabricObjectsOf(canvas).find(
       (object) => object.get("id") === "cpu-card",
     );
-    expect(revived?.get("vigiliaGlass")).toEqual(authored);
+    expect(revived?.get("yunariGlass")).toEqual(authored);
 
     const saved = serialiseThemeEnvelope(canvas, theme);
     const savedNodes: Array<Readonly<Record<string, unknown>>> = [];
@@ -767,9 +767,7 @@ describe("the new Fabric document", () => {
     };
     walkSaved(saved.scene.objects as ReadonlyArray<never>);
     expect(
-      savedNodes.find((object) => object["id"] === "cpu-card")?.[
-        "vigiliaGlass"
-      ],
+      savedNodes.find((object) => object["id"] === "cpu-card")?.["yunariGlass"],
     ).toEqual(authored);
     expect(validateFabricThemeEnvelope(saved).ok).toBe(true);
     await canvas.dispose();
@@ -803,9 +801,7 @@ describe("the new Fabric document", () => {
     ).toBeGreaterThan(1);
 
     expect(
-      fabricObjectsOf(canvas).filter(
-        (object) => object instanceof VigiliaChart,
-      ),
+      fabricObjectsOf(canvas).filter((object) => object instanceof YunariChart),
     ).toHaveLength(7);
     const validation = validateFabricThemeEnvelope(saved);
     if (!validation.ok)
@@ -1136,7 +1132,7 @@ describe("the blank Fabric document", () => {
       newObjectPlacement(0, blank.artboard),
     );
     const chart = createNewChartDefaults(globals, "gauge");
-    const cardFill = token(card.vigiliaPaint?.fill);
+    const cardFill = token(card.yunariPaint?.fill);
     const track = token((chart.track as { ref?: string } | undefined)?.ref);
     const progress = token((chart.progress as { ref?: string }).ref);
     const page = token((blank.artboard.background as { ref?: string }).ref);

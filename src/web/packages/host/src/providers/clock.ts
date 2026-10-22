@@ -2,7 +2,7 @@ import {
   describeSemanticKey,
   instantIn,
   type SampleEntry,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type {
   ProviderHealth,
   SensorDescriptor,

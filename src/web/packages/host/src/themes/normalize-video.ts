@@ -7,7 +7,7 @@ import {
   VIDEO_LIMITS,
   type VideoFacts,
   videoRefusals,
-} from "@vigilia/theme-package";
+} from "@yunari/theme-package";
 import ffmpegStatic from "ffmpeg-static";
 
 /**
@@ -24,7 +24,7 @@ import ffmpegStatic from "ffmpeg-static";
  * ladder sized to the resolution, so a 30 s 4K loop stays inside the asset cap.
  */
 
-const USAGE = "usage: vigilia normalize-video <input.mp4> <output.mp4>";
+const USAGE = "usage: yunari normalize-video <input.mp4> <output.mp4>";
 /** ffmpeg's own progress output goes to stderr; a hang or a runaway log must
  *  not outgrow the child-process buffer. */
 const MAX_STDERR_BYTES = 4 * 1024 * 1024;
@@ -99,7 +99,7 @@ export async function normalizeVideo(
 
   // A directory per run, under the OS temp root: two normalizations at once
   // cannot overwrite each other's files, and nothing is left behind either way.
-  const directory = await mkdtemp(path.join(os.tmpdir(), "vigilia-normalize-"));
+  const directory = await mkdtemp(path.join(os.tmpdir(), "yunari-normalize-"));
   try {
     const input = path.join(directory, "in.mp4");
     const output = path.join(directory, "out.mp4");

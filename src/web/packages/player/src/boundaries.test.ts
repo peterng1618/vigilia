@@ -178,11 +178,11 @@ describe("the interactive canvas belongs to the editor", () => {
 });
 
 describe("the player cannot reach the editor", () => {
-  it("has no import path into @vigilia/editor", () => {
+  it("has no import path into @yunari/editor", () => {
     const offenders = importsIn(DISPLAY_PACKAGES)
       .filter(
         (record) =>
-          record.specifier.includes("@vigilia/editor") ||
+          record.specifier.includes("@yunari/editor") ||
           record.specifier.includes("packages/editor"),
       )
       .map((record) => `${record.file} -> ${record.specifier}`);

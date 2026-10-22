@@ -2,7 +2,7 @@ import type {
   FabricPalette,
   FabricPaletteEntry,
   PalettePaint,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { Fragment, useState } from "react";
 import { ColourPicker } from "../../components/ui/colour-picker.js";
 import { ControlNumber } from "../../components/ui/control-number.js";
@@ -87,7 +87,7 @@ export function PaintList(props: PaintListProps): React.JSX.Element {
     <div className="flex flex-col gap-[var(--space-8)]">
       <ControlSelect
         label={uiCopy.panels.colourToken}
-        data={{ "data-vigilia-palette-token": "" }}
+        data={{ "data-yunari-palette-token": "" }}
         value={selected ?? ""}
         options={ids.map((id) => ({ id, name: palette[id]?.name ?? id }))}
         onChange={(id) => setPicked(id)}
@@ -100,7 +100,7 @@ export function PaintList(props: PaintListProps): React.JSX.Element {
             <li key={id}>
               <button
                 type="button"
-                data-vigilia-palette-token-row={id}
+                data-yunari-palette-token-row={id}
                 aria-pressed={id === selected}
                 onClick={() => setPicked(id)}
                 className={`flex min-h-[26px] w-full items-center gap-[var(--space-6)] rounded-md border ${
@@ -116,7 +116,7 @@ export function PaintList(props: PaintListProps): React.JSX.Element {
                 />
                 <span className="truncate">{token.name}</span>
                 <span
-                  data-vigilia-palette-usage=""
+                  data-yunari-palette-usage=""
                   className="ml-auto flex-none text-xs text-muted tabular-nums"
                 >
                   {figureFor(id, uses)}
@@ -128,7 +128,7 @@ export function PaintList(props: PaintListProps): React.JSX.Element {
       </ul>
       <button
         type="button"
-        data-vigilia-palette-add=""
+        data-yunari-palette-add=""
         onClick={add}
         className={plainButtonClasses}
       >
@@ -154,7 +154,7 @@ export function PaintList(props: PaintListProps): React.JSX.Element {
         <>
           <h3 className="text-xs text-muted">{uiCopy.panels.layers}</h3>
           <ul
-            data-vigilia-palette-users=""
+            data-yunari-palette-users=""
             className="flex flex-col gap-[var(--space-4)] text-xs text-text"
           >
             {(uses[selected ?? ""] ?? []).map((use) => (
@@ -179,12 +179,12 @@ function TokenFields(props: {
   const { entry, palette, selected, commit, onDelete } = props;
   return (
     <div
-      data-vigilia-palette-fields=""
+      data-yunari-palette-fields=""
       className="flex flex-col gap-[var(--space-8)]"
     >
       <ControlText
         label={uiCopy.panels.name}
-        data={{ "data-vigilia-palette-name": "" }}
+        data={{ "data-yunari-palette-name": "" }}
         value={entry.name}
         onCommit={(next) => {
           const trimmed = next.trim();
@@ -194,7 +194,7 @@ function TokenFields(props: {
       />
       <ControlSelect
         label={uiCopy.panels.paint}
-        data={{ "data-vigilia-palette-kind": "" }}
+        data={{ "data-yunari-palette-kind": "" }}
         value={entry.value.kind}
         options={(["solid", "gradient"] as const).map((kind) => ({
           id: kind,
@@ -237,7 +237,7 @@ function SolidFields(props: {
     <>
       <ControlText
         label={uiCopy.panels.colour}
-        data={{ "data-vigilia-palette-color": "" }}
+        data={{ "data-yunari-palette-color": "" }}
         value={value.color}
         // The refusal is the control set's own editable-invalid channel, so the
         // field carries `aria-invalid` and describes itself by the reason rather
@@ -264,7 +264,7 @@ function SolidFields(props: {
       />
       {/* The swatch opens the picker. The field stays, because a value can be
           typed exactly and a picker cannot always be dragged to it. */}
-      <div data-vigilia-palette-picker="" className="flex items-center">
+      <div data-yunari-palette-picker="" className="flex items-center">
         <ColourPicker
           value={value.color}
           label={uiCopy.panels.colourPicker}
@@ -299,14 +299,14 @@ function GradientFields(props: {
     <>
       <ControlNumber
         label={uiCopy.panels.angle}
-        data={{ "data-vigilia-palette-angle": "" }}
+        data={{ "data-yunari-palette-angle": "" }}
         value={value.angle}
         onCommit={(angle) => {
           if (!Number.isFinite(angle)) return;
           commit({ ...entry, value: { ...value, angle } });
         }}
       />
-      <div data-vigilia-palette-gradient="" className="w-full">
+      <div data-yunari-palette-gradient="" className="w-full">
         <GradientEditor
           stops={value.stops}
           angle={value.angle}
@@ -324,7 +324,7 @@ function GradientFields(props: {
               the track holding nothing between them. */}
           <ControlSlider
             label={uiCopy.panels.stopPosition(index + 1)}
-            data={{ "data-vigilia-palette-stop-offset": "" }}
+            data={{ "data-yunari-palette-stop-offset": "" }}
             value={stop.offset}
             min={0}
             max={1}
@@ -333,7 +333,7 @@ function GradientFields(props: {
           />
           <ControlText
             label={uiCopy.panels.stopColour(index + 1)}
-            data={{ "data-vigilia-palette-stop-color": "" }}
+            data={{ "data-yunari-palette-stop-color": "" }}
             value={stop.color}
             onCommit={(color) => {
               const typed = color.trim();
@@ -346,7 +346,7 @@ function GradientFields(props: {
       {last === undefined ? null : (
         <button
           type="button"
-          data-vigilia-palette-add-stop=""
+          data-yunari-palette-add-stop=""
           className={plainButtonClasses}
           onClick={() => {
             commit({
@@ -387,14 +387,14 @@ function DeletionControls(props: {
     <>
       <ControlSelect
         label={uiCopy.panels.reassign}
-        data={{ "data-vigilia-palette-replacement": "" }}
+        data={{ "data-yunari-palette-replacement": "" }}
         value={replacement ?? ""}
         options={options}
         onChange={setPicked}
       />
       <button
         type="button"
-        data-vigilia-palette-delete=""
+        data-yunari-palette-delete=""
         disabled={replacement === undefined}
         onClick={() => {
           if (replacement !== undefined) onDelete(selected, replacement);

@@ -16,14 +16,14 @@ Only the first makes that text true. The second is what a browser asks for
 every time it wants a favicon, a stale chunk, or a file that was renamed — and
 the text tells the reader to run a build they have already run. The message is
 also the one this repo's own `AGENTS.md` sends people chasing ("Build the host
-before running `bin/vigilia.js`"), so following it produces the identical
+before running `bin/yunari.js`"), so following it produces the identical
 response and no progress.
 
 The shape worth solving: **a not-found response that must distinguish an
 unbuilt artefact from a missing file inside a built one, without asserting a
 cause it cannot verify.**
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `serveStatic`, `resolveStaticPath`, `missingBundleHint`, `server.test.ts`,
 `document-favicon.test.ts`.

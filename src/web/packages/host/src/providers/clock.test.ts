@@ -3,7 +3,7 @@ import {
   formatInstant,
   instantIn,
   parseInstant,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { CLOCK_DESCRIPTORS, ClockSensorProvider } from "./clock.js";
 

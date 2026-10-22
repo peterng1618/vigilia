@@ -259,7 +259,7 @@ it("mounts the OS-resolved palette, menus, rail, inspector and dock hosts", () =
   // allowed to grow a second route back to it: the gear is the only one. The
   // attribute it used to write is still what paints the shell, asserted above.
   expect(
-    root.querySelector(".editor-shell-header [data-vigilia-palette]"),
+    root.querySelector(".editor-shell-header [data-yunari-palette]"),
     "a palette control is back in the header",
   ).toBeNull();
 
@@ -270,7 +270,7 @@ it("gives every pane DESIGN.md's chrome, named by the section the specs browse",
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
-  // One pane per rail slot, each wearing a title bar, its own `data-vigilia-panel`
+  // One pane per rail slot, each wearing a title bar, its own `data-yunari-panel`
   // name and `hidden` unless its slot is chosen. The Composition pane's DOM name
   // is the `layers` the browser specs and the panel CSS already browse by, so
   // the chrome moved around the contract rather than the contract moving; its
@@ -278,12 +278,12 @@ it("gives every pane DESIGN.md's chrome, named by the section the specs browse",
   const panes = root.querySelectorAll(".editor-shell-pane");
   expect(panes).toHaveLength(4);
   expect(
-    [...panes].map((pane) => pane.getAttribute("data-vigilia-panel")).sort(),
+    [...panes].map((pane) => pane.getAttribute("data-yunari-panel")).sort(),
   ).toEqual(["add", "document", "layers", "tokens"]);
   for (const pane of panes) {
     expect(pane.querySelector(".editor-shell-pane-title")).not.toBeNull();
   }
-  const layers = root.querySelector('[data-vigilia-panel="layers"]');
+  const layers = root.querySelector('[data-yunari-panel="layers"]');
   expect(layers).not.toBeNull();
   expect(layers?.classList.contains("editor-shell-pane")).toBe(true);
   expect(layers?.querySelector(".editor-shell-pane-name")?.textContent).toBe(
@@ -291,10 +291,10 @@ it("gives every pane DESIGN.md's chrome, named by the section the specs browse",
   );
   // The object actions are the pane's footer toolbar — a Pane footer, so it is
   // not a row of the tree — and there is exactly one of them.
-  expect(layers?.querySelector("[data-vigilia-layer-actions]")).not.toBeNull();
+  expect(layers?.querySelector("[data-yunari-layer-actions]")).not.toBeNull();
   expect(
     root.querySelectorAll(
-      '[data-vigilia-panel="layers"] [data-vigilia-layer-actions]',
+      '[data-yunari-panel="layers"] [data-yunari-layer-actions]',
     ),
   ).toHaveLength(1);
 
@@ -324,9 +324,8 @@ it("prints each pane's own count, and no count where a pane has no list", () => 
   const layout = createShellLayout(root);
 
   const countOf = (pane: string): string | null =>
-    root.querySelector(
-      `[data-vigilia-panel="${pane}"] .editor-shell-pane-count`,
-    )?.textContent ?? null;
+    root.querySelector(`[data-yunari-panel="${pane}"] .editor-shell-pane-count`)
+      ?.textContent ?? null;
 
   expect(countOf("add")).toBe(uiCopy.paneCounts.units(CARD_LIBRARY.length));
   expect(countOf("layers")).toBeNull();
@@ -405,11 +404,11 @@ it("opens the publish surface from the shell's own door, and moves no host state
   // The host is asked once, when the store is built, and the control is drawn
   // only once it has answered — so the wait is for the control, not for a frame.
   await vi.waitFor(() =>
-    expect(root.querySelector("[data-vigilia-publish]")).not.toBeNull(),
+    expect(root.querySelector("[data-yunari-publish]")).not.toBeNull(),
   );
   const trigger = (): string | null =>
     root
-      .querySelector("[data-vigilia-publish]")
+      .querySelector("[data-yunari-publish]")
       ?.getAttribute("aria-expanded") ?? null;
   expect(trigger()).toBe("false");
 
@@ -839,7 +838,7 @@ it("reads the scene's counts on the left, and draws none before a bridge is set"
   // No scene has mounted, so there is no total to read. The left is empty
   // rather than reading `0 objects` over a canvas the editor has not built —
   // that reading is a claim the product does not have (§9).
-  expect(root.querySelector("[data-vigilia-status-objects]")).toBeNull();
+  expect(root.querySelector("[data-yunari-status-objects]")).toBeNull();
   expect(root.querySelector("#status")?.textContent).toBe("");
 
   layout.setBridge(
@@ -859,11 +858,11 @@ it("reads the scene's counts on the left, and draws none before a bridge is set"
   await Promise.resolve();
 
   const line = root.querySelector("#status");
+  expect(line?.querySelector("[data-yunari-status-objects]")?.textContent).toBe(
+    "52 objects",
+  );
   expect(
-    line?.querySelector("[data-vigilia-status-objects]")?.textContent,
-  ).toBe("52 objects");
-  expect(
-    line?.querySelector("[data-vigilia-status-selected]")?.textContent,
+    line?.querySelector("[data-yunari-status-selected]")?.textContent,
   ).toBe("3 selected");
 
   layout.destroy();
@@ -973,7 +972,7 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   // surface with the eight and grey them; they belong to the selection
   // inspector's lead now, which is the surface that names the selection they act
   // on, so the toolbar carries the object half alone and greys nothing.
-  expect(dock.querySelector("[data-vigilia-arrange-action]")).toBeNull();
+  expect(dock.querySelector("[data-yunari-arrange-action]")).toBeNull();
 
   duplicate?.click();
   expect(run).toHaveBeenCalledWith("duplicate");
@@ -984,11 +983,11 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
 it("draws one toolbar holding the object actions, and no arrange action at all", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
-  const toolbar = root.querySelector("[data-vigilia-canvas-toolbar]");
+  const toolbar = root.querySelector("[data-yunari-canvas-toolbar]");
   expect(toolbar).not.toBeNull();
   // The other surface is gone, not hidden: a `null` here is the assertion that
   // the second toolbar was deleted rather than left drawing somewhere.
-  expect(root.querySelector("[data-vigilia-arrange-toolbar]")).toBeNull();
+  expect(root.querySelector("[data-yunari-arrange-toolbar]")).toBeNull();
   // Derived, not a literal — a ninth arrange action added to `ARRANGE_ICONS`
   // must fail here rather than be silently dropped. It fails by being **absent**
   // now: `vg-463` moved the whole set to the inspector's lead, so the registry
@@ -1031,10 +1030,10 @@ it("draws no arrange action for a multi-selection either, whatever the bridge sa
   layout.setBridge(bridge, undefined);
   await Promise.resolve();
 
-  const toolbar = root.querySelector("[data-vigilia-canvas-toolbar]");
-  expect(
-    toolbar?.querySelectorAll("[data-vigilia-arrange-action]").length,
-  ).toBe(0);
+  const toolbar = root.querySelector("[data-yunari-canvas-toolbar]");
+  expect(toolbar?.querySelectorAll("[data-yunari-arrange-action]").length).toBe(
+    0,
+  );
   // And the surface is still the object half's, so that absence is the arrange
   // half's alone: a group of two can duplicate.
   expect(toolbar?.querySelector('[aria-label="Duplicate"]')).not.toBeNull();
@@ -1456,16 +1455,16 @@ it("offers the three modes and marks the active one", async () => {
   expect(
     root.querySelector(".editor-shell-mode-switch")?.id,
     "the switch carries no id",
-  ).toBe("vigilia-shell-modes");
+  ).toBe("yunari-shell-modes");
   expect(modeSegments(root).map((segment) => segment.id)).toEqual([
-    "vigilia-shell-modes-editor",
-    "vigilia-shell-modes-themes",
-    "vigilia-shell-modes-this-pc",
+    "yunari-shell-modes-editor",
+    "yunari-shell-modes-themes",
+    "yunari-shell-modes-this-pc",
   ]);
   expect(root.querySelector<HTMLElement>(".editor-shell-body")?.hidden).toBe(
     false,
   );
-  expect(root.querySelector("[data-vigilia-mode-region]")).toBeNull();
+  expect(root.querySelector("[data-yunari-mode-region]")).toBeNull();
 
   await act(async () => modeSegments(root)[1]?.click());
 
@@ -1480,8 +1479,8 @@ it("offers the three modes and marks the active one", async () => {
   ).toBe(true);
   expect(
     root
-      .querySelector("[data-vigilia-mode-region]")
-      ?.getAttribute("data-vigilia-mode-region"),
+      .querySelector("[data-yunari-mode-region]")
+      ?.getAttribute("data-yunari-mode-region"),
     "the themes mode renders no region",
   ).toBe("themes");
 
@@ -1541,7 +1540,7 @@ it("moves the shell only when the open's replacement is accepted", async () => {
   await act(async () => modeSegments(root)[1]?.click());
   const openControl = (): HTMLButtonElement | null =>
     root.querySelector<HTMLButtonElement>(
-      "[data-vigilia-store-cell-action='open']",
+      "[data-yunari-store-cell-action='open']",
     );
   await vi.waitFor(() =>
     expect(openControl(), "the store drew no cell to open").not.toBeNull(),
@@ -1642,12 +1641,12 @@ it("draws the editor's own header actions only in editor mode", async () => {
   // Drawn only once the host has answered, so a read taken before that would
   // pass this test against a header that never renders the control at all.
   await vi.waitFor(() =>
-    expect(root.querySelector("[data-vigilia-publish]")).not.toBeNull(),
+    expect(root.querySelector("[data-yunari-publish]")).not.toBeNull(),
   );
 
   const actions = (): { menus: number; publish: boolean } => ({
     menus: root.querySelectorAll(".editor-shell-menubar button").length,
-    publish: root.querySelector("[data-vigilia-publish]") !== null,
+    publish: root.querySelector("[data-yunari-publish]") !== null,
   });
   const editorActions = { menus: 3, publish: true };
 
@@ -1815,7 +1814,7 @@ it("stays in the editor when the save does not land", async () => {
  * **The third mode has a surface, and the store's is not showing beside it.**
  *
  * A.1 left the seam and A.2 filled it for Themes; this is the Host region
- * mounting in the same section — one `[data-vigilia-mode-region]` element
+ * mounting in the same section — one `[data-yunari-mode-region]` element
  * whichever of the two draws, which is the seam's own rule rather than two
  * regions stacked. Both clients are the shell's own, so the stub is what the
  * host answers: the display map, the library, this PC's devices and its display
@@ -1860,11 +1859,11 @@ it("shows the Host mode's own region, and the store's only in Themes", async () 
 
   await act(async () => modeSegments(root)[1]?.click());
   expect(
-    root.querySelector("[data-vigilia-store-region]"),
+    root.querySelector("[data-yunari-store-region]"),
     "the Themes mode drew no store region",
   ).not.toBeNull();
   expect(
-    root.querySelector("[data-vigilia-host-region]"),
+    root.querySelector("[data-yunari-host-region]"),
     "the store's region was drawn beside the Host one",
   ).toBeNull();
 
@@ -1872,17 +1871,17 @@ it("shows the Host mode's own region, and the store's only in Themes", async () 
   await act(async () => {});
 
   expect(
-    root.querySelector("[data-vigilia-host-region]"),
+    root.querySelector("[data-yunari-host-region]"),
     "the Host mode drew no region",
   ).not.toBeNull();
   expect(
-    root.querySelector("[data-vigilia-store-region]"),
+    root.querySelector("[data-yunari-store-region]"),
     "the store's region is still showing in the Host mode",
   ).toBeNull();
-  const sections = root.querySelectorAll("[data-vigilia-mode-region]");
+  const sections = root.querySelectorAll("[data-yunari-mode-region]");
   expect(sections, "the seam is more than one element").toHaveLength(1);
   expect(
-    sections[0]?.getAttribute("data-vigilia-mode-region"),
+    sections[0]?.getAttribute("data-yunari-mode-region"),
     "the section does not name the mode that is showing",
   ).toBe("this-pc");
 
@@ -1942,11 +1941,11 @@ it("puts the Host mode's line in the status strip, and the editor's readouts els
   const strip = (): HTMLElement =>
     root.querySelector<HTMLElement>("#status") as HTMLElement;
   expect(
-    strip().querySelector("[data-vigilia-status-objects]"),
+    strip().querySelector("[data-yunari-status-objects]"),
     "the editor's own counts are not in the strip to begin with",
   ).not.toBeNull();
   expect(
-    strip().querySelector("[data-vigilia-host-status]"),
+    strip().querySelector("[data-yunari-host-status]"),
     "the Host mode's line is drawn in a mode that is not Host",
   ).toBeNull();
 
@@ -1954,15 +1953,15 @@ it("puts the Host mode's line in the status strip, and the editor's readouts els
   await act(async () => {});
 
   expect(
-    strip().querySelector("[data-vigilia-status-objects]"),
+    strip().querySelector("[data-yunari-status-objects]"),
     "the editor's counts are still in the strip in the Host mode",
   ).toBeNull();
   expect(
-    strip().querySelector("[data-vigilia-host-display-count]")?.textContent,
+    strip().querySelector("[data-yunari-host-display-count]")?.textContent,
     "the strip does not count the displays the host answered",
   ).toBe(uiCopy.hostSettings.status.displays(1));
   expect(
-    strip().querySelector("[data-vigilia-host-status]")?.textContent,
+    strip().querySelector("[data-yunari-host-status]")?.textContent,
     "the strip does not carry the Host mode's own line",
   ).toBe(uiCopy.hostSettings.status.ready);
 
@@ -2025,7 +2024,7 @@ it("paints no line from the previous visit when the Host mode is re-entered", as
   const count = (): string | undefined =>
     root
       .querySelector<HTMLElement>("#status")
-      ?.querySelector("[data-vigilia-host-display-count]")?.textContent ??
+      ?.querySelector("[data-yunari-host-display-count]")?.textContent ??
     undefined;
 
   await act(async () => modeSegments(root)[2]?.click());
@@ -2057,7 +2056,7 @@ it("paints no line from the previous visit when the Host mode is re-entered", as
       .filter(
         (record) =>
           record.target instanceof Element &&
-          record.target.hasAttribute("data-vigilia-host-status"),
+          record.target.hasAttribute("data-yunari-host-status"),
       )
       .flatMap((record) => [...record.addedNodes])
       .filter((node) => node instanceof Text),

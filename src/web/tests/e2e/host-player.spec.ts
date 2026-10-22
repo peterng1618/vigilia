@@ -12,7 +12,7 @@ import {
   type Request,
   test,
 } from "@playwright/test";
-import { SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
+import { SAMPLE_STREAM_PATH } from "@yunari/renderer-core";
 import { uiCopy } from "../../packages/player/src/ui-copy.js";
 import { canvasProp, sceneBounds, sceneProperty } from "./canvas-probe.js";
 import { openPaused } from "./clock.js";
@@ -72,7 +72,7 @@ const themeIdOfSave = (request: Request): string =>
 async function saveStarterThroughTheHost(page: Page): Promise<string> {
   await page.goto(`${HOST}/editor/`);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "New from starter" }).click();
@@ -122,9 +122,9 @@ async function openDisplayWithLiveData(page: Page): Promise<void> {
           () =>
             (
               window as unknown as {
-                vigilia?: { live?: { batchCount?: number } };
+                yunari?: { live?: { batchCount?: number } };
               }
-            ).vigilia?.live?.batchCount ?? 0,
+            ).yunari?.live?.batchCount ?? 0,
         ),
       { timeout: 20_000 },
     )
@@ -161,9 +161,9 @@ function chartPixels(page: Page): Promise<
     };
     const canvas = (
       window as unknown as {
-        vigilia?: { handle: { canvas: { getObjects(): readonly Obj[] } } };
+        yunari?: { handle: { canvas: { getObjects(): readonly Obj[] } } };
       }
-    ).vigilia?.handle.canvas;
+    ).yunari?.handle.canvas;
     const charts: Obj[] = [];
     const visit = (objects: readonly Obj[] | undefined): void => {
       for (const object of objects ?? []) {
@@ -220,7 +220,7 @@ function chartPixels(page: Page): Promise<
 async function decodedBadgeInk(page: Page): Promise<number> {
   return page.evaluate(({ r, g, b }) => {
     const image = document.querySelector<HTMLImageElement>(
-      "[data-vigilia-background-media] img",
+      "[data-yunari-background-media] img",
     );
     if (image === null || !image.complete || image.naturalWidth === 0) {
       return 0;
@@ -284,11 +284,11 @@ test.describe("hosted player over the real host", () => {
   }) => {
     await page.goto(`${HOST}/?theme=e2e-no-such-theme`);
 
-    await expect(page.locator("[data-vigilia-load-failure]")).toBeVisible();
+    await expect(page.locator("[data-yunari-load-failure]")).toBeVisible();
     // The host's own reason, kept and labelled, because the person who fixes
     // this is not the one looking at the display.
     await expect(
-      page.locator("[data-vigilia-load-failure-reason]"),
+      page.locator("[data-yunari-load-failure-reason]"),
     ).not.toBeEmpty();
     // A reader with several displays open can tell which one broke.
     await expect(page).toHaveTitle(/nothing to display/);
@@ -332,7 +332,7 @@ test.describe("hosted player over the real host", () => {
       .toBeGreaterThan(200);
 
     const media = await page
-      .locator("[data-vigilia-background-media] img")
+      .locator("[data-yunari-background-media] img")
       .evaluate((element) => ({
         src: (element as HTMLImageElement).src,
         naturalWidth: (element as HTMLImageElement).naturalWidth,
@@ -363,12 +363,12 @@ test.describe("hosted player over the real host", () => {
     // back through the host's player route: the author-to-display loop.
     await page.goto(`${HOST}/editor/`);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-yunari-panel="add"]')
       .getByRole("button", { name: "Text" })
       .click();
 
@@ -413,7 +413,7 @@ test.describe("hosted player over the real host", () => {
     // A failed font fetch would surface through the player's failure path; the
     // connection banner is absent once live, so assert on the failure page —
     // the marker that page actually carries, named once above.
-    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-load-failure]")).toHaveCount(0);
   });
 
   // Where the defect became visible, and where the witness belongs. It was
@@ -423,7 +423,7 @@ test.describe("hosted player over the real host", () => {
   // is where a saved document is read back, so that is where the assertion lives.
   //
   // The number in the comment used to be the failing value. It is now the
-  // authored one: `vigiliaText.box` is the owner, and Fabric's own width is a
+  // authored one: `yunariText.box` is the owner, and Fabric's own width is a
   // cache it re-asserts. See `docs/decisions/0003`.
   //
   // The starter is saved through the host's own store rather than a fixture,
@@ -434,7 +434,7 @@ test.describe("hosted player over the real host", () => {
     test.skip(!isDesktopSurface(testInfo), "one desktop pass is enough");
 
     await openStarterDisplay(page);
-    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await page.waitForSelector('canvas[data-yunari="artboard"]');
     await page.waitForTimeout(8000);
     // **Groups descended, and world.** All three are parts of a card, so the
     // root-only search this replaced read nothing for them; and `right` is
@@ -473,7 +473,7 @@ test.describe("hosted player over the real host", () => {
 
     await page.goto(`${HOST}/?theme=${HOST_JAPANESE_THEME_ID}&data=live`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
     // Waited on, not read once: the banner clears when the stream connects, which
@@ -487,7 +487,7 @@ test.describe("hosted player over the real host", () => {
 
     await page.goto(`${HOST}/?theme=${HOST_ENGLISH_THEME_ID}&data=live`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
     await expect
@@ -513,11 +513,11 @@ test.describe("hosted player over the real host", () => {
     // own route — the author-to-display loop, with no fixture in between.
     await page.goto(`${HOST}/editor/`);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-add-group="shape"]')
+      .locator('[data-yunari-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     await page.getByRole("button", { name: "File", exact: true }).click();
@@ -539,14 +539,14 @@ test.describe("hosted player over the real host", () => {
             () =>
               (
                 window as unknown as {
-                  vigilia?: { live?: { batchCount?: number } };
+                  yunari?: { live?: { batchCount?: number } };
                 }
-              ).vigilia?.live?.batchCount ?? 0,
+              ).yunari?.live?.batchCount ?? 0,
           ),
         { timeout: 20_000 },
       )
       .toBeGreaterThan(0);
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0);
+    await expect(page.locator("#yunari-connection")).toHaveCount(0);
 
     /** Read through `sceneProperty`, which descends into groups — the CPU
      *  card's plate and its value are both parts of `group-cpu-card`, so the
@@ -556,7 +556,7 @@ test.describe("hosted player over the real host", () => {
       treatment: unknown;
       reading: string;
     }> => ({
-      treatment: await sceneProperty(page, "cpu-card", "vigiliaGlass"),
+      treatment: await sceneProperty(page, "cpu-card", "yunariGlass"),
       reading: String(
         (await sceneProperty(page, "cpu-card-value", "text")) ?? "—",
       ),
@@ -575,7 +575,7 @@ test.describe("hosted player over the real host", () => {
       .toMatch(/^\d+%$/);
 
     // The player's failure path is that page; an absent one is the claim.
-    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-load-failure]")).toHaveCount(0);
   });
 
   test("the display paints its charts in the theme's own palette", async ({
@@ -666,7 +666,7 @@ test.describe("hosted player over the real host", () => {
     // `hydrateCharts` turned it into a warning rather than a `pageerror`, so a
     // run watching for uncaught errors saw none:
     //
-    //   Vigilia: Chart "ram-gauge" failed to draw and was left as it was.
+    //   Yunari: Chart "ram-gauge" failed to draw and was left as it was.
     //   Cannot read properties of undefined (reading '0')
     //
     // The cause is ECharts 6.1.0's, and it is in the data, not the paint.
@@ -712,7 +712,7 @@ test.describe("hosted player over the real host", () => {
     // browser saves it, so this does that itself rather than leaning on
     // whichever test happened to run first.
     await openStarterDisplay(page, "&data=live");
-    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await page.waitForSelector('canvas[data-yunari="artboard"]');
     await expect
       .poll(
         () =>
@@ -720,9 +720,9 @@ test.describe("hosted player over the real host", () => {
             () =>
               (
                 window as unknown as {
-                  vigilia?: { live?: { batchCount?: number } };
+                  yunari?: { live?: { batchCount?: number } };
                 }
-              ).vigilia?.live?.batchCount ?? 0,
+              ).yunari?.live?.batchCount ?? 0,
           ),
         { timeout: 20_000 },
       )
@@ -743,11 +743,11 @@ test.describe("hosted player over the real host", () => {
         () =>
           (
             window as unknown as {
-              vigilia?: {
+              yunari?: {
                 live?: { source?: { latest(key: string): unknown } };
               };
             }
-          ).vigilia?.live?.source?.latest("gpu.name") as
+          ).yunari?.live?.source?.latest("gpu.name") as
             | { textValue?: string; status?: string }
             | undefined,
       );
@@ -798,14 +798,14 @@ test.describe("hosted player over the real host", () => {
 
     // `live` is only reported once a real batch arrives over SSE from the host;
     // the banner is removed then (see `showConnectionState`).
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
 
     const batchCount = await page.evaluate(
       () =>
-        (window as unknown as { vigilia?: { live?: { batchCount?: number } } })
-          .vigilia?.live?.batchCount ?? 0,
+        (window as unknown as { yunari?: { live?: { batchCount?: number } } })
+          .yunari?.live?.batchCount ?? 0,
     );
     expect(batchCount).toBeGreaterThan(0);
   });
@@ -839,7 +839,7 @@ test.describe("hosted player over the real host", () => {
     await expect(artboard).toBeVisible();
     // A batch has arrived and been consumed, so the first frame is a painted
     // reading rather than the blank artboard a first paint would also move.
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
     // Polled rather than read once. The strip disappearing says a batch was
@@ -883,8 +883,8 @@ test.describe("hosted player over the real host", () => {
 function liveBatches(page: Page): Promise<number> {
   return page.evaluate(
     () =>
-      (window as unknown as { vigilia?: { live?: { batchCount?: number } } })
-        .vigilia?.live?.batchCount ?? 0,
+      (window as unknown as { yunari?: { live?: { batchCount?: number } } })
+        .yunari?.live?.batchCount ?? 0,
   );
 }
 
@@ -945,7 +945,7 @@ test.describe("the clock the host reports", () => {
     );
 
     await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
 
@@ -1093,9 +1093,9 @@ async function temperatureSample(page: Page): Promise<string> {
   return page.evaluate(() => {
     const source = (
       window as unknown as {
-        vigilia?: { live?: { source?: { latest(key: string): unknown } } };
+        yunari?: { live?: { source?: { latest(key: string): unknown } } };
       }
-    ).vigilia?.live?.source;
+    ).yunari?.live?.source;
     const sample = source?.latest("gpu.temp") as
       | { status?: string; value?: number; unit?: string }
       | undefined;
@@ -1124,14 +1124,14 @@ async function paintsIn(
     ([chosen, nodeId]) => {
       const bridge = (
         window as unknown as {
-          vigilia?: {
+          yunari?: {
             handle?: {
               canvas?: { getObjects(): { get(key: string): unknown }[] };
             };
             live?: { source?: { latest(key: string): unknown } };
           };
         }
-      ).vigilia;
+      ).yunari;
       const sample = bridge?.live?.source?.latest("gpu.temp") as
         | { value?: number; unit?: string }
         | undefined;
@@ -1172,7 +1172,7 @@ test.describe("the units this PC reads in", () => {
     );
 
     await page.goto(`${HOST}/?theme=${HOST_TEMP_THEME_ID}&data=live`);
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
 
@@ -1198,7 +1198,7 @@ test.describe("the units this PC reads in", () => {
       // The preference is read when a display loads, so the screen that is
       // already up is not what shows it.
       await page.reload();
-      await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+      await expect(page.locator("#yunari-connection")).toHaveCount(0, {
         timeout: 15_000,
       });
       await expect
@@ -1234,9 +1234,9 @@ test.describe("a display fed by the real host", () => {
             () =>
               (
                 window as unknown as {
-                  vigilia?: { live?: { batchCount?: number } };
+                  yunari?: { live?: { batchCount?: number } };
                 }
-              ).vigilia?.live?.batchCount ?? 0,
+              ).yunari?.live?.batchCount ?? 0,
           ),
         { timeout: 20_000 },
       )
@@ -1261,7 +1261,7 @@ test.describe("a display fed by the real host", () => {
       page.evaluate((nodeId) => {
         const handle = (
           window as unknown as {
-            vigilia?: {
+            yunari?: {
               handle: {
                 canvas: {
                   getObjects?(): Array<{ get(n: string): unknown }>;
@@ -1270,7 +1270,7 @@ test.describe("a display fed by the real host", () => {
               live?: { source?: { latest(k: string): unknown } };
             };
           }
-        ).vigilia;
+        ).yunari;
         // The scene is revived asynchronously, so an unmounted canvas is "not
         // yet" rather than a reading — otherwise the poll would reject instead
         // of retrying.
@@ -1303,7 +1303,7 @@ test.describe("a display fed by the real host", () => {
 
     await page.goto(`${HOST}/editor/`);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     const saved = page.waitForRequest(
       (request) =>
@@ -1379,7 +1379,7 @@ test.describe("a display fed by the real host", () => {
     // Kept as evidence, and looked at before it is kept. Gated like its two
     // siblings: this file is tracked, and rewriting it on every desktop-host
     // run left the working tree dirty with a picture nobody inspected.
-    if (process.env["VIGILIA_CAPTURE"] !== undefined) {
+    if (process.env["YUNARI_CAPTURE"] !== undefined) {
       await page.setContent(
         `<body style="margin:0;background:#0c0e13"><img src="${dataUrl}" style="display:block;width:${census.width * 2}px;image-rendering:pixelated"></body>`,
       );
@@ -1427,7 +1427,7 @@ test.describe("a display fed by the real host", () => {
       url.pathname.endsWith(SAMPLE_STREAM_PATH);
     await page.route(refusesTheStream, (route) => route.abort());
     await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
-    await expect(page.locator("#vigilia-connection")).toBeVisible({
+    await expect(page.locator("#yunari-connection")).toBeVisible({
       timeout: 30_000,
     });
     // The banner names the state, so a page that merely failed to load cannot
@@ -1435,7 +1435,7 @@ test.describe("a display fed by the real host", () => {
     // matched `"Connecting to the host…"`, which is how the broken matcher
     // above went unnoticed for so long: the two states are two sentences, and
     // the assertion is the reconnecting one, from the copy's own owner.
-    await expect(page.locator("#vigilia-connection")).toHaveText(
+    await expect(page.locator("#yunari-connection")).toHaveText(
       uiCopy.connection.reconnecting,
     );
 
@@ -1443,16 +1443,16 @@ test.describe("a display fed by the real host", () => {
     // the page is never navigated again, so a passing banner only means the
     // stream came back.
     await page.unroute(refusesTheStream);
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+    await expect(page.locator("#yunari-connection")).toHaveCount(0, {
       timeout: 60_000,
     });
     const batches = await page.evaluate(
       () =>
         (
           window as unknown as {
-            vigilia?: { live?: { batchCount?: number } };
+            yunari?: { live?: { batchCount?: number } };
           }
-        ).vigilia?.live?.batchCount ?? 0,
+        ).yunari?.live?.batchCount ?? 0,
     );
     expect(batches, "samples arrived after the reconnect").toBeGreaterThan(0);
     // And a real reading is on the canvas, not just an open socket.
@@ -1481,11 +1481,11 @@ test.describe("a display fed by the real host", () => {
     // designed to be read, and where the registered capture is taken.
     await page.setViewportSize({ width: 1672, height: 941 });
     const themeId = await openStarterDisplay(page);
-    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await page.waitForSelector('canvas[data-yunari="artboard"]');
     await page.waitForFunction(
       () => {
         const image = document.querySelector<HTMLImageElement>(
-          "[data-vigilia-background-media] img",
+          "[data-yunari-background-media] img",
         );
         return (
           image !== null &&
@@ -1501,9 +1501,7 @@ test.describe("a display fed by the real host", () => {
     const delivered = await page.evaluate(
       () =>
         document
-          .querySelector<HTMLImageElement>(
-            "[data-vigilia-background-media] img",
-          )
+          .querySelector<HTMLImageElement>("[data-yunari-background-media] img")
           ?.getAttribute("src") ?? "",
     );
     expect(delivered).toBe(
@@ -1583,7 +1581,7 @@ test.describe("a display fed by the real host", () => {
     // have rendered the same picture and failed exactly here.
     const taint = await page.evaluate(() => {
       const element = document.querySelector<HTMLCanvasElement>(
-        'canvas[data-vigilia="artboard"]',
+        'canvas[data-yunari="artboard"]',
       );
       if (element === null) throw new Error("the display canvas is missing");
       try {
@@ -1613,7 +1611,7 @@ test.describe("a display fed by the real host", () => {
     // would load.
     await page.goto(`${HOST}/editor/`);
     await expect(
-      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+      page.locator("#yunari-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
     await page.getByRole("button", { name: "File", exact: true }).click();
     await page.getByRole("menuitem", { name: "Save to library" }).click();
@@ -1623,7 +1621,7 @@ test.describe("a display fed by the real host", () => {
 
     await page.setViewportSize({ width: 1672, height: 941 });
     await openStarterDisplay(page, "&data=live");
-    await page.waitForSelector('canvas[data-vigilia="artboard"]');
+    await page.waitForSelector('canvas[data-yunari="artboard"]');
     await expect
       .poll(
         () =>
@@ -1631,9 +1629,9 @@ test.describe("a display fed by the real host", () => {
             () =>
               (
                 window as unknown as {
-                  vigilia?: { live?: { batchCount?: number } };
+                  yunari?: { live?: { batchCount?: number } };
                 }
-              ).vigilia?.live?.batchCount ?? 0,
+              ).yunari?.live?.batchCount ?? 0,
           ),
         { timeout: 20_000 },
       )
@@ -1646,7 +1644,7 @@ test.describe("a display fed by the real host", () => {
           const painted = await page.evaluate(() => {
             const handle = (
               window as unknown as {
-                vigilia?: {
+                yunari?: {
                   handle: {
                     canvas: {
                       getObjects?(): Array<{ get(n: string): unknown }>;
@@ -1654,7 +1652,7 @@ test.describe("a display fed by the real host", () => {
                   };
                 };
               }
-            ).vigilia;
+            ).yunari;
             // The scene revives asynchronously, so an unmounted canvas is "not
             // yet" rather than a reading.
             const getObjects = handle?.handle.canvas.getObjects;
@@ -1672,7 +1670,7 @@ test.describe("a display fed by the real host", () => {
       )
       .not.toBe("—");
 
-    await expect(page.locator("#vigilia-connection")).toHaveCount(0);
+    await expect(page.locator("#yunari-connection")).toHaveCount(0);
     // **Charts, waited on rather than slept through.** The stream can take
     // several seconds to connect, and a chart's line chart is a rolling
     // window — so the condition to wait for is the one being captured: a
@@ -1693,11 +1691,11 @@ test.describe("a display fed by the real host", () => {
             };
             const canvas = (
               window as unknown as {
-                vigilia?: {
+                yunari?: {
                   handle: { canvas?: { getObjects(): readonly Obj[] } };
                 };
               }
-            ).vigilia?.handle.canvas;
+            ).yunari?.handle.canvas;
             const find = (objects: readonly Obj[]): Obj | undefined => {
               for (const candidate of objects) {
                 if (candidate.get("id") === "trends-chart") return candidate;
@@ -1788,7 +1786,7 @@ function playerSurface(page: Page): Promise<{
   return page.evaluate(() => {
     const canvas = (
       window as unknown as {
-        vigilia?: {
+        yunari?: {
           handle: {
             canvas: {
               viewportTransform: number[];
@@ -1798,7 +1796,7 @@ function playerSurface(page: Page): Promise<{
           };
         };
       }
-    ).vigilia?.handle.canvas;
+    ).yunari?.handle.canvas;
     if (canvas === undefined) throw new Error("the player has not mounted");
     canvas.renderAll();
     const vp = canvas.viewportTransform;
@@ -1828,7 +1826,7 @@ function glyphCoverage(
     };
     const canvas = (
       window as unknown as {
-        vigilia?: {
+        yunari?: {
           handle: {
             canvas: {
               getObjects(): Obj[];
@@ -1840,7 +1838,7 @@ function glyphCoverage(
           };
         };
       }
-    ).vigilia?.handle.canvas;
+    ).yunari?.handle.canvas;
     if (canvas === undefined) throw new Error("the player has not mounted");
     const object = canvas
       .getObjects()
@@ -1977,7 +1975,7 @@ function starterCardBands(
       };
       const canvas = (
         window as unknown as {
-          vigilia?: {
+          yunari?: {
             handle: {
               canvas: {
                 getObjects(): Obj[];
@@ -1989,7 +1987,7 @@ function starterCardBands(
             };
           };
         }
-      ).vigilia?.handle.canvas;
+      ).yunari?.handle.canvas;
       if (canvas === undefined) throw new Error("the player has not mounted");
       const find = (objects: Obj[]): Obj | undefined => {
         for (const candidate of objects) {
@@ -2095,19 +2093,19 @@ function starterCardBands(
         };
       };
 
-      const authored = card.get("vigiliaGlass") as { blurRadius: number };
+      const authored = card.get("yunariGlass") as { blurRadius: number };
       const authoredFill = card.get("fill") as string;
-      card.set("vigiliaGlass", authored);
+      card.set("yunariGlass", authored);
       const blurred = measure();
-      card.set("vigiliaGlass", { blurRadius: 0 });
+      card.set("yunariGlass", { blurRadius: 0 });
       const sharp = measure();
-      card.set("vigiliaGlass", authored);
+      card.set("yunariGlass", authored);
       card.set("fill", "rgba(8, 21, 35, 0)");
       const clearBlurred = measure();
-      card.set("vigiliaGlass", { blurRadius: 0 });
+      card.set("yunariGlass", { blurRadius: 0 });
       const clearSharp = measure();
       card.set("fill", authoredFill);
-      card.set("vigiliaGlass", authored);
+      card.set("yunariGlass", authored);
       for (const [object, visible] of restore) object.set("visible", visible);
       canvas.renderAll();
 
@@ -2119,7 +2117,7 @@ function starterCardBands(
       // column averages.
       const photo = (() => {
         const image = document.querySelector<HTMLImageElement>(
-          "[data-vigilia-background-media] img",
+          "[data-yunari-background-media] img",
         );
         if (image === null || !image.complete || image.naturalWidth === 0) {
           return null;
@@ -2197,7 +2195,7 @@ function panelBand(
       };
       const canvas = (
         window as unknown as {
-          vigilia?: {
+          yunari?: {
             handle: {
               canvas: {
                 getObjects(): Obj[];
@@ -2209,7 +2207,7 @@ function panelBand(
             };
           };
         }
-      ).vigilia?.handle.canvas;
+      ).yunari?.handle.canvas;
       if (canvas === undefined) throw new Error("the player has not mounted");
       // Groups walked: the panel this measures may be a group child, which is
       // the whole point of the grouped case.
@@ -2224,7 +2222,7 @@ function panelBand(
       const object = find(canvas.getObjects());
       if (object === undefined) throw new Error(`no object ${objectId}`);
       if (typeof radius === "number")
-        object.set("vigiliaGlass", { blurRadius: radius });
+        object.set("yunariGlass", { blurRadius: radius });
       const vp = canvas.viewportTransform;
       const retina = canvas.getRetinaScaling();
       // Local (centre-origin) -> scene -> device, in that order, which is the
@@ -2343,7 +2341,7 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
     }> => {
       await openStarterDisplay(page, "&data=live");
       await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-      await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
+      await expect(page.locator("[data-yunari-load-failure]")).toHaveCount(0);
       // A gauge with no reading has no datum, and a datum is what the arc is
       // made of; the reading is read before the ring is counted.
       await expect
@@ -2449,7 +2447,7 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
     await page.setViewportSize({ width: 1280, height: 960 });
     await page.goto(`${HOST}/?theme=${HOST_GROUPED_THEME_ID}`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-load-failure]")).toHaveCount(0);
 
     // **The composition is the one the fixture claims.** A panel that revived
     // somewhere else would still produce a plausible band, so the shapes are
@@ -2470,9 +2468,9 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
         };
         const canvas = (
           window as unknown as {
-            vigilia?: { handle: { canvas: { getObjects(): Obj[] } } };
+            yunari?: { handle: { canvas: { getObjects(): Obj[] } } };
           }
-        ).vigilia?.handle.canvas;
+        ).yunari?.handle.canvas;
         const found: Record<
           string,
           { left: number; right: number; top: number; angle: number }
@@ -2620,7 +2618,7 @@ function setGroupCaching(page: Page, caching: boolean): Promise<boolean> {
       type Obj = { get(n: string): unknown; objectCaching: boolean };
       const canvas = (
         window as unknown as {
-          vigilia?: {
+          yunari?: {
             handle: {
               canvas: {
                 getObjects(): Obj[];
@@ -2630,7 +2628,7 @@ function setGroupCaching(page: Page, caching: boolean): Promise<boolean> {
             };
           };
         }
-      ).vigilia?.handle.canvas;
+      ).yunari?.handle.canvas;
       const group = canvas
         ?.getObjects()
         .find((object) => object.get("id") === groupId);
@@ -2668,9 +2666,9 @@ test.describe("the display's own controls", () => {
 
     await recordCapabilities(page, testInfo);
 
-    const bar = page.locator("[data-vigilia-controls]");
+    const bar = page.locator("[data-yunari-controls]");
     await expect(bar).toHaveCount(1);
-    await expect(page.locator("[data-vigilia-dimmer]")).toHaveCount(1);
+    await expect(page.locator("[data-yunari-dimmer]")).toHaveCount(1);
     expect(await barOpacity(page)).toBe("0");
 
     // **The column holds the two declared bands and the artboard, and nothing
@@ -2726,7 +2724,7 @@ test.describe("the display's own controls", () => {
       description: String(supported),
     });
 
-    const button = page.locator("[data-vigilia-fullscreen]");
+    const button = page.locator("[data-yunari-fullscreen]");
     await expect(button).toHaveCount(1);
     await tapTheDisplay(page);
 
@@ -2734,7 +2732,7 @@ test.describe("the display's own controls", () => {
       // The refusal, on the client that has none: the sentence names the path
       // this client does have rather than leaving a control that does nothing.
       await button.click();
-      await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+      await expect(page.locator("[data-yunari-controls-say]")).toHaveText(
         uiCopy.controls.fullscreen.unavailable,
       );
       return;
@@ -2765,7 +2763,7 @@ test.describe("the display's own controls", () => {
         sentinel: null as unknown,
         failed: null as string | null,
       };
-      Reflect.set(window, "__vigiliaWake", state);
+      Reflect.set(window, "__yunariWake", state);
       const api = (
         navigator as unknown as {
           wakeLock?: { request(type: string): Promise<unknown> };
@@ -2794,7 +2792,7 @@ test.describe("the display's own controls", () => {
     await recordCapabilities(page, testInfo);
     await tapTheDisplay(page);
 
-    const keepAwake = page.locator("[data-vigilia-keep-awake]");
+    const keepAwake = page.locator("[data-yunari-keep-awake]");
     await expect(keepAwake).toHaveCount(1);
     await keepAwake.click();
 
@@ -2813,15 +2811,15 @@ test.describe("the display's own controls", () => {
       // The lock is not held, so the control must not say it is — and the
       // reader must be told why rather than left with an unlabelled amber.
       await expect(keepAwake).toHaveAttribute("aria-pressed", "false");
-      await expect(keepAwake).toHaveAttribute("data-vigilia-waiting", "");
-      await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+      await expect(keepAwake).toHaveAttribute("data-yunari-waiting", "");
+      await expect(page.locator("[data-yunari-controls-say]")).toHaveText(
         uiCopy.controls.keepAwake.refused,
       );
       return;
     }
 
     await expect(keepAwake).toHaveAttribute("aria-pressed", "true");
-    await expect(keepAwake).not.toHaveAttribute("data-vigilia-waiting", "");
+    await expect(keepAwake).not.toHaveAttribute("data-yunari-waiting", "");
 
     // **The API drops the lock whenever the page is hidden, and this is that
     // release.** Nothing about the control may survive it but the reader's own
@@ -2833,11 +2831,11 @@ test.describe("the display's own controls", () => {
       });
       document.dispatchEvent(new Event("visibilitychange"));
       (
-        window as unknown as { __vigiliaWake: { sentinel: EventTarget } }
-      ).__vigiliaWake.sentinel.dispatchEvent(new Event("release"));
+        window as unknown as { __yunariWake: { sentinel: EventTarget } }
+      ).__yunariWake.sentinel.dispatchEvent(new Event("release"));
     });
     await expect(keepAwake).toHaveAttribute("aria-pressed", "false");
-    await expect(keepAwake).toHaveAttribute("data-vigilia-waiting", "");
+    await expect(keepAwake).toHaveAttribute("data-yunari-waiting", "");
     expect(await wakeRequests(page)).toBe(1);
 
     // Back on screen and still wanted: the re-acquisition is the whole control.
@@ -2850,7 +2848,7 @@ test.describe("the display's own controls", () => {
     });
     await expect.poll(() => wakeRequests(page), { timeout: 10_000 }).toBe(2);
     await expect(keepAwake).toHaveAttribute("aria-pressed", "true");
-    await expect(keepAwake).not.toHaveAttribute("data-vigilia-waiting", "");
+    await expect(keepAwake).not.toHaveAttribute("data-yunari-waiting", "");
   });
 
   test("says why, on a client with neither API, and does not pretend otherwise", async ({
@@ -2883,13 +2881,13 @@ test.describe("the display's own controls", () => {
     });
 
     await tapTheDisplay(page);
-    await page.locator("[data-vigilia-fullscreen]").click();
-    await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+    await page.locator("[data-yunari-fullscreen]").click();
+    await expect(page.locator("[data-yunari-controls-say]")).toHaveText(
       uiCopy.controls.fullscreen.unavailable,
     );
 
-    await page.locator("[data-vigilia-keep-awake]").click();
-    await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+    await page.locator("[data-yunari-keep-awake]").click();
+    await expect(page.locator("[data-yunari-controls-say]")).toHaveText(
       uiCopy.controls.keepAwake.unavailable,
     );
   });
@@ -2902,12 +2900,12 @@ test.describe("the display's own controls", () => {
     await expect(canvas).toBeVisible();
     await tapTheDisplay(page);
 
-    const shade = page.locator("[data-vigilia-dimmer]");
+    const shade = page.locator("[data-yunari-dimmer]");
     await expect(shade).toHaveCount(1);
     expect(await shadeOpacity(page)).toBe("0");
 
     const before = await column(page);
-    await page.locator("[data-vigilia-dim]").fill("50");
+    await page.locator("[data-yunari-dim]").fill("50");
 
     await expect
       .poll(async () => Number(await shadeOpacity(page)))
@@ -3023,7 +3021,7 @@ test.describe("a paired display and the theme it is given", () => {
     // file, and the host lock refuses a second host against a held folder.
     const appDir = join(
       tmpdir(),
-      `vigilia-e2e-displays-${testInfo.project.name}`,
+      `yunari-e2e-displays-${testInfo.project.name}`,
     );
     rmSync(appDir, { recursive: true, force: true });
     mkdirSync(appDir, { recursive: true });
@@ -3034,7 +3032,7 @@ test.describe("a paired display and the theme it is given", () => {
     host = spawn(
       "node",
       [
-        "packages/host/bin/vigilia.js",
+        "packages/host/bin/yunari.js",
         "--no-browser",
         "--port",
         String(port),
@@ -3122,7 +3120,7 @@ test.describe("a paired display and the theme it is given", () => {
     return page.evaluate(() => {
       const canvas = (
         window as unknown as {
-          vigilia?: {
+          yunari?: {
             handle: {
               canvas: {
                 getObjects(): readonly { get(key: string): unknown }[];
@@ -3130,7 +3128,7 @@ test.describe("a paired display and the theme it is given", () => {
             };
           };
         }
-      ).vigilia?.handle.canvas;
+      ).yunari?.handle.canvas;
 
       return (canvas?.getObjects() ?? []).map((object) =>
         String(object.get("id")),
@@ -3219,10 +3217,10 @@ test.describe("a paired display and the theme it is given", () => {
       await page.goto(`${origin}/?session=${display.token}`);
       await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
 
-      const chooser = page.locator("[data-vigilia-theme-chooser]");
+      const chooser = page.locator("[data-yunari-theme-chooser]");
       await expect(chooser).toBeVisible();
       await chooser
-        .locator("select[data-vigilia-theme-select]")
+        .locator("select[data-yunari-theme-select]")
         .selectOption(HOST_THEME_ID);
 
       // The write is this display's own and the page lands on the chosen theme
@@ -3246,7 +3244,7 @@ test.describe("a paired display and the theme it is given", () => {
         `${origin}/?theme=${HOST_CHART_THEME_ID}&session=${display.token}`,
       );
       await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
-      await expect(page.locator("[data-vigilia-theme-chooser]")).toHaveCount(0);
+      await expect(page.locator("[data-yunari-theme-chooser]")).toHaveCount(0);
     } finally {
       await request.delete(`${admin}/api/displays/${display.id}`);
     }
@@ -3355,7 +3353,7 @@ test.describe("a paired display and the theme it is given", () => {
 
       await expect
         .poll(() =>
-          page.evaluate(() => localStorage.getItem("vigilia.display.pairing")),
+          page.evaluate(() => localStorage.getItem("yunari.display.pairing")),
         )
         .not.toBeNull();
 
@@ -3469,7 +3467,7 @@ function column(page: Page): Promise<{
     if (artboard === null) throw new Error("the display has no artboard");
     const children = [...body.children];
     const bands = children.filter((child) =>
-      child.hasAttribute("data-vigilia-chrome"),
+      child.hasAttribute("data-yunari-chrome"),
     );
     const heightOf = (element: Element): number =>
       element.getBoundingClientRect().height;
@@ -3497,7 +3495,7 @@ function column(page: Page): Promise<{
 function barOpacity(page: Page): Promise<string> {
   return page.evaluate(
     () =>
-      document.querySelector<HTMLElement>("[data-vigilia-controls]")?.style
+      document.querySelector<HTMLElement>("[data-yunari-controls]")?.style
         .opacity ?? "missing",
   );
 }
@@ -3505,7 +3503,7 @@ function barOpacity(page: Page): Promise<string> {
 function shadeOpacity(page: Page): Promise<string> {
   return page.evaluate(
     () =>
-      document.querySelector<HTMLElement>("[data-vigilia-dimmer]")?.style
+      document.querySelector<HTMLElement>("[data-yunari-dimmer]")?.style
         .opacity ?? "missing",
   );
 }
@@ -3513,16 +3511,16 @@ function shadeOpacity(page: Page): Promise<string> {
 function wakeRequests(page: Page): Promise<number> {
   return page.evaluate(
     () =>
-      (window as unknown as { __vigiliaWake?: { requests: number } })
-        .__vigiliaWake?.requests ?? 0,
+      (window as unknown as { __yunariWake?: { requests: number } })
+        .__yunariWake?.requests ?? 0,
   );
 }
 
 function wakeLockHeld(page: Page): Promise<boolean> {
   return page.evaluate(
     () =>
-      (window as unknown as { __vigiliaWake?: { sentinel: unknown } })
-        .__vigiliaWake?.sentinel !== null,
+      (window as unknown as { __yunariWake?: { sentinel: unknown } })
+        .__yunariWake?.sentinel !== null,
   );
 }
 
@@ -3531,9 +3529,9 @@ function wakeSettled(page: Page): Promise<boolean> {
   return page.evaluate(() => {
     const state = (
       window as unknown as {
-        __vigiliaWake?: { sentinel: unknown; failed: string | null };
+        __yunariWake?: { sentinel: unknown; failed: string | null };
       }
-    ).__vigiliaWake;
+    ).__yunariWake;
     return (
       state !== undefined && (state.sentinel !== null || state.failed !== null)
     );
@@ -3543,8 +3541,8 @@ function wakeSettled(page: Page): Promise<boolean> {
 function wakeFailure(page: Page): Promise<string> {
   return page.evaluate(
     () =>
-      (window as unknown as { __vigiliaWake?: { failed: string | null } })
-        .__vigiliaWake?.failed ?? "no failure recorded",
+      (window as unknown as { __yunariWake?: { failed: string | null } })
+        .__yunariWake?.failed ?? "no failure recorded",
   );
 }
 

@@ -6,4 +6,4 @@
  * here so the editor source can name it without a module to import it from
  * (`vg-279`).
  */
-declare const __VIGILIA_VERSION__: string;
+declare const __YUNARI_VERSION__: string;

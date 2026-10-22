@@ -17,7 +17,7 @@ export function registerServiceWorker(): void {
 
   void navigator.serviceWorker.register("/sw.js").catch((error: unknown) => {
     console.warn(
-      "Vigilia: the display could not register its service worker.",
+      "Yunari: the display could not register its service worker.",
       error,
     );
   });

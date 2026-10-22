@@ -33,18 +33,18 @@ describe("type preset panel", () => {
     panel.render(presets);
 
     expect(
-      panel.root.querySelector("[data-vigilia-type-preset]"),
+      panel.root.querySelector("[data-yunari-type-preset]"),
     ).not.toBeNull();
     // The value is `resolveTypePreset`'s own answer, read from the same record
     // the panel is given — never a copy of the "family weight sizepx" rule.
     expect(
-      panel.root.querySelector('[data-vigilia-type-preset-row="body"]')
+      panel.root.querySelector('[data-yunari-type-preset-row="body"]')
         ?.textContent,
     ).toContain(
       resolveTypePreset({ typePresets: presets }, "typePresets.body"),
     );
     expect(
-      panel.root.querySelector('[data-vigilia-type-preset-row="caption"]'),
+      panel.root.querySelector('[data-yunari-type-preset-row="caption"]'),
     ).not.toBeNull();
   });
 
@@ -68,7 +68,7 @@ describe("type preset panel", () => {
       "type-delete",
     ]) {
       expect(
-        panel.root.querySelector(`[data-vigilia-${hook}]`),
+        panel.root.querySelector(`[data-yunari-${hook}]`),
         hook,
       ).not.toBeNull();
     }
@@ -83,6 +83,6 @@ describe("type preset panel", () => {
     expect(panel.root.isConnected).toBe(false);
     // The tree really went with it: a container that React still owned would
     // hand back the markup it rendered.
-    expect(panel.root.querySelector("[data-vigilia-type-preset]")).toBeNull();
+    expect(panel.root.querySelector("[data-yunari-type-preset]")).toBeNull();
   });
 });

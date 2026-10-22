@@ -1,6 +1,6 @@
-import type { Globals } from "@vigilia/renderer-core";
+import type { Globals } from "@yunari/renderer-core";
 import { Group, type StaticCanvas } from "fabric/es";
-import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
+import { YUNARI_TEXT_PROPERTY } from "./fabric-text.js";
 
 /**
  * Reapply the first authored run's type preset to its Fabric text-object cache.
@@ -33,14 +33,14 @@ export function reassignObjectTypePresetReferences(
   let changes = 0;
   const visit = (objects: readonly ReassignableObject[]): void => {
     for (const object of objects) {
-      const text = object.get(VIGILIA_TEXT_PROPERTY);
+      const text = object.get(YUNARI_TEXT_PROPERTY);
       if (isAuthoredText(text)) {
         const runs = text.runs.map((run) => {
           if (run.typePreset !== from) return run;
           changes += 1;
           return { ...run, typePreset: to };
         });
-        object.set(VIGILIA_TEXT_PROPERTY, { ...text, runs });
+        object.set(YUNARI_TEXT_PROPERTY, { ...text, runs });
       }
       if (object instanceof Group) visit(object.getObjects());
     }
@@ -54,7 +54,7 @@ function applyTypes(
   globals: Globals | undefined,
 ): void {
   for (const object of objects) {
-    const run = firstRun(object.get(VIGILIA_TEXT_PROPERTY));
+    const run = firstRun(object.get(YUNARI_TEXT_PROPERTY));
     const ref = run?.["typePreset"];
     const value =
       typeof ref === "string" && ref.startsWith("typePresets.")

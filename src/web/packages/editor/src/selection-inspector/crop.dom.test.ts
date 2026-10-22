@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { reviveScene, serialiseScene } from "@vigilia/scene-fabric";
+import { reviveScene, serialiseScene } from "@yunari/scene-fabric";
 import { Canvas, FabricImage, Rect, Textbox } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createCropManager } from "../crop-manager/index.js";
@@ -71,7 +71,7 @@ function setup(objects: readonly object[] = []) {
 }
 
 const cropButton = (host: HTMLElement): HTMLButtonElement =>
-  host.querySelector<HTMLButtonElement>("[data-vigilia-crop]")!;
+  host.querySelector<HTMLButtonElement>("[data-yunari-crop]")!;
 
 describe("the crop control", () => {
   it("appears when an image is selected and disappears for a text box", () => {
@@ -121,7 +121,7 @@ describe("the crop control", () => {
     expect(saveState).not.toHaveBeenCalled();
     // The session's own controls replace the button that started it.
     expect(cropButton(host)).toBeNull();
-    expect(host.querySelector("[data-vigilia-crop-apply]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-crop-apply]")).not.toBeNull();
 
     // The frame is Fabric's own object and the author drags it directly.
     const frame = canvas
@@ -132,7 +132,7 @@ describe("the crop control", () => {
     expect(saveState).not.toHaveBeenCalled();
 
     inspector.render();
-    host.querySelector<HTMLButtonElement>("[data-vigilia-crop-apply]")!.click();
+    host.querySelector<HTMLButtonElement>("[data-yunari-crop-apply]")!.click();
 
     expect(image.clipPath).toBeInstanceOf(Rect);
     expect(crop.active).toBe(false);
@@ -154,9 +154,7 @@ describe("the crop control", () => {
     frame.setCoords();
 
     inspector.render();
-    host
-      .querySelector<HTMLButtonElement>("[data-vigilia-crop-cancel]")!
-      .click();
+    host.querySelector<HTMLButtonElement>("[data-yunari-crop-cancel]")!.click();
 
     expect(image.clipPath).toBeUndefined();
     expect(canvas.getObjects()).toEqual([image]);
@@ -174,7 +172,7 @@ describe("the crop control", () => {
     expect(canvas.getActiveObject()).not.toBe(image);
     inspector.render();
     expect(crop.target).toBe(image);
-    expect(host.querySelector("[data-vigilia-crop-apply]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-crop-apply]")).not.toBeNull();
   });
 
   it("locks the frame to the ratio the author picked", () => {
@@ -186,7 +184,7 @@ describe("the crop control", () => {
     inspector.render();
 
     host
-      .querySelector<HTMLButtonElement>('[data-vigilia-crop-aspect="16:9"]')!
+      .querySelector<HTMLButtonElement>('[data-yunari-crop-aspect="16:9"]')!
       .click();
 
     const frame = canvas
@@ -209,7 +207,7 @@ describe("the crop control", () => {
     frame.set({ scaleX: 0.5, scaleY: 0.25 });
     frame.setCoords();
     inspector.render();
-    host.querySelector<HTMLButtonElement>("[data-vigilia-crop-apply]")!.click();
+    host.querySelector<HTMLButtonElement>("[data-yunari-crop-apply]")!.click();
 
     const saved = serialiseScene(canvas);
     const reopened = new Canvas(document.createElement("canvas"));

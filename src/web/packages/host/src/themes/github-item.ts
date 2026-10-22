@@ -2,7 +2,7 @@ import {
   DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
   parseCatalogueItemFile,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   classifyThemeChange,
   isSemanticVersion,
@@ -11,7 +11,7 @@ import {
   type VersionLevel,
   versionFor,
   writeThemePackage,
-} from "@vigilia/theme-package";
+} from "@yunari/theme-package";
 import { cataloguePackageUrl } from "./catalogue-source.js";
 import { readPublishedItem } from "./published-item.js";
 import {

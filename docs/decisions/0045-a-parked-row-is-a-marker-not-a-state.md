@@ -21,7 +21,7 @@ What made this non-obvious is that the register has a **closed** set of states a
 a hand-rolled checker, so "add a state" is the first shape that suggests itself —
 and it is the wrong one, for the reason below.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** the two registers and every script for `parked|deferred|postponed|
 shelved|blocked`; the `state` values actually in use across both files.

@@ -1,4 +1,4 @@
-import type { WidgetProvenance } from "@vigilia/renderer-core";
+import type { WidgetProvenance } from "@yunari/renderer-core";
 import {
   charSpacingPx,
   frost,
@@ -43,7 +43,7 @@ function rect(
     fill,
     rx: radius,
     ry: radius,
-    vigiliaPaint: { fill: `palette.${token ?? "panel"}` },
+    yunariPaint: { fill: `palette.${token ?? "panel"}` },
     ...interaction,
   };
 }
@@ -75,8 +75,8 @@ export function frostedCard(
     ...rect(id, left, top, width, height, frost, 10),
     stroke: "#9fc7e52b",
     strokeWidth: 2,
-    vigiliaPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
-    vigiliaGlass: { blurRadius: FROST_RADIUS },
+    yunariPaint: { fill: "palette.frost", stroke: "palette.panelStroke" },
+    yunariGlass: { blurRadius: FROST_RADIUS },
   };
 }
 
@@ -229,8 +229,8 @@ export function text(
     fill: solidOf[first.token],
     lineHeight: 1.18,
     ...(spacing === undefined ? {} : { charSpacing: spacing }),
-    vigiliaPaint: { fill: `palette.${first.token}` },
-    vigiliaText: {
+    yunariPaint: { fill: `palette.${first.token}` },
+    yunariText: {
       // `wrap` is not cosmetic: it is what decides the Fabric class. With it
       // false, `adapter.ts` revives the object as a `FabricText`, and Fabric's
       // `Text.initDimensions` sets `width = calcTextWidth()` — the measured
@@ -342,7 +342,7 @@ export function path(
     strokeWidth,
     strokeLineCap: "round",
     strokeLineJoin: "round",
-    vigiliaPaint: { stroke: `palette.${token}` },
+    yunariPaint: { stroke: `palette.${token}` },
     ...positioned,
   };
 }
@@ -357,7 +357,7 @@ export function chart(
   settings: unknown,
 ): ObjectJson {
   return {
-    type: "VigiliaChart",
+    type: "YunariChart",
     id,
     name: id,
     left,

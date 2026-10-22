@@ -1,9 +1,6 @@
 import { expect, type Page } from "@playwright/test";
-import {
-  type FabricThemeEnvelope,
-  facetRecordOf,
-} from "@vigilia/renderer-core";
-import { readThemePackage } from "@vigilia/theme-package";
+import { type FabricThemeEnvelope, facetRecordOf } from "@yunari/renderer-core";
+import { readThemePackage } from "@yunari/theme-package";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { answerDialogIfShown } from "./editor-canvas.js";
 
@@ -149,7 +146,7 @@ export async function openThemeFromStore(
   await switchMode(page, uiCopy.modes.themes);
   await answerDialogIfShown(page, "Discard", 1_000);
   const cell = page.locator(
-    `[data-vigilia-store-cell="${theme.envelope.id}"] [data-vigilia-store-cell-action="open"]`,
+    `[data-yunari-store-cell="${theme.envelope.id}"] [data-yunari-store-cell-action="open"]`,
   );
   await expect(cell, "the store lists no theme to open").toBeVisible();
   const started = Date.now();

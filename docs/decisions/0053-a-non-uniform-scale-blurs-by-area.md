@@ -30,7 +30,7 @@ sized in **device pixels**, the number rides a matrix the viewport, the retina
 ratio and the panel's own scale all feed, and nothing fails when it is wrong —
 every frosted panel in every theme simply looks slightly different.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** all three tracked files named `glass.ts` (the one holding the
 composite is `packages/scene-fabric/src/glass.ts`; `packages/renderer-core/src/theme/glass.ts`

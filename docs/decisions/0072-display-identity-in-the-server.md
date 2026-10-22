@@ -20,7 +20,7 @@ leaks the display list to the LAN and nothing fails, and a route that answers th
 record unredacted puts every credential hash on the wire and nothing fails
 either.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `settings/displays.ts` (the `DisplayStore` interface — `list`,
 `create`, `createLocal`, `find`, `authenticate`, `rotate`, `update`, `touch`,
@@ -44,8 +44,8 @@ note is the eleventh claim.
 Searched: `packages/host/package.json` and its own `//` note, plus the workspace
 root's `package.json`.
 
-Found: **nothing.** The host's runtime dependencies are `@vigilia/renderer-core`,
-`@vigilia/scene-fabric`, `@vigilia/theme-package`, `node-forge` and
+Found: **nothing.** The host's runtime dependencies are `@yunari/renderer-core`,
+`@yunari/scene-fabric`, `@yunari/theme-package`, `node-forge` and
 `systeminformation`. No router (`express`, `find-my-way`, `hono`), no schema
 validator, no `zod`. The host's note states the policy this task inherits —
 serving is `node:http` — and adding a runtime dependency needs a

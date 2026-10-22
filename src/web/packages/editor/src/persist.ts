@@ -1,5 +1,5 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { readThemePackage, writeThemePackage } from "@yunari/theme-package";
 
 type PackageParseResult =
   | {
@@ -42,5 +42,5 @@ export function serializeThemePackage(
 
 export function fileNameFor(theme: { readonly id: string }): string {
   const base = /^[A-Za-z0-9_-]{1,64}$/.test(theme.id) ? theme.id : "theme";
-  return `${base}.vigilia-theme`;
+  return `${base}.yunari-theme`;
 }

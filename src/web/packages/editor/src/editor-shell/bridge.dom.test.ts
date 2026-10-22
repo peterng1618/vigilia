@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
-import { createSceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
+import { MAX_OBJECT_NAME_LENGTH } from "@yunari/renderer-core";
+import { createSceneAdapter, YunariChart } from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   Canvas,
@@ -130,7 +130,7 @@ it("carries the library key the selection's own first run is set in", () => {
   // tail — so the field is the key, not the `typePresets.` reference.
   const text = new IText("Hi", { left: 0, top: 0 });
   text.set({
-    vigiliaText: {
+    yunariText: {
       runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.24-400" }],
     },
   });
@@ -148,7 +148,7 @@ it("reports no preset for a selection that is set in none, and none for a group"
 
   const text = new IText("Hi", { left: 0, top: 0 });
   text.set({
-    vigiliaText: { runs: [{ kind: "literal", text: "Hi" }] },
+    yunariText: { runs: [{ kind: "literal", text: "Hi" }] },
   });
   const bare = bridgeFor(text);
   expect(bare.bridge.snapshot().selectionPresetId).toBeUndefined();
@@ -271,7 +271,7 @@ it("routes selection kind for menus, groups and charts", () => {
 
   const { bridge: charted } = bridgeFor(
     // A chart instance without a live ECharts backing.
-    Object.create(VigiliaChart.prototype) as VigiliaChart,
+    Object.create(YunariChart.prototype) as YunariChart,
   );
   expect(charted.snapshot().activeKind).toBe("chart");
 });
@@ -964,7 +964,7 @@ it("leaves a reparented object alive in the scene the adapter is drawing", async
   child.set("id", "child");
   const group = new Group([child]);
   group.set("id", "grp");
-  const chart = new VigiliaChart({
+  const chart = new YunariChart({
     id: "chart",
     width: 100,
     height: 60,
@@ -1051,7 +1051,7 @@ it("leaves the canvas in the state a removal leaves, except the object itself", 
     child.set("id", "child");
     const group = new Group([child]);
     group.set("id", "grp");
-    const chart = new VigiliaChart({
+    const chart = new YunariChart({
       id: "chart",
       width: 100,
       height: 60,

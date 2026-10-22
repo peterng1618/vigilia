@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 import { IText } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -166,7 +166,7 @@ describe("EditorSession", () => {
 
     // The File menu owns these now; the panel section is gone.
     expect(
-      document.body.querySelector("[data-vigilia-file-actions]"),
+      document.body.querySelector("[data-yunari-file-actions]"),
     ).toBeNull();
     const session = extensions.actionFacade();
 
@@ -891,7 +891,7 @@ describe("EditorSession", () => {
     // only the element that prints it moved.
     const text = new IText("Hi", { left: 0, top: 0 });
     text.set({
-      vigiliaText: {
+      yunariText: {
         runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
       },
     });
@@ -945,7 +945,7 @@ describe("EditorSession", () => {
 
     const printed = (): string =>
       selectionHost
-        .querySelector('[data-vigilia-run-preset="0"] [data-vigilia-value]')
+        .querySelector('[data-yunari-run-preset="0"] [data-yunari-value]')
         ?.textContent?.trim() ?? "";
 
     expect(printed()).toBe("Body");
@@ -1018,7 +1018,7 @@ describe("EditorSession", () => {
       onSaved: vi.fn(),
     });
 
-    // The `.vigilia-theme` the author shares.
+    // The `.yunari-theme` the author shares.
     await extensions.actionFacade().savePackage();
     const shipped = saveMock.mock.calls.at(-1) as
       | [unknown, unknown, Uint8Array | undefined]
@@ -1433,7 +1433,7 @@ describe("a save the host refused", () => {
 
     await extensions.actionFacade().savePackage();
 
-    // A `.vigilia-theme` an author shares is a file, not a write to the
+    // A `.yunari-theme` an author shares is a file, not a write to the
     // library: refusing it would break sharing a theme.
     expect(client.save).not.toHaveBeenCalled();
     expect(saves[0]).not.toHaveBeenCalled();

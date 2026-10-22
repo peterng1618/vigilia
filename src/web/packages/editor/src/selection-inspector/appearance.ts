@@ -3,7 +3,7 @@ import {
   type FabricPalette,
   objectName,
   type TypePreset,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
@@ -105,7 +105,7 @@ export function opacityField(object: FabricObject): FieldView {
     min: 0,
     max: 100,
     integer: true,
-    data: { "data-vigilia-opacity": "" },
+    data: { "data-yunari-opacity": "" },
   };
 }
 
@@ -121,6 +121,6 @@ export function nameField(object: FabricObject): FieldView {
     control: "text",
     label: uiCopy.inspectorFields.name,
     value: objectName(object) ?? "",
-    data: { "data-vigilia-name": "" },
+    data: { "data-yunari-name": "" },
   };
 }

@@ -2,7 +2,7 @@ import {
   applyAuthoredText,
   isLocked,
   writeAuthoredBoxDimension,
-} from "@vigilia/scene-fabric";
+} from "@yunari/scene-fabric";
 import {
   Control,
   controlsUtils,
@@ -250,7 +250,7 @@ function withTextboxHeightControls(controls: Record<string, Control>): void {
       if (!(textbox instanceof Textbox) || textbox.height === pressed)
         return false;
 
-      // Fabric's own height, unscaled. `vigiliaText.box` is the number the
+      // Fabric's own height, unscaled. `yunariText.box` is the number the
       // object measures against, and `boxFrom` is what puts the scale back on
       // for the clip and the placement — so scaling here would grow the box by
       // the scale on every drag.
@@ -269,7 +269,7 @@ function withTextboxHeightControls(controls: Record<string, Control>): void {
 /**
  * Fabric reads `ownDefaults` when an object is constructed, so this runs before
  * the canvas exists. Excludes the fork's ActiveSelection bounds patch and its
- * Textbox width-control wrapping; neither has a Vigilia type to serve.
+ * Textbox width-control wrapping; neither has a Yunari type to serve.
  */
 export function applyEditorControls(): void {
   if (applied) return;

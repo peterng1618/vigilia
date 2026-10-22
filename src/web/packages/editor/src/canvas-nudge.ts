@@ -1,4 +1,4 @@
-import { isLocked, targetsOf } from "@vigilia/scene-fabric";
+import { isLocked, targetsOf } from "@yunari/scene-fabric";
 import { type Canvas, Point } from "fabric/es";
 
 const NUDGE_STEP = 1;

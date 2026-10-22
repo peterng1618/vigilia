@@ -27,7 +27,7 @@ projection onto a range that has no absent member, and both the platform and
 ARIA forbid it reporting one. The well can, and already does elsewhere in the
 set.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 **Searched:** `components/ui/` for how an absent value is already spelled
 (`ControlNumber`'s `value`/`format`/`onClear`, `ControlSelect`'s empty option,

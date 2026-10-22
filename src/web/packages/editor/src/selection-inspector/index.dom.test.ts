@@ -1,15 +1,11 @@
 // @vitest-environment jsdom
-import type {
-  Binding,
-  ChartContent,
-  ChartFamily,
-} from "@vigilia/renderer-core";
+import type { Binding, ChartContent, ChartFamily } from "@yunari/renderer-core";
 import {
   defaultGaugeSettings,
   instantIn,
   MAX_OBJECT_NAME_LENGTH,
-} from "@vigilia/renderer-core";
-import { VigiliaChart, Wedge } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { Wedge, YunariChart } from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   Canvas,
@@ -67,8 +63,8 @@ afterEach(() => {
 function chartOf(
   family: ChartFamily,
   settings: ChartContent["settings"],
-): VigiliaChart {
-  const chart = Object.create(VigiliaChart.prototype) as VigiliaChart;
+): YunariChart {
+  const chart = Object.create(YunariChart.prototype) as YunariChart;
   chart.family = family;
   chart.settings = settings;
   return chart;
@@ -218,16 +214,16 @@ describe("the selection inspector", () => {
     // One line saying what to do, rather than an empty column or a section
     // header standing over no fields.
     expect(
-      host.querySelector("[data-vigilia-nothing-selected]")?.textContent,
+      host.querySelector("[data-yunari-nothing-selected]")?.textContent,
     ).toBe(uiCopy.inspectorFields.nothingSelected);
-    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(0);
-    expect(host.querySelectorAll("[data-vigilia-geometry]")).toHaveLength(0);
+    expect(host.querySelectorAll("[data-yunari-section]")).toHaveLength(0);
+    expect(host.querySelectorAll("[data-yunari-geometry]")).toHaveLength(0);
   });
 
   it("shows the selected object's geometry in whole units", () => {
     const { host } = setup(rect);
     const value = (key: string) =>
-      host.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)
+      host.querySelector<HTMLInputElement>(`[data-yunari-geometry="${key}"]`)
         ?.value;
 
     expect(value("left")).toBe("0");
@@ -241,13 +237,13 @@ describe("the selection inspector", () => {
     // Rotation is a bounded number, so it is a slider; the typed route is the
     // well beside the track, and that is where a draft is refused.
     const track = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="angle"]',
+      '[data-yunari-geometry="angle"]',
     )!;
     expect(track.type).toBe("range");
     expect(track.min).toBe("-360");
     expect(track.max).toBe("360");
     const angle = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry-well="angle"]',
+      '[data-yunari-geometry-well="angle"]',
     )!;
     angle.focus();
 
@@ -266,7 +262,7 @@ describe("the selection inspector", () => {
   it("stores a whole rotation", async () => {
     const { host, history } = setup(rect);
     const angle = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry-well="angle"]',
+      '[data-yunari-geometry-well="angle"]',
     )!;
 
     await edit(angle, "45");
@@ -284,7 +280,7 @@ describe("the selection inspector", () => {
 
     const { host } = setup(card);
     const well = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry-well="angle"]',
+      '[data-yunari-geometry-well="angle"]',
     )!;
     await edit(well, "45");
 
@@ -300,7 +296,7 @@ describe("the selection inspector", () => {
   it("moves the object and records exactly one history entry", async () => {
     const { host, history } = setup(rect);
     const left = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="left"]',
+      '[data-yunari-geometry="left"]',
     )!;
 
     await edit(left, "120");
@@ -312,9 +308,9 @@ describe("the selection inspector", () => {
   it("pairs X/Y and W/H on one row each, with rotation alone", () => {
     const { host } = setup(rect);
     const input = (key: string) =>
-      host.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)!;
-    // A pair is a layout, and `[data-vigilia-pair]` is the row it lays out.
-    const rowOf = (key: string) => input(key).closest("[data-vigilia-pair]");
+      host.querySelector<HTMLInputElement>(`[data-yunari-geometry="${key}"]`)!;
+    // A pair is a layout, and `[data-yunari-pair]` is the row it lays out.
+    const rowOf = (key: string) => input(key).closest("[data-yunari-pair]");
 
     // Non-vacuous: a pairing assertion on two absent rows would compare null
     // to null and pass for the stacked layout this replaced.
@@ -326,8 +322,8 @@ describe("the selection inspector", () => {
     expect(rowOf("left")).not.toBe(rowOf("width"));
     // Rotation stands alone: Layer renders it as its own row, never as one
     // half of the pairs Position builds.
-    expect(input("angle").closest("[data-vigilia-pair]")).toBeNull();
-    expect(input("angle").closest('[data-vigilia-section="layer"]')).not.toBe(
+    expect(input("angle").closest("[data-yunari-pair]")).toBeNull();
+    expect(input("angle").closest('[data-yunari-section="layer"]')).not.toBe(
       null,
     );
   });
@@ -335,7 +331,7 @@ describe("the selection inspector", () => {
   it("commits a paired edit as one history entry", async () => {
     const { host, history } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="width"]',
+      '[data-yunari-geometry="width"]',
     )!;
 
     await edit(width, "80");
@@ -353,7 +349,7 @@ describe("the selection inspector", () => {
     rect.set({ width: 520, height: 36.32, scaleX: 1.0009, scaleY: 1.00444 });
     const { host, history } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="width"]',
+      '[data-yunari-geometry="width"]',
     )!;
     expect(width.value).toBe("520");
 
@@ -371,7 +367,7 @@ describe("the selection inspector", () => {
   it("refuses a value that would make the object invalid", async () => {
     const { host, history } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="width"]',
+      '[data-yunari-geometry="width"]',
     )!;
 
     await edit(width, "-5");
@@ -387,7 +383,7 @@ describe("the selection inspector", () => {
     rect.set({ opacity: 0.5 });
     const { host } = setup(rect);
     const opacity = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-opacity]",
+      "[data-yunari-opacity]",
     )!;
 
     // A bounded number is DESIGN.md's slider (§5) — Fabric's own 0–1, projected
@@ -404,7 +400,7 @@ describe("the selection inspector", () => {
     rect.set({ opacity: 0.5 });
     const { host, history } = setup(rect);
     const opacity = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-opacity]",
+      "[data-yunari-opacity]",
     )!;
 
     // One keyboard step, the gesture jsdom can resolve (see `slide`): 50% → 51%,
@@ -419,7 +415,7 @@ describe("the selection inspector", () => {
     rect.set({ opacity: 0.5 });
     const { host } = setup(rect);
     const opacity = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-opacity]",
+      "[data-yunari-opacity]",
     )!;
 
     // The ceiling is the control's own bound, so the sweep stops at Fabric's 1
@@ -434,7 +430,7 @@ describe("the selection inspector", () => {
   it("shows the object's display name and writes an edit back to it", async () => {
     rect.set("name", "Header panel");
     const { host, history } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
 
     expect(name.value).toBe("Header panel");
 
@@ -449,7 +445,7 @@ describe("the selection inspector", () => {
     // Absence is what a scene authored before the field looks like; showing the
     // id in the field would make an unnamed object look named.
     const { host } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
 
     expect(name.value).toBe("");
   });
@@ -457,7 +453,7 @@ describe("the selection inspector", () => {
   it("clears the name when the author empties the field", async () => {
     rect.set("name", "Header panel");
     const { host, history } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
 
     await edit(name, "   ");
 
@@ -470,7 +466,7 @@ describe("the selection inspector", () => {
   it("refuses a name past the published bound rather than storing it", async () => {
     rect.set("name", "Header panel");
     const { host, history, editor } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
 
     await edit(name, "x".repeat(MAX_OBJECT_NAME_LENGTH + 1));
 
@@ -484,7 +480,7 @@ describe("the selection inspector", () => {
 
   it("gives the name field an accessible label", () => {
     const { host } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
     const label = host.querySelector<HTMLLabelElement>(
       `label[for="${name.id}"]`,
     );
@@ -498,7 +494,7 @@ describe("the selection inspector", () => {
     rect.set("locked", true);
     const { host } = setup(rect);
 
-    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+    expect(host.querySelector("[data-yunari-name]")).toBeNull();
   });
 
   it("announces the edit so the layer list republishes the row", async () => {
@@ -507,7 +503,7 @@ describe("the selection inspector", () => {
     // disagreeing until something else happened to republish.
     rect.set("name", "Header panel");
     const { host, editor } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
 
     await edit(name, "Header rule");
 
@@ -520,7 +516,7 @@ describe("the selection inspector", () => {
   it("announces nothing when a name is refused", async () => {
     rect.set("name", "Header panel");
     const { host, editor } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
 
     await edit(name, "x".repeat(MAX_OBJECT_NAME_LENGTH + 1));
 
@@ -546,9 +542,9 @@ describe("the selection inspector", () => {
 
     // A shape has no text layout to edit, so it must not be offered one.
     for (const field of [
-      "[data-vigilia-text-align]",
-      "[data-vigilia-text-wrap]",
-      "[data-vigilia-text-overflow]",
+      "[data-yunari-text-align]",
+      "[data-yunari-text-wrap]",
+      "[data-yunari-text-overflow]",
     ]) {
       expect(host.querySelector(field)).toBeNull();
     }
@@ -576,17 +572,17 @@ describe("the selection inspector", () => {
       return call?.[1] as () => void;
     };
 
-    expect(host.querySelector("[data-vigilia-name]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-name]")).not.toBeNull();
 
     // A pointer deselect: Fabric clears the selection and no history is
     // involved. The column names where to choose from and holds no field.
     active = undefined;
     handlerFor("selection:cleared")();
     expect(
-      host.querySelector("[data-vigilia-nothing-selected]"),
+      host.querySelector("[data-yunari-nothing-selected]"),
       "a deselect must empty the column",
     ).not.toBeNull();
-    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+    expect(host.querySelector("[data-yunari-name]")).toBeNull();
 
     // A history restore drops the selection too, and must NOT empty it: the id
     // survives the rebuild, so the author keeps the panel they were working in.
@@ -595,19 +591,17 @@ describe("the selection inspector", () => {
     active = undefined;
     handlerFor("editor:history-state-loaded")();
     expect(
-      host.querySelector("[data-vigilia-name]"),
+      host.querySelector("[data-yunari-name]"),
       "a history restore must keep the panel the author was working in",
     ).not.toBeNull();
-    expect(host.querySelector("[data-vigilia-nothing-selected]")).toBeNull();
+    expect(host.querySelector("[data-yunari-nothing-selected]")).toBeNull();
   });
 
   it("refuses a stale opacity event rather than mutating the old selection", async () => {
     rect.set({ opacity: 0.5 });
     const { host, history, editor } = setup(rect);
     // The control the author is holding, bound to `rect` at its revision.
-    const held = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-opacity]",
-    )!;
+    const held = host.querySelector<HTMLInputElement>("[data-yunari-opacity]")!;
     const other = new Rect({ left: 0, top: 0, width: 10, height: 10 });
     other.set({ opacity: 0.5 });
     const handlerFor = (name: string): (() => void) => {
@@ -641,9 +635,9 @@ describe("the selection inspector", () => {
     // Deleted, duplicate, cut, nudge and arrange all refuse a locked object, so
     // the fields that write it directly are withheld rather than advertised.
     for (const selector of [
-      "[data-vigilia-opacity]",
-      '[data-vigilia-geometry="left"]',
-      "[data-vigilia-panel-fill]",
+      "[data-yunari-opacity]",
+      '[data-yunari-geometry="left"]',
+      "[data-yunari-panel-fill]",
     ]) {
       expect(host.querySelector(selector), selector).toBeNull();
     }
@@ -673,14 +667,14 @@ describe("the selection inspector", () => {
       refreshGlass: vi.fn(),
     });
 
-    expect(host.querySelector("[data-vigilia-name]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-name]")).not.toBeNull();
     expect(host.textContent).not.toContain(uiCopy.inspectorFields.locked);
 
     createObjectLockManager(canvas, vi.fn()).lockObject();
 
     expect(host.textContent).toContain(uiCopy.inspectorFields.locked);
-    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
-    expect(host.querySelector('[data-vigilia-geometry="width"]')).toBeNull();
+    expect(host.querySelector("[data-yunari-name]")).toBeNull();
+    expect(host.querySelector('[data-yunari-geometry="width"]')).toBeNull();
   });
 
   it("keeps the run editor on a locked object, because nothing refuses it", () => {
@@ -689,7 +683,7 @@ describe("the selection inspector", () => {
       locked: true,
       selectable: false,
       evented: false,
-      vigiliaText: {
+      yunariText: {
         runs: [{ kind: "value", bindingId: "clock-date" }],
       },
     });
@@ -698,8 +692,8 @@ describe("the selection inspector", () => {
     // `#setBindings` writes bindings without reading a lock, and the ordering
     // and grouping actions stay on a bare selection, so hiding the run editor
     // would refuse work the editor actually performs.
-    expect(host.querySelector("[data-vigilia-runs]")).not.toBeNull();
-    expect(host.querySelector("[data-vigilia-run-source]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-runs]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-run-source]")).not.toBeNull();
     expect(host.textContent).toContain("locked");
   });
 
@@ -715,13 +709,13 @@ describe("the selection inspector", () => {
       ];
       const text = new Textbox("", { id: "clock-label" });
       text.set({
-        vigiliaText: { runs: [{ kind: "value", bindingId: "clock-date" }] },
+        yunariText: { runs: [{ kind: "value", bindingId: "clock-date" }] },
       });
       const { inspector, host } = setup(text, {
         nodeBindings: () => bindings,
       });
       const preview = (): string | null | undefined =>
-        host.querySelector<HTMLElement>("[data-vigilia-run-format-preview]")
+        host.querySelector<HTMLElement>("[data-yunari-run-format-preview]")
           ?.textContent;
 
       const instant = instantIn(Date.now());
@@ -754,9 +748,7 @@ describe("the selection inspector", () => {
  */
 describe("the arrange actions the column leads with", () => {
   const buttons = (host: HTMLElement): readonly HTMLButtonElement[] => [
-    ...host.querySelectorAll<HTMLButtonElement>(
-      "[data-vigilia-arrange-action]",
-    ),
+    ...host.querySelectorAll<HTMLButtonElement>("[data-yunari-arrange-action]"),
   ];
 
   /** The inspector over a real canvas, the way the shell builds it — the one
@@ -787,13 +779,11 @@ describe("the arrange actions the column leads with", () => {
     // One object: no row at all. Eight greyed buttons would be a section
     // standing over a question this selection does not have.
     const alone = setup(first);
-    expect(alone.host.querySelector("[data-vigilia-arrange-row]")).toBeNull();
+    expect(alone.host.querySelector("[data-yunari-arrange-row]")).toBeNull();
     expect(buttons(alone.host)).toHaveLength(0);
 
     const pair = setup(new ActiveSelection([first, second]));
-    expect(
-      pair.host.querySelector("[data-vigilia-arrange-row]"),
-    ).not.toBeNull();
+    expect(pair.host.querySelector("[data-yunari-arrange-row]")).not.toBeNull();
     expect(buttons(pair.host).map((b) => b.getAttribute("aria-label"))).toEqual(
       Object.values(uiCopy.arrangeLabels),
     );
@@ -816,9 +806,9 @@ describe("the arrange actions the column leads with", () => {
 
     canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
 
-    const subject = host.querySelector("[data-vigilia-subject-name]")!;
-    const row = host.querySelector("[data-vigilia-arrange-row]")!;
-    const section = host.querySelector("[data-vigilia-section]")!;
+    const subject = host.querySelector("[data-yunari-subject-name]")!;
+    const row = host.querySelector("[data-yunari-arrange-row]")!;
+    const section = host.querySelector("[data-yunari-section]")!;
     const follows = (anchor: Element, later: Element): boolean =>
       (anchor.compareDocumentPosition(later) &
         Node.DOCUMENT_POSITION_FOLLOWING) !==
@@ -835,7 +825,7 @@ describe("the arrange actions the column leads with", () => {
     // the panel has one rule per boundary: the subject's above the lead, the
     // lead's below it, and none of the first section's. jsdom has no cascade, so
     // what is read is the declaration the class names.
-    const lead = host.querySelector("[data-vigilia-selection-lead]")!;
+    const lead = host.querySelector("[data-yunari-selection-lead]")!;
     expect(lead.classList.contains("border-b"), "the lead closes itself").toBe(
       true,
     );
@@ -893,18 +883,18 @@ describe("the column's sections", () => {
   });
 
   const ids = (host: HTMLElement): (string | undefined)[] =>
-    [...host.querySelectorAll<HTMLElement>("[data-vigilia-section]")].map(
-      (section) => section.dataset["vigiliaSection"],
+    [...host.querySelectorAll<HTMLElement>("[data-yunari-section]")].map(
+      (section) => section.dataset["yunariSection"],
     );
 
   const isOpen = (host: HTMLElement, id: string): boolean =>
     host
-      .querySelector(`[data-vigilia-section="${id}"] > h2 > button`)
+      .querySelector(`[data-yunari-section="${id}"] > h2 > button`)
       ?.getAttribute("aria-expanded") === "true";
 
   const summaryOf = (host: HTMLElement, id: string): HTMLElement =>
     host.querySelector<HTMLElement>(
-      `[data-vigilia-section="${id}"] > h2 > button`,
+      `[data-yunari-section="${id}"] > h2 > button`,
     )!;
 
   it("asks the four questions in order, and opens every one of them", () => {
@@ -923,14 +913,14 @@ describe("the column's sections", () => {
   it("says how much the closed Position holds, so collapsed is not hidden", () => {
     const { host } = setup(rect);
     const section = host.querySelector<HTMLElement>(
-      '[data-vigilia-section="position"]',
+      '[data-yunari-section="position"]',
     )!;
 
     // The count is every row the section renders, and a header that could claim
     // more than the section holds is the defect the section control exists to
     // prevent.
     const count = Number(
-      section.querySelector("[data-vigilia-section-count]")?.textContent,
+      section.querySelector("[data-yunari-section-count]")?.textContent,
     );
     // Each field, extra and reveal renders exactly one row element inside the
     // panel, and the panel holds nothing else — there is no separate body
@@ -963,7 +953,7 @@ describe("the column's sections", () => {
 
   it("keeps the caret in the field being typed into", () => {
     const { host, inspector } = setup(rect);
-    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const name = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
     name.focus();
     expect(document.activeElement).toBe(name);
 
@@ -972,7 +962,7 @@ describe("the column's sections", () => {
     // The field is React's now, so a re-publish updates it in place rather than
     // rebuilding it: the caret is kept by the element surviving, where the
     // imperative body had to put it back into a fresh element.
-    const after = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    const after = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
     expect(after).toBe(name);
     expect(document.activeElement).toBe(after);
   });
@@ -980,7 +970,7 @@ describe("the column's sections", () => {
   it("keeps the focus on a control that only toggles", () => {
     const { host, inspector } = setup(rect);
     const glass = host.querySelector<HTMLElement>(
-      "[data-vigilia-glass-enabled]",
+      "[data-yunari-glass-enabled]",
     )!;
     glass.focus();
     expect(document.activeElement).toBe(glass);
@@ -994,7 +984,7 @@ describe("the column's sections", () => {
     // popup — but the reason is words in the row now (DESIGN.md §5.3), owned by plan
     // 1's `ControlRow`, so there is no popup left to re-open.
     const after = host.querySelector<HTMLElement>(
-      "[data-vigilia-glass-enabled]",
+      "[data-yunari-glass-enabled]",
     )!;
     expect(after).toBe(glass);
     expect(document.activeElement).toBe(after);
@@ -1040,9 +1030,7 @@ describe("the column's sections", () => {
 
     /** The draft in the name field, left uncommitted. */
     async function typedName(host: HTMLElement): Promise<HTMLInputElement> {
-      const field = host.querySelector<HTMLInputElement>(
-        "[data-vigilia-name]",
-      )!;
+      const field = host.querySelector<HTMLInputElement>("[data-yunari-name]")!;
       await draft(field, "Typed A");
       return field;
     }
@@ -1054,7 +1042,7 @@ describe("the column's sections", () => {
       select(b);
       inspector.render();
       expect(
-        host.querySelector<HTMLInputElement>("[data-vigilia-name]")?.value,
+        host.querySelector<HTMLInputElement>("[data-yunari-name]")?.value,
       ).toBe("Panel B");
 
       // The blur A's field was queued for now lands on an element that has left
@@ -1076,7 +1064,7 @@ describe("the column's sections", () => {
 
       select(undefined);
       inspector.render();
-      expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+      expect(host.querySelector("[data-yunari-name]")).toBeNull();
 
       await act(async () => {
         field.blur();
@@ -1096,7 +1084,7 @@ describe("the column's sections", () => {
       select(rebuilt);
       inspector.render();
       expect(
-        host.querySelector<HTMLInputElement>("[data-vigilia-name]")?.value,
+        host.querySelector<HTMLInputElement>("[data-yunari-name]")?.value,
       ).toBe("Panel A");
 
       await act(async () => {
@@ -1115,7 +1103,7 @@ describe("the column's sections", () => {
       a.set("locked", true);
       select(a);
       inspector.render();
-      expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+      expect(host.querySelector("[data-yunari-name]")).toBeNull();
 
       await act(async () => {
         field.blur();
@@ -1137,37 +1125,35 @@ describe("the column's sections", () => {
     // one §7.4's rule and the removed section together produce. The lead block
     // above the sections still names the lock.
     expect(locked.get("locked")).toBe(true);
-    expect(host.querySelector("[data-vigilia-locked]")).not.toBeNull();
-    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(0);
-    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+    expect(host.querySelector("[data-yunari-locked]")).not.toBeNull();
+    expect(host.querySelectorAll("[data-yunari-section]")).toHaveLength(0);
+    expect(host.querySelector("[data-yunari-name]")).toBeNull();
   });
 
   it("puts each field under the question it answers", () => {
     const { host } = setup(rect);
     const inSection = (id: string, selector: string): Element | null =>
-      host.querySelector(`[data-vigilia-section="${id}"] ${selector}`);
+      host.querySelector(`[data-yunari-section="${id}"] ${selector}`);
 
-    expect(inSection("content", "[data-vigilia-name]")).not.toBeNull();
+    expect(inSection("content", "[data-yunari-name]")).not.toBeNull();
     expect(
-      inSection("position", '[data-vigilia-geometry="left"]'),
+      inSection("position", '[data-yunari-geometry="left"]'),
     ).not.toBeNull();
     expect(
-      inSection("position", '[data-vigilia-geometry="width"]'),
+      inSection("position", '[data-yunari-geometry="width"]'),
     ).not.toBeNull();
-    expect(
-      inSection("layer", '[data-vigilia-geometry="angle"]'),
-    ).not.toBeNull();
-    expect(inSection("layer", "[data-vigilia-opacity]")).not.toBeNull();
-    expect(inSection("paint", "[data-vigilia-panel-fill]")).not.toBeNull();
+    expect(inSection("layer", '[data-yunari-geometry="angle"]')).not.toBeNull();
+    expect(inSection("layer", "[data-yunari-opacity]")).not.toBeNull();
+    expect(inSection("paint", "[data-yunari-panel-fill]")).not.toBeNull();
 
     // ...and nowhere else: rotation is not a position.
-    expect(inSection("position", '[data-vigilia-geometry="angle"]')).toBeNull();
-    expect(inSection("layer", '[data-vigilia-geometry="width"]')).toBeNull();
+    expect(inSection("position", '[data-yunari-geometry="angle"]')).toBeNull();
+    expect(inSection("layer", '[data-yunari-geometry="width"]')).toBeNull();
     // The deliberate bleed toggle left Position with its mark, and the user
     // ruled it out of every surface rather than only the display
     // (`docs/decisions/0069`, `vg-578`). Asserted rather than left to the
     // absence of a symbol, because this row is where it used to be.
-    expect(inSection("position", "[data-vigilia-bleeds]")).toBeNull();
+    expect(inSection("position", "[data-yunari-bleeds]")).toBeNull();
   });
 
   it("is a plan a test can read as data, before anything renders", () => {
@@ -1300,7 +1286,7 @@ describe("the size of a text object", () => {
       fontSize: 32,
     });
     text.set({
-      vigiliaText: {
+      yunariText: {
         runs: [
           {
             kind: "literal",
@@ -1318,15 +1304,15 @@ describe("the size of a text object", () => {
     const { host, history } = setup(text);
 
     const width = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="width"]',
+      '[data-yunari-geometry="width"]',
     )!;
     await edit(width, "220");
     const height = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="height"]',
+      '[data-yunari-geometry="height"]',
     )!;
     await edit(height, "40");
 
-    const authored = text.get("vigiliaText") as {
+    const authored = text.get("yunariText") as {
       box: { width: number; height: number };
     };
     expect(authored.box).toEqual({ width: 220, height: 40 });
@@ -1348,11 +1334,11 @@ describe("the size of a text object", () => {
     const { host } = setup(text);
 
     const height = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="height"]',
+      '[data-yunari-geometry="height"]',
     )!;
     await edit(height, "40");
 
-    const authored = text.get("vigiliaText") as {
+    const authored = text.get("yunariText") as {
       box: { width: number; height: number };
     };
     expect(authored.box.height).toBe(40);
@@ -1367,18 +1353,18 @@ describe("the size of a text object", () => {
     root: HTMLElement,
     key: "width" | "height",
   ): string | undefined =>
-    root.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)
+    root.querySelector<HTMLInputElement>(`[data-yunari-geometry="${key}"]`)
       ?.value;
 
   it("reads the object's own edge, not the box it was told", () => {
     // vg-109, ruled: the Size readout is a probe for what the canvas has, so it
     // reads the object's own measured edge — where the object has been placed
-    // and what it measures — rather than echoing the `vigiliaText.box` beside
+    // and what it measures — rather than echoing the `yunariText.box` beside
     // it. Here the box says 300 × 90 and the object measures something else,
     // and the field follows the object.
     const text = caption();
-    text.set("vigiliaText", {
-      ...(text.get("vigiliaText") as Record<string, unknown>),
+    text.set("yunariText", {
+      ...(text.get("yunariText") as Record<string, unknown>),
       box: { width: 300, height: 90 },
     });
     const { host } = setup(text);
@@ -1399,17 +1385,17 @@ describe("the size of a text object", () => {
     const { host } = setup(panel);
 
     const width = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="width"]',
+      '[data-yunari-geometry="width"]',
     )!;
     await edit(width, "180");
 
     expect(panel.scaleX).toBeCloseTo(0.5, 6);
-    expect(panel.get("vigiliaText")).toBeUndefined();
+    expect(panel.get("yunariText")).toBeUndefined();
   });
 
   /**
    * A text object whose box and whose own edge are different numbers, which is
-   * what the ruling above is about: `vigiliaText.box` is stored **unscaled**, so
+   * what the ruling above is about: `yunariText.box` is stored **unscaled**, so
    * a scaled text object draws a box larger than the box says. Measured on the
    * running editor: a 140 × 27.12 box at `scaleY 2` read **27** in the H field
    * and drew an edge of 54.24.
@@ -1417,8 +1403,8 @@ describe("the size of a text object", () => {
   function scaledCaption(): Textbox {
     const text = caption();
     const box = { width: 140, height: 27 };
-    text.set("vigiliaText", {
-      ...(text.get("vigiliaText") as Record<string, unknown>),
+    text.set("yunariText", {
+      ...(text.get("yunariText") as Record<string, unknown>),
       box,
     });
     text.set({ scaleX: 2, scaleY: 2 });
@@ -1449,7 +1435,7 @@ describe("the size of a text object", () => {
 
   it("writes the Size it shows, in the units it shows it in", async () => {
     // The other half of reading in drawn units: the write divides by the same
-    // scale the read multiplies by, because `vigiliaText.box` is stored
+    // scale the read multiplies by, because `yunariText.box` is stored
     // unscaled — the unit a dragged handle writes. `box × scale` is what the
     // object draws, since `assertBox` puts the box onto the object's own edges
     // and the scale goes back on over them, so the number typed has to be the
@@ -1459,10 +1445,10 @@ describe("the size of a text object", () => {
     // its own scale (vg-109).
     const text = scaledCaption();
     const box = (): { readonly width: number; readonly height: number } =>
-      (text.get("vigiliaText") as { box: { width: number; height: number } })
+      (text.get("yunariText") as { box: { width: number; height: number } })
         .box;
     const half = (key: "width" | "height"): HTMLInputElement =>
-      host.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)!;
+      host.querySelector<HTMLInputElement>(`[data-yunari-geometry="${key}"]`)!;
 
     // Typing the number the field *shows* is not this case: `control-text.tsx`
     // skips an unchanged draft (`next === value`), so a retype never reaches
@@ -1491,8 +1477,8 @@ describe("the size of a text object", () => {
     // box onto the object's own edges, so the readout agrees with the box it
     // just wrote. Nothing on screen moves for a document in this state.
     const text = caption();
-    text.set("vigiliaText", {
-      ...(text.get("vigiliaText") as Record<string, unknown>),
+    text.set("yunariText", {
+      ...(text.get("yunariText") as Record<string, unknown>),
       box: { width: text.width, height: text.height },
     });
     const { host } = setup(text);
@@ -1517,7 +1503,7 @@ describe("the column a kind gets", () => {
       something for its own appearance question to read. */
   function paintedRect(id: string): Rect {
     const rect = new Rect({ left: 0, top: 0, width: 40, height: 20, id });
-    rect.set("vigiliaPaint", { fill: "palette.ink" });
+    rect.set("yunariPaint", { fill: "palette.ink" });
     return rect;
   }
 
@@ -1529,7 +1515,7 @@ describe("the column a kind gets", () => {
       width: 40,
       id: "label-1",
     });
-    text.set("vigiliaText", {
+    text.set("yunariText", {
       runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
     });
     return text;
@@ -1598,27 +1584,27 @@ describe("the column a kind gets", () => {
    * distinct hooks: three in `EVERY_OBJECT` (`geometry`'s five selectors are one
    * name), six added by `shape`, six by `text`, one by `image`. It named 19 while
    * the read-only section stood, and item 17 removed the two that were its:
-   * `data-vigilia-resolution` (`EVERY_OBJECT` and `text`'s Type-preset row) and
-   * `data-vigilia-reveal-type-presets` (`text`). It named 17 until Task 25.7,
-   * which removed `data-vigilia-bleeds` from `EVERY_OBJECT` with the deliberate
+   * `data-yunari-resolution` (`EVERY_OBJECT` and `text`'s Type-preset row) and
+   * `data-yunari-reveal-type-presets` (`text`). It named 17 until Task 25.7,
+   * which removed `data-yunari-bleeds` from `EVERY_OBJECT` with the deliberate
    * bleed control (`docs/decisions/0069`). The pre-plan inspector at
-   * `190dc1a4` rendered **46** distinct `data-vigilia-*` names. The census
-   * (`git grep -oh 'data-vigilia-[a-zA-Z-]*' 190dc1a4 --
+   * `190dc1a4` rendered **46** distinct `data-yunari-*` names. The census
+   * (`git grep -oh 'data-yunari-[a-zA-Z-]*' 190dc1a4 --
    * src/web/packages/editor/src/selection-inspector | sort -u | wc -l`) prints
    * 47 — one high: a docblock at `190dc1a4:selection-inspector/index.ts:230`
-   * quotes the bare prefix `data-vigilia-`, which the pattern counts as a name.
+   * quotes the bare prefix `data-yunari-`, which the pattern counts as a name.
    * So the remaining **30** are 27 carried by the per-domain tests and the e2e
    * specs and those **3** the product no longer renders at all. Reading the 16 as
    * the inventory would understate the coverage by 30.
    */
   const EVERY_OBJECT: readonly string[] = [
-    "[data-vigilia-name]",
-    '[data-vigilia-geometry="left"]',
-    '[data-vigilia-geometry="top"]',
-    '[data-vigilia-geometry="width"]',
-    '[data-vigilia-geometry="height"]',
-    '[data-vigilia-geometry="angle"]',
-    "[data-vigilia-opacity]",
+    "[data-yunari-name]",
+    '[data-yunari-geometry="left"]',
+    '[data-yunari-geometry="top"]',
+    '[data-yunari-geometry="width"]',
+    '[data-yunari-geometry="height"]',
+    '[data-yunari-geometry="angle"]',
+    "[data-yunari-opacity]",
   ];
 
   const PRE_PLAN: Readonly<Record<SelectionKind, readonly string[]>> = {
@@ -1626,25 +1612,25 @@ describe("the column a kind gets", () => {
       ...EVERY_OBJECT,
       // This kind's row alone: a `Wedge` is a region, so the treatment reaches
       // it (`vg-465`).
-      "[data-vigilia-glass-enabled]",
-      "[data-vigilia-panel-fill]",
-      "[data-vigilia-panel-stroke]",
-      "[data-vigilia-panel-border]",
-      "[data-vigilia-panel-shadow]",
-      '[data-vigilia-shape-angle="startAngle"]',
-      '[data-vigilia-shape-angle="endAngle"]',
+      "[data-yunari-glass-enabled]",
+      "[data-yunari-panel-fill]",
+      "[data-yunari-panel-stroke]",
+      "[data-yunari-panel-border]",
+      "[data-yunari-panel-shadow]",
+      '[data-yunari-shape-angle="startAngle"]',
+      '[data-yunari-shape-angle="endAngle"]',
     ],
     text: [
       ...EVERY_OBJECT,
-      "[data-vigilia-runs]",
-      "[data-vigilia-text-align]",
-      "[data-vigilia-text-vertical-align]",
-      "[data-vigilia-text-wrap]",
-      "[data-vigilia-text-overflow]",
-      "[data-vigilia-run-source]",
+      "[data-yunari-runs]",
+      "[data-yunari-text-align]",
+      "[data-yunari-text-vertical-align]",
+      "[data-yunari-text-wrap]",
+      "[data-yunari-text-overflow]",
+      "[data-yunari-run-source]",
     ],
     chart: [...EVERY_OBJECT],
-    image: [...EVERY_OBJECT, "[data-vigilia-crop]"],
+    image: [...EVERY_OBJECT, "[data-yunari-crop]"],
     group: [...EVERY_OBJECT],
     activeSelection: [...EVERY_OBJECT],
   };
@@ -1659,12 +1645,12 @@ describe("the column a kind gets", () => {
       // original unreachability defect with a new cause — so the assertion is
       // that the column answered with something.
       expect(
-        host.querySelectorAll("[data-vigilia-section]").length,
+        host.querySelectorAll("[data-yunari-section]").length,
         kind,
       ).toBeGreaterThan(0);
       expect(
         host.querySelectorAll(
-          "[data-vigilia-section] input, [data-vigilia-section] select, [data-vigilia-section] button",
+          "[data-yunari-section] input, [data-yunari-section] select, [data-yunari-section] button",
         ).length,
         kind,
       ).toBeGreaterThan(0);
@@ -1707,8 +1693,8 @@ describe("the column a kind gets", () => {
 
     // Every field that writes is withheld, so nothing is left to render and
     // the column stands no header over it.
-    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(0);
-    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+    expect(host.querySelectorAll("[data-yunari-section]")).toHaveLength(0);
+    expect(host.querySelector("[data-yunari-name]")).toBeNull();
   });
 
   it("keeps a rectangle's corner radius, which no other shape reads", () => {
@@ -1718,9 +1704,9 @@ describe("the column a kind gets", () => {
 
     // The radius is a `Rect` property. A column that answered every shape with
     // the same fields would offer it to a `Wedge` and read back `NaN`.
-    expect(host.querySelector("[data-vigilia-panel-radius]")).not.toBeNull();
+    expect(host.querySelector("[data-yunari-panel-radius]")).not.toBeNull();
     expect(
-      setup(EXAMPLE.shape()).host.querySelector("[data-vigilia-panel-radius]"),
+      setup(EXAMPLE.shape()).host.querySelector("[data-yunari-panel-radius]"),
     ).toBeNull();
   });
 
@@ -1729,18 +1715,18 @@ describe("the column a kind gets", () => {
       "a Polygon",
       () =>
         new Polygon([new Point(0, -20), new Point(20, 20), new Point(-20, 20)]),
-      "[data-vigilia-shape-sides]",
+      "[data-yunari-shape-sides]",
     ],
     [
       "a Polyline",
       () => new Polyline([new Point(0, 0), new Point(20, 20)]),
-      "[data-vigilia-shape-points]",
+      "[data-yunari-shape-points]",
     ],
-    ["a Line", () => new Line([0, 0, 20, 20]), "[data-vigilia-shape-line]"],
+    ["a Line", () => new Line([0, 0, 20, 20]), "[data-yunari-shape-line]"],
     [
       "a Path",
       () => new Path("M 0 0 L 20 20 L 40 0"),
-      "[data-vigilia-shape-path]",
+      "[data-yunari-shape-path]",
     ],
   ])(
     "keeps %s's own geometry, which no other shape has",
@@ -1772,10 +1758,10 @@ describe("the column a kind gets", () => {
         // Bounds: the same Position pair every other object gets, at the same
         // density — a group is not a lesser selection.
         expect(
-          host.querySelector('[data-vigilia-geometry="width"]'),
+          host.querySelector('[data-yunari-geometry="width"]'),
         ).not.toBeNull();
         expect(
-          host.querySelector('[data-vigilia-geometry="left"]'),
+          host.querySelector('[data-yunari-geometry="left"]'),
         ).not.toBeNull();
 
         // **The children's appearance is no longer read here.** That line was
@@ -1787,11 +1773,11 @@ describe("the column a kind gets", () => {
         // "not a lesser selection" means for a kind that lacks them: nothing is
         // shown, rather than a control that would accept an edit and apply none.
         for (const absent of [
-          "[data-vigilia-panel-fill]",
-          "[data-vigilia-panel-stroke]",
-          "[data-vigilia-crop]",
-          "[data-vigilia-runs]",
-          "[data-vigilia-text-align]",
+          "[data-yunari-panel-fill]",
+          "[data-yunari-panel-stroke]",
+          "[data-yunari-crop]",
+          "[data-yunari-runs]",
+          "[data-yunari-text-align]",
         ]) {
           expect(host.querySelector(absent), absent).toBeNull();
         }
@@ -1805,11 +1791,11 @@ describe("the column a kind gets", () => {
 
         // A crop is about an image's own frame, and a container has none — a row
         // that offered one would write a clip nothing there can hold.
-        expect(host.querySelector("[data-vigilia-crop]")).toBeNull();
+        expect(host.querySelector("[data-yunari-crop]")).toBeNull();
         // The toggle used to be offered for every selection, containers included,
         // because every object can overhang. Nothing is marked any more
         // (`docs/decisions/0069`).
-        expect(host.querySelector("[data-vigilia-bleeds]")).toBeNull();
+        expect(host.querySelector("[data-yunari-bleeds]")).toBeNull();
       },
     );
   });

@@ -20,7 +20,7 @@ The user has asked to **deprecate every trace of schema v1.** The non-obvious pa
 
 The second non-obvious part is what "deprecate" should mean at all, given this repo has **no version-migration mechanism** and a recorded habit of not building one.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: the whole tree for the v1 vocabulary (`SUPPORTED_SCHEMA_VERSION`, `schemaVersion: 1`, `ThemeDocument`, `validateThemeDocument`, `serializeThemeDocument`, `fabricEnvelopeInputFor`), both backlog registers, `docs/decisions/`, and `docs/architecture/`.
 

@@ -20,7 +20,7 @@ handle**, not end handles alone — end handles alone would leave a line
 unrotatable, because the diagonal box is what currently provides rotation. So
 this is a complete transform set for `Line`, not a reduction of one.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `controls-manager/renderers.ts` (`ROTATE_DIAMETER`, `ROTATE_BACKGROUND`,
 `roundedHandle`), `snap-manager/*`, `canvas-nudge.ts`, `shortcut-manager`.

@@ -21,17 +21,17 @@ DOM layer *below* the canvas, so nothing Fabric draws can see it. Glass over
 that is a sampling problem, not a blur problem: which pixels, in what order,
 re-drawn when, and released when.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `scene-fabric/src/{scene,background-media,adapter,persist}.ts`,
 `editor/src/editor-shell.ts`, `docs/architecture/ownership.md`.
 
-Found: `mountBackgroundMedia` creates a `div[data-vigilia-background-media]`
+Found: `mountBackgroundMedia` creates a `div[data-yunari-background-media]`
 the host `prepend`s below the canvas; its handle exposes only `update`,
 `setBounds` and `destroy` — no pixel access. The editor already mounts a
 non-authored artboard plate as `canvas.backgroundImage` (`artboardPlate`,
 `editor-shell.ts:123`, `excludeFromExport: true`). The codebase already
-registers custom Fabric classes (`VigiliaChart` via `classRegistry`).
+registers custom Fabric classes (`YunariChart` via `classRegistry`).
 
 ## Rung 2 — dependencies
 

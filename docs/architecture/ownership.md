@@ -169,7 +169,7 @@ adapter does not own catalog, preview or adoption semantics.
 | **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `renderer-core/src/theme/` (`paletteTokenOptions`) |
 | **The catalogue index's wire shape** — what `index.json` carries, what a malformed entry refuses with, the authored `item.json` header the generator reads, and the one kind identifier the generator and the editor's client must agree on | `renderer-core/src/theme/catalogue-index.ts` |
 | **The catalogue id's shape** — `isCatalogueId`/`CATALOGUE_ID_PATTERN`, and the copy the store's own `.github/workflows/auto-merge.yml` carries because a workflow cannot import it | `renderer-core/src/theme/catalogue-index.ts` |
-| The authored `vigiliaGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
+| The authored `yunariGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
 | Theme ZIP layout and bounds | `theme-package/src/` |
 | **The version ladder** — the change classifier, the ignored fields and the bump arithmetic the host's submit and the catalogue CI both apply | `theme-package/src/version-ladder.ts` |
 | Published development schema | `schema/theme-document.schema.json` |
@@ -192,13 +192,13 @@ adapter does not own catalog, preview or adoption semantics.
 | Backdrop-glass composition, and its attach/dispose lifecycle | `scene-fabric/src/glass.ts` (editor Canvas and player StaticCanvas share it) |
 | **What a panel samples** — the artboard's paint composed *under* its media, and the board rect a gradient is mapped to (0080) | `scene-fabric/src/artboard-backdrop.ts`, with the paint's third output form in `scene-fabric/src/artboard-paint.ts` |
 | Scene serialization/revival | `scene-fabric/src/persist.ts` |
-| `VigiliaChart` lifecycle | `scene-fabric/src/chart-object.ts` |
+| `YunariChart` lifecycle | `scene-fabric/src/chart-object.ts` |
 | Chart repaint cadence | `scene-fabric/src/chart-refresh.ts` |
 | Chart backing limits | `scene-fabric/src/render-scale.ts` |
 | ECharts registration | `scene-fabric/src/chart-engine.ts` |
 | Fabric node updates | `scene-fabric/src/fabric-nodes.ts` |
 | Text runs | `scene-fabric/src/text-runs.ts` |
-| The authored text box (`vigiliaText.box`) — its two dimensions, and the one write every geometry surface shares | `scene-fabric/src/authored-box.ts` |
+| The authored text box (`yunariText.box`) — its two dimensions, and the one write every geometry surface shares | `scene-fabric/src/authored-box.ts` |
 | Image/SVG | `scene-fabric/src/fabric-image.ts` |
 | Paint conversion | `scene-fabric/src/paint.ts` |
 | **Which objects point at a token** — the walk a token delete and a swap both read | `scene-fabric/src/palette-references.ts` |
@@ -235,7 +235,7 @@ adapter does not own catalog, preview or adoption semantics.
 | The display's own chrome — the strips it is told by, and the room they take from the artboard | `player/src/chrome.ts` |
 | Consumer device-selection page | `host/public/settings.html` |
 | The theme chooser the dashboard falls back to | `host/public/library.html` |
-| A saved theme as one row in a list, and the host pages' chrome | `host/public/theme-list.js`, `host/public/vigilia-page.css` |
+| A saved theme as one row in a list, and the host pages' chrome | `host/public/theme-list.js`, `host/public/yunari-page.css` |
 | LibreHardwareMonitor provider, tree and key mapping | `host/src/providers/lhm*.ts` |
 | LHM launch and elevation reporting | `host/src/providers/lhm-launcher.ts` |
 | systeminformation-backed baseline provider | `host/src/providers/library.ts` |

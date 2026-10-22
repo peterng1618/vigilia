@@ -37,7 +37,7 @@ Three sub-shapes hide inside it, and they are not the same problem:
    `fsSize()`; a CPU's brand is not in `currentLoad()`).
 3. How a caption stays attached to that device when the consumer renames it.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `host/src/providers/{library,lhm,lhm-mapping,lhm-tree,provider,
 registry,clock}.ts`, `host/src/settings/{devices,required-devices}.ts`,
@@ -178,7 +178,7 @@ is ours.
 
 **The answer, from four independent projects:** *a metric belongs to a device;
 a device is named; if you must show an aggregate, change the label to say so
-rather than borrowing a device's name.* Vigilia has exactly one key per group
+rather than borrowing a device's name.* Yunari has exactly one key per group
 and no indexed per-device form (`semantic-keys.test.ts:53-57` deliberately
 declares none), so the ecosystem's per-device-series answer is not available to
 us — the **selection must happen inside the provider**, and the selection must

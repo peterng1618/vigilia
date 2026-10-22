@@ -25,12 +25,12 @@ import { SettingsKeyboard } from "./settings-keyboard.js";
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const STORAGE_KEY = "vigilia.editor.shortcut-overrides";
+const STORAGE_KEY = "yunari.editor.shortcut-overrides";
 
 /** One row of the tab, by the action it edits rather than by its words. */
 function row(host: HTMLElement, action: ProductShortcutId): HTMLElement {
   const found = host.querySelector<HTMLElement>(
-    `[data-vigilia-shortcut-row="${action}"]`,
+    `[data-yunari-shortcut-row="${action}"]`,
   );
   if (found === null) throw new Error(`no row for ${action}.`);
   return found;
@@ -46,7 +46,7 @@ function armControl(
   action: ProductShortcutId,
 ): HTMLButtonElement {
   const found = host.querySelector<HTMLButtonElement>(
-    `[data-vigilia-shortcut-arm="${action}"]`,
+    `[data-yunari-shortcut-arm="${action}"]`,
   );
   if (found === null) throw new Error(`no arm control for ${action}.`);
   return found;
@@ -59,14 +59,14 @@ function armed(host: HTMLElement): boolean {
 
 function reason(host: HTMLElement): string {
   return (
-    host.querySelector("[data-vigilia-shortcut-reason]")?.textContent?.trim() ??
+    host.querySelector("[data-yunari-shortcut-reason]")?.textContent?.trim() ??
     ""
   );
 }
 
 function resetAll(host: HTMLElement): HTMLButtonElement {
   const found = host.querySelector<HTMLButtonElement>(
-    "[data-vigilia-shortcut-reset-all]",
+    "[data-yunari-shortcut-reset-all]",
   );
   if (found === null) throw new Error("no Reset all control.");
   return found;
@@ -77,7 +77,7 @@ function perRowReset(
   action: ProductShortcutId,
 ): HTMLButtonElement {
   const found = host.querySelector<HTMLButtonElement>(
-    `[data-vigilia-shortcut-reset="${action}"]`,
+    `[data-yunari-shortcut-reset="${action}"]`,
   );
   if (found === null) throw new Error(`no Reset for ${action}.`);
   return found;
@@ -176,7 +176,7 @@ afterEach(() => {
 describe("the Keyboard tab", () => {
   it("lists every action the table binds, once, with its chord and an arm control", () => {
     const mounting = mount(localStorage);
-    const rows = mounting.querySelectorAll("[data-vigilia-shortcut-row]");
+    const rows = mounting.querySelectorAll("[data-yunari-shortcut-row]");
     // Derived from the table rather than restated: an action added to
     // `PRODUCT_SHORTCUTS` must arrive here, and the sheet's row count is a
     // property of the projection.
@@ -243,7 +243,7 @@ describe("the Keyboard tab", () => {
     // at the foot and this line is the one that fails.
     expect(
       row(mounting, "publish.surface").querySelector(
-        "[data-vigilia-shortcut-reason]",
+        "[data-yunari-shortcut-reason]",
       ),
       "the refusal renders in the armed row",
     ).not.toBeNull();

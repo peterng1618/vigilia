@@ -111,7 +111,7 @@ author journey proof are bugs, not feedback.
 
 **Do not delete `docs/bugs/` while a plan is running.** The active
 reference-theme fidelity plan cites the hosted-asset defect — now
-[#3](https://github.com/peterng1618/vigilia/issues/3) — and two e2e files
+[#3](https://github.com/peterng1618/yunari/issues/3) — and two e2e files
 comment on the same record, one of which a subagent is editing right now.
 Deleting under it breaks a pointer a running task depends on.
 

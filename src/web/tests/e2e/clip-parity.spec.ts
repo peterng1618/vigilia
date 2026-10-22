@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import {
   CLIP_FIELD,
   CLIP_INK,
@@ -53,7 +53,7 @@ import { isDesktopSurface } from "./surface.js";
  * half instead and the artboard clip would never touch it, so there would be
  * nothing to measure.
  *
- * **The text box.** `vigiliaText.box` **shorter than one line** — 20 units at
+ * **The text box.** `yunariText.box` **shorter than one line** — 20 units at
  * `fontSize 40`. `withLineCapacity` derives a `maxLines` from that box, but
  * nothing writes it onto the object: only `fits()` reads it, and `fits()` is
  * reached on the ellipsis path alone. So with `overflow: "clip"` the text lays
@@ -130,8 +130,8 @@ function textBox(
     // entry's own, read from the one place both spell.
     fill: CLIP_INK,
     id,
-    vigiliaPaint: { fill: "palette.ink" },
-    vigiliaText: {
+    yunariPaint: { fill: "palette.ink" },
+    yunariText: {
       runs: [
         {
           kind: "literal" as const,
@@ -175,7 +175,7 @@ const ENVELOPE = {
       id: "quadrants",
       kind: "svg" as const,
       path: BADGE_ASSET,
-      license: { name: "MIT", attribution: "Vigilia test fixture." },
+      license: { name: "MIT", attribution: "Yunari test fixture." },
     },
   ],
   scene: {
@@ -195,7 +195,7 @@ const ENVELOPE = {
         height: ARTBOARD.height,
         fill: CLIP_PLATE,
         id: "plate",
-        vigiliaPaint: { fill: "palette.plate" },
+        yunariPaint: { fill: "palette.plate" },
       },
       {
         // The field the text is read against. It overhangs too, so ink that
@@ -210,7 +210,7 @@ const ENVELOPE = {
         height: 200,
         fill: CLIP_FIELD,
         id: "text-field",
-        vigiliaPaint: { fill: "palette.field" },
+        yunariPaint: { fill: "palette.field" },
       },
       {
         type: "Image" as const,
@@ -224,7 +224,7 @@ const ENVELOPE = {
         scaleX: 1,
         scaleY: 1,
         id: "badge",
-        vigiliaAsset: { assetId: "quadrants", kind: "svg" as const },
+        yunariAsset: { assetId: "quadrants", kind: "svg" as const },
         // The crop the author made, in the shape the crop manager writes it.
         clipPath: {
           type: "Rect",
@@ -291,7 +291,7 @@ const VISIBLE_BAND: Rect = { x: 600, y: 180, width: 350, height: 140 };
  * Every class's extent inside one scene-space region, read off a backing store.
  *
  * `surface` picks which canvas and which camera: the editor's lower canvas
- * through `vigiliaEditorBridge`, the player's artboard through the `window.vigilia`
+ * through `yunariEditorBridge`, the player's artboard through the `window.yunari`
  * handle. Both map scene units through their own `viewportTransform`, and both
  * are then scaled by `backingStore / CSS box`, so nothing here assumes a device
  * pixel ratio.
@@ -314,26 +314,26 @@ async function reading(
       };
 
       const win = window as unknown as {
-        vigiliaEditorBridge?: {
+        yunariEditorBridge?: {
           editor: { canvas: { viewportTransform: number[] } };
         };
-        vigilia?: { handle: Record<string, unknown> };
+        yunari?: { handle: Record<string, unknown> };
       };
       let element: HTMLCanvasElement | null;
       let vpt: number[];
 
       if (which === "editor") {
-        const bridge = win.vigiliaEditorBridge;
+        const bridge = win.yunariEditorBridge;
         if (bridge === undefined) throw new Error("no editor bridge");
         element = document.querySelector<HTMLCanvasElement>(
-          "#vigilia-fabric-editor canvas.lower-canvas",
+          "#yunari-fabric-editor canvas.lower-canvas",
         );
         vpt = bridge.editor.canvas.viewportTransform;
       } else {
-        const handle = win.vigilia?.handle;
+        const handle = win.yunari?.handle;
         if (handle === undefined) throw new Error("no player handle");
         element = document.querySelector<HTMLCanvasElement>(
-          'canvas[data-vigilia="artboard"]',
+          'canvas[data-yunari="artboard"]',
         );
         vpt = (handle["canvas"] as { viewportTransform: number[] })
           .viewportTransform;
@@ -466,13 +466,13 @@ async function openEditor(page: Page): Promise<void> {
 
   await page.goto(EDITOR);
   await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    page.locator("#yunari-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
   await openThemeFromStore(page, storedThemeOfPackage(written.bytes));
   await page.waitForFunction(
     () =>
-      (window as unknown as { vigiliaEditorBridge?: unknown })
-        .vigiliaEditorBridge !== undefined,
+      (window as unknown as { yunariEditorBridge?: unknown })
+        .yunariEditorBridge !== undefined,
   );
   // The image is a fetched asset and the type needs a measured face: a read
   // before either lands is a read of a half-painted canvas.
@@ -480,7 +480,7 @@ async function openEditor(page: Page): Promise<void> {
     () => {
       const objects = (
         window as unknown as {
-          vigiliaEditorBridge: {
+          yunariEditorBridge: {
             editor: {
               canvas: {
                 getObjects(): { get(key: string): unknown }[];
@@ -489,7 +489,7 @@ async function openEditor(page: Page): Promise<void> {
             };
           };
         }
-      ).vigiliaEditorBridge.editor.canvas.getObjects();
+      ).yunariEditorBridge.editor.canvas.getObjects();
       const badge = objects.find((object) => object.get("id") === "badge");
       return badge !== undefined && (badge.get("width") as number) > 0;
     },
@@ -502,14 +502,14 @@ async function openEditor(page: Page): Promise<void> {
   await page.evaluate(() => {
     const bridge = (
       window as unknown as {
-        vigiliaEditorBridge: {
+        yunariEditorBridge: {
           editor: {
             canvas: { requestRenderAll(): void };
             viewport: { zoomBy(factor: number): void };
           };
         };
       }
-    ).vigiliaEditorBridge;
+    ).yunariEditorBridge;
     bridge.editor.viewport.zoomBy(0.6);
     bridge.editor.canvas.requestRenderAll();
   });
@@ -519,18 +519,18 @@ async function openEditor(page: Page): Promise<void> {
 /** The player, showing the same document through the real host. */
 async function openPlayer(page: Page): Promise<void> {
   await page.goto(`${HOST}/?theme=${THEME_ID}&static=1`);
-  await expect(page.locator('canvas[data-vigilia="artboard"]')).toBeVisible();
+  await expect(page.locator('canvas[data-yunari="artboard"]')).toBeVisible();
   await page.waitForFunction(
     () => {
       const handle = (
         window as unknown as {
-          vigilia?: {
+          yunari?: {
             handle: {
               canvas: { getObjects(): { get(key: string): unknown }[] };
             };
           };
         }
-      ).vigilia?.handle;
+      ).yunari?.handle;
       if (handle === undefined) return false;
       const badge = handle.canvas
         .getObjects()

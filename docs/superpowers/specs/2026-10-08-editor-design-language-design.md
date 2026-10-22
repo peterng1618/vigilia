@@ -436,7 +436,7 @@ wrong out loud.
 
 1. The plan's final task builds the bundles and **captures the surfaces it
    changed**, using the existing mechanism and its rules
-   (`VIGILIA_CAPTURE=1`, `--workers=1`, previewing built bundles, capturing only
+   (`YUNARI_CAPTURE=1`, `--workers=1`, previewing built bundles, capturing only
    actions registered in `docs/evidence/screenshots/README.md`).
 2. The capture is placed **beside the matching mockup** and the differences are
    listed in the completion report. Side by side, in the report — not a claim

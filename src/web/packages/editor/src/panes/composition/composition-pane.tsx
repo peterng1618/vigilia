@@ -49,7 +49,7 @@ function roleText(role: LayerRole): string {
  * control set's one owner of the pairing (`useControlTooltip`, §6), so the two
  * cannot disagree.
  *
- * It renders a bare `<button>` and no wrapper on purpose: `.vigilia-layer-state`
+ * It renders a bare `<button>` and no wrapper on purpose: `.yunari-layer-state`
  * asks its own children how much room beside the key they need
  * (`:has(... button:nth-child(n))`), and a wrapper would put every button at
  * position one of its own parent.
@@ -129,7 +129,7 @@ class LayerStore {
   }
 }
 
-/** Paired with `.vigilia-layer-row`'s height in `editor-shell.css`: the row is
+/** Paired with `.yunari-layer-row`'s height in `editor-shell.css`: the row is
  * the control set's 26px panel rhythm (§3) because the row's own controls are
  * 26px squares (§5), and a 26px control in a shorter row is a control the row
  * clips.
@@ -140,7 +140,7 @@ class LayerStore {
 export const ROW_HEIGHT = 26;
 
 /** The row's indentation: `LAYER_ROW_INDENT` at the root and
- *  `LAYER_ROW_INDENT_STEP` per level, matched by `.vigilia-layer-row`'s
+ *  `LAYER_ROW_INDENT_STEP` per level, matched by `.yunari-layer-row`'s
  *  `calc(6px + var(--layer-depth, 0) * 13px)` and by the drop line's
  *  `--layer-dropline-left`, which promises the slot the row it crosses would
  *  take. */
@@ -375,7 +375,7 @@ export function CompositionPane({
     <>
       {/* The pane's own chrome — its title bar, its section frame and its
        * footer toolbar — belongs to `Pane`, which names the section
-       * `[data-vigilia-panel="layers"]`. What is left here is the tree. */}
+       * `[data-yunari-panel="layers"]`. What is left here is the tree. */}
       <div ref={tree} role="tree" aria-label={uiCopy.panels.layers}>
         {rows.map((row, index) => {
           const Twisty =
@@ -405,8 +405,8 @@ export function CompositionPane({
               // projection can hold one id twice, and a duplicate key makes
               // React reuse the wrong row. Slot identity is what re-renders.
               key={`${row.id}#${index}`}
-              className="vigilia-layer-row"
-              data-vigilia-layer={row.id}
+              className="yunari-layer-row"
+              data-yunari-layer={row.id}
               data-selected={row.selected}
               // A hidden layer is hidden on the canvas too, and the row said
               // so only in its tooltip — one measurable difference between a
@@ -462,7 +462,7 @@ export function CompositionPane({
                 // Chrome will not start a drag without payload, and one of our
                 // own rows is the only thing that may start one.
                 event.dataTransfer.setData(
-                  "application/x-vigilia-layer",
+                  "application/x-yunari-layer",
                   row.id,
                 );
                 drag.current = {
@@ -616,14 +616,14 @@ export function CompositionPane({
                   <Glyph icon={Twisty} size={13} />
                 </RowIconButton>
               ) : (
-                <span aria-hidden className="vigilia-layer-twisty" />
+                <span aria-hidden className="yunari-layer-twisty" />
               )}
               <KindMark mark={row.mark} />
               {editing === row.id ? (
                 <input
                   // Intended autofocus: the field only exists because the author double-clicked the row.
                   autoFocus
-                  className="vigilia-layer-rename"
+                  className="yunari-layer-rename"
                   aria-label={`${uiCopy.panels.rename} ${row.name}`}
                   defaultValue={row.name}
                   onClick={(event) => event.stopPropagation()}
@@ -644,7 +644,7 @@ export function CompositionPane({
                   }}
                 />
               ) : (
-                <span className="vigilia-layer-name">{row.name}</span>
+                <span className="yunari-layer-name">{row.name}</span>
               )}
               {/* What the row *is*, in the document's own words — and on four
                   rows in five the only thing a screen reader hears about it: a
@@ -657,12 +657,12 @@ export function CompositionPane({
                   at all.
 
                   One element, never repeated: no `title` (a tooltip reaches no
-                  keyboard author), nothing inside `.vigilia-layer-mark` (whose
+                  keyboard author), nothing inside `.yunari-layer-mark` (whose
                   `flex-basis` would clip it), and never hidden, because a
                   treeitem's name is the concatenation of its own columns. */}
               <span
-                className="vigilia-layer-role"
-                data-vigilia-layer-role={row.role.kind}
+                className="yunari-layer-role"
+                data-yunari-layer-role={row.role.kind}
               >
                 {roleText(row.role)}
               </span>
@@ -683,7 +683,7 @@ export function CompositionPane({
                   prints one where this column will. */}
               {row.bound.length === 0 ? null : (
                 <span
-                  className="vigilia-layer-bound"
+                  className="yunari-layer-bound"
                   title={row.bound.join(uiCopy.panels.boundSeparator)}
                 >
                   {row.bound.join(uiCopy.panels.boundSeparator)}
@@ -707,12 +707,12 @@ export function CompositionPane({
                   row's own, so the field opens from the row itself — a
                   double-click on it, or F2/Enter from the keyboard
                   (`vg-462`). */}
-              <span className="vigilia-layer-state">
+              <span className="yunari-layer-state">
                 {showEnter ? (
                   <RowIconButton
                     label={`${entry} ${row.name}`}
                     data={{
-                      "data-vigilia-layer-entry": isEntered ? "leave" : "enter",
+                      "data-yunari-layer-entry": isEntered ? "leave" : "enter",
                     }}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -754,8 +754,8 @@ export function CompositionPane({
           ref={indicator}
           hidden
           aria-hidden
-          data-vigilia-layer-dropline=""
-          className="vigilia-layer-dropline"
+          data-yunari-layer-dropline=""
+          className="yunari-layer-dropline"
         />
       </div>
     </>

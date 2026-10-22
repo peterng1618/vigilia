@@ -106,7 +106,7 @@ export function tooltip({ trigger, text, shortcut }: TooltipOptions): Tooltip {
       chip.setAttribute("aria-label", shortcut.spoken);
       element.append(chip);
     }
-    element.id = `vigilia-tooltip-${++seq}`;
+    element.id = `yunari-tooltip-${++seq}`;
     element.style.width = WIDTH;
     element.style.maxWidth = `${MAX_WIDTH}px`;
     document.body.append(element);

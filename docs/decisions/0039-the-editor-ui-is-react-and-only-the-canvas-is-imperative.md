@@ -27,7 +27,7 @@ between React and Fabric sits**, and that is a decision with a wrong answer that
 fails invisibly: mirror Fabric objects into React state and the editor develops
 two sources of truth for the scene, with the stale one rendering.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `find . -name "*.tsx"` across `packages/editor/src`, and a line count
 over the imperative panel families; `shell-layout.tsx`'s menubar; `panelHosts`

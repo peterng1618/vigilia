@@ -27,7 +27,7 @@ The recycle bin *is* the undo. A hand-rolled quarantine directory inside the
 themes root was considered and is what this decision replaces: it would be a
 second trash the author would not know how to restore from.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `trash|recycle|Recycle|SHFileOperation|gio |trash-put|osascript|shell.trashItem`
 across `src/web/packages` (excluding `dist/`), and the API surface of
@@ -48,12 +48,12 @@ along and no second call is needed.
 ## Rung 2 — dependencies
 
 Searched: `packages/host/package.json` and the workspace root. The host declares
-`@vigilia/renderer-core`, `@vigilia/theme-package`, `systeminformation`, plus a
+`@yunari/renderer-core`, `@yunari/theme-package`, `systeminformation`, plus a
 `@types/node` that never ships. Its own `"//"` field states the rule: **zero
 runtime dependencies beyond the renderer's types, deliberately.**
 
 Found: **nothing installed can do this.** `systeminformation` is telemetry.
-`@vigilia/theme-package` is archive I/O. Adding `trash` (or any other package)
+`@yunari/theme-package` is archive I/O. Adding `trash` (or any other package)
 would be the first runtime dependency the host ever took, and `AGENTS.md` requires
 a licence check, a `THIRD-PARTY-NOTICES.md` entry and a
 `docs/engineering/dependencies.md` entry first.

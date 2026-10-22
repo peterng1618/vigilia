@@ -7,7 +7,7 @@
     // file. Same arrangement as the player.
     "rootDir": "../..",
     "paths": {
-      "@vigilia/renderer-core": ["../renderer-core/src/index.ts"]
+      "@yunari/renderer-core": ["../renderer-core/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"]

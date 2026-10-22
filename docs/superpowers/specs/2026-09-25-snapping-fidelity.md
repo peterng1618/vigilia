@@ -23,7 +23,7 @@ and the hardcoded `ctrlKey`/`axes` intent fields. Both landed in `83248dc`.
 
 ## Current state after `83248dc`
 
-| Area | Fork | Vigilia |
+| Area | Fork | Yunari |
 |---|---|---|
 | Marker | browser event (`movement-snapping-controller.ts:127`) | browser event ✓ |
 | Ctrl escape hatch | `modifiers.ctrlKey` from the event | from the event ✓ |
@@ -49,12 +49,12 @@ verification, with independent X/Y hold, fixed-point restoration and Ctrl/Shift
 handling.
 
 Not previously deferred for cost alone: the review doc records it as "large and
-coupled to object types Vigilia does not have". Re-check that claim against the
+coupled to object types Yunari does not have". Re-check that claim against the
 current object set (text, shape, chart, group, image) before porting, and record
 which couplings genuinely do not apply.
 
 Decide and record: **port the projection/resolver modules**, or implement a
-narrower Vigilia-native resize snap over the existing candidate/guide model. §32
+narrower Yunari-native resize snap over the existing candidate/guide model. §32
 permits the second when the first needs disproportionate custom integration, but
 §175 requires the resulting behaviour to match the source in practice — a
 narrower port that guides worse does not satisfy it.
@@ -66,7 +66,7 @@ the active object and its selection children, `visible === false`, and
 `IGNORED_IDS`. It has **no** `selectable` and **no** `locked` check: locking a
 logo prevents *moving* it, not *aligning to* it.
 
-Vigilia required `selectable === true` and `locked !== true`. Two consequences,
+Yunari required `selectable === true` and `locked !== true`. Two consequences,
 both of which this change closes:
 
 - A locked object cannot be aligned against. This is a behaviour regression
@@ -86,7 +86,7 @@ The artboard plate's id is **`"background"`**, not `"scene"`. The call is
 `rect("background", 0, 0, 1280, 720, twilightGradient, 0, backgroundOnly, "scene")`
 (`new-fabric-theme.ts:320-330`): `"background"` is the `id` parameter, and
 `"scene"` is the ninth argument, `paletteId`, which becomes
-`vigiliaPaint: { fill: "palette.scene" }`. `new-fabric-theme.test.ts:64` asserts
+`yunariPaint: { fill: "palette.scene" }`. `new-fabric-theme.test.ts:64` asserts
 the plate's `id` is `"background"`, and no object in the product carries
 `id: "scene"` — an ignored-ids list of `["scene"]` therefore excludes nothing.
 This mirrors the fork, whose own list is
@@ -109,7 +109,7 @@ second mechanism; if it does not, wire the constant in.
 
 `movement-snapping-controller.ts:180-197 _isSupportedActiveSelection` requires
 ≥2 children, none parented, each an image/textbox/shape-group, and unit
-selection scale when text is present. Vigilia accepts any `selectable` object,
+selection scale when text is present. Yunari accepts any `selectable` object,
 including any `ActiveSelection`. Adopt the guard unless the current object set
 makes a clause meaningless; record which clauses were dropped and why.
 
@@ -119,9 +119,9 @@ The fork tried the migrated controller, then fell back to
 `_resolveObjectMovementContext` → `_applyMovementObjectSnap` →
 `_applyMovementVisualGuides` (`index.ts:1098-1146`), a second engine over
 `line-snapping.ts`, `anchor-buckets.ts`, `pixel-grid.ts` and
-`snap-target-resolver.ts`. Vigilia has no fallback.
+`snap-target-resolver.ts`. Yunari has no fallback.
 
-Vigilia's broader candidate filter means fewer objects are declined, so the
+Yunari's broader candidate filter means fewer objects are declined, so the
 fallback's main justification is weaker. Decide explicitly: **port**,
 **replace** with a stated native outcome, or **drop** with the reason recorded.
 Do not leave it unstated — that is how the P0 defects above survived.
@@ -133,7 +133,7 @@ Do not leave it unstated — that is how the P0 defects above survived.
 - `snapAngle = 1` whole-degree rotation: equivalent on both sides and native
   Fabric; no angle guides in either.
 - The size-indicator `mouse:move` refresh pass: text-pipeline specific.
-- The 1,450-line fork orchestrator itself: rewritten for Vigilia, not ported.
+- The 1,450-line fork orchestrator itself: rewritten for Yunari, not ported.
 
 ## Key decisions to make in planning
 
@@ -144,9 +144,9 @@ Do not leave it unstated — that is how the P0 defects above survived.
    the plate's real id. Task 1.
 3. Fallback path: port, replace or drop. — **Drop.** All four of the fork's
    fallback modules (`line-snapping`, `anchor-buckets`, `pixel-grid`,
-   `snap-target-resolver`) are absent from Vigilia and nothing references them.
+   `snap-target-resolver`) are absent from Yunari and nothing references them.
    In the fork the legacy path is reached from `_applyObjectMovementSnap` when
-   the migrated controller declines, and Vigilia's broader candidate filter
+   the migrated controller declines, and Yunari's broader candidate filter
    declines fewer objects, so the gap that justified the second engine is
    narrower here. The fallback was also the only consumer of the ported guard
    family — `pixel-grid.ts` imported `scaling-step-snap-guards`, not the other

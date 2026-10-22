@@ -36,7 +36,7 @@ function ruleBodies(selector: string): string {
  *  nothing scales." A wash is what the rule forbids here. */
 const GLYPH_ONLY = [
   ".editor-shell-rail button",
-  ".vigilia-layer-row button",
+  ".yunari-layer-row button",
   ".editor-shell-dock button",
   ".editor-shell-view-step",
 ] as const;
@@ -101,9 +101,9 @@ describe("§2's role on a dialog's own body", () => {
  *
  *  `vg-226`'s complaint was that Delete was `--hot` in the dock and ordinary in
  *  the layer footer and the canvas context menu. The colour is painted by the
- *  shared `data-vigilia-destructive` the registry's `destructiveMarker` puts on
+ *  shared `data-yunari-destructive` the registry's `destructiveMarker` puts on
  *  each control, and the failure it replaced was a **surface-scoped** rule:
- *  `.editor-shell-dock button[data-vigilia-destructive]` cannot reach a popup
+ *  `.editor-shell-dock button[data-yunari-destructive]` cannot reach a popup
  *  Base UI portals to `body`, so the menu's Delete kept its inherited colour.
  *
  *  A text read rather than a rendered one on purpose: jsdom has no cascade, so a
@@ -211,9 +211,9 @@ describe("§4's destructive mark", () => {
     // half of this is the browser case in `snapping.spec.ts`.
     expect(
       ruleBodies(
-        '[data-vigilia-destructive]:not([disabled]):not([aria-disabled="true"])',
+        '[data-yunari-destructive]:not([disabled]):not([aria-disabled="true"])',
       ),
-      "no rule keys §4's `--hot` on the shared `data-vigilia-destructive`, so a " +
+      "no rule keys §4's `--hot` on the shared `data-yunari-destructive`, so a " +
         "surface the bare selector cannot be beaten to — the portalled context " +
         "menu — paints its destructive action as ordinary text",
     ).toContain("color: var(--hot)");
@@ -223,7 +223,7 @@ describe("§4's destructive mark", () => {
     // filed for, one level down, whatever colours they name.
     const painters = [
       ...cssNoComments.matchAll(
-        /^[^{}\n]*\[data-vigilia-destructive\][^{}\n]*\{/gm,
+        /^[^{}\n]*\[data-yunari-destructive\][^{}\n]*\{/gm,
       ),
     ].map((match) => match[0]);
     expect(
@@ -357,7 +357,7 @@ describe("the shell's focus fallback", () => {
 });
 
 /**
- * `vg-458`: the `--vigilia-scrollbar-*` values were declared for the scrollers
+ * `vg-458`: the `--yunari-scrollbar-*` values were declared for the scrollers
  * and read by nothing, so the platform painted them.
  *
  * `vg-480`: two of the four scrollers are portalled out of `.editor-shell`, so
@@ -388,8 +388,8 @@ describe("the scrollers' scrollbar", () => {
 
   it("gives each of the two tokens a consumer", () => {
     for (const token of [
-      "--vigilia-scrollbar-thumb",
-      "--vigilia-scrollbar-track",
+      "--yunari-scrollbar-thumb",
+      "--yunari-scrollbar-track",
     ]) {
       expect(
         css,
@@ -409,8 +409,8 @@ describe("the scrollers' scrollbar", () => {
         bodies,
         `${scroller} takes no scrollbar-color, so Firefox paints the platform's`,
       ).toContain(
-        "scrollbar-color: var(--vigilia-scrollbar-thumb) " +
-          "var(--vigilia-scrollbar-track);",
+        "scrollbar-color: var(--yunari-scrollbar-thumb) " +
+          "var(--yunari-scrollbar-track);",
       );
     }
   });
@@ -463,7 +463,7 @@ describe("the layer row's control reserve", () => {
   it("has one arm per control the row draws, and no arm past its ceiling", () => {
     const counts = [
       ...cssNoComments.matchAll(
-        /^\.vigilia-layer-row:has\(\.vigilia-layer-state button(?::nth-child\((\d+)\))?\)\s*\{/gm,
+        /^\.yunari-layer-row:has\(\.yunari-layer-state button(?::nth-child\((\d+)\))?\)\s*\{/gm,
       ),
     ].map((match) => match[1] ?? "1");
 

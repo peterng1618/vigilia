@@ -2,11 +2,11 @@ import type {
   AssetReference,
   FabricThemeEnvelope,
   FontAssetReference,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   objectAssetReference,
   setObjectAssetReference,
-} from "@vigilia/scene-fabric";
+} from "@yunari/scene-fabric";
 import {
   FabricImage,
   type FabricObject,

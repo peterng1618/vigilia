@@ -151,7 +151,7 @@ export function browserCommand(
 }
 
 /** The task Windows starts this host with at sign-in. */
-const HOST_TASK_NAME = "VigiliaHost";
+const HOST_TASK_NAME = "YunariHost";
 
 /**
  * Registers the **host** at sign-in, so every local monitor survives a reboot —
@@ -170,7 +170,7 @@ export function registerHostAutostart(
     return Promise.resolve({
       ok: false,
       message:
-        "Vigilia registers a sign-in task on Windows only; this host is on " +
+        "Yunari registers a sign-in task on Windows only; this host is on " +
         `${process.platform}.`,
     });
   }
@@ -204,7 +204,7 @@ export function registerHostAutostart(
         resolve({
           ok: true,
           message:
-            "Registered. Windows starts Vigilia at sign-in, so every local " +
+            "Registered. Windows starts Yunari at sign-in, so every local " +
             `monitor comes back with it. Remove the "${HOST_TASK_NAME}" task in ` +
             "Task Scheduler to stop it.",
         });
@@ -229,7 +229,7 @@ export interface Launcher {
  * wall screen cannot see their logins.
  */
 function profileDirFor(displayId: string): string {
-  return path.join(os.tmpdir(), "vigilia-display-profiles", displayId);
+  return path.join(os.tmpdir(), "yunari-display-profiles", displayId);
 }
 
 /**

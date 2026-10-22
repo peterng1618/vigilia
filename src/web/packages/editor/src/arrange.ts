@@ -1,4 +1,4 @@
-import { isLocked } from "@vigilia/scene-fabric";
+import { isLocked } from "@yunari/scene-fabric";
 import { ActiveSelection, type FabricObject, Point, util } from "fabric/es";
 import type { EditorInteraction } from "./editor-interaction.js";
 

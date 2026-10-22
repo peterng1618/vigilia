@@ -1,5 +1,5 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { writeThemePackage } from "@vigilia/theme-package";
+import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import { writeThemePackage } from "@yunari/theme-package";
 import { describe, expect, it } from "vitest";
 import { CATALOGUE_RAW_BASE, cataloguePackageUrl } from "./catalogue-source.js";
 import { readPublishedItem } from "./published-item.js";

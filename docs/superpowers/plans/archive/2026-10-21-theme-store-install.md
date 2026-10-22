@@ -70,7 +70,7 @@ The missing leg is the one the spec names: **does `download_count` survive a del
 
 Write the result into open question 1 as prose beneath the existing "DECIDED 2026-10-21: deferred to phase D's plan" sentence: what was measured, what it settles, and which option is chosen. If the re-upload restarts the count, that is option A's advertised gain gone and the ruling says so; if the count survives, A keeps it. Either way the ruling names **one** option and states what it costs.
 
-- [ ] **Step 3: Delete the probe release** — `gh release delete probe-download-count --repo peterng1618/vigilia-store --yes` — and confirm `gh release list` no longer names it. A probe left behind is an item in a catalogue that is supposed to be empty.
+- [ ] **Step 3: Delete the probe release** — `gh release delete probe-download-count --repo peterng1618/yunari-store --yes` — and confirm `gh release list` no longer names it. A probe left behind is an item in a catalogue that is supposed to be empty.
 
 - [ ] **Step 4: Commit** the spec change with a `docs(spec):` title naming the ruling.
 
@@ -239,7 +239,7 @@ it("still never overwrites a theme the catalogue did not install")  // same name
   2. the same press for an item the library holds at an older version reads *Update* before and *Installed* after;
   3. a refused install leaves the cell as it was and shows the host's reason.
 
-- [ ] **Step 3: Rebuild before running** — `npm run build`, then `VIGILIA_CAPTURE=1 npx playwright test tests/e2e/editor-rail.spec.ts --workers=1`, output to a file and **the exit code read directly, never through a pipe**. Then re-run without `VIGILIA_CAPTURE`.
+- [ ] **Step 3: Rebuild before running** — `npm run build`, then `YUNARI_CAPTURE=1 npx playwright test tests/e2e/editor-rail.spec.ts --workers=1`, output to a file and **the exit code read directly, never through a pipe**. Then re-run without `YUNARI_CAPTURE`.
 
 - [ ] **Step 4: Look at each capture and say what it shows** in the task report. An assertion with no image is not this task's evidence and an image with no assertion is not a regression test.
 

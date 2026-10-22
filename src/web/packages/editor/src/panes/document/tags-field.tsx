@@ -1,4 +1,4 @@
-import { MAX_TAGS, TAG_PATTERN } from "@vigilia/renderer-core";
+import { MAX_TAGS, TAG_PATTERN } from "@yunari/renderer-core";
 import type * as React from "react";
 import { useState } from "react";
 import {
@@ -134,7 +134,7 @@ export function TagsField(props: TagsFieldProps): React.JSX.Element {
               <button
                 key={tag}
                 type="button"
-                data-vigilia-tag={tag}
+                data-yunari-tag={tag}
                 aria-pressed={picked}
                 onClick={() => toggle(tag)}
                 // `hitTargetClasses` carries §5's 24×24 target the way it does
@@ -152,9 +152,9 @@ export function TagsField(props: TagsFieldProps): React.JSX.Element {
                 } ${proposed ? "border-dashed" : ""}`}
               >
                 {/* The pill's words are a value, not copy, so the element that
-                    prints it carries `data-vigilia-value` — the same hook a
+                    prints it carries `data-yunari-value` — the same hook a
                     select's trigger uses, and the same reason. */}
-                <span data-vigilia-value={tag}>
+                <span data-yunari-value={tag}>
                   {proposed ? uiCopy.panels.tagsProposed(tag) : tag}
                 </span>
               </button>
@@ -167,7 +167,7 @@ export function TagsField(props: TagsFieldProps): React.JSX.Element {
               {...keys}
               id={ids.control}
               type="text"
-              data-vigilia-tag-proposal=""
+              data-yunari-tag-proposal=""
               value={draft ?? ""}
               placeholder={uiCopy.panels.tagProposePlaceholder}
               aria-describedby={describedBy(

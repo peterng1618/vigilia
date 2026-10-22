@@ -1,7 +1,7 @@
 import type {
   ChartFamily,
   FabricThemeEnvelopeInput,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type { ArrangeAction } from "../arrange.js";
 import type { ShapeKind } from "../new-object-defaults.js";
 import type { RunDisplayMode } from "../run-placeholder.js";

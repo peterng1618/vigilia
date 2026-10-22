@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import type { FabricGlobals } from "@vigilia/renderer-core";
-import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
+import type { FabricGlobals } from "@yunari/renderer-core";
+import { MAX_OBJECT_NAME_LENGTH } from "@yunari/renderer-core";
 import { ActiveSelection, Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {

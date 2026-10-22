@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { defaultPieSettings, settingsFieldsFor } from "@vigilia/renderer-core";
+import { defaultPieSettings, settingsFieldsFor } from "@yunari/renderer-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { numberField } from "./number-field.js";
 import { isSettingVisible, settingsField } from "./settings-field.js";
@@ -18,7 +18,7 @@ function bounded(over: (input: HTMLInputElement) => void) {
     value: 6,
     min: 3,
     max: 32,
-    data: "vigiliaSides",
+    data: "yunariSides",
     onReject,
     onCommit,
   });
@@ -97,14 +97,14 @@ describe("number field", () => {
       value: 6,
       min: 3,
       max: 32,
-      data: "vigiliaSides",
+      data: "yunariSides",
       onCommit: vi.fn(),
     });
     document.body.append(field.row);
 
     // Readable before the bound is tripped, which is the whole point: the
     // author finds the ceiling by looking, not by failing.
-    expect(field.row.querySelector(".vigilia-field-bound")?.textContent).toBe(
+    expect(field.row.querySelector(".yunari-field-bound")?.textContent).toBe(
       "3–32",
     );
   });
@@ -114,14 +114,14 @@ describe("number field", () => {
       label: "X",
       value: 10,
       min: 1,
-      data: "vigiliaGeometry",
+      data: "yunariGeometry",
       onCommit: vi.fn(),
     });
     document.body.append(field.row);
 
     // A half-stated range would be a lie in the same way a slider on a free
     // field is: it would promise a maximum the field has no opinion about.
-    expect(field.row.querySelector(".vigilia-field-bound")).toBeNull();
+    expect(field.row.querySelector(".yunari-field-bound")).toBeNull();
     expect(rangeOf(field.row)).toBeNull();
   });
 
@@ -176,7 +176,7 @@ describe("number field", () => {
       value: 100,
       min: 1,
       max: 4096,
-      data: "vigiliaArtboardWidth",
+      data: "yunariArtboardWidth",
       onCommit,
     });
     document.body.append(field.row);
@@ -220,7 +220,7 @@ describe("number field", () => {
       value: 12,
       min: 0,
       max: 48,
-      data: "vigiliaGlassBlur",
+      data: "yunariGlassBlur",
       onCommit,
     });
     document.body.append(field.row);
@@ -243,11 +243,11 @@ describe("number field", () => {
     const field = numberField({
       label: "Width",
       value: 1,
-      data: "vigiliaArtboardWidth",
+      data: "yunariArtboardWidth",
       onCommit: vi.fn(),
     });
 
-    expect(field.input.getAttribute("data-vigilia-artboard-width")).toBe("");
+    expect(field.input.getAttribute("data-yunari-artboard-width")).toBe("");
   });
 });
 
@@ -280,8 +280,8 @@ describe("settings field", () => {
     expect(box.value).toBe("10");
     // Keyed by the setting itself, so the panel, its specs and its screenshots
     // address the same control they addressed before the control moved.
-    expect(box.id).toBe("vigilia-chart-setting-thickness");
-    expect(box.dataset["vigiliaChartSetting"]).toBe("thickness");
+    expect(box.id).toBe("yunari-chart-setting-thickness");
+    expect(box.dataset["yunariChartSetting"]).toBe("thickness");
     expect(number.querySelector("label")?.htmlFor).toBe(box.id);
 
     const bool = settingsField(

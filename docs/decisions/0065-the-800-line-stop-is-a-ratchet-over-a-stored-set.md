@@ -22,7 +22,7 @@ a ceiling, so the next split is a decision rather than a discovery. Two design
 questions are not obvious and are decided below — **what makes a file generated**
 (the cut) and **what shape the ceiling has** when 45 files are already past it.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: every `scripts/*.mjs` for a line count (`grep -l "lineCount|line count|split(\"\\n\")|lines >" scripts/`),
 `docs/architecture/` for prior instruments, `AGENTS.md`'s *Code and files* section,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import type { FabricGlobals, TextRun } from "@vigilia/renderer-core";
-import { formatInstant, instantIn } from "@vigilia/renderer-core";
+import type { FabricGlobals, TextRun } from "@yunari/renderer-core";
+import { formatInstant, instantIn } from "@yunari/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import {
   blur,
@@ -51,7 +51,7 @@ describe("binding a text run to a sensor", () => {
 
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("time.now"),
     );
 
@@ -71,23 +71,21 @@ describe("binding a text run to a sensor", () => {
 
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("cpu.load"),
     );
-    expect(box.host.querySelector('[data-vigilia-run-format="0"]')).toBeNull();
-    expect(box.host.querySelector('[data-vigilia-run-zone="0"]')).toBeNull();
+    expect(box.host.querySelector('[data-yunari-run-format="0"]')).toBeNull();
+    expect(box.host.querySelector('[data-yunari-run-zone="0"]')).toBeNull();
 
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("time.now"),
     );
     expect(
-      box.host.querySelector('[data-vigilia-run-format="0"]'),
+      box.host.querySelector('[data-yunari-run-format="0"]'),
     ).not.toBeNull();
-    expect(
-      box.host.querySelector('[data-vigilia-run-zone="0"]'),
-    ).not.toBeNull();
+    expect(box.host.querySelector('[data-yunari-run-zone="0"]')).not.toBeNull();
     return box.dispose();
   });
 
@@ -100,21 +98,21 @@ describe("binding a text run to a sensor", () => {
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("cpu.load"),
     );
 
     // Default is no override: the run says nothing about units.
     expect(box.runs()[0]).not.toHaveProperty("unitDisplay");
 
-    await choose(box.host, 'data-vigilia-run-unit-display="0"', "None");
+    await choose(box.host, 'data-yunari-run-unit-display="0"', "None");
     // On the RUN, not the binding: a run's own unitDisplay wins, so writing the
     // binding would be shadowed by the very theme this control reproduces.
     expect(box.runs()[0]).toMatchObject({ kind: "value", unitDisplay: "none" });
     expect(box.stored()[0]?.unitDisplay).toBeUndefined();
 
     // Clearing it is not the same as "none" — the default is the reading's own.
-    await choose(box.host, 'data-vigilia-run-unit-display="0"', "Default");
+    await choose(box.host, 'data-yunari-run-unit-display="0"', "Default");
     expect(box.runs()[0]).not.toHaveProperty("unitDisplay");
     return box.dispose();
   });
@@ -123,16 +121,16 @@ describe("binding a text run to a sensor", () => {
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("time.now"),
     );
 
-    const input = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    const input = box.pick<HTMLInputElement>('[data-yunari-run-format="0"]');
     await typeInto(input, "[It is ]dddd");
 
     // The same instant the editor's own preview source reads, so the preview is
     // the reading the run will paint rather than an example of one.
-    expect(box.pick('[data-vigilia-run-format-preview="0"]').textContent).toBe(
+    expect(box.pick('[data-yunari-run-format-preview="0"]').textContent).toBe(
       formatInstant(instantIn(Date.now()), "[It is ]dddd"),
     );
 
@@ -145,25 +143,25 @@ describe("binding a text run to a sensor", () => {
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("time.now"),
     );
 
     const placeholder = box.pick<HTMLInputElement>(
-      '[data-vigilia-run-format="0"]',
+      '[data-yunari-run-format="0"]',
     ).placeholder;
     expect(placeholder).toBe("HH:mm");
 
     await typeInto(
-      box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]'),
+      box.pick<HTMLInputElement>('[data-yunari-run-format="0"]'),
       "dddd",
     );
-    await blur(box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]'));
+    await blur(box.pick<HTMLInputElement>('[data-yunari-run-format="0"]'));
     expect(box.stored()[0]?.format).toBe("dddd");
 
-    const cleared = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    const cleared = box.pick<HTMLInputElement>('[data-yunari-run-format="0"]');
     await typeInto(cleared, "");
-    expect(box.pick('[data-vigilia-run-format-preview="0"]').textContent).toBe(
+    expect(box.pick('[data-yunari-run-format-preview="0"]').textContent).toBe(
       formatInstant(instantIn(Date.now()), "HH:mm"),
     );
 
@@ -176,20 +174,20 @@ describe("binding a text run to a sensor", () => {
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("time.now"),
     );
 
     await typeInto(
-      box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]'),
+      box.pick<HTMLInputElement>('[data-yunari-run-format="0"]'),
       "dddd",
     );
-    await blur(box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]'));
-    await choose(box.host, 'data-vigilia-run-zone="0"', "Asia/Tokyo");
+    await blur(box.pick<HTMLInputElement>('[data-yunari-run-format="0"]'));
+    await choose(box.host, 'data-yunari-run-zone="0"', "Asia/Tokyo");
 
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("cpu.load"),
     );
 
@@ -208,25 +206,25 @@ describe("binding a text run to a sensor", () => {
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("time.now"),
     );
 
     // Unpinned is the default: the display reads wherever its consumer is.
-    expect(valueText(box.host, 'data-vigilia-run-zone="0"')).toBe(
+    expect(valueText(box.host, 'data-yunari-run-zone="0"')).toBe(
       "Follow the display",
     );
 
-    await choose(box.host, 'data-vigilia-run-zone="0"', "Asia/Tokyo");
+    await choose(box.host, 'data-yunari-run-zone="0"', "Asia/Tokyo");
     expect(box.stored()[0]?.timeZone).toBe("Asia/Tokyo");
 
     // The preview is the reading the run will paint, so pinning a zone has to
     // change what it says rather than only what is stored.
-    expect(box.pick('[data-vigilia-run-format-preview="0"]').textContent).toBe(
+    expect(box.pick('[data-yunari-run-format-preview="0"]').textContent).toBe(
       formatInstant(instantIn(pinned), "HH:mm", "Asia/Tokyo"),
     );
 
-    await choose(box.host, 'data-vigilia-run-zone="0"', "Follow the display");
+    await choose(box.host, 'data-yunari-run-zone="0"', "Follow the display");
     expect(box.stored()[0]?.timeZone).toBeUndefined();
     return box.dispose();
   });
@@ -238,17 +236,17 @@ describe("binding a text run to a sensor", () => {
     });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("date.today"),
     );
 
     await typeInto(
-      box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]'),
+      box.pick<HTMLInputElement>('[data-yunari-run-format="0"]'),
       "dddd",
     );
 
     const preview = box.pick<HTMLElement>(
-      '[data-vigilia-run-format-preview="0"]',
+      '[data-yunari-run-format-preview="0"]',
     ).textContent;
 
     // The preview must read the language the paint will, or an author chooses a
@@ -268,9 +266,9 @@ describe("binding a text run to a sensor", () => {
   it("writes alignment, wrap and overflow into the object's authored text", async () => {
     const box = mountRunEditor({ runs: literalClock });
 
-    await segment(box.host, "data-vigilia-text-align", "Centre");
-    await segment(box.host, "data-vigilia-text-wrap", "Off");
-    await segment(box.host, "data-vigilia-text-overflow", "Ellipsis");
+    await segment(box.host, "data-yunari-text-align", "Centre");
+    await segment(box.host, "data-yunari-text-wrap", "Off");
+    await segment(box.host, "data-yunari-text-overflow", "Ellipsis");
 
     // These are the object's layout, which the renderer already honours; they
     // persist in the same authored content the runs do.
@@ -289,7 +287,7 @@ describe("binding a text run to a sensor", () => {
     // alignment has had a control all along; this is its other axis.
     expect(box.content()["verticalAlign"]).toBeUndefined();
 
-    await segment(box.host, "data-vigilia-text-vertical-align", "Middle");
+    await segment(box.host, "data-yunari-text-vertical-align", "Middle");
 
     expect(box.content()["verticalAlign"]).toBe("middle");
     return box.dispose();
@@ -297,9 +295,9 @@ describe("binding a text run to a sensor", () => {
 
   it("shows vertical alignment again from what was stored", async () => {
     const box = mountRunEditor({ runs: literalClock });
-    await segment(box.host, "data-vigilia-text-vertical-align", "Bottom");
+    await segment(box.host, "data-yunari-text-vertical-align", "Bottom");
 
-    expect(pressedLabel(box.host, "data-vigilia-text-vertical-align")).toBe(
+    expect(pressedLabel(box.host, "data-yunari-text-vertical-align")).toBe(
       "Bottom",
     );
     return box.dispose();
@@ -311,7 +309,7 @@ describe("binding a text run to a sensor", () => {
     // `fabric-text.ts` defaults an absent `verticalAlign` to `top`, so a control
     // that showed anything else would offer the author a lie about the current
     // state before they had touched it.
-    expect(pressedLabel(box.host, "data-vigilia-text-vertical-align")).toBe(
+    expect(pressedLabel(box.host, "data-yunari-text-vertical-align")).toBe(
       "Top",
     );
     return box.dispose();
@@ -325,7 +323,7 @@ describe("binding a text run to a sensor", () => {
     // shared dataset prefix would make the two indistinguishable to a test, a
     // screenshot and a screen reader alike, so the names have to stay apart.
     expect(
-      box.host.querySelector("[data-vigilia-text-vertical-align]"),
+      box.host.querySelector("[data-yunari-text-vertical-align]"),
     ).not.toBe(null);
     for (const arrangeKey of [
       "align-left",
@@ -336,7 +334,7 @@ describe("binding a text run to a sensor", () => {
       "align-bottom",
     ]) {
       expect(
-        box.host.querySelector(`[data-vigilia-arrange="${arrangeKey}"]`),
+        box.host.querySelector(`[data-yunari-arrange="${arrangeKey}"]`),
         arrangeKey,
       ).toBeNull();
     }
@@ -345,11 +343,11 @@ describe("binding a text run to a sensor", () => {
 
   it("shows alignment, wrap and overflow again from what was stored", async () => {
     const box = mountRunEditor({ runs: literalClock });
-    await segment(box.host, "data-vigilia-text-align", "Right");
+    await segment(box.host, "data-yunari-text-align", "Right");
 
     // Reopening rebuilds the control from the persisted content, so a re-read
     // must show the stored choice rather than a default.
-    expect(pressedLabel(box.host, "data-vigilia-text-align")).toBe("Right");
+    expect(pressedLabel(box.host, "data-yunari-text-align")).toBe("Right");
     return box.dispose();
   });
 
@@ -357,11 +355,11 @@ describe("binding a text run to a sensor", () => {
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("time.now"),
     );
 
-    await choose(box.host, 'data-vigilia-run-source="0"', "Static text");
+    await choose(box.host, 'data-yunari-run-source="0"', "Static text");
 
     expect(box.stored()).toEqual([]);
     expect(box.runs()[0]).toMatchObject({
@@ -395,7 +393,7 @@ describe("what a run cannot carry", () => {
     // note here would train the author to ignore the ones that matter.
     const box = mountRunEditor({
       runs: [
-        { kind: "literal", text: "VIGILIA", typePreset: "typePresets.tracked" },
+        { kind: "literal", text: "YUNARI", typePreset: "typePresets.tracked" },
       ],
       globals: TRACKING_GLOBALS,
     });
@@ -492,7 +490,7 @@ describe("how many runs a text object has", () => {
     // the sign is prose, and only a second run on the same object can say so.
     const box = mountRunEditor({ runs: literalClock, globals });
 
-    await box.pick<HTMLButtonElement>("[data-vigilia-run-add]").click();
+    await box.pick<HTMLButtonElement>("[data-yunari-run-add]").click();
 
     expect(box.runs()).toHaveLength(2);
     expect(box.runs()[1]).toMatchObject({
@@ -513,8 +511,8 @@ describe("how many runs a text object has", () => {
 
     // A value run has no words of its own, so a field over one would accept an
     // edit and persist nothing.
-    expect(box.host.querySelector('[data-vigilia-run-text="0"]')).toBeNull();
-    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]');
+    expect(box.host.querySelector('[data-yunari-run-text="0"]')).toBeNull();
+    const field = box.pick<HTMLInputElement>('[data-yunari-run-text="1"]');
     expect(field.value).toBe("%");
     await typeInto(field, " %");
     await blur(field);
@@ -531,7 +529,7 @@ describe("how many runs a text object has", () => {
       declared: [{ id: "load", semanticKey: "cpu.load" }],
     });
 
-    await box.pick<HTMLButtonElement>('[data-vigilia-run-remove="0"]').click();
+    await box.pick<HTMLButtonElement>('[data-yunari-run-remove="0"]').click();
 
     expect(box.runs()).toHaveLength(1);
     // Nothing else can be reading it, and a binding no run can paint is one
@@ -544,7 +542,7 @@ describe("how many runs a text object has", () => {
     // A text object with no runs paints nothing at all, so the control that
     // could reach that state is the control that empties the canvas.
     const box = mountRunEditor({ runs: literalClock, globals });
-    expect(box.host.querySelector("[data-vigilia-run-remove]")).toBeNull();
+    expect(box.host.querySelector("[data-yunari-run-remove]")).toBeNull();
     return box.dispose();
   });
 
@@ -560,7 +558,7 @@ describe("how many runs a text object has", () => {
     });
 
     const names = [
-      ...box.host.querySelectorAll("[data-vigilia-run-remove]"),
+      ...box.host.querySelectorAll("[data-yunari-run-remove]"),
     ].map((button) => button.textContent);
     expect(new Set(names).size).toBe(3);
     return box.dispose();
@@ -589,7 +587,7 @@ describe("which type preset a run is set in", () => {
       globals,
     });
 
-    expect(await optionsOf(box.host, 'data-vigilia-run-preset="0"')).toEqual([
+    expect(await optionsOf(box.host, 'data-yunari-run-preset="0"')).toEqual([
       "Card title",
       "Ring unit",
       "Mono",
@@ -603,7 +601,7 @@ describe("which type preset a run is set in", () => {
       globals,
     });
 
-    await choose(box.host, 'data-vigilia-run-preset="0"', "Ring unit");
+    await choose(box.host, 'data-yunari-run-preset="0"', "Ring unit");
 
     // The label is display; the value is what persists. Changing the first must
     // not change the second.
@@ -620,9 +618,7 @@ describe("which type preset a run is set in", () => {
     // The control was never mis-bound — it holds the stored reference, which is
     // what the run carries. What an author could not do was read the option it
     // had landed on and match it against the list beside it.
-    expect(valueText(box.host, 'data-vigilia-run-preset="0"')).toBe(
-      "Ring unit",
-    );
+    expect(valueText(box.host, 'data-yunari-run-preset="0"')).toBe("Ring unit");
     return box.dispose();
   });
 });
@@ -646,7 +642,7 @@ describe("which palette token a run's colour is set in", () => {
     // `bars` here and `Letterbox bars` in the palette panel, a field apart.
     const box = mountRunEditor({ runs: inBars, globals });
 
-    expect(await optionsOf(box.host, 'data-vigilia-run-colour="0"')).toEqual([
+    expect(await optionsOf(box.host, 'data-yunari-run-colour="0"')).toEqual([
       "Ink",
       "Letterbox bars",
     ]);
@@ -656,7 +652,7 @@ describe("which palette token a run's colour is set in", () => {
   it("stores the reference, not the name it shows", async () => {
     const box = mountRunEditor({ runs: inBars, globals });
 
-    await choose(box.host, 'data-vigilia-run-colour="0"', "Ink");
+    await choose(box.host, 'data-yunari-run-colour="0"', "Ink");
 
     // What persists is the stored reference; what the author reads is the label.
     // Changing the first to make the second prettier would break every theme.
@@ -667,7 +663,7 @@ describe("which palette token a run's colour is set in", () => {
   it("shows the token the run is actually set in", async () => {
     const box = mountRunEditor({ runs: inBars, globals });
 
-    expect(valueText(box.host, 'data-vigilia-run-colour="0"')).toBe(
+    expect(valueText(box.host, 'data-yunari-run-colour="0"')).toBe(
       "Letterbox bars",
     );
     return box.dispose();
@@ -712,10 +708,10 @@ describe("which binding a value run carries", () => {
   });
 
   it("puts the binding on the note, and the row's ordinal on the row", async () => {
-    // The note's `data-vigilia-run-binding` is the binding the run names — the
+    // The note's `data-yunari-run-binding` is the binding the run names — the
     // key `run.bindingId` carried before the column was React, and what
     // `reference-theme.spec.ts` reads in its undeclared case. The ordinal is the
-    // row's own `data-vigilia-run`, so the two cannot be confused once a run
+    // row's own `data-yunari-run`, so the two cannot be confused once a run
     // that is not the first carries a binding.
     const box = mountRunEditor({
       runs: [
@@ -728,10 +724,10 @@ describe("which binding a value run carries", () => {
       ],
     });
 
-    const note = box.pick<HTMLElement>("[data-vigilia-run-binding]");
-    expect(note.getAttribute("data-vigilia-run-binding")).toBe("disk.free");
+    const note = box.pick<HTMLElement>("[data-yunari-run-binding]");
+    expect(note.getAttribute("data-yunari-run-binding")).toBe("disk.free");
     expect(
-      note.closest("[data-vigilia-run]")?.getAttribute("data-vigilia-run"),
+      note.closest("[data-yunari-run]")?.getAttribute("data-yunari-run"),
     ).toBe("1");
     return box.dispose();
   });
@@ -747,11 +743,11 @@ describe("which format tokens a clock can be given", () => {
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("date.today"),
     );
 
-    const hint = box.pick('[data-vigilia-run-format-hint="0"]').textContent;
+    const hint = box.pick('[data-yunari-run-format-hint="0"]').textContent;
     for (const token of ["YYYY", "MMM", "ddd", "DD", "HH", "mm", "A"])
       expect(hint).toContain(token);
     return box.dispose();
@@ -777,7 +773,7 @@ describe("how a run's controls are named", () => {
     const box = mountRunEditor({ runs: literalClock, locale: "en-GB" });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("date.today"),
     );
 
@@ -803,11 +799,11 @@ describe("how a run's controls are named", () => {
     const box = mountRunEditor({ runs: literalClock, locale: "en-GB" });
     await choose(
       box.host,
-      'data-vigilia-run-source="0"',
+      'data-yunari-run-source="0"',
       sourceLabel("date.today"),
     );
 
-    const field = box.pick<HTMLInputElement>('[data-vigilia-run-format="0"]');
+    const field = box.pick<HTMLInputElement>('[data-yunari-run-format="0"]');
     const label = box.host.querySelector<HTMLLabelElement>(
       `label[for="${field.id}"]`,
     );

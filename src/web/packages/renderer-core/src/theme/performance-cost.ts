@@ -10,7 +10,7 @@
  * where a theme is listed, which is before any display has it.
  */
 
-import { isGlassTreatment, VIGILIA_GLASS_PROPERTY } from "./glass.js";
+import { isGlassTreatment, YUNARI_GLASS_PROPERTY } from "./glass.js";
 
 /**
  * A cost worth saying out loud before a theme is given to a display. The list
@@ -36,7 +36,7 @@ function* sceneObjects(value: unknown): Generator<Record<string, unknown>> {
 /** Whether any object in the scene carries a treatment the editor could write. */
 function hasGlass(scene: unknown): boolean {
   for (const object of sceneObjects(scene)) {
-    if (isGlassTreatment(object[VIGILIA_GLASS_PROPERTY])) return true;
+    if (isGlassTreatment(object[YUNARI_GLASS_PROPERTY])) return true;
   }
   return false;
 }

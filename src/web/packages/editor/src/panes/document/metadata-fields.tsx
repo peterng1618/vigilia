@@ -2,7 +2,7 @@ import {
   formatInstant,
   instantIn,
   type ThemeMetadata,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import { ControlSelect } from "../../components/ui/control-select.js";
 import { ControlText } from "../../components/ui/control-text.js";
 import { ControlRow, useControlIds } from "../../components/ui/control-well.js";
@@ -43,19 +43,19 @@ export function MetadataFields(props: MetadataFieldsProps): React.JSX.Element {
     <div className="flex flex-col gap-[var(--space-8)]">
       <ControlText
         label={uiCopy.panels.name}
-        data={{ "data-vigilia-theme-name": "" }}
+        data={{ "data-yunari-theme-name": "" }}
         value={metadata?.name ?? ""}
         onCommit={(value) => put({ name: value })}
       />
       <ControlText
         label={uiCopy.panels.author}
-        data={{ "data-vigilia-theme-author": "" }}
+        data={{ "data-yunari-theme-author": "" }}
         value={metadata?.author ?? ""}
         onCommit={(value) => put({ author: value })}
       />
       <ControlText
         label={uiCopy.panels.description}
-        data={{ "data-vigilia-theme-description": "" }}
+        data={{ "data-yunari-theme-description": "" }}
         multiline
         rows={4}
         value={metadata?.description ?? ""}
@@ -71,7 +71,7 @@ export function MetadataFields(props: MetadataFieldsProps): React.JSX.Element {
       />
       <ControlSelect
         label={uiCopy.panels.language}
-        data={{ "data-vigilia-theme-language": "" }}
+        data={{ "data-yunari-theme-language": "" }}
         value={language}
         options={languageOptions(metadata?.themeLanguage).map((tag) => ({
           id: tag,
@@ -90,7 +90,7 @@ export function MetadataFields(props: MetadataFieldsProps): React.JSX.Element {
       >
         <output
           id={sampleIds.control}
-          data-vigilia-theme-language-sample=""
+          data-yunari-theme-language-sample=""
           aria-label={uiCopy.panels.languageSample}
           className="text-sm text-text"
         >
@@ -106,7 +106,7 @@ export function MetadataFields(props: MetadataFieldsProps): React.JSX.Element {
       >
         <output
           id={versionIds.control}
-          data-vigilia-theme-version=""
+          data-yunari-theme-version=""
           className="font-mono text-sm text-text"
         >
           {metadata?.version ?? ""}

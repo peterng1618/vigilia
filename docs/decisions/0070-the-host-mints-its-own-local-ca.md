@@ -25,7 +25,7 @@ X.509, so the ASN.1 DER of `TBSCertificate`, its extension set and the outer
 signature have to come from somewhere: a platform tool, a library, or code we
 write. That is the decision this note records.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `grep -rniE "createsecureserver|https\.createServer|node-forge|selfsigned|mkcert|\.crt|BEGIN CERTIFICATE|x509|subjectAltName"`
 over `src/web/packages`, `src/web/tests`, `scripts` and `docs`, and
@@ -45,7 +45,7 @@ Searched: `src/web/package-lock.json` for any package whose name matches
 `forge|selfsigned|peculiar|mkcert|devcert|jsrsasign|asn1|rsa`, and again for
 `cert|x509|ssl|tls|crypto|asn`.
 
-Found: **nothing**, installed or declared. `@vigilia/host`'s manifest carries a
+Found: **nothing**, installed or declared. `@yunari/host`'s manifest carries a
 deliberate "ZERO RUNTIME DEPENDENCIES" comment, so the empty result is a
 statement about the tree rather than an oversight. Rung 2 is therefore empty,
 which is why rung 4 below is real work rather than a formality.

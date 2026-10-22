@@ -7,7 +7,7 @@
  */
 
 export const CATALOGUE_RAW_BASE =
-  "https://raw.githubusercontent.com/peterng1618/vigilia-store/main";
+  "https://raw.githubusercontent.com/peterng1618/yunari-store/main";
 
 /** The header's `packageUrl` for one catalogue id. */
 export function cataloguePackageUrl(id: string): string {

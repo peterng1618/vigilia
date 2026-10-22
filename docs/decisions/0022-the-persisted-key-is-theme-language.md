@@ -35,7 +35,7 @@ is `undefined`, which the renderer reads as `en`, and every theme quietly
 renders in English — precisely the failure the validator exists to prevent,
 arrived at by the rename that was meant to prevent it.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `ThemeMetadata`, `themeLanguage`, `PlanContext.locale`,
 `DEFAULT_LOCALE`, `isLocaleName`, `setLocale`, the `metadata` bag in
@@ -84,7 +84,7 @@ is evidence rather than counter-evidence.** Every mature convention found —
 `Intl.Locale`, `getCanonicalLocales`, `supportedLocalesOf`, ECMA-402's own
 `locale` parameter throughout — uses *locale*, because those APIs genuinely take
 a locale: region, calendar, numbering system and collation are all in scope for
-them. Vigilia's field is not that. It is a bare language subtag drawn from a
+them. Yunari's field is not that. It is a bare language subtag drawn from a
 fifteen-language list, deliberately excluding region, and the spec says a future
 provider reads it as the document's language. Naming it `locale` borrowed a name
 whose ordinary meaning is *wider* than the value's, so a future reader who

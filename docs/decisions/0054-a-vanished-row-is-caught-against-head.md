@@ -15,7 +15,7 @@ worse — removing one row reports `499 items … all valid` and exits 0.
 So the shape to catch is **a row that was there and is not**, and the gate's green says nothing about it.
 `vg-502` filed it and named three candidate answers, and refused to pick one without a decision.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: the register's own history and every rule the checker already enforces —
 `check`, `checkParked`, `checkPlacement`, `checkDisjoint`, `registerRows`, `readRegister`.

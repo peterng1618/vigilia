@@ -39,7 +39,7 @@ import { isDesktopSurface } from "./surface.js";
  *
  * **Editorial is the one licensed exception, and its own block says why.** It is
  * `--panel == --panel-2` — the same cream on both rungs — because editorial
- * separates a control from the panel it sits in with `--vigilia-control-bg`
+ * separates a control from the panel it sits in with `--yunari-control-bg`
  * (`#f5f1e8` under the `#fffdf7` paper) rather than with a surface step, so its
  * ladder has two rungs where graphite has three. That is a shape, not a drift,
  * and it is named here rather than allowed for every palette.
@@ -137,7 +137,7 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
     // constant here because a magnitude floor has no rule in DESIGN.md yet.
     //
     // Editorial is the one named exception, for the reason its own block gives:
-    // its control-inside-panel separation is carried by `--vigilia-control-bg`,
+    // its control-inside-panel separation is carried by `--yunari-control-bg`,
     // not by the rung, so `--panel` and `--panel-2` are deliberately one cream.
     // Any *other* palette that fails to separate is a derivation bug to report,
     // never an exception to widen.

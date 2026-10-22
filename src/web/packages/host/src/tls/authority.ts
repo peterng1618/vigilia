@@ -36,7 +36,7 @@ const CLOCK_SKEW_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 const CA_CERT_FILE = "ca.crt";
 const CA_KEY_FILE = "ca.key";
-const CA_COMMON_NAME = "Vigilia Local CA";
+const CA_COMMON_NAME = "Yunari Local CA";
 /** The private key is a secret. Where the platform honours a mode this keeps it
  *  to its owner; on Windows the mode is ignored and the file inherits the
  *  profile directory's ACL, which is already this user's alone. */
@@ -161,7 +161,7 @@ async function loadOrCreateAuthority(directory: string): Promise<{
   const root = pki.createCertificate();
   const subject = [
     { name: "commonName", value: CA_COMMON_NAME },
-    { name: "organizationName", value: "Vigilia" },
+    { name: "organizationName", value: "Yunari" },
   ];
 
   root.publicKey = pki.publicKeyFromPem(keys.publicKey);
@@ -206,7 +206,7 @@ function issueLeaf(
   leaf.validity.notAfter = new Date(Date.now() + LEAF_DAYS * DAY_MS);
   // The first name, whatever it is: a subject is required and a modern client
   // reads the SANs instead, so this only has to be non-empty and honest.
-  leaf.setSubject([{ name: "commonName", value: names[0] ?? "vigilia" }]);
+  leaf.setSubject([{ name: "commonName", value: names[0] ?? "yunari" }]);
   leaf.setIssuer(authority.subject.attributes);
   leaf.setExtensions([
     { name: "basicConstraints", cA: false, critical: true },

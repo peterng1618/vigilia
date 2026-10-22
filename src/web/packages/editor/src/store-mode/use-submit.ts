@@ -1,4 +1,4 @@
-import type { VersionLevel } from "@vigilia/theme-package";
+import type { VersionLevel } from "@yunari/theme-package";
 import { useEffect, useRef, useState } from "react";
 import { uiCopy } from "../ui-copy.js";
 import type { StoreItem } from "./local-source.js";

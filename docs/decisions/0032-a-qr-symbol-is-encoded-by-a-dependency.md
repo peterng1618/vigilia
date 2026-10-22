@@ -23,7 +23,7 @@ tell, and the only instrument that would have caught it — a camera — is the 
 piece of hardware this project cannot put in CI. That is the watchlist's
 definition of a mechanism boundary: expensive and invisible.
 
-## Rung 1 — Vigilia
+## Rung 1 — Yunari
 
 Searched: `rg -i "qrcode|QRCode|qr-code|\bqr\b"` across `src/web/packages`
 (excluding `dist/`), and `rg` for `BarcodeDetector` across the same tree.

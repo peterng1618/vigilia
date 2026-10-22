@@ -7,7 +7,7 @@ import {
   resolveStyleValue,
   type ScenePlan,
   validateFabricThemeEnvelope,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   applyObjectPalettePaints,
   applyObjectTypePresets,
@@ -27,7 +27,7 @@ import {
   type SceneAdapter,
   serialiseScene,
   serialiseThemeEnvelope,
-} from "@vigilia/scene-fabric";
+} from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   type ActiveSelectionOptions,
@@ -67,7 +67,7 @@ export interface EditorShellOptions {
     assetId: string,
   ) => BackgroundMediaSource | undefined;
   /**
-   * Resolves a scene object's own `vigiliaAsset` reference, for the revival
+   * Resolves a scene object's own `yunariAsset` reference, for the revival
    * that happens here — before a session exists to own the bytes.
    *
    * Separate from `resolveAsset` because the lifetimes differ: a media source
@@ -144,7 +144,7 @@ function dropDanglingBindings(
   return { ...input, bindings: Object.fromEntries(kept) };
 }
 
-const EDITOR_CONTAINER_ID = "vigilia-fabric-editor";
+const EDITOR_CONTAINER_ID = "yunari-fabric-editor";
 let nextEditorContainer = 1;
 
 /** Last resolved artboard paint and clip per mounted shell; both are only
@@ -427,7 +427,7 @@ function createNativeEditor(input: {
   };
 }
 
-/** Mounts the native editor with Vigilia's chart-resource lifecycle hook. */
+/** Mounts the native editor with Yunari's chart-resource lifecycle hook. */
 export async function mountEditorShell({
   host,
   artboard,
@@ -566,7 +566,7 @@ export async function mountEditorShell({
     placeMedia();
 
     const screen = document.createElement("div");
-    screen.dataset["vigiliaDisplayScreen"] = "";
+    screen.dataset["yunariDisplayScreen"] = "";
     screen.style.cssText = "position:absolute;pointer-events:none;";
     container.prepend(screen);
     // Also a DOM sibling rather than a Fabric object, and for the same reason

@@ -1,5 +1,5 @@
 <!--
-  Vigilia's mark, at the smallest size that still reads.
+  Yunari's mark, at the smallest size that still reads.
 
   There is no logo file in this repository to reuse: the wordmark is a Fabric
   text object in the reference theme (new-fabric-theme.ts), and the only SVGs
@@ -21,7 +21,7 @@
 
   Kept in step by hand with packages/player/public/favicon.svg.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Vigilia">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Yunari">
   <rect width="32" height="32" fill="#f5f1e8" />
   <text
     x="16"

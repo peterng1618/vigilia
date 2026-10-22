@@ -59,7 +59,7 @@ async function main() {
   try {
     await stat(DIST);
   } catch {
-    console.error('No dist/ directory. Run `npm run build -w @vigilia/player` first.');
+    console.error('No dist/ directory. Run `npm run build -w @yunari/player` first.');
     process.exit(2);
   }
 
@@ -89,7 +89,7 @@ async function main() {
   if (failed) {
     console.error(
       '\nPlayer bundle exceeds its budget. Before raising the budget, check whether an ' +
-        'editor-only dependency has leaked into @vigilia/renderer-core or @vigilia/player — ' +
+        'editor-only dependency has leaked into @yunari/renderer-core or @yunari/player — ' +
         'that is the failure §47 is guarding against.',
     );
     process.exit(1);

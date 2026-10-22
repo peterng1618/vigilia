@@ -2,12 +2,12 @@ import {
   type Binding,
   createWidgetIdAllocator,
   type WidgetIssue,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   isLocked,
   SCENE_PERSISTED_PROPERTIES,
-  VIGILIA_TEXT_PROPERTY,
-} from "@vigilia/scene-fabric";
+  YUNARI_TEXT_PROPERTY,
+} from "@yunari/scene-fabric";
 import {
   ActiveSelection,
   type Canvas,
@@ -197,9 +197,9 @@ function repointRuns(
   object: FabricObject,
   ids: ReadonlyMap<string, string>,
 ): void {
-  const authored = object.get(VIGILIA_TEXT_PROPERTY);
+  const authored = object.get(YUNARI_TEXT_PROPERTY);
   if (isRecord(authored) && Array.isArray(authored["runs"])) {
-    object.set(VIGILIA_TEXT_PROPERTY, {
+    object.set(YUNARI_TEXT_PROPERTY, {
       ...authored,
       runs: authored["runs"].map((run) => {
         if (!isRecord(run) || typeof run["bindingId"] !== "string") return run;
@@ -219,7 +219,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Replaces the fork's text/shape commit hooks; Vigilia objects only need coords. */
+/** Replaces the fork's text/shape commit hooks; Yunari objects only need coords. */
 function settle(object: FabricObject): void {
   if (object instanceof ActiveSelection || object instanceof Group) {
     for (const child of object.getObjects()) child.setCoords();

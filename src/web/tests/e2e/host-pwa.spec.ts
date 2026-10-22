@@ -97,7 +97,7 @@ test.describe("the player as an installed app", () => {
     host = spawn(
       "node",
       [
-        "packages/host/bin/vigilia.js",
+        "packages/host/bin/yunari.js",
         "--no-browser",
         "--port",
         String(PORT),
@@ -142,7 +142,7 @@ test.describe("the player as an installed app", () => {
     authority = await readFile(CA_FILE, "utf8");
     origin = `https://${lanAddress()}:${PORT}`;
 
-    profileDir = path.join(os.tmpdir(), `vigilia-pwa-profile-${PORT}`);
+    profileDir = path.join(os.tmpdir(), `yunari-pwa-profile-${PORT}`);
     rmSync(profileDir, { recursive: true, force: true });
     browser = await chromium.launchPersistentContext(profileDir, {
       // Headed: the installability check is Chrome's own and this is the
@@ -257,7 +257,7 @@ test.describe("the player as an installed app", () => {
     // One navigation the worker controls: the first load is not controlled
     // until `activate` claims it, so this is the one that fills the cache.
     await page.reload({ waitUntil: "load" });
-    await expect(page.locator("[data-vigilia-load-failure]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-load-failure]")).toHaveCount(0);
 
     const context = page.context();
     await context.setOffline(true);
@@ -284,11 +284,11 @@ test.describe("the player as an installed app", () => {
         origin: location.origin,
         title: document.title,
         controller: navigator.serviceWorker.controller?.scriptURL ?? null,
-        failurePage: document.querySelector("[data-vigilia-load-failure]")
+        failurePage: document.querySelector("[data-yunari-load-failure]")
           ? "shown"
           : "absent",
         reason:
-          document.querySelector("[data-vigilia-load-failure-reason]")
+          document.querySelector("[data-yunari-load-failure-reason]")
             ?.textContent ?? null,
         cached,
         telemetry,
@@ -309,7 +309,7 @@ test.describe("the player as an installed app", () => {
     // The document came from the cache — the browser's own offline page has
     // neither of these.
     expect(offline.failurePage).toBe("shown");
-    expect(offline.title).toContain("Vigilia");
+    expect(offline.title).toContain("Yunari");
     // Nothing under `/api/**` is in any cache, so no reading can be served
     // from one. Asserted on the cache's own contents rather than on a count.
     expect(offline.cached.length).toBeGreaterThan(0);

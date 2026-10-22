@@ -1,4 +1,4 @@
-import type { Sample } from "@vigilia/renderer-core";
+import type { Sample } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { availabilityNoticeText } from "./availability-notice.js";
 

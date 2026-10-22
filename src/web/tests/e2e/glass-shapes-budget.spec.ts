@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { writeThemePackage } from "@vigilia/theme-package";
+import { writeThemePackage } from "@yunari/theme-package";
 import { GLASS_BAR, glassStripesPng } from "./glass-fixture.js";
 import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 
@@ -61,7 +61,7 @@ function shape(
     top: at.top,
     fill: "rgba(255, 255, 255, 0.10)",
     id: kind,
-    vigiliaPaint: { fill: "palette.panel" },
+    yunariPaint: { fill: "palette.panel" },
   };
   switch (kind) {
     case "Rect":
@@ -152,14 +152,14 @@ function envelope(kinds: readonly Kind[]) {
         id: "stripes",
         kind: "image" as const,
         path: "assets/stripes.png",
-        license: { name: "MIT", attribution: "Vigilia test fixture." },
+        license: { name: "MIT", attribution: "Yunari test fixture." },
       },
     ],
     scene: {
       version: "7.4.0" as const,
       objects: kinds.map((kind) => ({
         ...shape(kind, ROW),
-        vigiliaGlass: { blurRadius: RADIUS },
+        yunariGlass: { blurRadius: RADIUS },
         selectable: false,
         evented: false,
       })),
@@ -181,7 +181,7 @@ async function open(page: Page, kinds: readonly Kind[]): Promise<void> {
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(
-        "[data-vigilia-background-media] img",
+        "[data-yunari-background-media] img",
       );
       return image !== null && image.complete && image.naturalWidth > 0;
     },
@@ -193,7 +193,7 @@ async function open(page: Page, kinds: readonly Kind[]): Promise<void> {
   await page.evaluate(() => {
     const scope = window as unknown as Record<string, unknown>;
     const key = Object.keys(scope).find((c) =>
-      c.startsWith("vigilia-fabric-editor"),
+      c.startsWith("yunari-fabric-editor"),
     );
     (
       scope[key ?? ""] as { canvas: { renderAll(): void } } | undefined
@@ -270,7 +270,7 @@ async function measure(page: Page): Promise<Reading[]> {
       const { kinds, radius, trials, pairs: pairs_, frames } = input;
       const scope = window as unknown as Record<string, unknown>;
       const key = Object.keys(scope).find((c) =>
-        c.startsWith("vigilia-fabric-editor"),
+        c.startsWith("yunari-fabric-editor"),
       );
       const editor = (
         scope[key ?? ""] as
@@ -313,7 +313,7 @@ async function measure(page: Page): Promise<Reading[]> {
         }
       >();
       for (const object of editor.getObjects())
-        if (object["vigiliaGlass"] !== undefined)
+        if (object["yunariGlass"] !== undefined)
           targets.set(String(object["id"]), object);
       for (const kind of kinds)
         if (!targets.has(kind)) throw new Error(`no object with id "${kind}"`);
@@ -358,16 +358,16 @@ async function measure(page: Page): Promise<Reading[]> {
             const treatFirst = p % 2 === 0;
             if (treatFirst) {
               const a = time(frames);
-              delete target["vigiliaGlass"];
+              delete target["yunariGlass"];
               const b = time(frames);
-              target["vigiliaGlass"] = { blurRadius: radius };
+              target["yunariGlass"] = { blurRadius: radius };
               frosted.push(a);
               bare.push(b);
               pairs.push(a - b);
             } else {
-              delete target["vigiliaGlass"];
+              delete target["yunariGlass"];
               const b = time(frames);
-              target["vigiliaGlass"] = { blurRadius: radius };
+              target["yunariGlass"] = { blurRadius: radius };
               const a = time(frames);
               frosted.push(a);
               bare.push(b);
@@ -436,7 +436,7 @@ test.describe("glass cost on the newly admitted shapes", () => {
     const presented = await page.evaluate(() => {
       const scope = window as unknown as Record<string, unknown>;
       const key = Object.keys(scope).find((c) =>
-        c.startsWith("vigilia-fabric-editor"),
+        c.startsWith("yunari-fabric-editor"),
       );
       const editor = (
         scope[key ?? ""] as
@@ -444,7 +444,7 @@ test.describe("glass cost on the newly admitted shapes", () => {
           | undefined
       )?.canvas;
       return (editor?.getObjects() ?? [])
-        .filter((o) => o["vigiliaGlass"] !== undefined)
+        .filter((o) => o["yunariGlass"] !== undefined)
         .map((o) => String(o["type"]).toLowerCase());
     });
     console.log(`GLASS SHAPES PRESENTED ${JSON.stringify(presented)}`);

@@ -2,8 +2,8 @@ import type {
   Binding,
   FabricGlobals,
   SampleSource,
-} from "@vigilia/renderer-core";
-import { applyAuthoredText, refreshBoundText } from "@vigilia/scene-fabric";
+} from "@yunari/renderer-core";
+import { applyAuthoredText, refreshBoundText } from "@yunari/scene-fabric";
 import type { StaticCanvas } from "fabric/es";
 import {
   DEFAULT_RUN_DISPLAY_MODE,

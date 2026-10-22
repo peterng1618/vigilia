@@ -11,7 +11,7 @@ import {
   SAMPLE_STREAM_PATH,
   type SampleSource,
   type SceneHandle,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   applyAuthoredText,
   loadFontAssets,
@@ -19,8 +19,8 @@ import {
   refreshBoundText,
   reviveThemeEnvelope,
   startChartRefresh,
-  VigiliaChart,
-} from "@vigilia/scene-fabric";
+  YunariChart,
+} from "@yunari/scene-fabric";
 import { Group } from "fabric/es";
 import { boundSemanticKeys } from "./bound-keys.js";
 import { showAvailabilityNotice, showConnectionState } from "./chrome.js";
@@ -173,13 +173,13 @@ async function start(host: HTMLElement): Promise<void> {
  * than a silently missing blur.
  */
 function reportGlassError(message: string): void {
-  console.warn(`Vigilia: glass cannot be rendered as authored — ${message}`);
+  console.warn(`Yunari: glass cannot be rendered as authored — ${message}`);
 }
 
 /** A repaint that threw. Reported, not shown: the scene keeps rendering, so
  *  replacing it with a failure panel would hide a display that still works. */
 function reportRepaintError(message: string): void {
-  console.warn(`Vigilia: ${message}`);
+  console.warn(`Yunari: ${message}`);
 }
 
 /** A packaged face that would not load, or that declared no bytes. `loadFontAssets`
@@ -188,7 +188,7 @@ function reportRepaintError(message: string): void {
  *  It used to take the display down, which turned a wrong typeface into a blank
  *  screen and a page that claims nothing is being shown. */
 function reportFontError(message: string): void {
-  console.warn(`Vigilia: ${message}`);
+  console.warn(`Yunari: ${message}`);
 }
 
 async function startHostedTheme(
@@ -438,7 +438,7 @@ function hydrateCharts(
 ): void {
   const issues: PlanIssue[] = [];
   for (const object of objects) {
-    if (object instanceof VigiliaChart) {
+    if (object instanceof YunariChart) {
       const id = object.get("id");
       if (typeof id !== "string") continue;
       // **Per chart, deliberately.** A chart that throws must cost that chart
@@ -526,7 +526,7 @@ function exposeForDiagnostics(
   handle: SceneHandle,
   live?: LiveSourceHandle,
 ): void {
-  Reflect.set(window, "vigilia", { handle, live });
+  Reflect.set(window, "yunari", { handle, live });
 }
 
 // Before the theme, and outside the failure path: a display that cannot load

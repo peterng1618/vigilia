@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { TextRun } from "@vigilia/renderer-core";
+import type { TextRun } from "@yunari/renderer-core";
 import { act } from "react";
 import { describe, expect, it } from "vitest";
 import {
@@ -31,7 +31,7 @@ const twoRuns: readonly TextRun[] = [
 describe("the run editor's own state", () => {
   it("keeps the caret in the field being typed into across a re-publish", async () => {
     const box = mountRunEditor({ runs: twoRuns, globals: RUN_GLOBALS });
-    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
+    const field = box.pick<HTMLInputElement>('[data-yunari-run-text="0"]');
     field.focus();
     expect(document.activeElement).toBe(field);
 
@@ -43,7 +43,7 @@ describe("the run editor's own state", () => {
 
     // The row is the same element, so the caret was never lost and the
     // half-typed draft was not replaced by the published value.
-    const after = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
+    const after = box.pick<HTMLInputElement>('[data-yunari-run-text="0"]');
     expect(after).toBe(field);
     expect(document.activeElement).toBe(after);
     expect(after.value).toBe("GPU ");
@@ -55,7 +55,7 @@ describe("the run editor's own state", () => {
 
   it("keeps the caret when Enter commits a literal's text", async () => {
     const box = mountRunEditor({ runs: twoRuns, globals: RUN_GLOBALS });
-    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
+    const field = box.pick<HTMLInputElement>('[data-yunari-run-text="0"]');
     field.focus();
 
     await typeInto(field, "GPU ");
@@ -75,19 +75,19 @@ describe("the run editor's own state", () => {
 
   it("adds and removes a run without the editor losing its own state", async () => {
     const box = mountRunEditor({ runs: twoRuns, globals: RUN_GLOBALS });
-    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
+    const field = box.pick<HTMLInputElement>('[data-yunari-run-text="0"]');
     await typeInto(field, "GPU ");
 
     // Adding a run re-publishes: the draft in a row that did not change has to
     // survive it, or the author loses what they were typing to somebody else's
     // click.
-    await clickHook(box.host, "data-vigilia-run-add");
+    await clickHook(box.host, "data-yunari-run-add");
     expect(box.runs()).toHaveLength(3);
     expect(field.value).toBe("GPU ");
 
     // ...and removing one does too, which is the harder half: the row list
     // shrinks under the draft.
-    await clickHook(box.host, 'data-vigilia-run-remove="2"');
+    await clickHook(box.host, 'data-yunari-run-remove="2"');
     expect(box.runs()).toHaveLength(2);
     expect(field.value).toBe("GPU ");
 
@@ -109,21 +109,21 @@ describe("the run editor's own state", () => {
       ],
       globals: RUN_GLOBALS,
     });
-    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]');
+    const field = box.pick<HTMLInputElement>('[data-yunari-run-text="1"]');
     await typeInto(field, "GPU ");
 
     // Removing a run that is not the last renumbers every row after it. Keyed
     // by index, this draft would stay in its element and be re-pointed at C,
     // while C's own row showed B's text: hence both halves of the assertion,
     // the draft that followed its run and the row that moved up.
-    await clickHook(box.host, 'data-vigilia-run-remove="0"');
+    await clickHook(box.host, 'data-yunari-run-remove="0"');
     expect(box.runs()).toHaveLength(2);
-    expect(
-      box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]').value,
-    ).toBe("GPU ");
-    expect(
-      box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]').value,
-    ).toBe("C");
+    expect(box.pick<HTMLInputElement>('[data-yunari-run-text="0"]').value).toBe(
+      "GPU ",
+    );
+    expect(box.pick<HTMLInputElement>('[data-yunari-run-text="1"]').value).toBe(
+      "C",
+    );
 
     await blur(field);
     expect(box.runs()[0]).toMatchObject({ kind: "literal", text: "GPU " });
@@ -144,15 +144,15 @@ describe("the run editor's own state", () => {
       ],
       globals: RUN_GLOBALS,
     });
-    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]');
+    const field = box.pick<HTMLInputElement>('[data-yunari-run-text="1"]');
     await typeInto(field, "GPU ");
 
-    await clickHook(box.host, 'data-vigilia-run-remove="0"');
+    await clickHook(box.host, 'data-yunari-run-remove="0"');
     expect(box.runs()).toHaveLength(1);
     // The draft is the survivor's, and the survivor is the run it was typed
     // into — not the row that moved up under it. The element itself is asserted
     // too: a value that came back through a remount would have dropped focus.
-    const after = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
+    const after = box.pick<HTMLInputElement>('[data-yunari-run-text="0"]');
     expect(after.value).toBe("GPU ");
     expect(after).toBe(field);
 

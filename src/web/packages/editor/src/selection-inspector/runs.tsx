@@ -3,7 +3,7 @@ import type {
   FabricGlobals,
   SampleSource,
   TextRun,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import {
   describeSemanticKey,
   formatInstant,
@@ -11,7 +11,7 @@ import {
   knownTimeZones,
   paletteTokenOptions,
   SEMANTIC_KEYS,
-} from "@vigilia/renderer-core";
+} from "@yunari/renderer-core";
 import type * as React from "react";
 import { useState } from "react";
 import { ControlSegmented } from "../components/ui/control-segmented.js";
@@ -236,7 +236,7 @@ export function projectRuns(
       colour,
       // The binding the run names, as the note's own hook carried it before the
       // column was React (`run.bindingId`, not the row's ordinal): the ordinal
-      // is `index` and rides `data-vigilia-run`.
+      // is `index` and rides `data-yunari-run`.
       bindingId: run.kind === "value" ? run.bindingId : "",
       sourceKey: bound?.semanticKey ?? "",
       unitDisplay: run.kind === "value" ? (run.unitDisplay ?? "") : "",
@@ -388,7 +388,7 @@ function RunFormatField(props: {
   readonly onCommit: (format: string) => void;
 }): React.JSX.Element {
   const { index, format, formatDefault, semanticKey, zone, locale } = props;
-  const ids = useControlIds(`vigilia-run-format-${index}`);
+  const ids = useControlIds(`yunari-run-format-${index}`);
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? format;
 
@@ -409,7 +409,7 @@ function RunFormatField(props: {
           <input
             id={ids.control}
             type="text"
-            data-vigilia-run-format={String(index)}
+            data-yunari-run-format={String(index)}
             maxLength={64}
             placeholder={formatDefault}
             className="h-full w-full bg-transparent text-sm text-text outline-none"
@@ -430,14 +430,14 @@ function RunFormatField(props: {
         </ControlWell>
       </ControlRow>
       <span
-        className="vigilia-run-preview text-xs text-muted"
-        data-vigilia-run-format-preview={String(index)}
+        className="yunari-run-preview text-xs text-muted"
+        data-yunari-run-format-preview={String(index)}
       >
         {previewOf(semanticKey, shown, zone, locale)}
       </span>
       <p
-        className="vigilia-run-note text-xs text-faint"
-        data-vigilia-run-format-hint={String(index)}
+        className="yunari-run-note text-xs text-faint"
+        data-yunari-run-format-hint={String(index)}
       >
         {uiCopy.inspectorFields.runFormatTokens}
       </p>
@@ -456,15 +456,15 @@ function RunRow(props: {
 
   return (
     <section
-      data-vigilia-run={String(index)}
+      data-yunari-run={String(index)}
       className="flex flex-col gap-[var(--space-6)]"
     >
-      <p className="vigilia-run-label text-xs text-muted">{row.label}</p>
+      <p className="yunari-run-label text-xs text-muted">{row.label}</p>
 
       {row.kind === "literal" ? (
         <ControlText
           label={uiCopy.inspectorFields.runText}
-          data={{ "data-vigilia-run-text": String(index) }}
+          data={{ "data-yunari-run-text": String(index) }}
           value={row.text}
           onCommit={(text) => edits.setRunText(index, text)}
         />
@@ -472,7 +472,7 @@ function RunRow(props: {
 
       <ControlSelect
         label={uiCopy.inspectorFields.runPreset}
-        data={{ "data-vigilia-run-preset": String(index) }}
+        data={{ "data-yunari-run-preset": String(index) }}
         value={row.typePreset}
         options={view.presets}
         onChange={(ref) => edits.setRunPreset(index, ref)}
@@ -480,7 +480,7 @@ function RunRow(props: {
 
       <ControlSwatch
         label={uiCopy.inspectorFields.runColour}
-        data={{ "data-vigilia-run-colour": String(index) }}
+        data={{ "data-yunari-run-colour": String(index) }}
         value={row.colour}
         options={view.palettes}
         swatch={
@@ -496,7 +496,7 @@ function RunRow(props: {
       {view.bindable ? (
         <ControlSelect
           label={uiCopy.inspectorFields.runSource}
-          data={{ "data-vigilia-run-source": String(index) }}
+          data={{ "data-yunari-run-source": String(index) }}
           value={row.sourceKey}
           options={view.sources}
           onChange={(key) => edits.setSource(index, key)}
@@ -506,17 +506,17 @@ function RunRow(props: {
       {view.bindable && row.kind === "value" ? (
         <>
           <p
-            className="vigilia-run-note text-xs text-muted"
-            data-vigilia-run-binding={row.bindingId}
+            className="yunari-run-note text-xs text-muted"
+            data-yunari-run-binding={row.bindingId}
             {...(row.bindingProblem === undefined
               ? {}
-              : { "data-vigilia-run-problem": row.bindingProblem })}
+              : { "data-yunari-run-problem": row.bindingProblem })}
           >
             {row.bindingNote}
           </p>
           <ControlSelect
             label={uiCopy.panels.unitDisplay}
-            data={{ "data-vigilia-run-unit-display": String(index) }}
+            data={{ "data-yunari-run-unit-display": String(index) }}
             value={row.unitDisplay}
             options={view.unitOptions}
             onChange={(value) => edits.setUnitDisplay(index, value)}
@@ -539,7 +539,7 @@ function RunRow(props: {
           />
           <ControlSelect
             label={uiCopy.inspectorFields.runZone}
-            data={{ "data-vigilia-run-zone": String(index) }}
+            data={{ "data-yunari-run-zone": String(index) }}
             value={row.zone}
             options={zoneOptions(view)}
             onChange={(zone) => edits.setZone(index, zone)}
@@ -550,7 +550,7 @@ function RunRow(props: {
       {view.removable ? (
         <button
           type="button"
-          data-vigilia-run-remove={String(index)}
+          data-yunari-run-remove={String(index)}
           className="self-start text-xs text-muted"
           onClick={() => edits.removeRun(index)}
         >
@@ -581,21 +581,21 @@ export function RunEditor(props: {
   const { runs: view, edits } = props;
 
   return (
-    <div data-vigilia-runs="" className="flex flex-col gap-[var(--space-6)]">
+    <div data-yunari-runs="" className="flex flex-col gap-[var(--space-6)]">
       <h3 className="m-0 text-xs font-semibold text-muted">
         {uiCopy.inspectorFields.runs}
       </h3>
 
       <ControlSegmented
         label={uiCopy.inspectorFields.align}
-        data={{ "data-vigilia-text-align": "" }}
+        data={{ "data-yunari-text-align": "" }}
         value={view.layout.align}
         options={ALIGN_OPTIONS}
         onChange={(align: string) => edits.writeLayout({ align })}
       />
       <ControlSegmented
         label={uiCopy.inspectorFields.verticalAlign}
-        data={{ "data-vigilia-text-vertical-align": "" }}
+        data={{ "data-yunari-text-vertical-align": "" }}
         value={view.layout.verticalAlign}
         options={VERTICAL_OPTIONS}
         onChange={(verticalAlign: string) =>
@@ -604,7 +604,7 @@ export function RunEditor(props: {
       />
       <ControlSegmented
         label={uiCopy.inspectorFields.wrap}
-        data={{ "data-vigilia-text-wrap": "" }}
+        data={{ "data-yunari-text-wrap": "" }}
         value={view.layout.wrap}
         options={WRAP_OPTIONS}
         onChange={(wrap: string) =>
@@ -613,7 +613,7 @@ export function RunEditor(props: {
       />
       <ControlSegmented
         label={uiCopy.inspectorFields.overflow}
-        data={{ "data-vigilia-text-overflow": "" }}
+        data={{ "data-yunari-text-overflow": "" }}
         value={view.layout.overflow}
         options={OVERFLOW_OPTIONS}
         onChange={(overflow: string) => edits.writeLayout({ overflow })}
@@ -625,7 +625,7 @@ export function RunEditor(props: {
 
       <button
         type="button"
-        data-vigilia-run-add=""
+        data-yunari-run-add=""
         className="self-start text-xs text-muted"
         onClick={() => edits.addRun()}
       >
@@ -635,8 +635,8 @@ export function RunEditor(props: {
       {view.notes.map((note) => (
         <p
           key={note}
-          className="vigilia-run-note text-xs text-muted"
-          data-vigilia-run-note=""
+          className="yunari-run-note text-xs text-muted"
+          data-yunari-run-note=""
         >
           {note}
         </p>
