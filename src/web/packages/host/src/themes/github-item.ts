@@ -2,7 +2,11 @@ import {
   DASHBOARD_THEME_KIND,
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
-import { MAX_ARCHIVE_BYTES, writeThemePackage } from "@vigilia/theme-package";
+import {
+  MAX_ARCHIVE_BYTES,
+  themeVideoRefusals,
+  writeThemePackage,
+} from "@vigilia/theme-package";
 import { cataloguePackageUrl } from "./catalogue-source.js";
 import { isValidThemeId, type ThemeStore } from "./store.js";
 import type { ThumbnailStore } from "./thumbnails.js";
@@ -66,6 +70,11 @@ export async function submissionFiles(
       message: `This PC's library holds no theme with id "${themeId}".`,
     };
   }
+
+  // The catalogue's CI refuses this package, so the author is told here, before
+  // a submission exists to upload.
+  const videoRefusal = themeVideoRefusals(theme.envelope, theme.assets)[0];
+  if (videoRefusal !== undefined) return { ok: false, message: videoRefusal };
 
   const thumbnail =
     options?.thumbnails === undefined

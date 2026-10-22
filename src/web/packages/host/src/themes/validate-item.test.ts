@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -39,6 +40,16 @@ const PNG = new Uint8Array([
 
 /** ZIP magic and nothing else: a package `readThemePackage` refuses. */
 const NOT_A_PACKAGE = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+
+/** The committed 31.5 s fixture, read rather than regenerated. */
+const LONG_VIDEO = new Uint8Array(
+  readFileSync(
+    new URL("../../../theme-package/test-fixtures/long.mp4", import.meta.url),
+  ),
+);
+
+const DURATION_REFUSAL =
+  "assets/clip.mp4: duration 31500 ms exceeds the 30000 ms maximum";
 
 const temporary: string[] = [];
 
@@ -85,6 +96,19 @@ function packageBytesFor(id: string): Uint8Array {
   const written = writeThemePackage({
     envelope: themeFor(id),
     assets: {},
+  });
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
+}
+
+/** A package declaring one video asset, carrying the over-cap fixture. */
+function packageWithLongVideo(id: string): Uint8Array {
+  const written = writeThemePackage({
+    envelope: {
+      ...themeFor(id),
+      assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
+    },
+    assets: { "assets/clip.mp4": LONG_VIDEO },
   });
   if (!written.ok) throw new Error(written.message);
   return written.bytes;
@@ -261,6 +285,21 @@ describe("validateItemCommand", () => {
     expect(await validateItemCommand(["validate-item", directory])).toBe(1);
     expect(errors.mock.calls).toEqual([
       ["Refused catalogue/aurora: That file is not a readable theme package."],
+    ]);
+  });
+
+  it("refuses a package carrying a video past the duration cap", async () => {
+    const directory = await itemDirectory({
+      id: "aurora",
+      packageBytes: packageWithLongVideo("aurora"),
+    });
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    expect(await validateItemCommand(["validate-item", directory])).toBe(1);
+    expect(errors.mock.calls).toEqual([
+      [`Refused catalogue/aurora: ${DURATION_REFUSAL}`],
     ]);
   });
 

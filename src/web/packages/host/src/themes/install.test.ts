@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -39,6 +40,29 @@ function themeOf(id: string, name: string): ThemeContent {
 
 function packageOf(id: string, name: string): Uint8Array {
   const written = writeThemePackage(themeOf(id, name));
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
+}
+
+/** The committed 31.5 s fixture, read rather than regenerated. */
+const LONG_VIDEO = new Uint8Array(
+  readFileSync(
+    new URL("../../../theme-package/test-fixtures/long.mp4", import.meta.url),
+  ),
+);
+
+const DURATION_REFUSAL =
+  "assets/clip.mp4: duration 31500 ms exceeds the 30000 ms maximum";
+
+/** A package declaring one video asset, carrying the over-cap fixture. */
+function packageWithLongVideo(id: string, name: string): Uint8Array {
+  const written = writeThemePackage({
+    envelope: {
+      ...themeOf(id, name).envelope,
+      assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
+    },
+    assets: { "assets/clip.mp4": LONG_VIDEO },
+  });
   if (!written.ok) throw new Error(written.message);
   return written.bytes;
 }
@@ -132,6 +156,37 @@ describe("installCatalogueItem", () => {
     );
     expect(await origins.read()).toEqual({});
     expect(await store.list()).toEqual([]);
+  });
+
+  it("refuses a package carrying a video past the duration cap, writing nothing", async () => {
+    // The item's existing copy, so the update path is the one a missing check
+    // would overwrite.
+    await store.write("aurora-copy", themeOf("aurora-copy", "Old Aurora"), {
+      expectFree: true,
+    });
+    await origins.write("aurora-copy", {
+      catalogueId: "aurora",
+      version: "1.0.0",
+      installedAt: new Date(0).toISOString(),
+    });
+    const listedBefore = await store.list();
+    const result = await installCatalogueItem(REQUEST, {
+      store,
+      origins,
+      fetch: serving(packageWithLongVideo("living-room", "Living Room 2")),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      stage: "package",
+      message: DURATION_REFUSAL,
+    });
+    // The refusal lands before any write: copy and origin are untouched.
+    expect(await store.list()).toEqual(listedBefore);
+    expect((await store.read("aurora-copy"))?.envelope.metadata?.name).toBe(
+      "Old Aurora",
+    );
+    expect((await origins.read())["aurora-copy"]?.version).toBe("1.0.0");
   });
 
   it("refuses a kind this build does not run", async () => {

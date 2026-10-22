@@ -1,5 +1,5 @@
 import { DASHBOARD_THEME_KIND } from "@vigilia/renderer-core";
-import { readThemePackage } from "@vigilia/theme-package";
+import { readThemePackage, themeVideoRefusals } from "@vigilia/theme-package";
 import type { ThemeOriginsStore } from "../settings/theme-origins.js";
 import { downloadPackage } from "./download.js";
 import { importThemePackage, type ThemeImportResult } from "./import.js";
@@ -137,6 +137,17 @@ async function installOnce(
       stage: downloaded.stage,
       message: downloaded.message,
     };
+  }
+
+  // The envelope is checked before either write path runs, so a refused video
+  // leaves the library and the origins file exactly as they were.
+  const parsed = readThemePackage(downloaded.bytes);
+  if (!parsed.ok) {
+    return { ok: false, stage: "package", message: parsed.message };
+  }
+  const videoRefusal = themeVideoRefusals(parsed.envelope, parsed.assets)[0];
+  if (videoRefusal !== undefined) {
+    return { ok: false, stage: "package", message: videoRefusal };
   }
 
   const replaceId = await catalogueCopyId(request.catalogueId, options);

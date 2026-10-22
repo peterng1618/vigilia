@@ -1,4 +1,5 @@
 import { randomFillSync } from "node:crypto";
+import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -113,6 +114,39 @@ describe("submissionFiles", () => {
     if (!parsed.ok) throw new Error(parsed.reason);
     expect(parsed.file.version).toBe("1.0.0");
     expect(parsed.file.thumbnail).toBe("catalogue/quiet/thumbnail.png");
+  });
+
+  it("refuses a video past the duration cap before a submission is built", async () => {
+    // The committed 31.5 s fixture, read rather than regenerated.
+    const long = new Uint8Array(
+      readFileSync(
+        new URL(
+          "../../../theme-package/test-fixtures/long.mp4",
+          import.meta.url,
+        ),
+      ),
+    );
+    const content = themeOf("aurora", "Aurora", "1.2.0");
+    await store.write(
+      "aurora",
+      {
+        envelope: {
+          ...content.envelope,
+          assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
+        },
+        assets: { "assets/clip.mp4": long },
+      },
+      { expectFree: true },
+    );
+    await thumbnails.write("aurora", PNG);
+
+    const result = await submissionFiles("aurora", store, { thumbnails });
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        "assets/clip.mp4: duration 31500 ms exceeds the 30000 ms maximum",
+    });
   });
 
   it("refuses a theme with no picture, naming what to do", async () => {

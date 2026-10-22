@@ -7,6 +7,8 @@
  * without bound.
  */
 
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+
 export interface VideoLimits {
   readonly maxDurationMs: number;
   readonly maxLongEdge: number;
@@ -153,6 +155,27 @@ export function videoRefusals(path: string, facts: VideoFacts): string[] {
       `${path}: long edge ${longEdge} px exceeds the ${VIDEO_LIMITS.maxLongEdge} px maximum`,
     );
   return refusals;
+}
+
+/**
+ * Every way the theme's declared videos break the envelope, in declaration
+ * order. Empty means every video conforms. Bytes the parser cannot read are
+ * refused too: an unreadable video is not a pass.
+ */
+export function themeVideoRefusals(
+  envelope: FabricThemeEnvelope,
+  assets: Readonly<Record<string, Uint8Array>>,
+): string[] {
+  for (const asset of envelope.assets ?? []) {
+    if (asset.kind !== "video") continue;
+    const bytes = assets[asset.path];
+    const facts = bytes === undefined ? undefined : readVideoFacts(bytes);
+    if (facts === undefined)
+      return [`${asset.path}: video cannot be read; an H.264 MP4 is required`];
+    const refusals = videoRefusals(asset.path, facts);
+    if (refusals.length > 0) return refusals;
+  }
+  return [];
 }
 
 function boxes(

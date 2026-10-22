@@ -4,7 +4,11 @@ import {
   DASHBOARD_THEME_KIND,
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
-import { MAX_ARCHIVE_BYTES, readThemePackage } from "@vigilia/theme-package";
+import {
+  MAX_ARCHIVE_BYTES,
+  readThemePackage,
+  themeVideoRefusals,
+} from "@vigilia/theme-package";
 import { cataloguePackageUrl } from "./catalogue-source.js";
 
 /**
@@ -108,7 +112,9 @@ async function firstRefusal(
       `the directory is the item's id, so the package must be "${id}".`
     );
   }
-  return undefined;
+  // A video outside the publish envelope is refused here, in the same words the
+  // host's own doors use, rather than discovered at play time.
+  return themeVideoRefusals(read.envelope, read.assets)[0];
 }
 
 /**

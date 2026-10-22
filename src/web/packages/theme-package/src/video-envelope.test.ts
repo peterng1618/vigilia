@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { describe, expect, it } from "vitest";
-import { readVideoFacts, VIDEO_LIMITS, videoRefusals } from "./video-envelope";
+import {
+  readVideoFacts,
+  themeVideoRefusals,
+  VIDEO_LIMITS,
+  videoRefusals,
+} from "./video-envelope";
 
 const fixture = (name: string): Uint8Array =>
   new Uint8Array(
@@ -153,6 +159,48 @@ describe("videoRefusals", () => {
       `${PATH}: chroma format 3; 4:2:0 is required`,
       `${PATH}: odd dimensions 641x360; even width and height are required`,
       `${PATH}: audio track present; video must be silent`,
+    ]);
+  });
+
+  it("refuses an unreadable video rather than passing it", () => {
+    const envelope = {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "aurora",
+      artboard: { width: 1920, height: 1080 },
+      metadata: { name: "Aurora", themeLanguage: "en" },
+      scene: { version: "7.4.0", objects: [] },
+      assets: [{ id: "clip", kind: "video", path: "assets/clip.webm" }],
+    } as FabricThemeEnvelope;
+
+    expect(themeVideoRefusals(envelope, { "assets/clip.webm": webm })).toEqual([
+      "assets/clip.webm: video cannot be read; an H.264 MP4 is required",
+    ]);
+  });
+
+  it("checks declared videos only, in declaration order", () => {
+    const envelope = {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "aurora",
+      artboard: { width: 1920, height: 1080 },
+      metadata: { name: "Aurora", themeLanguage: "en" },
+      scene: { version: "7.4.0", objects: [] },
+      assets: [
+        { id: "still", kind: "image", path: "assets/still.webm" },
+        { id: "clip", kind: "video", path: "assets/clip.mp4" },
+      ],
+    } as FabricThemeEnvelope;
+
+    // The declared video is over the cap; the image's undecodable bytes are not
+    // this check's business.
+    expect(
+      themeVideoRefusals(envelope, {
+        "assets/still.webm": webm,
+        "assets/clip.mp4": long,
+      }),
+    ).toEqual([
+      `assets/clip.mp4: duration 31500 ms exceeds the 30000 ms maximum`,
     ]);
   });
 
