@@ -2219,6 +2219,11 @@ function onlineEntry(input: {
   readonly favorites: number;
   readonly tags: readonly string[];
   readonly kind?: string;
+  readonly remixOf?: {
+    readonly catalogueId: string;
+    readonly name: string;
+    readonly version: string;
+  };
 }): Record<string, unknown> {
   return {
     id: input.id,
@@ -2232,6 +2237,7 @@ function onlineEntry(input: {
     packageUrl: `https://catalogue.test/${input.id}.zip`,
     thumbnail: `${input.id}/thumbnail.png`,
     facets: { ...ONLINE_FACETS, tags: [...input.tags] },
+    ...(input.remixOf === undefined ? {} : { remixOf: input.remixOf }),
   };
 }
 
@@ -2274,6 +2280,54 @@ const ONLINE_CATALOGUE = {
       favorites: 0,
       tags: [],
       kind: "widget-preset",
+    }),
+  ],
+};
+
+/** A catalogue whose ids are UUIDs, as the catalogue boundary now requires, and
+ *  which carries one remix whose parent is listed and one whose parent is not. */
+const REMIX_PARENT = "8f14e45f-ea0a-4e1c-9a2b-3f6c1d2e4a5b";
+const REMIX_CHILD = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
+const REMIX_ORPHAN = "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70";
+const REMIX_CATALOGUE = {
+  generatedAt: "2026-10-21T00:00:00.000Z",
+  entries: [
+    onlineEntry({
+      id: REMIX_PARENT,
+      name: "System dashboard",
+      version: "1.4.0",
+      updatedAt: "2026-10-18T00:00:00.000Z",
+      downloads: 240,
+      favorites: 12,
+      tags: ["dashboard"],
+    }),
+    onlineEntry({
+      id: REMIX_CHILD,
+      name: "System dashboard (remix)",
+      version: "1.2.0",
+      updatedAt: "2026-10-19T00:00:00.000Z",
+      downloads: 31,
+      favorites: 4,
+      tags: ["dashboard"],
+      remixOf: {
+        catalogueId: REMIX_PARENT,
+        name: "System dashboard",
+        version: "1.4.0",
+      },
+    }),
+    onlineEntry({
+      id: REMIX_ORPHAN,
+      name: "Vanished lineage",
+      version: "1.0.0",
+      updatedAt: "2026-10-20T00:00:00.000Z",
+      downloads: 3,
+      favorites: 0,
+      tags: ["dashboard"],
+      remixOf: {
+        catalogueId: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        name: "Vanished theme",
+        version: "1.0.0",
+      },
     }),
   ],
 };
@@ -2389,13 +2443,19 @@ const EMPTY_PICTURE_PNG = Buffer.from(
  * The store, on its online half: the catalogue and the library both routed, the
  * region mounted and its Store segment chosen, and the readable entries listed.
  */
-async function showOnlineStore(page: Page): Promise<Locator> {
+async function showOnlineStore(
+  page: Page,
+  catalogue: {
+    readonly generatedAt: string;
+    readonly entries: readonly Record<string, unknown>[];
+  } = ONLINE_CATALOGUE,
+): Promise<Locator> {
   await page.route("**/index.json", (route) =>
     route.fulfill({
       // A fulfilled response still passes the browser's CORS check, and the
       // origin this stands in for answers with the header.
       headers: { "access-control-allow-origin": "*" },
-      json: ONLINE_CATALOGUE,
+      json: catalogue,
     }),
   );
   await page.route("**/api/themes", (route) =>
@@ -2889,7 +2949,13 @@ test("a submitted theme shows its pull request link and the control no longer of
     submits += 1;
     return submits === 1
       ? route.fulfill({ status: 401, body: "" })
-      : route.fulfill({ json: { ok: true, url: SUBMITTED_PR } });
+      : route.fulfill({
+          json: {
+            ok: true,
+            url: SUBMITTED_PR,
+            version: { from: "1.4.0", to: "1.4.1", level: "patch" },
+          },
+        });
   });
   await page.route("**/api/github/device", (route) =>
     route.fulfill({ json: DEVICE_FLOW }),
@@ -2969,6 +3035,109 @@ test("a refused submission states the host's own sentence", async ({
   expect(deviceCalls, "a refusal that is not a 401 started a sign-in").toBe(0);
 
   await captureVisualReview(page, testInfo, "store-submit-refused", modal);
+});
+
+test("a submitted theme states the version it published, and the caption reads it back", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const modal = await openLibraryItem(page, "boundary-plain");
+  // The host wrote `1.5.0` into the document and the surface re-read the
+  // library after the submission, so every later listing is the new version.
+  await page.route("**/api/themes", (route) =>
+    route.fulfill({
+      json: {
+        themes: BOUNDARY_LIBRARY.map((theme) =>
+          theme.id === "boundary-plain"
+            ? { ...theme, version: "1.5.0" }
+            : theme,
+        ),
+      },
+    }),
+  );
+  await page.route("**/api/themes/submit", (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        url: SUBMITTED_PR,
+        version: { from: "1.4.0", to: "1.5.0", level: "minor" },
+      },
+    }),
+  );
+
+  await modal.locator("[data-vigilia-store-item-submit]").click();
+  const submitted = modal.locator(
+    "[data-vigilia-store-item-submit='submitted']",
+  );
+  await expect(
+    submitted,
+    "the submission never reaches the submitted state",
+  ).toBeVisible({ timeout: 15_000 });
+  // The literal sentence, not `uiCopy.store.submit.version`: the claim is what
+  // the author reads, and a rewritten copy fails here.
+  await expect(
+    modal.locator("[data-vigilia-store-item-submit-version]"),
+    "the submitted surface does not state the version it published",
+  ).toHaveText("1.4.0 → 1.5.0 · minor");
+  // The re-list is the host's write read back, not the answer echoed: the
+  // caption prints the version the listing now carries.
+  await expect(
+    modal.locator("[data-vigilia-store-item-date]"),
+    "the caption does not read the version the submission wrote",
+  ).toContainText("1.5.0");
+
+  await captureVisualReview(page, testInfo, "store-submit-version", modal);
+});
+
+test("a remix credits its parent, linking it when listed and naming it when not", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const region = await showOnlineStore(page, REMIX_CATALOGUE);
+  const open = async (id: string): Promise<Locator> => {
+    await region
+      .locator(
+        `[data-vigilia-store-cell='${id}'] [data-vigilia-store-cell-surface]`,
+      )
+      .click();
+    const modal = page.locator("[data-vigilia-store-item]");
+    await expect(modal, "a cell opens no item's surface").toBeVisible();
+    return modal;
+  };
+
+  const modal = await open(REMIX_CHILD);
+  const credit = modal.locator("[data-vigilia-store-item-remix]");
+  await expect(credit, "the remix does not credit its parent").toHaveText(
+    "Remixed from System dashboard",
+  );
+  await expect(
+    credit,
+    "the credit is not the control an item in the index gives",
+  ).toHaveRole("button");
+
+  await captureVisualReview(page, testInfo, "store-remix-credit", modal);
+
+  await credit.click();
+  await expect(
+    modal.locator("[data-vigilia-store-item-name]"),
+    "the credit does not open the parent item",
+  ).toHaveText("System dashboard");
+
+  await modal.locator("[data-vigilia-store-item-close]").click();
+  await expect(modal, "the parent's surface does not close").toBeHidden();
+
+  const orphan = await open(REMIX_ORPHAN);
+  const text = orphan.locator("[data-vigilia-store-item-remix]");
+  await expect(
+    text,
+    "a remix whose parent the index lacks does not name it as text",
+  ).toHaveText("Remixed from Vanished theme");
+  expect(
+    await text.evaluate((element) => element.tagName),
+    "an absent parent's credit is drawn as a dead link",
+  ).not.toBe("BUTTON");
 });
 
 /**

@@ -5,35 +5,35 @@ Branch: `develop`
 
 ## Current objective
 
-The theme store spec is **fully landed** (phases A–G). The next objective is **automatic semver versioning and UUID theme ids**: the [spec](docs/superpowers/specs/2026-10-22-theme-versioning-design.md) is approved and its [plan](docs/superpowers/plans/2026-10-22-theme-versioning.md) is written, awaiting review. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md).
+The theme store spec (phases A–G) and the theme-versioning spec are **landed and archived**: semver computed from the published package, UUID theme ids and a remix credit are in the product. **No plan is running**; the user picks the next one from the queue. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
-- **Active plan:** `2026-10-22-theme-versioning.md`, executing subagent-driven through Phase 1 (Tasks 1.1–1.3), then Phases 2–5.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; the user picks when one starts.
 - **The catalogue repo `peterng1618/vigilia-store` is live** and empty; `main`'s `validate` still pins `0a417ff`, and a catalogue merge regenerates the listing.
+- **Store branch `ci/catalogue-workflows` (`9e9ca44`) waits to merge**: the new pin and UUID regex are not live until it lands.
 - **Decisions `0088`–`0091`** carry the store's measured choices: raw-path index, host-side download, a hand-rolled GitHub client, and a bundled GPL `ffmpeg-static`.
-- **Capture `editor-video-normalize`** is the newest registered action; the install and submission captures sit beside it.
+- **Captures `store-submit-version` and `store-remix-credit`** are the newest registered actions, beside the install and submission ones.
 
 ## Last completed change
 
-- **Task 5.2 branch `ci/catalogue-workflows` (`9e9ca44`)**: `validate` pins `682379fc`, passes the base commit's item and package when present, and guards a base that lacks the package; auto-merge's path check takes the UUID shape of `isCatalogueId`.
-- **Proof PR #7 green** on `validate`: a first submission at `1.0.0` is accepted.
-- **Proof PR #8 refused** by `validate`: `a first submission must be version 1.0.0, not "1.4.0".`
-- **Both proof PRs carried the workflow branch**, so `auto-merge` refused their mixed paths and neither merged.
-- **Unverified**: the tightened auto-merge regex has not run on CI, because `pull_request_target` executes `main`'s workflow and the branch is unmerged.
+- **Task 5.3 close**: the versioning spec carries a landing note per phase; the plan moved to `docs/superpowers/plans/archive/`; both queued plans were checked for dependency and have none.
+- **Browser evidence**: `editor-rail.spec.ts` gains the published-version sentence and the remix credit, with captures `store-submit-version-desktop-chromium.png` and `store-remix-credit-desktop-chromium.png` registered and inspected; the file runs 35/35 green.
+- **A copy-surfaces red the gate never reached** — the `Remix` label was a dialog literal outside `uiCopy` — was found and fixed; the word now lives in the copy table.
+- **Red-proofs restored and `cmp`-verified**: the CI version comparison let a lying item pass, `editorMetadata` off the ignored list computed `patch`, and a broken parent lookup rendered the credit as text.
+- **The gate is red only at `design:check`** (remainder 20 against ceiling 19, `vg-626`/`vg-426`); `typecheck` and the unit suite ran green separately.
 
 ## Next
 
-1. Continue the active versioning plan task by task through its ledger.
-2. **Merge `ci/catalogue-workflows` into the store's `main`** (external action, user-approved only as a future step): the new pin and UUID regex are not live until it lands.
-3. Weigh `vg-620` (a client disconnecting mid-stream kills the host) and `vg-626` (the red `design:check`) before the next plan opens.
-4. The next register pass starts from `vg-691`…`vg-697`.
+1. **Merge `ci/catalogue-workflows` into the store's `main`** (external action, user-approved only as a future step): the pin and UUID regex are not live until it lands.
+2. Weigh `vg-620` (a client disconnecting mid-stream kills the host) and `vg-626` (the red `design:check`) before the next plan opens.
+3. The user picks the next queued plan; the next register pass starts from `vg-691`…`vg-697`.
+4. Fix `capture-freshness`'s 11 stale registered captures (`vg-402`).
 5. A packaged release owes the GPL source offer for `ffmpeg-static`.
 
 ## Blockers / unverified
 
-- **`npm run gate` is RED at `design:check`**: remainder 20 against a ceiling of 19 (`vg-626`, `vg-426`).
+- **`npm run gate` is RED at `design:check`**: remainder 20 against a ceiling of 19, and the chain stops there, so `typecheck` and `test` were read separately (`vg-626`, `vg-426`).
 - **`capture-freshness` is red at `vg-402`**: 11 registered captures predate the chrome changes.
 - **The auto-merge workflow's unverified-author and ownership arms are reasoned from the YAML**, not exercised: both need a second GitHub account with a fork.
 - **The catalogue is empty**, so no store claim has run against real items, and no normalized video has been played back in a browser.

@@ -53,9 +53,9 @@ function confirmWords(id: string, name: string | undefined): string {
  *  exists only beside the button it names. */
 const DELETE_LABEL = "Delete";
 
-/** Beside the delete, for the same reason: one control, one word, and it is
- *  only ever drawn next to the act it names. */
-const REMIX_LABEL = "Remix";
+/** The control's own word, from the copy table: the surfaces walk reads every
+ *  rendered word and refuses a literal it cannot find in `uiCopy`. */
+const REMIX_LABEL = uiCopy.library.remix;
 
 /** The client a removal goes through, or undefined when there is none — in
  *  which case the chooser offers no deletion rather than failing when the

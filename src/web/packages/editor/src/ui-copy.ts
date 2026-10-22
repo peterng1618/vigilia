@@ -885,6 +885,9 @@ export const uiCopy = {
     templates: "Templates",
     yourThemes: "Your themes",
     open: "Open",
+    /** The fork of an installed theme: a new document, minted id, credited
+     *  parent. Disabled where there is no origin to name. */
+    remix: "Remix",
     cancel: "Cancel",
     /** The dialog a refused save raises. Two answers and a way out, because a
      *  refusal must not cost the author their document and must not be a dead

@@ -1,7 +1,7 @@
 # Theme versioning and identity — design
 
 Date: 2026-10-22
-Status: awaiting review
+Status: landed
 Related: [theme store design](2026-10-12-theme-store-design.md) (phases A–G, landed),
 [decisions/0090](../decisions/0090-submission-is-a-hand-rolled-github-client.md),
 [decisions/0091](../decisions/0091-the-normalizer-bundles-a-gpl-ffmpeg.md).
@@ -393,3 +393,32 @@ Each is one host sentence, shown verbatim by the store surface:
 - Migrating legacy local ids.
 - Enforcing permission or licence for remixes, a full lineage view, and credit
   for a source that was never in the catalogue.
+
+## Landing note
+
+Landed 2026-10-22 in five phases. The store branch `ci/catalogue-workflows`
+(`9e9ca44`) still waits to merge, so the new pin and the UUID path regex are not
+live on the catalogue's `main` yet.
+
+- **Ladder:** `theme-package/src/version-ladder.ts`, with the table, ignored
+  fields, coverage and arithmetic proved in `version-ladder.test.ts`.
+- **Identity:** both document factories mint `crypto.randomUUID()`;
+  `isCatalogueId` is the catalogue boundary and `validate-item` refuses a
+  non-UUID directory (`catalogue-index.test.ts`, `validate-item.test.ts`).
+- **Publishing:** `published-item.ts` reads the base item and package, and
+  `submissionFiles` classifies, refuses `none`, writes the version and builds the
+  header. Unit coverage in `published-item.test.ts` and `github-item.test.ts`;
+  the browser shows `1.4.0 → 1.5.0 · minor` and the re-read caption at
+  `docs/evidence/screenshots/store-submit-version-desktop-chromium.png`.
+- **Attribution:** `metadata.remixOf` lands in type, schema and validator; Remix
+  mints a new id; the listing, `item.json` and the validator carry and defend the
+  credit. Unit coverage in the format, manager, catalogue and modal suites; the
+  browser shows the credit as a control on a listed parent and as text on an
+  absent one at `store-remix-credit-desktop-chromium.png`.
+- **Enforcement:** `validate-item --previous-item/--previous-package`
+  re-derives the version and level and holds provenance frozen. Proof PR #7 was
+  accepted and PR #8 was refused for declaring `1.4.0` on a first submission.
+- **Red-proofs:** a lying item passes when the version comparison is broken; an
+  editor-metadata-only save computes `patch` when `editorMetadata` leaves the
+  ignored list; a listed parent's credit renders as text when the id lookup is
+  broken. Each was restored from a copy outside the repo and verified with `cmp`.
