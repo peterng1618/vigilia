@@ -965,7 +965,7 @@ refusal line, and five rendered claims against a routed index. **C is live
 end to end**: the Action's first run generated `index.json` from the pinned
 generator, and `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json`
 answers `200` with zero entries — the honest empty catalogue, since items arrive
-with E. **E landed 2026-10-22**; F is planned and unstarted. The acceptance
+with E. **E and F landed 2026-10-22.** The acceptance
 below still decides whether A is accepted: landing is not acceptance.
 
 **D's implementation landed 2026-10-22** under
@@ -990,6 +990,22 @@ auto-merge gate was not a gate** — an unverified author's PR would have merged
 and the fix round closed it along with the ownership rule and a `packageUrl`
 check that accepted any host. **The workflow's refusals are proved on the real
 repo; the unverified-author arm is not**, because it needs a second account.
+
+**F's implementation landed 2026-10-22** under `2026-10-22-theme-store-media.md`:
+the video envelope as a **property check** — a pure MP4 box parse in
+`theme-package` that reads duration, dimensions, frame rate, codec, profile,
+chroma, audio and `+faststart` without spawning anything — refused at all three
+doors (`validate-item`, install, submit); and the normalizer as a host command
+plus one loopback route, spawning the bundled `ffmpeg-static` (decision `0091`),
+copying a conforming input byte-for-byte, and refusing a source over the cap
+rather than trimming it. The editor offers `Normalize video` and `Fill the
+artboard`, and adopts the result only on a second press after previewing it.
+**The review's two high findings were bypasses of the caps themselves** — a
+zeroed `mdhd` timescale and a doubled `mdhd` duration each let an over-cap video
+read as compliant — now derived from the sample table and the larger of the two.
+**`ffmpeg-static` is GPL-3.0-or-later**, so a packaged release owes its source
+offer; that duty is recorded in `THIRD-PARTY-NOTICES.md` rather than discovered
+at release time.
 
 **A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
 `index.json` and no hosting decision. **C is the last phase that dodges open
