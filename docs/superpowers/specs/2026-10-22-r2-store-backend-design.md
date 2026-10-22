@@ -296,7 +296,7 @@ recorded as a residual risk, not solved with a second unzip service.
 | Route | Answer |
 |---|---|
 | `GET /index.json` | `{ generatedAt, entries }`; published items only; `Cache-Control: max-age=60`, `ETag` |
-| `GET /catalogue/:id/item.json` | the `CatalogueItemFile` plus live `downloads`/`favorites`; 404 unless published |
+| `GET /catalogue/:id/item.json` | the `CatalogueItemFile`'s fields plus `id`, with live `downloads`/`favorites`; 404 unless published |
 | `GET /catalogue/:id/thumbnail.png` | the stored PNG; 404 unless published |
 | `GET /catalogue/:id/:version.zip` | streams the package, increments downloads; 404 unless published; `no-store` |
 

@@ -423,7 +423,7 @@ export async function handleCatalogueRoutes(
   const authorRoute = authorItem !== null || url.pathname === MINE_PATH;
   if (!authorRoute && !PATHS.has(url.pathname)) return undefined;
 
-  // The same guards, in the same order, as the GitHub sign-in routes: these
+  // The loopback guard pairing uses, plus an origin check: these routes
   // act as the author's store account, and pairing in particular answers only
   // this PC. A page in another origin can reach a loopback route over a
   // `text/plain` POST that needs no preflight, which is what the origin check

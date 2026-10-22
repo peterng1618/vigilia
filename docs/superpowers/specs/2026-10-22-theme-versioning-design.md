@@ -1,7 +1,10 @@
 # Theme versioning and identity — design
 
 Date: 2026-10-22
-Status: landed
+Status: landed 2026-10-22. The ladder and id contract stand; the GitHub
+submission files cited under "Current state" were replaced by the Worker
+backend ([R2 store design](2026-10-22-r2-store-backend-design.md)), so those
+citations are the state the design was argued from, not today's code.
 Related: [theme store design](2026-10-12-theme-store-design.md) (phases A–G, landed),
 [decisions/0090](../decisions/0090-submission-is-a-hand-rolled-github-client.md),
 [decisions/0091](../decisions/0091-the-normalizer-bundles-a-gpl-ffmpeg.md).
