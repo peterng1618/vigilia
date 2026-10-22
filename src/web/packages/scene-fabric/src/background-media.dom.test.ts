@@ -2,6 +2,16 @@
 import { describe, expect, it } from "vitest";
 import { mediaDrawArgs, mountBackgroundMedia } from "./background-media.js";
 
+const ARTBOARD = { width: 400, height: 200 } as const;
+const HERO = { id: "hero", kind: "image", path: "assets/hero.png" } as const;
+const LOOP = { id: "loop", kind: "video", path: "assets/loop.webm" } as const;
+const OTHER = {
+  id: "other",
+  kind: "video",
+  path: "assets/other.webm",
+} as const;
+const TWO = { id: "two", kind: "svg", path: "assets/two.svg" } as const;
+
 describe("background media", () => {
   it("mounts fitted image media below the Fabric canvas and disposes its source", () => {
     const host = document.createElement("div");
@@ -11,12 +21,9 @@ describe("background media", () => {
 
     const handle = mountBackgroundMedia({
       host,
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "hero", fit: "theme" },
-      },
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      background: { media: { assetId: "hero", bounds: "theme" } },
+      artboard: ARTBOARD,
+      assets: [HERO],
       resolveAsset: () => ({
         url: "blob:hero",
         dispose: () => {
@@ -29,7 +36,9 @@ describe("background media", () => {
       "[data-yunari-background-media] img",
     );
     expect(image?.src).toBe("blob:hero");
-    expect(image?.style.objectFit).toBe("cover");
+    // Positioned by `placement`, not by `object-fit`.
+    expect(image?.style.position).toBe("absolute");
+    expect(image?.style.objectFit).toBe("");
     expect(
       host.firstElementChild?.hasAttribute("data-yunari-background-media"),
     ).toBe(true);
@@ -45,12 +54,9 @@ describe("background media", () => {
     const host = document.createElement("div");
     const handle = mountBackgroundMedia({
       host,
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "loop", fit: "theme" },
-      },
-      assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
+      background: { media: { assetId: "loop", bounds: "theme" } },
+      artboard: ARTBOARD,
+      assets: [LOOP],
       resolveAsset: () => ({ url: "blob:loop" }),
     });
 
@@ -58,7 +64,7 @@ describe("background media", () => {
       "[data-yunari-background-media] video",
     );
     expect(video?.src).toBe("blob:loop");
-    expect(video?.style.objectFit).toBe("cover");
+    expect(video?.style.position).toBe("absolute");
     expect(video?.autoplay).toBe(true);
     expect(video?.muted).toBe(true);
     expect(video?.loop).toBe(true);
@@ -70,52 +76,116 @@ describe("background media", () => {
   it("replaces the old source when its media changes", () => {
     const host = document.createElement("div");
     const disposed: string[] = [];
+    const resolveAsset = (id: string) => ({
+      url: `blob:${id}`,
+      dispose: () => {
+        disposed.push(id);
+      },
+    });
     const handle = mountBackgroundMedia({
       host,
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "one", fit: "theme" },
-      },
-      assets: [{ id: "one", kind: "image", path: "assets/one.png" }],
-      resolveAsset: (id) => ({
-        url: `blob:${id}`,
-        dispose: () => {
-          disposed.push(id);
-        },
-      }),
+      background: { media: { assetId: "one", bounds: "theme" } },
+      artboard: ARTBOARD,
+      assets: [{ id: "one", kind: "image", path: "assets/one.png" }, TWO],
+      resolveAsset,
     });
 
-    handle.update({
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "two", fit: "display" },
-      },
-      assets: [{ id: "two", kind: "svg", path: "assets/two.svg" }],
-      resolveAsset: (id) => ({
-        url: `blob:${id}`,
-        dispose: () => {
-          disposed.push(id);
-        },
-      }),
+    handle.setBackground({
+      media: { assetId: "two", bounds: "theme", fit: "contain" },
     });
 
     expect(disposed).toEqual(["one"]);
     expect(host.querySelector("img")?.src).toBe("blob:two");
-    expect(host.querySelector("img")?.style.objectFit).toBe("cover");
+  });
+
+  it("keeps the same video element when only the transform changes", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: { media: { assetId: "loop", bounds: "theme" } },
+      artboard: ARTBOARD,
+      assets: [LOOP],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    const before = host.querySelector("video");
+    expect(before).not.toBeNull();
+
+    handle.setBackground({
+      media: { assetId: "loop", bounds: "theme", scale: 1.5 },
+    });
+
+    expect(host.querySelector("video")).toBe(before);
+    handle.destroy();
+  });
+
+  it("replaces the element when the asset changes", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: { media: { assetId: "loop", bounds: "theme" } },
+      artboard: ARTBOARD,
+      assets: [LOOP, OTHER],
+      resolveAsset: (id) => ({ url: `blob:${id}` }),
+    });
+    const before = host.querySelector("video");
+    expect(before).not.toBeNull();
+
+    handle.setBackground({ media: { assetId: "other", bounds: "theme" } });
+
+    expect(host.querySelector("video")).not.toBe(before);
+    expect(host.querySelector<HTMLVideoElement>("video")?.src).toBe(
+      "blob:other",
+    );
+    handle.destroy();
+  });
+
+  it("sizes the child from the placement rect", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: { media: { assetId: "loop", bounds: "theme" } },
+      artboard: { width: 200, height: 100 },
+      assets: [LOOP],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    const child = host.querySelector<HTMLVideoElement>(
+      "[data-yunari-background-media] video",
+    );
+    if (child === null) throw new Error("the layer mounted no video");
+    // jsdom decodes nothing: the intrinsic size and the ready state have to be
+    // stated for placement to have a source to fit.
+    Object.defineProperty(child, "videoWidth", { value: 100 });
+    Object.defineProperty(child, "videoHeight", { value: 100 });
+    Object.defineProperty(child, "readyState", { value: 2 });
+
+    handle.setBackground({
+      media: {
+        assetId: "loop",
+        bounds: "theme",
+        fit: "cover",
+        scale: 1.5,
+        offsetX: 0.25,
+      },
+    });
+    handle.setBounds({
+      artboard: { left: 0, top: 0, width: 200, height: 100 },
+      display: { left: 0, top: 0, width: 200, height: 100 },
+    });
+
+    expect(child.style.left).toBe("0px");
+    expect(child.style.top).toBe("-100px");
+    expect(child.style.width).toBe("300px");
+    expect(child.style.height).toBe("300px");
+    handle.destroy();
   });
 
   it("sizes the layer to the chosen box and reports the rect it covered", () => {
     const host = document.createElement("div");
     const handle = mountBackgroundMedia({
       host,
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "hero", fit: "theme" },
-      },
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      background: { media: { assetId: "hero", bounds: "theme" } },
+      artboard: ARTBOARD,
+      assets: [HERO],
       resolveAsset: () => ({ url: "blob:hero" }),
     });
     const layer = host.querySelector<HTMLElement>(
@@ -142,14 +212,8 @@ describe("background media", () => {
       height: 200,
     });
 
-    handle.update({
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "hero", fit: "display" },
-      },
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
-      resolveAsset: () => ({ url: "blob:hero" }),
+    handle.setBackground({
+      media: { assetId: "hero", bounds: "display" },
     });
 
     // Display: the layer covers the display box, not the artboard.
@@ -170,18 +234,50 @@ describe("background media", () => {
     handle.destroy();
   });
 
+  it("clips at the display box when bounds is display", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: { media: { assetId: "loop", bounds: "theme" } },
+      artboard: { width: 100, height: 100 },
+      assets: [LOOP],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    handle.setBounds({
+      artboard: { left: 50, top: 50, width: 100, height: 100 },
+      display: { left: 0, top: 0, width: 400, height: 300 },
+    });
+    const layer = host.querySelector<HTMLElement>(
+      "[data-yunari-background-media]",
+    );
+    expect([
+      layer?.style.left,
+      layer?.style.top,
+      layer?.style.width,
+      layer?.style.height,
+    ]).toEqual(["50px", "50px", "100px", "100px"]);
+    expect(layer?.style.overflow).toBe("hidden");
+
+    handle.setBackground({ media: { assetId: "loop", bounds: "display" } });
+
+    expect([
+      layer?.style.left,
+      layer?.style.top,
+      layer?.style.width,
+      layer?.style.height,
+    ]).toEqual(["0px", "0px", "400px", "300px"]);
+    handle.destroy();
+  });
+
   it("reports an unresolvable declared background instead of dropping it", () => {
     const host = document.createElement("div");
     const errors: string[] = [];
     const handle = mountBackgroundMedia({
       host,
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "missing", fit: "theme" },
-      },
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
-      resolveAsset: () => ({ url: "blob:hero" }),
+      background: { media: { assetId: "missing", bounds: "theme" } },
+      artboard: ARTBOARD,
+      assets: [HERO],
+      resolveAsset: () => undefined,
       onMediaError: (message) => errors.push(message),
     });
 
@@ -191,16 +287,7 @@ describe("background media", () => {
     expect(host.querySelector("[data-yunari-background-media] img")).toBeNull();
 
     // A declared-but-unreadable asset reports too, rather than no-opping.
-    handle.update({
-      artboard: {
-        width: 400,
-        height: 200,
-        backgroundMedia: { assetId: "hero", fit: "theme" },
-      },
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
-      resolveAsset: () => undefined,
-      onMediaError: (message) => errors.push(message),
-    });
+    handle.setBackground({ media: { assetId: "hero", bounds: "theme" } });
 
     expect(errors[1]).toBe(
       'Background media asset "hero" has no readable bytes.',
@@ -210,27 +297,22 @@ describe("background media", () => {
 });
 
 describe("background media as a glass backdrop", () => {
-  const artboard = {
-    width: 400,
-    height: 200,
-    backgroundMedia: { assetId: "hero", fit: "theme" },
+  const background = {
+    media: { assetId: "hero", bounds: "theme" },
   } as const;
 
   it("has nothing to sample without a declared, resolvable background", () => {
     const host = document.createElement("div");
     const handle = mountBackgroundMedia({
       host,
-      artboard: { width: 400, height: 200 },
+      background: undefined,
+      artboard: ARTBOARD,
       assets: [],
       resolveAsset: () => ({ url: "blob:hero" }),
     });
     expect(handle.backdrop()).toBeUndefined();
 
-    handle.update({
-      artboard,
-      assets: [],
-      resolveAsset: () => ({ url: "blob:hero" }),
-    });
+    handle.setBackground(background);
     // Declared but undeclared by this theme: already reported, and nothing to draw.
     expect(handle.backdrop()).toBeUndefined();
     handle.destroy();
@@ -348,8 +430,9 @@ describe("background media as a glass backdrop", () => {
       let frames = 0;
       const still = mountBackgroundMedia({
         host,
-        artboard,
-        assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+        background,
+        artboard: ARTBOARD,
+        assets: [HERO],
         resolveAsset: () => ({ url: "blob:hero" }),
         onFrame: () => {
           frames += 1;
@@ -362,11 +445,9 @@ describe("background media as a glass backdrop", () => {
 
       const moving = mountBackgroundMedia({
         host,
-        artboard: {
-          ...artboard,
-          backgroundMedia: { assetId: "loop", fit: "theme" },
-        },
-        assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
+        background: { media: { assetId: "loop", bounds: "theme" } },
+        artboard: ARTBOARD,
+        assets: [LOOP],
         resolveAsset: () => ({ url: "blob:loop" }),
         onFrame: () => {
           frames += 1;
@@ -406,8 +487,9 @@ describe("background media as a glass backdrop", () => {
     let frames = 0;
     const handle = mountBackgroundMedia({
       host,
-      artboard,
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      background,
+      artboard: ARTBOARD,
+      assets: [HERO],
       resolveAsset: () => ({ url: "blob:hero" }),
       onFrame: () => {
         frames += 1;
@@ -439,8 +521,9 @@ describe("background media as a glass backdrop", () => {
     let frames = 0;
     const handle = mountBackgroundMedia({
       host,
-      artboard,
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
+      background,
+      artboard: ARTBOARD,
+      assets: [HERO],
       resolveAsset: () => ({ url: "blob:hero" }),
       onFrame: () => {
         frames += 1;
@@ -454,28 +537,23 @@ describe("background media as a glass backdrop", () => {
     expect(frames, "a decode after teardown asks for nothing").toBe(0);
   });
 
-  it("re-arms the decode notification across a reconfiguration", () => {
-    // `update` replaces the element, so the new one needs its own listener or
-    // a swapped background never reaches the glass panels sampling it.
+  it("re-arms the decode notification across an asset change", () => {
+    // A different asset replaces the element, so the new one needs its own
+    // listener or a swapped background never reaches the glass panels
+    // sampling it.
     const host = document.createElement("div");
     let frames = 0;
     const handle = mountBackgroundMedia({
       host,
-      artboard,
-      assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
-      resolveAsset: () => ({ url: "blob:hero" }),
+      background,
+      artboard: ARTBOARD,
+      assets: [HERO, TWO],
+      resolveAsset: (id) => ({ url: `blob:${id}` }),
       onFrame: () => {
         frames += 1;
       },
     });
-    handle.update({
-      artboard: {
-        ...artboard,
-        backgroundMedia: { assetId: "other", fit: "theme" },
-      },
-      assets: [{ id: "other", kind: "image", path: "assets/other.png" }],
-      resolveAsset: () => ({ url: "blob:other" }),
-    });
+    handle.setBackground({ media: { assetId: "two", bounds: "theme" } });
     const swapped = host.querySelector<HTMLImageElement>(
       "[data-yunari-background-media] img",
     );
@@ -484,10 +562,9 @@ describe("background media as a glass backdrop", () => {
     handle.destroy();
   });
 
-  it("keeps following frames across a reconfiguration that omits onFrame", () => {
-    // The subscription is taken at mount. Two shipped paths reconfigure the
-    // media without restating it - the editor's `setArtboard`, and its
-    // `setBackgroundMedia` remount - and both used to stop the video cold.
+  it("keeps following frames when a transform update re-places the same video", () => {
+    // A scale or fit change is a placement change, not a reload: the video must
+    // keep playing, so the frame subscription must survive it too.
     const scheduled: (() => void)[] = [];
     const proto = HTMLVideoElement.prototype as unknown as {
       requestVideoFrameCallback: (cb: () => void) => number;
@@ -505,57 +582,38 @@ describe("background media as a glass backdrop", () => {
       let frames = 0;
       const handle = mountBackgroundMedia({
         host,
-        artboard: {
-          ...artboard,
-          backgroundMedia: { assetId: "loop", fit: "theme" },
-        },
-        assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
-        resolveAsset: () => ({ url: "blob:loop" }),
+        background: { media: { assetId: "loop", bounds: "theme" } },
+        artboard: ARTBOARD,
+        assets: [LOOP, OTHER, HERO],
+        resolveAsset: (id) => ({ url: `blob:${id}` }),
         onFrame: () => {
           frames += 1;
         },
       });
+      const video = host.querySelector("video");
       expect(scheduled).toHaveLength(1);
 
-      // A same-media reconfiguration, as `updateArtboard` performs it.
-      handle.update({
-        artboard: {
-          ...artboard,
-          backgroundMedia: { assetId: "loop", fit: "theme" },
-        },
-        assets: [{ id: "loop", kind: "video", path: "assets/loop.webm" }],
-        resolveAsset: () => ({ url: "blob:loop" }),
+      // A same-asset transform change: the same element, the same loop.
+      handle.setBackground({
+        media: { assetId: "loop", bounds: "theme", fit: "contain", scale: 1.4 },
       });
-      expect(
-        scheduled,
-        "the video is followed again after update",
-      ).toHaveLength(2);
-      // The schedule grows by one per armed loop, and firing a frame re-arms
-      // it, so everything after this point is a delta rather than a count.
-      scheduled[1]?.();
+      expect(host.querySelector("video")).toBe(video);
+      expect(scheduled, "no new subscription for a re-placement").toHaveLength(
+        1,
+      );
+      scheduled[0]?.();
       expect(frames, "a frame still reaches the host").toBe(1);
 
-      // A switch to a different video, as `setBackgroundMedia` performs it.
+      // A switch to a different video mounts and follows the new one.
       const afterFire = scheduled.length;
-      handle.update({
-        artboard: {
-          ...artboard,
-          backgroundMedia: { assetId: "other", fit: "theme" },
-        },
-        assets: [{ id: "other", kind: "video", path: "assets/other.webm" }],
-        resolveAsset: () => ({ url: "blob:other" }),
-      });
+      handle.setBackground({ media: { assetId: "other", bounds: "theme" } });
       expect(scheduled.length, "the new video is followed too").toBe(
         afterFire + 1,
       );
 
       // And back to an image, which must stop following entirely.
       const afterSwitch = scheduled.length;
-      handle.update({
-        artboard,
-        assets: [{ id: "hero", kind: "image", path: "assets/hero.png" }],
-        resolveAsset: () => ({ url: "blob:hero" }),
-      });
+      handle.setBackground(background);
       expect(scheduled.length, "an image starts no loop").toBe(afterSwitch);
       handle.destroy();
     } finally {

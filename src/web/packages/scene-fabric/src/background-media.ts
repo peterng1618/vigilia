@@ -1,7 +1,9 @@
-import type {
-  Artboard,
-  AssetReference,
-  BackgroundMediaFit,
+import {
+  type AssetReference,
+  BACKGROUND_MEDIA_DEFAULTS,
+  type Background,
+  type BackgroundMedia,
+  type BackgroundMediaFit,
 } from "@yunari/renderer-core";
 import type { BackdropMedia, DeviceRect } from "./glass.js";
 
@@ -12,22 +14,20 @@ export interface BackgroundMediaSource {
 
 export interface BackgroundMediaOptions {
   readonly host: HTMLElement;
-  readonly artboard: Artboard;
+  readonly background: Background | undefined;
+  readonly artboard: { readonly width: number; readonly height: number };
   readonly assets: readonly AssetReference[] | undefined;
   readonly resolveAsset: (assetId: string) => BackgroundMediaSource | undefined;
   /** A declared background that cannot be resolved is reported, never silently
    * dropped. Distinct from `SceneAdapterOptions.onAssetError`, which reports a
    * node's own asset by id; this one carries a human-readable reason. */
   readonly onMediaError?: (message: string) => void;
-  /** Called once per decoded video frame. Subscribed once, at mount, and
-   *  re-armed on every later `update()`: making it per-update let a caller
-   *  silently stop following frames by omitting it. Nothing subscribes unless a
-   *  video is the media, so an image background starts no loop at all. */
+  /** Called once per decoded video frame. Subscribed once, at mount, and kept
+   *  across a re-placement: making it per-update let a caller silently stop
+   *  following frames by omitting it. Nothing subscribes unless a video is the
+   *  media, so an image background starts no loop at all. */
   readonly onFrame?: () => void;
 }
-
-/** Reconfiguration carries the document, never the frame subscription. */
-type BackgroundMediaUpdate = Omit<BackgroundMediaOptions, "host" | "onFrame">;
 
 /** A box in host pixels: where a media layer sits and how large it is. */
 export interface MediaBox {
@@ -95,7 +95,14 @@ export function placement(input: PlacementInput): MediaBox {
 }
 
 export interface BackgroundMediaHandle {
-  update(options: BackgroundMediaUpdate): void;
+  /** Reconfigures the layer. Same asset re-places the mounted element; a
+   *  different asset (or none) tears it down and mounts afresh, because a
+   *  remount is what restarts a video. */
+  setBackground(background: Background | undefined): void;
+  setArtboardSize(size: {
+    readonly width: number;
+    readonly height: number;
+  }): void;
   setBounds(bounds: MediaBounds): void;
   /** Pixel access for the glass sampler, or undefined with nothing to sample.
    *  The media is a DOM sibling below the canvas, so a glass panel cannot read
@@ -113,18 +120,28 @@ export function mountBackgroundMedia(
   layer.style.cssText =
     "position:absolute;inset:0;overflow:hidden;pointer-events:none;";
   options.host.prepend(layer);
+  const { assets, resolveAsset, onMediaError, onFrame } = options;
+  let background = options.background;
+  let artboardSize = {
+    width: options.artboard.width,
+    height: options.artboard.height,
+  };
+  let bounds: MediaBounds | undefined;
+  let element: HTMLImageElement | HTMLVideoElement | undefined;
+  let mountedAssetId: string | undefined;
   let disposeSource: (() => void) | undefined;
   let stopFrames: (() => void) | undefined;
   let stopDecoded: (() => void) | undefined;
-  let element: HTMLImageElement | HTMLVideoElement | undefined;
-  let fit: "theme" | "display" = "theme";
-  let artboardSize = { width: 0, height: 0 };
-  let bounds: MediaBounds | undefined;
-  const onFrame = options.onFrame;
+  let stopIntrinsic: (() => void) | undefined;
 
-  /** The layer sits on one of the two boxes; both fill it with `cover`. */
+  /**
+   * The layer is the clip: one of the two bounds boxes. The child is placed
+   * inside it by `placement`, which may extend past the clip on purpose.
+   */
   const place = (): void => {
-    const box = fit === "display" ? bounds?.display : bounds?.artboard;
+    const media = background?.media;
+    const box =
+      media?.bounds === "display" ? bounds?.display : bounds?.artboard;
     if (box === undefined) return;
     layer.style.left = `${box.left}px`;
     layer.style.top = `${box.top}px`;
@@ -132,6 +149,20 @@ export function mountBackgroundMedia(
     layer.style.bottom = "";
     layer.style.width = `${box.width}px`;
     layer.style.height = `${box.height}px`;
+    const child = element;
+    if (child === undefined || media === undefined) return;
+    const rect = placement({
+      box: { width: box.width, height: box.height },
+      source: intrinsic(child),
+      fit: media.fit ?? BACKGROUND_MEDIA_DEFAULTS.fit,
+      scale: media.scale ?? BACKGROUND_MEDIA_DEFAULTS.scale,
+      offsetX: media.offsetX ?? BACKGROUND_MEDIA_DEFAULTS.offsetX,
+      offsetY: media.offsetY ?? BACKGROUND_MEDIA_DEFAULTS.offsetY,
+    });
+    child.style.left = `${rect.left}px`;
+    child.style.top = `${rect.top}px`;
+    child.style.width = `${rect.width}px`;
+    child.style.height = `${rect.height}px`;
   };
 
   const stop = (): void => {
@@ -141,63 +172,76 @@ export function mountBackgroundMedia(
     stopFrames = undefined;
     stopDecoded?.();
     stopDecoded = undefined;
+    stopIntrinsic?.();
+    stopIntrinsic = undefined;
   };
 
-  const update = (next: BackgroundMediaUpdate): void => {
-    stop();
-    layer.replaceChildren();
-    element = undefined;
-    const media = next.artboard.backgroundMedia;
-    artboardSize = { width: next.artboard.width, height: next.artboard.height };
-    const asset = next.assets?.find(
-      (candidate) => candidate.id === media?.assetId,
-    );
-    if (media === undefined) return;
+  /** Resolves and mounts one media, reporting rather than dropping a refusal. */
+  const mount = (media: BackgroundMedia): void => {
+    const asset = assets?.find((candidate) => candidate.id === media.assetId);
     if (asset === undefined) {
-      next.onMediaError?.(
+      onMediaError?.(
         `Background media asset "${media.assetId}" is not declared by this theme.`,
       );
       return;
     }
     if (!isBackgroundAsset(asset)) {
-      next.onMediaError?.(
+      onMediaError?.(
         `Background media asset "${asset.id}" is a ${asset.kind}, which cannot be a background.`,
       );
       return;
     }
-    const source = next.resolveAsset(asset.id);
+    const source = resolveAsset(asset.id);
     if (source === undefined) {
-      next.onMediaError?.(
+      onMediaError?.(
         `Background media asset "${asset.id}" has no readable bytes.`,
       );
       return;
     }
 
-    const mounted =
+    const child =
       asset.kind === "video"
         ? document.createElement("video")
         : document.createElement("img");
-    mounted.src = source.url;
-    mounted.style.cssText =
-      "display:block;width:100%;height:100%;object-fit:cover;";
-    if (mounted instanceof HTMLVideoElement) {
-      mounted.autoplay = true;
-      mounted.muted = true;
-      mounted.loop = true;
-      mounted.playsInline = true;
+    child.src = source.url;
+    child.style.cssText = "display:block;position:absolute;";
+    if (child instanceof HTMLVideoElement) {
+      child.autoplay = true;
+      child.muted = true;
+      child.loop = true;
+      child.playsInline = true;
     }
     disposeSource = source.dispose;
-    fit = media.fit;
-    element = mounted;
-    layer.append(mounted);
-    stopFrames = followFrames(mounted, onFrame);
-    stopDecoded = notifyOnDecode(mounted, onFrame);
+    element = child;
+    mountedAssetId = asset.id;
+    layer.append(child);
+    stopFrames = followFrames(child, onFrame);
+    // Re-place before the decode repaint: the glass sample the repaint takes
+    // must read the placed rect, not the pre-load fallback.
+    stopIntrinsic = notifyOnIntrinsic(child, place);
+    stopDecoded = notifyOnDecode(child, onFrame);
+  };
+
+  const setBackground = (next: Background | undefined): void => {
+    background = next;
+    const media = next?.media;
+    if (media?.assetId !== mountedAssetId) {
+      stop();
+      layer.replaceChildren();
+      element = undefined;
+      mountedAssetId = undefined;
+      if (media !== undefined) mount(media);
+    }
     place();
   };
 
-  update(options);
+  setBackground(options.background);
   return {
-    update,
+    setBackground,
+    setArtboardSize(size) {
+      artboardSize = { width: size.width, height: size.height };
+      place();
+    },
     setBounds(next) {
       bounds = next;
       place();
@@ -205,13 +249,13 @@ export function mountBackgroundMedia(
     backdrop(): BackdropMedia | undefined {
       const mounted = element;
       if (mounted === undefined) return undefined;
-      // The rect the layer covers, in artboard units. A display-filled layer
+      // The rect the layer covers, in artboard units. A display-bounded layer
       // covers more than the artboard and may start outside it, so the glass
       // sampler is told the rect actually painted, not the board's own.
       const scale =
         bounds === undefined ? 0 : bounds.artboard.width / artboardSize.width;
       const rect =
-        fit === "display" &&
+        background?.media?.bounds === "display" &&
         bounds !== undefined &&
         scale > 0 &&
         Number.isFinite(scale)
@@ -258,6 +302,7 @@ export function mountBackgroundMedia(
     destroy() {
       stop();
       element = undefined;
+      mountedAssetId = undefined;
       layer.remove();
     },
   };
@@ -356,6 +401,22 @@ function notifyOnDecode(
   element.addEventListener("load", onLoad);
   return () => {
     element.removeEventListener("load", onLoad);
+  };
+}
+
+/**
+ * The intrinsic size arrives after the first placement — after `load` for an
+ * image, after `loadedmetadata` for a video — and the fit has nothing to fit
+ * until it does. Re-place once when it lands.
+ */
+function notifyOnIntrinsic(
+  element: HTMLImageElement | HTMLVideoElement,
+  place: () => void,
+): () => void {
+  const event = element instanceof HTMLVideoElement ? "loadedmetadata" : "load";
+  element.addEventListener(event, place);
+  return () => {
+    element.removeEventListener(event, place);
   };
 }
 
