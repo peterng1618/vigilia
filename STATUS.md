@@ -16,9 +16,9 @@ The theme store spec (phases A–G) and the theme-versioning spec are **landed**
 
 ## Last completed change
 
-- **A real submission ran end to end** from the host: `submissionFiles` minted 1.0.0, opened [PR #9](https://github.com/peterng1618/vigilia-store/pull/9), and `validate`, `auto-merge` and `regenerate / index` all passed and merged (`2f7e0a62`).
-- **The details route returned the item** with `author: "Vigilia"` and facets, and `POST /api/themes/install` landed it as `vigilia-smoke-theme` with its `origin.catalogueId` recorded.
-- **The smoke item stays public** in the catalogue; the source app-dir and stored token are under `C:\tmp\vigilia-publish`, outside the repo.
+- **4K video is allowed**: `VIDEO_LIMITS.maxLongEdge` 1920 → 4096, with a capped-CRF ladder (6 Mbit/s at 1920, 12 at 2560, 20 at 4096) so 30 s stays inside the asset cap.
+- **Audio and `+faststart` are fixed by stream copy**, not re-encode; the two new tests were red-proofed by disabling the copy branch, and the output is still re-probed.
+- **Caps raised together**: asset 80 MiB, total 90 MiB, archive 95 MiB (under GitHub's 100 MiB), zip entry 80 MiB; `wide.mp4` regenerated at 5120 px; full gate 4385 tests green.
 
 ## Next
 

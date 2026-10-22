@@ -231,12 +231,13 @@ const ASSETS_DIR = "assets";
 /** Which half of the save a scratch folder is part of. */
 type ScratchKind = "staging" | "retired";
 
-/** Chosen import bounds, not measured disk limits. They match the archive's,
- *  so neither format accepts a theme the other would refuse. */
+/** Chosen import bounds, not measured disk limits. The asset caps leave room
+ *  for the archive's envelope (95 MiB) so neither format accepts a theme the
+ *  other would refuse. */
 const MAX_THEME_FILE_BYTES = 32 * 1024 * 1024;
-const MAX_ASSET_BYTES = 32 * 1024 * 1024;
+const MAX_ASSET_BYTES = 80 * 1024 * 1024;
 const MAX_ASSET_COUNT = 128;
-const MAX_TOTAL_ASSET_BYTES = 128 * 1024 * 1024;
+const MAX_TOTAL_ASSET_BYTES = 90 * 1024 * 1024;
 
 /** Bytes as an author reads them, and the exact bytes behind them. The
  *  platform does both, so there is no size table here to drift from the bounds

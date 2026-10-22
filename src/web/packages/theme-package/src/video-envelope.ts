@@ -17,7 +17,7 @@ export interface VideoLimits {
 
 export const VIDEO_LIMITS: VideoLimits = {
   maxDurationMs: 30_000,
-  maxLongEdge: 1920,
+  maxLongEdge: 4096,
   maxFrameRate: 30,
 };
 

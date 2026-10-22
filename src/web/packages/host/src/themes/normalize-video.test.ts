@@ -65,11 +65,45 @@ describe("normalizeVideo", () => {
     expect(result.reencoded).toBe(true);
     expect(result.bytes).toEqual(encoded);
     expect(run).toHaveBeenCalledTimes(1);
-    // `contain` by default: the long edge is capped at 1920 and the frame is
+    // `contain` by default: the long edge is capped at 4096 and the frame is
     // padded to the even box rather than cropped.
     const args = run.mock.calls[0]?.[0] ?? [];
     expect(args).toContain("-vf");
-    expect(args[args.indexOf("-vf") + 1]).toMatch(/^scale=1920:168:.*,pad=/);
+    expect(args[args.indexOf("-vf") + 1]).toMatch(/^scale=4096:144:.*,pad=/);
+    expect(args[args.indexOf("-maxrate") + 1]).toBe("20000000");
+    expect(args[args.indexOf("-crf") + 1]).toBe("23");
+  });
+
+  it("drops audio by copying the video stream, without an encode", async () => {
+    const run = runWriting(fixture("conforming.mp4"));
+
+    const result = await normalizeVideo(fixture("audio.mp4"), {
+      ffmpegPath: "ffmpeg-stub",
+      run,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.reencoded).toBe(true);
+    const args = run.mock.calls[0]?.[0] ?? [];
+    expect(args[args.indexOf("-c:v") + 1]).toBe("copy");
+    expect(args).not.toContain("-vf");
+    expect(args).not.toContain("libx264");
+  });
+
+  it("moves moov by copying the video stream, without an encode", async () => {
+    const run = runWriting(fixture("conforming.mp4"));
+
+    const result = await normalizeVideo(fixture("nofaststart.mp4"), {
+      ffmpegPath: "ffmpeg-stub",
+      run,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const args = run.mock.calls[0]?.[0] ?? [];
+    expect(args[args.indexOf("-c:v") + 1]).toBe("copy");
+    expect(args).not.toContain("-vf");
   });
 
   it("refuses encoder output that does not conform to the envelope", async () => {
@@ -129,8 +163,9 @@ describe("normalizeVideo", () => {
     expect(run).toHaveBeenCalledTimes(1);
     const args = run.mock.calls[0]?.[0] ?? [];
     expect(args[args.indexOf("-vf") + 1]).toBe(
-      "scale=1920:1080:force_original_aspect_ratio=increase:force_divisible_by=2,crop=1920:1080",
+      "scale=4096:2304:force_original_aspect_ratio=increase:force_divisible_by=2,crop=4096:2304",
     );
+    expect(args[args.indexOf("-maxrate") + 1]).toBe("20000000");
     const facts = readVideoFacts(result.bytes);
     expect(facts?.width).toBe(320);
     expect(facts?.height).toBe(180);
@@ -198,7 +233,30 @@ describe("ffmpegArgs", () => {
     });
 
     expect(args[args.indexOf("-vf") + 1]).toMatch(
-      /^scale=1920:1080:.*force_original_aspect_ratio=increase.*,crop=1920:1080$/,
+      /^scale=4096:2304:.*force_original_aspect_ratio=increase.*,crop=4096:2304$/,
     );
+  });
+
+  it("caps the rate by the output's resolution", () => {
+    const at = (width: number, height: number): string => {
+      const facts = {
+        width,
+        height,
+        durationMs: 1000,
+        frameRate: 30,
+        constantFrameRate: true,
+        codec: "avc1",
+        profile: 100,
+        chromaFormat: 1,
+        hasAudio: false,
+        faststart: true,
+      };
+      const args = ffmpegArgs("in.mp4", "out.mp4", facts, "contain");
+      return args[args.indexOf("-maxrate") + 1] ?? "";
+    };
+
+    expect(at(1920, 1080)).toBe("6000000");
+    expect(at(2560, 1440)).toBe("12000000");
+    expect(at(3840, 2160)).toBe("20000000");
   });
 });

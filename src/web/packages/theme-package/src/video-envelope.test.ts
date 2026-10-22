@@ -285,9 +285,9 @@ describe("videoRefusals", () => {
 
   it("names the file and the long-edge bound", () => {
     const facts = readVideoFacts(wide)!;
-    expect(facts.width).toBe(2048);
+    expect(facts.width).toBe(5120);
     expect(videoRefusals(PATH, facts)).toEqual([
-      `${PATH}: long edge 2048 px exceeds the 1920 px maximum`,
+      `${PATH}: long edge 5120 px exceeds the 4096 px maximum`,
     ]);
   });
 
@@ -408,7 +408,7 @@ describe("videoRefusals", () => {
   it("publishes the envelope bounds", () => {
     expect(VIDEO_LIMITS).toEqual({
       maxDurationMs: 30_000,
-      maxLongEdge: 1920,
+      maxLongEdge: 4096,
       maxFrameRate: 30,
     });
   });

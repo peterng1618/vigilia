@@ -56,7 +56,7 @@ describe("theme package", () => {
   });
 
   it("refuses a valid ZIP whose declared entry exceeds the package bound", () => {
-    const large = new Uint8Array(32 * 1024 * 1024 + 1);
+    const large = new Uint8Array(80 * 1024 * 1024 + 1);
     const theme = {
       ...envelope,
       assets: [
@@ -72,7 +72,7 @@ describe("theme package", () => {
         }),
       ),
       "theme.json": strToU8(JSON.stringify(theme)),
-      "assets/large.bin": [large, { level: 0 }],
+      "assets/large.bin": large,
     });
 
     expect(readThemePackage(bytes)).toMatchObject({ ok: false });

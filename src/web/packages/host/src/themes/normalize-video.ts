@@ -17,6 +17,11 @@ import ffmpegStatic from "ffmpeg-static";
  * that already passes would degrade it a little on every resubmission. A file
  * longer than the envelope is refused rather than truncated, because a cut
  * background loop is not the one the author made.
+ *
+ * Audio and missing `+faststart` are fixed by a stream copy, not an encode:
+ * neither touches the picture, and a re-encode would spend quality to remove a
+ * track the author never sees. Everything else re-encodes with a capped-CRF
+ * ladder sized to the resolution, so a 30 s 4K loop stays inside the asset cap.
  */
 
 const USAGE = "usage: vigilia normalize-video <input.mp4> <output.mp4>";
@@ -59,6 +64,10 @@ export async function normalizeVideo(
     };
   if (videoRefusals("video", facts).length === 0)
     return { ok: true, bytes, reencoded: false };
+
+  // Decided before the encoder runs: a copy is lossless, and the output is
+  // still re-probed below because these flags are a promise rather than proof.
+  const copyOnly = copyRemuxSuffices(facts);
   // Refused before the encoder is even resolved: a 31-second loop is not made
   // conforming by re-encoding it, and trimming it would discard the author's
   // footage silently.
@@ -96,7 +105,9 @@ export async function normalizeVideo(
     const output = path.join(directory, "out.mp4");
     await writeFile(input, bytes);
     const outcome = await run(
-      ffmpegArgs(input, output, facts, fit, options.aspect),
+      copyOnly
+        ? remuxArgs(input, output)
+        : ffmpegArgs(input, output, facts, fit, options.aspect),
     );
     // The child's stderr can carry paths and encoder internals; the sentence
     // names the failure without echoing them.
@@ -142,6 +153,8 @@ export function ffmpegArgs(
   fit: "cover" | "contain",
   aspect?: NormalizeAspect,
 ): string[] {
+  const box = targetBox(facts, fit, aspect);
+  const cap = bitrateCap(Math.max(box.width, box.height));
   return [
     "-hide_banner",
     "-nostdin",
@@ -160,13 +173,55 @@ export function ffmpegArgs(
     "-pix_fmt",
     "yuv420p",
     "-crf",
-    "22",
+    "23",
+    // CRF alone lets a hard 4K frame spend more than the asset cap allows.
+    // Capping the rate keeps 30 s inside 80 MiB and still lets easy scenes
+    // spend far less than the cap.
+    "-maxrate",
+    String(cap),
+    "-bufsize",
+    String(cap * 2),
     "-movflags",
     "+faststart",
     "-f",
     "mp4",
     output,
   ];
+}
+
+/** A copy that drops audio and moves `moov` forward, for the two faults that
+ *  do not touch the picture. `-c:v copy` keeps the encoder out of it. */
+function remuxArgs(input: string, output: string): string[] {
+  return [
+    "-hide_banner",
+    "-nostdin",
+    "-y",
+    "-i",
+    input,
+    "-an",
+    "-c:v",
+    "copy",
+    "-movflags",
+    "+faststart",
+    "-f",
+    "mp4",
+    output,
+  ];
+}
+
+/** The file's only faults are audio and/or faststart, so a copy can fix it. */
+function copyRemuxSuffices(facts: VideoFacts): boolean {
+  return (
+    videoRefusals("video", { ...facts, hasAudio: false, faststart: true })
+      .length === 0
+  );
+}
+
+/** The capped-CRF ladder, in bits per second, by the output's long edge. */
+function bitrateCap(longEdge: number): number {
+  if (longEdge <= 1920) return 6_000_000;
+  if (longEdge <= 2560) return 12_000_000;
+  return 20_000_000;
 }
 
 /**
@@ -184,13 +239,22 @@ function scaleFilter(
   fit: "cover" | "contain",
   aspect: NormalizeAspect | undefined,
 ): string {
-  const box =
-    fit === "cover" && validAspect(aspect)
-      ? boxForAspect(aspect)
-      : boxForSource(facts.width, facts.height);
+  const box = targetBox(facts, fit, aspect);
   return fit === "cover"
     ? `scale=${box.width}:${box.height}:force_original_aspect_ratio=increase:force_divisible_by=2,crop=${box.width}:${box.height}`
     : `scale=${box.width}:${box.height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${box.width}:${box.height}:(ow-iw)/2:(oh-ih)/2:color=black`;
+}
+
+/** The box the output lands in: the aspect's for `cover`, the source's for
+ *  `contain`. One owner, so the scale filter and the rate cap agree. */
+function targetBox(
+  facts: VideoFacts,
+  fit: "cover" | "contain",
+  aspect: NormalizeAspect | undefined,
+): { readonly width: number; readonly height: number } {
+  return fit === "cover" && validAspect(aspect)
+    ? boxForAspect(aspect)
+    : boxForSource(facts.width, facts.height);
 }
 
 /** The source box, capped at the long edge and never upscaled. */

@@ -1861,11 +1861,11 @@ describe("ThemeStore asset bounds", () => {
     await expect(
       store.write(
         "living-room",
-        themeWith("living-room", [["assets/big.png", 33 * MIB]], "Renamed"),
+        themeWith("living-room", [["assets/big.png", 81 * MIB]], "Renamed"),
       ),
     ).rejects.toThrow(
-      'Asset "assets/big.png" is 33 MB (34,603,008 bytes); one asset may be ' +
-        "at most 32 MB (33,554,432 bytes). Shrink or remove it, then save again.",
+      'Asset "assets/big.png" is 81 MB (84,934,656 bytes); one asset may be ' +
+        "at most 80 MB (83,886,080 bytes). Shrink or remove it, then save again.",
     );
 
     // Nothing was renamed into place, so the stored theme is the one the
@@ -1883,27 +1883,27 @@ describe("ThemeStore asset bounds", () => {
     await expect(
       store.write(
         "living-room",
-        themeWith("living-room", [["assets/big.png", 32 * MIB]]),
+        themeWith("living-room", [["assets/big.png", 80 * MIB]]),
       ),
     ).resolves.toMatchObject({ id: "living-room" });
     expect(
       (await store.read("living-room"))?.assets["assets/big.png"]?.byteLength,
-    ).toBe(32 * MIB);
+    ).toBe(80 * MIB);
 
     await expect(
       store.write(
         "living-room",
-        themeWith("living-room", [["assets/big.png", 32 * MIB + 1]]),
+        themeWith("living-room", [["assets/big.png", 80 * MIB + 1]]),
       ),
     ).rejects.toThrow(ThemeAssetLimitError);
     // The refused save did not shrink the theme to the size it accepted.
     expect(
       (await store.read("living-room"))?.assets["assets/big.png"]?.byteLength,
-    ).toBe(32 * MIB);
+    ).toBe(80 * MIB);
   });
 
   it("holds read and write to the same per-asset bound, at the boundary", async () => {
-    for (const length of [32 * MIB, 32 * MIB + 1]) {
+    for (const length of [80 * MIB, 80 * MIB + 1]) {
       const saved = `saved-${length}`;
       const placed = `placed-${length}`;
 
@@ -1946,10 +1946,8 @@ describe("ThemeStore asset bounds", () => {
         themeWith(
           "living-room",
           [
-            ["assets/a.png", 32 * MIB],
-            ["assets/b.png", 32 * MIB],
-            ["assets/c.png", 32 * MIB],
-            ["assets/d.png", 32 * MIB],
+            ["assets/a.png", 46 * MIB],
+            ["assets/b.png", 46 * MIB],
             ["assets/e.png", 1],
           ],
           "Living Room",
@@ -1957,8 +1955,8 @@ describe("ThemeStore asset bounds", () => {
         ),
       ),
     ).rejects.toThrow(
-      "This theme's assets come to 128 MB (134,217,729 bytes); together " +
-        "they may be at most 128 MB (134,217,728 bytes). Shrink or remove " +
+      "This theme's assets come to 92 MB (96,468,992 bytes); together " +
+        "they may be at most 90 MB (94,371,840 bytes). Shrink or remove " +
         "one, then save again.",
     );
     expect(await store.read("living-room")).toBeUndefined();
@@ -1970,7 +1968,7 @@ describe("ThemeStore asset bounds", () => {
     // written before the write path had a bound to hold it to. It cannot be
     // opened, so the editor's next save carries no bytes for it at all — and
     // that is exactly when the store has to weigh it or a refusal is skipped.
-    const onDisk = themeWith("living-room", [["assets/big.png", 33 * MIB]]);
+    const onDisk = themeWith("living-room", [["assets/big.png", 81 * MIB]]);
     const base = await placeOnDisk("living-room", onDisk);
     expect(await store.read("living-room")).toBeUndefined();
 
@@ -1986,7 +1984,7 @@ describe("ThemeStore asset bounds", () => {
         },
         { base },
       ),
-    ).rejects.toThrow('Asset "assets/big.png" is 33 MB');
+    ).rejects.toThrow('Asset "assets/big.png" is 81 MB');
     expect(
       await fs.readFile(path.join(stored("living-room"), "theme.json"), "utf8"),
     ).toBe(JSON.stringify(onDisk.envelope));

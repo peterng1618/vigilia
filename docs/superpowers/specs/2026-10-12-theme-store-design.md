@@ -187,8 +187,8 @@ is that browsing and downloading touch no API at all.
 - `0009`, `0010`, `0023` — asset URLs are base + declared path, served as their
   own type; the code decides what a theme may carry.
 - **Bounds already exist and are enforced in both directions** in
-  `host/src/themes/store.ts`: `MAX_ASSET_BYTES` 32 MiB, `MAX_ASSET_COUNT` 128,
-  `MAX_TOTAL_ASSET_BYTES` 128 MiB, `MAX_THEME_FILE_BYTES` 32 MiB. `assetBounds`
+  `host/src/themes/store.ts`: `MAX_ASSET_BYTES` 80 MiB, `MAX_ASSET_COUNT` 128,
+  `MAX_TOTAL_ASSET_BYTES` 90 MiB, `MAX_THEME_FILE_BYTES` 32 MiB. `assetBounds`
   runs on save and the same refusals run on load.
 - **The listing already reads every envelope.** `ThemeStore.list()` validates each
   stored document and `entryFor` takes the envelope, which is where the `author` a
@@ -846,25 +846,31 @@ an unbounded video makes package size unbounded — which is the one thing that
 breaks a zero-cost host. The normalizing rules below are what turn hosting from a
 gamble into a budget.
 
-**Size cap — already exists (32 MiB per asset, 128 MiB total).** A cap alone
-refuses without letting an author predict the outcome, because
-**bitrate × duration** is what fills it.
+**Size cap — 80 MiB per asset, 90 MiB of assets in total.** A cap alone refuses
+without letting an author predict the outcome, because **bitrate × duration** is
+what fills it.
 
-**Duration cap — proposed at 30 seconds.** At the existing per-asset cap against
-a 1080p background loop (realistically 3–8 Mbit/s at CRF 22), 30 seconds lands at
-roughly 22–30 MiB and fits with headroom. The total cap then gives the number
-that decides hosting: **worst-case package is 128 MiB, so worst-case egress per
-download is known before a host is chosen.**
+**Duration cap — 30 seconds.** The normalizer's capped-CRF ladder (below) fits a
+30-second 4K loop at 20 Mbit/s into roughly 75 MiB. The archive cap is **95 MiB**,
+below GitHub's 100 MiB per-file limit, so the item's zip can always be committed
+to the catalogue.
 
-**Resolution ceiling — proposed at 1920 on the long edge.** Without it, a 4K
-source halves the permitted duration for no visible gain at dashboard size.
+**Resolution ceiling — 4096 on the long edge.** A theme may target a 2K or 4K
+artboard, so the video cap follows it; the previous 1920 cap would have refused a
+4K loop the theme itself renders at full size. The cost is decode work on the
+player and a bigger download, both bounded by the rate cap.
 
 ### The publish-time normalizer
 
 An author-facing helper resizes and re-encodes a source video into the envelope,
 so the store receives a predictable artifact rather than whatever was recorded.
 Reuse `§171`'s shape — images are already downscaled on import past a bound — and
-apply the same rule to video.
+apply the same rule to video. It re-encodes at CRF 23 with `maxrate` scaled by
+the output's long edge (6 Mbit/s at 1920, 12 at 2560, 20 at 4096, `bufsize` at
+twice the cap), so quality tracks resolution while the file stays inside the
+asset cap. When audio and/or a missing `+faststart` is the only fault, it copies
+the video stream (`-c:v copy -an`) instead: removing a track costs no picture
+quality, and a re-encode for it would.
 
 The envelope, each item earning its place:
 
@@ -1043,7 +1049,7 @@ of the decision rather than a placeholder:
      per user).
    - **B — the package rides in the catalogue repo beside `item.json`.** No
      releases and no re-homing, and the diff shows everything including the
-     bytes. Costs up to 128 MiB per item in git history permanently, and GitHub
+     bytes. Costs up to 95 MiB per item in git history permanently, and GitHub
      exposes **no download count for repository files**, so "downloads" stops
      being a sort.
    - **C — an object store with signed uploads.** It is a server, which is the
@@ -1062,13 +1068,13 @@ of the decision rather than a placeholder:
    arriving one step later rather than being solved. The re-home also has to be
    delete-then-upload (`422` on a name collision) and its follow-up commit starts
    no workflow, so nothing re-validates the rewritten URL. **Option B does not
-   have those three problems and has one of its own**: 128 MiB in git history per
+   have those three problems and has one of its own**: 95 MiB in git history per
    item, against GitHub's own soft guidance of "ideally less than 1 GB" and "less
    than 5 GB is strongly recommended" per repository, and no download count for
    repository files. **Which is cheaper is a question about how big an item really
    is**, and that is now measurable rather than arguable: the caps in phase F
    bound the video, so the number to decide against is F's own bound rather than
-   128 MiB. **DECIDED 2026-10-21: deferred to phase D's plan, with A still leaning.** The
+   95 MiB. **DECIDED 2026-10-21: deferred to phase D's plan, with A still leaning.** The
    owner's ruling is that D's plan opens with the probe named above — whether `download_count`
    survives a re-home — and the choice is taken against that measurement rather than the doubt.
 
@@ -1085,7 +1091,7 @@ of the decision rather than a placeholder:
    store's, and the follow-up commit that rewrites the URL starts no workflow, so
    nothing re-validates it. **B has none of those, and its one cost is bounded by
    a number this design already owns**: the reader refuses a package past
-   `MAX_ARCHIVE_BYTES` (64 MiB), which sits under GitHub's per-file block, so
+   `MAX_ARCHIVE_BYTES` (95 MiB), which sits under GitHub's per-file block, so
    **every package this product will accept is a file the catalogue repo can
    store** — no releases, no re-home Action, no LFS. What B gives up is a
    download counter, and under the measured A that is per-version rather than per
@@ -1194,7 +1200,7 @@ obvious leaning.
   description, because the REST pages list fine-grained permissions and no OAuth
   scopes at all. The README owes that step, not this document.
 - **Release assets, as a ceiling.** 2 GiB per file, 1000 per release, and "no
-  limit on the total size of a release, nor bandwidth usage". A 128 MiB item is
+  limit on the total size of a release, nor bandwidth usage". A 95 MiB item is
   two orders of magnitude inside the file limit, so the reason to doubt release
   assets was never their size.
 - **The re-home, which is now option A's weakest link.** Three of its premises are
@@ -1222,7 +1228,8 @@ obvious leaning.
   **12 hours at the edge and 7 days in the client's own cache**, and purge "will
   not work for static files", needs valid semver and is granted by email. GitHub
   Pages is no better for the job: a published site "may be no larger than 1 GB"
-  against a soft 100 GB per month, which is 800 downloads of one 128 MiB item.
+  against a soft 100 GB per month, which is about a thousand downloads of one
+  95 MiB item.
 - **Actions minutes are not the constraint.** "GitHub Actions usage is free for
   self-hosted runners and for public repositories that use standard GitHub-hosted
   runners" — not the word *unlimited*, but with no public-repo quota stated
