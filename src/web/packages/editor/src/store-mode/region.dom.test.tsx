@@ -3065,6 +3065,9 @@ function mineHost(options: {
   readonly signedIn?: boolean;
   readonly entries?: readonly unknown[] | (() => readonly unknown[]);
   readonly sessionStatus?: number;
+  /** The author's own listing's answer, so a case can make the re-read after a
+   *  command fail without failing the first read. */
+  readonly mineStatus?: number | (() => number);
   readonly transitions?: readonly Response[];
   readonly onTransition?: (path: string) => void;
 }): { readonly fetch: typeof fetch; readonly calls: string[] } {
@@ -3087,6 +3090,11 @@ function mineHost(options: {
       );
     }
     if (path === "/api/store/mine") {
+      const status =
+        typeof options.mineStatus === "function"
+          ? options.mineStatus()
+          : (options.mineStatus ?? 200);
+      if (status !== 200) return new Response("", { status });
       const entries =
         typeof options.entries === "function"
           ? options.entries()
@@ -3403,5 +3411,155 @@ it("announces the store's refusal and leaves the item as it was", async () => {
   expect(
     statusAction("unpublish"),
     "a refused change moved the item's state",
+  ).not.toBeNull();
+});
+
+/**
+ * **The most recent command is what the region speaks.** An install's sentence
+ * outlives the press that made it, so an older success must not sit in front of
+ * a fresh refusal — a screen reader would never hear that the change was
+ * refused.
+ */
+it("speaks a status refusal even while an install sentence still stands", async () => {
+  const refusal = "Only the author may withdraw this item.";
+  const host = mineHost({
+    entries: [mineEntry("published")],
+    transitions: [
+      new Response(JSON.stringify({ ok: false, message: refusal }), {
+        status: 403,
+      }),
+    ],
+  });
+  const withInstall = (async (input: RequestInfo | URL, init?: RequestInit) =>
+    String(input) === "/api/themes/install"
+      ? new Response(JSON.stringify({ ok: true }), { status: 200 })
+      : host.fetch(input, init)) as typeof fetch;
+  vi.stubGlobal("fetch", withInstall);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        '[data-yunari-store-item-install="install"]',
+      ),
+      "Install control",
+    ).click(),
+  );
+  await settle();
+  expect(
+    announcement(),
+    "the install did not speak first, so this case proves nothing",
+  ).toBe(uiCopy.store.install.installed("Withdrawn theme"));
+
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    announcement(),
+    "an older install sentence shadowed the status refusal",
+  ).toBe(refusal);
+});
+
+/**
+ * **A change the store accepted but the client could not read back is still
+ * spoken.** Silence would leave the old state on screen with no word saying the
+ * command landed; the listing is unchanged because there is no answer to draw.
+ */
+it("says a change was saved when the author's rows cannot be re-read", async () => {
+  let mineReads = 0;
+  const host = mineHost({
+    entries: [mineEntry("published")],
+    mineStatus: () => (mineReads++ === 0 ? 200 : 500),
+    transitions: [
+      new Response(JSON.stringify({ ok: true, status: "unpublished" }), {
+        status: 200,
+      }),
+    ],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    announcement(),
+    "a saved change with a failed re-read is not spoken",
+  ).toBe(uiCopy.store.status.unrefreshed);
+  expect(
+    document.body.querySelector("[data-yunari-store-status]"),
+    "a failed re-read invented a state",
+  ).toBeNull();
+  expect(
+    statusAction("unpublish"),
+    "a failed re-read moved the item's state",
+  ).not.toBeNull();
+});
+
+/**
+ * **Republish is the other direction, and it re-reads too.** The path names
+ * `/publish`, the state drawn afterwards is the listing's, and the modal offers
+ * the command that state now allows rather than the one that was pressed.
+ */
+it("republishes an unpublished item and redraws it from the re-read", async () => {
+  let state = "unpublished";
+  const host = mineHost({
+    entries: () => [mineEntry(state)],
+    transitions: [
+      new Response(JSON.stringify({ ok: true, status: "published" }), {
+        status: 200,
+      }),
+    ],
+    onTransition: () => {
+      state = "published";
+    },
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-status]"),
+      "status badge",
+    ).textContent,
+    "an unpublished row does not draw its state",
+  ).toBe(uiCopy.store.status.unpublished);
+
+  await act(async () =>
+    must(statusAction("republish"), "Republish control").click(),
+  );
+  await settle();
+
+  expect(
+    host.calls.filter((path) => path === `/api/store/items/${MINE_ID}/publish`),
+    "the press did not post the publish command",
+  ).toHaveLength(1);
+  expect(
+    host.calls.filter((path) => path === "/api/store/mine"),
+    "the successful republish did not re-read the author's own rows",
+  ).toHaveLength(2);
+  expect(
+    document.body.querySelector("[data-yunari-store-status]"),
+    "the re-read published state still draws a badge",
+  ).toBeNull();
+  expect(
+    statusAction("unpublish"),
+    "the redrawn modal does not offer Unpublish for a published row",
   ).not.toBeNull();
 });

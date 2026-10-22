@@ -603,6 +603,18 @@ export function ItemModal(props: {
       : authorAction === "republish"
         ? props.onRepublish
         : undefined;
+  // What the state means: the owner's reason where the store gave one, and —
+  // for a removed row — that it cannot come back, **whether or not a reason
+  // exists**: the Worker omits the reason when it has none, and permanence is
+  // the state's own fact rather than the reason's.
+  const statusNote =
+    item.status === "rejected"
+      ? item.statusReason
+      : item.status === "removed"
+        ? item.statusReason === undefined
+          ? uiCopy.store.status.removedPermanent
+          : `${item.statusReason} ${uiCopy.store.status.removedPermanent}`
+        : undefined;
 
   return (
     <DialogPrimitive.Root
@@ -692,10 +704,8 @@ export function ItemModal(props: {
             </span>
           )}
 
-          {/* **What the state means, where the badge is only a word**: what a
-              pending row waits for, the owner's own reason on a rejected or
-              removed row, and — for a removed one — that it cannot come back.
-              The sentence sits above the footer because it is not a press. */}
+          {/* **What the state means, where the badge is only a word.** The
+              sentence sits above the footer because it is not a press. */}
           {item.status === "pending" ? (
             <span
               data-yunari-store-item-status-note=""
@@ -704,18 +714,14 @@ export function ItemModal(props: {
               {uiCopy.store.status.pendingReview}
             </span>
           ) : null}
-          {(item.status === "rejected" || item.status === "removed") &&
-          item.statusReason !== undefined ? (
+          {statusNote === undefined ? null : (
             <span
               data-yunari-store-item-status-note=""
               className="block px-[var(--space-24)] pb-[var(--space-16)] text-xs text-warn"
             >
-              {item.statusReason}
-              {item.status === "removed"
-                ? ` ${uiCopy.store.status.removedPermanent}`
-                : null}
+              {statusNote}
             </span>
-          ) : null}
+          )}
 
           <span className="flex items-center gap-[var(--space-8)] border-t border-edge px-[var(--space-24)] py-[var(--space-16)]">
             <span className="flex-1" />

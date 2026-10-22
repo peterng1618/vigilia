@@ -784,15 +784,15 @@ function StoreRegion(props: {
           **The install and the submission share it** rather than each mounting
           their own: two live regions are two announcements, and the modal's
           outside-hiding spares only `[aria-live]` nodes. A status change's
-          refusal shares it too. An install's sentence wins where two exist,
-          which is the one state the region was already announcing. */}
+          refusal shares it too, and **the newest command's sentence wins**:
+          a stale install success must not sit in front of a fresh refusal. */}
       <span
         data-yunari-store-install-announcement=""
         role="status"
         aria-live="polite"
         className="sr-only"
       >
-        {install.announcement || submit.announcement || online.announcement}
+        {online.announcement || install.announcement || submit.announcement}
       </span>
     </div>
   );

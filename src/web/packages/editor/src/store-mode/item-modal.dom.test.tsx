@@ -1193,3 +1193,28 @@ it("draws no status at all for an item the listing gives no state", async () => 
     "an item with no state lost its own four actions",
   ).not.toBeNull();
 });
+
+/**
+ * **A removed row says it cannot come back even with no reason.** The Worker
+ * omits `statusReason` when it has none, and the permanent sentence is the
+ * state's own fact rather than the reason's — gating it on the reason leaves a
+ * badge and nothing else.
+ */
+it("states a removed item's permanence even when the store gave no reason", async () => {
+  const item = onlineItem();
+  await mount(
+    modalFor({ ...item, status: "removed" }, [], NO_INSTALL, NO_SUBMIT, {
+      onUnpublish: () => {},
+      onRepublish: () => {},
+    }),
+  );
+
+  expect(
+    must(statusBadge(), "status badge").textContent,
+    "the badge does not carry the removed word",
+  ).toBe(uiCopy.store.status.removed);
+  expect(
+    document.body.textContent,
+    "a removed item with no reason does not say it cannot come back",
+  ).toContain(uiCopy.store.status.removedPermanent);
+});

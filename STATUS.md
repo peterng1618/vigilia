@@ -18,9 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **A Mine row carries its state as a word** after its name, in the cell and the modal; `published` draws none because the public listing is its badge.
-- **The modal offers the one command a state allows** — Unpublish for `published`, Republish for `unpublished` — and states what a pending row waits for or why a rejected or removed one stopped.
-- **A withdrawal re-reads the author's own rows** rather than writing the answer's status, and a refusal is spoken in the store's one live region.
+- **A removed row says it cannot be republished even with no reason**, because the Worker omits the reason and permanence belongs to the state.
+- **The newest command's sentence wins the store's live region**, so a fresh status refusal is heard over an older install success.
+- **Republish and the saved-but-not-refreshed branch are pinned** by region cases proving `/publish`, the re-read, and the spoken fallback.
 
 ## Next
 
