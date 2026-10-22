@@ -3,6 +3,7 @@ import { isLoopbackOrigin, returnPage } from "./auth/return-page.js";
 import { sessionOf } from "./auth/session.js";
 import { createAuth } from "./auth.js";
 import type { Env } from "./env.js";
+import { handleAdmin } from "./routes/admin.js";
 import { handleMe } from "./routes/me.js";
 import { handlePublic } from "./routes/public.js";
 
@@ -36,6 +37,8 @@ export default {
     }
     const meResponse = await handleMe(request, env, url);
     if (meResponse !== undefined) return meResponse;
+    const adminResponse = await handleAdmin(request, env, url);
+    if (adminResponse !== undefined) return adminResponse;
     const publicResponse = await handlePublic(request, env, url);
     if (publicResponse !== undefined) return publicResponse;
     return new Response("Not found", { status: 404 });

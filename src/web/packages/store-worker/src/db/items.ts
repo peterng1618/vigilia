@@ -161,6 +161,37 @@ export async function markFinalized(
 }
 
 /**
+ * The one guarded status write every owner and author transition reuses.
+ *
+ * `from` is a precondition, not advice: two actors racing on one item leave the
+ * loser with `false` instead of a state neither asked for. A null `reason`
+ * clears the stored sentence, so a rejection cannot outlive a later publish.
+ * Each timestamp only moves on the transition it names.
+ */
+export async function setStatus(
+  db: D1Database,
+  itemId: string,
+  from: readonly string[],
+  to: string,
+  at: string,
+  reason: string | null = null,
+): Promise<boolean> {
+  const placeholders = from.map(() => "?").join(", ");
+  const result = await db
+    .prepare(
+      `UPDATE item SET status = ?, updated_at = ?,
+         published_at = CASE WHEN ? = 'published' THEN ? ELSE published_at END,
+         unpublished_at = CASE WHEN ? = 'unpublished' THEN ? ELSE unpublished_at END,
+         removed_at = CASE WHEN ? = 'removed' THEN ? ELSE removed_at END,
+         status_reason = ?
+       WHERE id = ? AND status IN (${placeholders})`,
+    )
+    .bind(to, at, to, at, to, at, to, at, reason, itemId, ...from)
+    .run();
+  return result.meta.changes > 0;
+}
+
+/**
  * The one counter the store owns. The status predicate is repeated here rather
  * than trusted from the caller's read: an unpublish between the read and this
  * write must not count, and the answer says whether it did.
