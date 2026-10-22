@@ -17,11 +17,11 @@ The theme store spec (phases A–G) and the theme-versioning spec are **landed a
 
 ## Last completed change
 
-- **Task 5.3 close**: the versioning spec carries a landing note per phase; the plan moved to `docs/superpowers/plans/archive/`; both queued plans were checked for dependency and have none.
-- **Browser evidence**: `editor-rail.spec.ts` gains the published-version sentence and the remix credit, with captures `store-submit-version-desktop-chromium.png` and `store-remix-credit-desktop-chromium.png` registered and inspected; the file runs 35/35 green.
-- **A copy-surfaces red the gate never reached** — the `Remix` label was a dialog literal outside `uiCopy` — was found and fixed; the word now lives in the copy table.
-- **Red-proofs restored and `cmp`-verified**: the CI version comparison let a lying item pass, `editorMetadata` off the ignored list computed `patch`, and a broken parent lookup rendered the credit as text.
-- **The gate is red only at `design:check`** (remainder 20 against ceiling 19, `vg-626`/`vg-426`); `typecheck` and the unit suite ran green separately.
+- **Final review fix wave** (theme-versioning): the library chooser gains Duplicate for origin-less themes beside Remix for installed ones, and a duplicate mounts under a fresh UUID with no credit; the remix base now clears after the handover.
+- **Catalogue CI**: a first submission's package must record `metadata.version` 1.0.0, so header and package agree before the ladder runs.
+- **Docs**: the ignored-field list names `id`, the ownership map names the ladder, the catalogue-id shape and `published-item`, and the screenshot checklist's stale "eleven" and two truncated titles were corrected.
+- **Store**: `index.yml` pins app `682379fc`, whose catalogue reader carries `remixOf`; branch `ci/catalogue-workflows` pushed at `c907bf9`.
+- **Verification**: focused suites 67/67 green, `typecheck` and `biome check` on changed files green, and each behavioural test was red-proofed by reverting its fix.
 
 ## Next
 
@@ -34,7 +34,7 @@ The theme store spec (phases A–G) and the theme-versioning spec are **landed a
 ## Blockers / unverified
 
 - **`npm run gate` is RED at `design:check`**: remainder 20 against a ceiling of 19, and the chain stops there, so `typecheck` and `test` were read separately (`vg-626`, `vg-426`).
-- **`capture-freshness` is red at `vg-402`**: 11 registered captures predate the chrome changes.
+- **`capture-freshness` is RED separately, not hidden behind the gate**: 11 registered captures predate the chrome changes (`vg-402`); the gate never reaches it, so this is its own red.
 - **The auto-merge workflow's unverified-author and ownership arms are reasoned from the YAML**, not exercised: both need a second GitHub account with a fork.
 - **The catalogue is empty**, so no store claim has run against real items, and no normalized video has been played back in a browser.
 - **`server.test.ts` flakes on assignment cases** in about one full run in three, measured pre-existing at `5e5be86f` (`vg-695`).

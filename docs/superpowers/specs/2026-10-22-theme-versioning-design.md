@@ -92,12 +92,14 @@ always errs.
 
 ### Ignored fields
 
-`fabricVersion`, `scene.version`, `editorMetadata` (whole member),
+`fabricVersion`, `id`, `scene.version`, `editorMetadata` (whole member),
 `metadata.version`, `metadata.createdAt`, `metadata.updatedAt`.
 
 An editor upgrade, a save, or a re-publish must not force a release, and these
-are the fields such events move. Tags are compared as a set: reordering them is
-no change.
+are the fields such events move. `id` is ignored because the diff runs only
+between documents already proven to be the same item, so it cannot be telling
+the ladder about a different theme. Tags are compared as a set: reordering them
+is no change.
 
 ### Top-level members not in the table
 

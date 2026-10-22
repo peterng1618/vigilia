@@ -228,6 +228,37 @@ describe("the library chooser", () => {
     });
   });
 
+  it("offers a duplicate only for a theme the host records no catalogue parent for", async () => {
+    const pending = open([
+      installedTheme("from-store", "Store theme"),
+      listedTheme("mine", "My theme"),
+    ]);
+    const duplicate = duplicateButton();
+
+    // A template is not a stored theme, and a theme with an origin gains Remix
+    // instead: a duplicate beside either would offer a copy with no reason.
+    expect(duplicate.disabled).toBe(true);
+
+    await chooseIn("theme", "mine");
+    expect(duplicate.disabled).toBe(false);
+
+    await chooseIn("theme", "from-store");
+    expect(duplicate.disabled).toBe(true);
+
+    await pressButton("[data-vigilia-library-cancel]");
+    await expect(pending).resolves.toBeUndefined();
+  });
+
+  it("duplicates the chosen theme without inventing a parent", async () => {
+    const pending = open([listedTheme("mine", "My theme")]);
+    await chooseIn("theme", "mine");
+    await pressButton("[data-vigilia-library-duplicate]");
+
+    // There is no catalogue item to name, so the answer carries only the id the
+    // caller reads the theme by — no `remixOf`.
+    await expect(pending).resolves.toEqual({ kind: "duplicate", id: "mine" });
+  });
+
   it("confirms by name before removing, and the row goes afterwards", async () => {
     const removed: string[] = [];
     const pending = open([listedTheme("mine", "My theme")], {
@@ -572,6 +603,14 @@ function remixButton(): HTMLButtonElement {
     "[data-vigilia-library-remix]",
   );
   if (button === null) throw new Error("no remix control");
+  return button;
+}
+
+function duplicateButton(): HTMLButtonElement {
+  const button = document.querySelector<HTMLButtonElement>(
+    "[data-vigilia-library-duplicate]",
+  );
+  if (button === null) throw new Error("no duplicate control");
   return button;
 }
 

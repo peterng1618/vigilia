@@ -79,6 +79,29 @@ function remixedEnvelope(
 }
 
 /**
+ * The document a duplicate opens as: a new document with no credit and its own
+ * name.
+ *
+ * The same four fields are **deleted, not blanked**, for the same reason: they
+ * describe the stored copy, and a duplicate is a first version of its own. A
+ * duplicate names no parent, because the host held no origin record for the
+ * theme it copied.
+ */
+function duplicatedEnvelope(stored: FabricThemeEnvelope): FabricThemeEnvelope {
+  const kept: Record<string, unknown> = { ...(stored.metadata ?? {}) };
+  for (const key of ["version", "createdAt", "updatedAt", "author"]) {
+    delete kept[key];
+  }
+  return {
+    ...stored,
+    id: crypto.randomUUID(),
+    ...(stored.metadata === undefined
+      ? {}
+      : { metadata: kept as ThemeMetadata }),
+  };
+}
+
+/**
  * What the manager needs of the document it saves, which is the session's.
  *
  * A port rather than the session itself: the manager must not know how a
@@ -204,6 +227,10 @@ export class ThemeLibraryManager {
         await options.onNewFromStarter();
         return;
       }
+      if (choice.kind === "duplicate") {
+        await this.#openDuplicate(client, choice.id);
+        return;
+      }
       if (choice.kind === "remix") {
         await this.#openRemix(client, choice.id, choice.remixOf);
         return;
@@ -266,11 +293,31 @@ export class ThemeLibraryManager {
   ): Promise<void> {
     const options = this.#options;
     const opened = await client.open(id);
-    this.#base = undefined;
     await options.onOpenTheme?.(
       remixedEnvelope(opened.envelope, remixOf),
       opened.assets,
     );
+    // Cleared only once the document has been handed over: a handover that
+    // fails leaves the open document where it was, still gated by its base
+    // (`vg-642`).
+    this.#base = undefined;
+  }
+
+  /**
+   * Reads an origin-less theme and mounts it as a new document that names no
+   * parent.
+   *
+   * **No base**, for the same reason a remix has none: the copy's id is fresh,
+   * so its first save must not be a gated write against the theme it copied.
+   */
+  async #openDuplicate(client: ThemeLibraryClient, id: string): Promise<void> {
+    const options = this.#options;
+    const opened = await client.open(id);
+    await options.onOpenTheme?.(
+      duplicatedEnvelope(opened.envelope),
+      opened.assets,
+    );
+    this.#base = undefined;
   }
 
   /**

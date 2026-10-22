@@ -95,10 +95,15 @@ async function itemDirectory(input: {
   return directory;
 }
 
-/** A package carrying the theme `id`, written by the app's own writer. */
+/** A package carrying the theme `id`, written by the app's own writer. The
+ *  first publication's package records the version its header says. */
 function packageBytesFor(id: string): Uint8Array {
+  const theme = themeFor(id);
   const written = writeThemePackage({
-    envelope: themeFor(id),
+    envelope: {
+      ...theme,
+      metadata: { ...theme.metadata, version: "1.0.0" },
+    },
     assets: {},
   });
   if (!written.ok) throw new Error(written.message);
@@ -169,7 +174,11 @@ function packageBytesWithRemix(
   const written = writeThemePackage({
     envelope: {
       ...theme,
-      metadata: { ...theme.metadata, remixOf: remix },
+      metadata: {
+        ...theme.metadata,
+        version: "1.0.0",
+        remixOf: remix,
+      },
     },
     assets: {},
   });
@@ -179,9 +188,11 @@ function packageBytesWithRemix(
 
 /** A package declaring one video asset, carrying the over-cap fixture. */
 function packageWithLongVideo(id: string): Uint8Array {
+  const theme = themeFor(id);
   const written = writeThemePackage({
     envelope: {
-      ...themeFor(id),
+      ...theme,
+      metadata: { ...theme.metadata, version: "1.0.0" },
       assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
     },
     assets: { "assets/clip.mp4": LONG_VIDEO },
@@ -438,6 +449,36 @@ describe("validateCatalogueItem — the version the ladder computes", () => {
       ok: false,
       id: ID,
       reason: 'a first submission must be version 1.0.0, not "1.4.0".',
+    });
+  });
+
+  it("refuses a first submission whose package records another version", async () => {
+    // The header can say 1.0.0 while the package its own bytes say otherwise;
+    // the package's version is what the host installs, so both must agree.
+    const directory = await itemDirectory({
+      id: ID,
+      packageBytes: packageBytesOf(envelopeWith(ID, { version: "1.4.0" })),
+    });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: false,
+      id: ID,
+      reason:
+        'a first submission\'s package must record metadata.version 1.0.0, not "1.4.0".',
+    });
+  });
+
+  it("refuses a first submission whose package records no metadata.version", async () => {
+    const directory = await itemDirectory({
+      id: ID,
+      packageBytes: packageBytesOf(envelopeWith(ID)),
+    });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: false,
+      id: ID,
+      reason:
+        "a first submission's package must record metadata.version 1.0.0; it records none.",
     });
   });
 

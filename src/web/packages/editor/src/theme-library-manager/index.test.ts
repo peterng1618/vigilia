@@ -398,6 +398,71 @@ describe("ThemeLibraryManager", () => {
     expect(manager.isStored()).toBe(false);
   });
 
+  it("keeps the base when handing a remix over fails, so the open document stays gated", async () => {
+    // The base belongs to the document on screen. Clearing it before the new
+    // document is mounted would leave a failed handover ungated — the document
+    // was never replaced, so its next save must still be checked against what
+    // the library holds (`vg-642`).
+    const open = vi.fn(async () => ({
+      envelope: storedInstalled,
+      assets: {},
+      base: "base-from-open",
+    }));
+    const { manager, onError, onOpenTheme } = harness({
+      base: "stored-base",
+      client: { list: async () => [], open, save: async () => "base" },
+    });
+    onOpenTheme.mockRejectedValueOnce(new Error("mount failed"));
+    selectionMock.mockResolvedValue({
+      kind: "remix",
+      id: "living-room",
+      remixOf: PARENT,
+    });
+
+    await manager.open();
+
+    expect(onError).toHaveBeenCalledWith("mount failed");
+    expect(manager.isStored()).toBe(true);
+  });
+
+  it("opens a duplicate as a new document under a fresh id, with no credit", async () => {
+    // A duplicate is a copy, not a fork with provenance: the host knows no
+    // catalogue parent, so the document names none and keeps its own name.
+    const open = vi.fn(async () => ({
+      envelope: storedInstalled,
+      assets: { "assets/backdrop.png": PNG },
+      base: "base-from-open",
+    }));
+    const { manager, onOpenTheme } = harness({
+      base: "stored-base",
+      client: { list: async () => [], open, save: async () => "base" },
+    });
+    selectionMock.mockResolvedValue({
+      kind: "duplicate",
+      id: "living-room",
+    });
+
+    await manager.open();
+
+    expect(open).toHaveBeenCalledWith("living-room");
+    expect(onOpenTheme).toHaveBeenCalledOnce();
+    const [duplicated, assets, base] = onOpenTheme.mock.calls[0]!;
+    expect(duplicated.id).toMatch(UUID);
+    expect(duplicated.id).not.toBe("living-room");
+    expect(duplicated.metadata?.name).toBe("Primary");
+    expect(duplicated.metadata).not.toHaveProperty("remixOf");
+    // Provenance belongs to the stored copy; the duplicate is a first version.
+    expect(duplicated.metadata).not.toHaveProperty("version");
+    expect(duplicated.metadata).not.toHaveProperty("author");
+    expect(duplicated.metadata).not.toHaveProperty("createdAt");
+    expect(duplicated.metadata).not.toHaveProperty("updatedAt");
+    // Its language is not provenance, so it travels with the document.
+    expect(duplicated.metadata?.themeLanguage).toBe("en");
+    expect(assets).toEqual({ "assets/backdrop.png": PNG });
+    expect(base).toBeUndefined();
+    expect(manager.isStored()).toBe(false);
+  });
+
   it("opens one stored theme by id, under the base its own read came from", async () => {
     // The store's own route: the theme is already named, so there is no chooser
     // to draw — and the base still travels with the document, or the save that

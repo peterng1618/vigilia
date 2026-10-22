@@ -3137,7 +3137,7 @@ test("a remix credits its parent, linking it when listed and naming it when not"
   expect(
     await text.evaluate((element) => element.tagName),
     "an absent parent's credit is drawn as a dead link",
-  ).not.toBe("BUTTON");
+  ).toBe("SPAN");
 });
 
 /**

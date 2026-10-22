@@ -197,9 +197,20 @@ async function versionCheck(
   previous: PreviousFiles | undefined,
 ): Promise<string | undefined> {
   if (previous === undefined) {
-    return file.version === "1.0.0"
-      ? undefined
-      : `a first submission must be version 1.0.0, not "${file.version}".`;
+    if (file.version !== "1.0.0") {
+      return `a first submission must be version 1.0.0, not "${file.version}".`;
+    }
+    // The header's first version and the package's must agree here too: a
+    // package recording nothing would otherwise publish under a version its
+    // own document does not carry.
+    const packageVersion = next.metadata?.version;
+    if (packageVersion === undefined) {
+      return "a first submission's package must record metadata.version 1.0.0; it records none.";
+    }
+    if (packageVersion !== "1.0.0") {
+      return `a first submission's package must record metadata.version 1.0.0, not "${packageVersion}".`;
+    }
+    return undefined;
   }
 
   let previousItemValue: unknown;

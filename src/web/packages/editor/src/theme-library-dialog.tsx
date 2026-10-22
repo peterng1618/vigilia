@@ -28,7 +28,10 @@ export type ThemeLibraryChoice =
       readonly kind: "remix";
       readonly id: string;
       readonly remixOf: ThemeRemix;
-    };
+    }
+  /** A copy of a theme the host holds no catalogue origin for, so there is no
+   *  parent to credit: the copy keeps its name and carries no `remixOf`. */
+  | { readonly kind: "duplicate"; readonly id: string };
 
 /**
  * What the author is asked before a theme is removed.
@@ -56,6 +59,10 @@ const DELETE_LABEL = "Delete";
 /** The control's own word, from the copy table: the surfaces walk reads every
  *  rendered word and refuses a literal it cannot find in `uiCopy`. */
 const REMIX_LABEL = uiCopy.library.remix;
+
+/** The other copy: available where there is no catalogue parent to name, so it
+ *  takes its word from the action table rather than the library's. */
+const DUPLICATE_LABEL = uiCopy.actions.duplicate;
 
 /** The client a removal goes through, or undefined when there is none — in
  *  which case the chooser offers no deletion rather than failing when the
@@ -162,6 +169,14 @@ export function ThemeLibraryChooser({
     });
   };
 
+  /** The origin-less copy settles the same way a remix does: the caller reads
+   *  the theme, but there is no parent to carry with the answer. */
+  const duplicate = (): void => {
+    if (selectedKind !== "theme" || selectedEntry === undefined) return;
+    if (origin !== undefined) return;
+    settle.close({ kind: "duplicate", id: selectedEntry.id });
+  };
+
   const open = (): void => {
     const chosen = selectedKind;
     if (chosen === undefined) {
@@ -236,6 +251,18 @@ export function ThemeLibraryChooser({
               onClick={remix}
             >
               {REMIX_LABEL}
+            </button>
+            <button
+              type="button"
+              className={ACTION_BUTTON}
+              data-vigilia-library-duplicate=""
+              // The mirror of the remix: a theme the host records no catalogue
+              // origin for can still be copied, but the copy has no parent to
+              // name. A template has no document at all, so neither applies.
+              disabled={selectedKind !== "theme" || origin !== undefined}
+              onClick={duplicate}
+            >
+              {DUPLICATE_LABEL}
             </button>
             {canRemove === undefined ? null : (
               <button
