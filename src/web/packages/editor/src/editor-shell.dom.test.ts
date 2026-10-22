@@ -9,6 +9,7 @@ import {
 import { isLocked, serialiseScene } from "@yunari/scene-fabric";
 import { FabricImage, type FabricObject, Group, Rect } from "fabric/es";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EditorDocument } from "./editor-document.js";
 import { createEditorShellBridge } from "./editor-shell/bridge.js";
 import { mountEditorShell } from "./editor-shell.js";
 import { LiveRuntime } from "./live-runtime.js";
@@ -564,6 +565,58 @@ describe("the background layer", () => {
 
     expect(host.querySelector("canvas")).toBe(before);
     expect(host.style.background).toBe("rgb(68, 85, 102)");
+    shell.destroy();
+  });
+
+  it("keeps the media element across a board-size change", async () => {
+    // The document used to re-run `refreshBackgroundMedia` on every artboard
+    // change, which destroys and remounts the layer — so a background video
+    // restarted on a ratio change even though no asset declaration moved. The
+    // shell re-places the layer itself now, so what this pins is that the
+    // document does not remount it behind the shell's back.
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 400 },
+      clientHeight: { value: 300 },
+    });
+    const assets = [
+      { id: "loop", kind: "video" as const, path: "assets/loop.webm" },
+    ];
+    const envelope = envelopeWith(
+      { media: { assetId: "loop", bounds: "theme" } },
+      assets,
+    );
+    const shell = await mount({
+      host,
+      artboard: ARTBOARD,
+      envelope,
+      assets,
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    const themeDocument = new EditorDocument({
+      source: {
+        shell,
+        envelope,
+        assetManager: {
+          assets: {},
+          declarations: assets,
+          backgroundSource: () => ({ url: "blob:loop" }),
+        } as never,
+        onNew: async () => undefined,
+        onNewFromStarter: async () => undefined,
+        onSaved: () => undefined,
+      },
+      consumers: { artboard: () => ({ render: () => undefined }) } as never,
+    });
+    const before = host.querySelector("[data-yunari-background-media] video");
+    expect(before, "the media layer mounted").not.toBeNull();
+
+    themeDocument.setArtboard({ width: 160, height: 120 });
+
+    expect(
+      host.querySelector("[data-yunari-background-media] video"),
+      "a board-size change is not a reason to restart the video",
+    ).toBe(before);
     shell.destroy();
   });
 });

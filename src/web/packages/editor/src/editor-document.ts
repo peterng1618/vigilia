@@ -374,8 +374,11 @@ export class EditorDocument {
 
   setArtboard(artboard: Artboard): void {
     this.#writeEnvelope({ ...this.#envelope, artboard });
+    // A geometry change only: the shell re-places the media layer itself, so
+    // asking for a remount here would restart a background video on every
+    // board ratio change. Asset declarations are what `refreshBackgroundMedia`
+    // is for.
     this.#shell.setArtboard(artboard);
-    this.refreshBackgroundMedia();
     this.#consumers.artboard().render(artboard, this.#envelope.metadata);
   }
 
