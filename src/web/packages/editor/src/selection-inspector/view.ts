@@ -568,7 +568,7 @@ export function readField(object: FabricObject, key: GeometryKey): number {
   return object.angle;
 }
 
-/** The word the column shows for each kind of thing it can describe. The five
+/** The word the column shows for each kind of thing it can describe. The six
     layer kinds keep their one owner; a multi-selection has no layer kind and is
     named by the copy table's own word for a selection. */
 const KIND_WORD: Readonly<Record<SelectionKind, string>> = {

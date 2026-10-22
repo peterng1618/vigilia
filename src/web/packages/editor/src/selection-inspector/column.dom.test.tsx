@@ -371,8 +371,13 @@ describe("SelectionColumn", () => {
 
     const scale = host.querySelector<HTMLInputElement>(
       "[data-yunari-background-scale]",
-    );
-    expect(scale?.value).toBe("140");
+    )!;
+    expect(scale.value).toBe("140");
+
+    // The number arm's own divide, not the pair's: a percentage typed here has
+    // to reach the model as the fraction the field stores.
+    await typeInto(scale, "50");
+    expect(commit).toHaveBeenCalledWith(1, "background.scale", 0.5);
 
     const offsetX = host.querySelector<HTMLInputElement>(
       "[data-yunari-background-offset-x]",

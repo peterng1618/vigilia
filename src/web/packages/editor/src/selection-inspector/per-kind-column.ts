@@ -131,9 +131,13 @@ function isTextKind(object: FabricObject): boolean {
  *
  * Ordered so the two containers are named before the class they extend: Fabric's
  * `ActiveSelection` **is** a `Group`, so a group tested first would answer for a
- * selection the author made across several objects.
+ * selection the author made across several objects. It never answers
+ * `"background"`: the background is no Fabric object, and its column is
+ * `backgroundColumn`'s.
  */
-export function selectionKindOf(target: FabricObject): SelectionKind {
+export function selectionKindOf(
+  target: FabricObject,
+): Exclude<SelectionKind, "background"> {
   if (target instanceof ActiveSelection) return "activeSelection";
   if (target instanceof YunariChart) return "chart";
   if (target instanceof Group) return "group";
@@ -233,7 +237,8 @@ function titleOf(id: ColumnSectionId): string {
 
 /** One section as the column renders it. Exported because `backgroundColumn`
  *  answers the same two questions for a subject that is no Fabric object, and a
- *  second copy of the title, the order and the count would be a second owner. */
+ *  second copy of the title and the count would be a second owner. Order is the
+ *  caller's: each column states its own, `perKindColumn` through `sectionOrder`. */
 export function sectionView(
   id: ColumnSectionId,
   fields: readonly FieldView[] = [],
