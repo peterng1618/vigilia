@@ -617,6 +617,11 @@ that passes all three is under the Unsplash License.
   source after the icon sources.
 - [ ] **Step 4: Green, `npx tsc --noEmit`, `npx biome check ..`, commit**
   `feat(host): Unsplash as the first image source, free photos only`.
+- [ ] **Step 5 (user request 2026-10-23): guide the key.** `KnownCredential`
+  gains an optional `help: { readonly text: string; readonly url: string }`;
+  the wire row carries `helpUrl` and the Connections row renders one sentence
+  and a "Where to get a key" link beneath the field. Unsplash's entry names its
+  developer apps page; a credential with no `help` renders nothing extra.
 
 ---
 

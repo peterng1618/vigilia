@@ -10,6 +10,7 @@ import {
   validateFabricThemeEnvelope,
 } from "@yunari/renderer-core";
 import type { ChartRefreshRate } from "@yunari/scene-fabric";
+import { type AssetRouteOptions, handleAssetRoutes } from "./assets/routes.js";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
@@ -206,6 +207,9 @@ export interface HostServerOptions {
   /** The credential ids this host knows. Omitted uses the shipped table, which
    *  is empty in v1; supplied so a route test can hold a cookie fixture. */
   readonly knownCredentials?: readonly KnownCredential[];
+  /** The asset finder's sources. Omitted when this host serves none; the
+   *  routes then say so rather than falling through to the static 404. */
+  readonly assets?: AssetRouteOptions;
   /** Called after a display change so providers read readings the new way. */
   readonly onDisplayChange?: (settings: DisplaySettings) => void;
   /** Devices a consumer may choose between. Omitted when none are known. */
@@ -872,6 +876,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const fontFavorites = options.fontFavorites;
   const credentials = options.credentials;
   const knownCredentials = options.knownCredentials ?? KNOWN_CREDENTIALS;
+  const assets = options.assets;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const fetcher = options.fetch;
@@ -1927,6 +1932,25 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       sendText(response, 405, "Only PUT and DELETE are supported.");
+      return;
+    }
+
+    // The asset finder's three routes. Mounted whenever the path names one, so
+    // a host that serves no source answers 503 rather than the static 404.
+    if (
+      url.pathname === "/api/assets/sources" ||
+      url.pathname === "/api/assets/search" ||
+      url.pathname === "/api/assets/bytes"
+    ) {
+      await handleAssetRoutes({
+        request,
+        response,
+        url,
+        loopback: isLoopbackRemote(request.socket.remoteAddress),
+        assets,
+        fetch: fetcher ?? fetch,
+        readBody,
+      });
       return;
     }
 

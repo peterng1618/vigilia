@@ -17,9 +17,9 @@ Branch: `main`
 
 ## Last completed change
 
-- **The Connections tab (Task 4)** lists known credentials, shows `Saved ····<hint>` or `Not set`, and saves/clears/verifies through the host; no value is ever rendered.
-- **Credential rows report `verify`**, so Verify is disabled where the host has no check.
-- **The host answers four credential routes** (Task 3), write-only to the browser, loopback-only, with cookie writes refused naming R10.
+- **The finder's host routes are mounted** (Task 8): sources, merged search and bytes, loopback-only, with 503 for a host that serves none.
+- **The registry and merged search** (Tasks 6–7): Lucide is the first source, its manifest generated from the pinned package; pages merge in registry order and a disabled source is never called.
+- **The wire contract lives in `renderer-core`** (Task 5), and the `AssetSource` port plus `credits.json` reader land with the first adapter.
 
 ## Next
 

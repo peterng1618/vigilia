@@ -4881,6 +4881,49 @@ describe("Credential routes", () => {
   });
 });
 
+describe("Asset finder routes", () => {
+  it("mounts the finder's sources route", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-assets-"));
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      assets: {},
+    });
+    try {
+      const res = await request(hosted.server, "GET", "/api/assets/sources");
+
+      expect(res.status).toBe(200);
+      expect(
+        (
+          res.json() as {
+            sources: readonly Record<string, unknown>[];
+          }
+        ).sources,
+      ).toContainEqual(expect.objectContaining({ id: "lucide" }));
+    } finally {
+      await hosted.close();
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("says so when this host serves no sources", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-assets-"));
+    const bare = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+    });
+    try {
+      const res = await request(bare.server, "GET", "/api/assets/sources");
+
+      expect(res.status).toBe(503);
+      expect(res.text()).toContain("not enabled");
+    } finally {
+      await bare.close();
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
 /** The published key a group's choice rides under — `system-disk` →
  *  `systemDisk`, the `DeviceAssignment` convention the rest of the host reads. */
 const assignmentKey = (group: string): string =>

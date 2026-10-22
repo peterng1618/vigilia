@@ -295,6 +295,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     display: displaySettings,
     fontFavorites,
     credentials,
+    assets: { credentials },
     onDisplayChange: (settings) => clockProvider.setTimeZone(settings.timeZone),
     activeTheme,
     // Both providers know the machine's devices; LHM's list is richer, so its

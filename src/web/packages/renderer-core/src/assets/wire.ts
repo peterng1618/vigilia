@@ -24,7 +24,8 @@ export interface AssetSourceListing {
   readonly category: ListingCategory;
   /** "grid" searches; "font-picker" and "wallpaper-engine" are editor bodies. */
   readonly body: "grid" | "font-picker" | "wallpaper-engine";
-  readonly requires: string | undefined;
+  /** `null` on the wire when the source needs no credential. */
+  readonly requires: string | null;
   readonly configurable: boolean;
 }
 
