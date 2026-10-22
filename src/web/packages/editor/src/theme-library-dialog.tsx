@@ -139,8 +139,10 @@ export function ThemeLibraryChooser({
     return undefined;
   };
   const selectedKind = kind(selected);
-  /** The origin record, which only an installed theme has: a template is not
-   *  in `own`, so this is `undefined` for it without asking its kind. */
+  /** The origin record, which only an installed theme has. Read from `own`
+   *  rather than by kind, so an origin-less theme has none — and a template
+   *  sharing a theme's id still reads the theme's record, which is why the
+   *  remix control asks both. */
   const selectedEntry = own.find((entry) => entry.id === selected);
   const origin = selectedEntry?.origin;
 
@@ -228,8 +230,9 @@ export function ThemeLibraryChooser({
               data-vigilia-library-remix=""
               // Disabled rather than absent, as the delete is: a template has
               // no catalogue parent, and neither has a theme made here, so
-              // there is nothing to credit.
-              disabled={origin === undefined}
+              // there is nothing to credit. The kind is read as well as the
+              // origin, because a template and a theme can share an id.
+              disabled={selectedKind !== "theme" || origin === undefined}
               onClick={remix}
             >
               {REMIX_LABEL}

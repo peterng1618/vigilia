@@ -381,7 +381,8 @@ describe("ThemeLibraryManager", () => {
 
     expect(open).toHaveBeenCalledWith("living-room");
     expect(onOpenTheme).toHaveBeenCalledOnce();
-    const [remixed, assets, base] = onOpenTheme.mock.calls[0]!;    expect(remixed.id).toMatch(UUID);
+    const [remixed, assets, base] = onOpenTheme.mock.calls[0]!;
+    expect(remixed.id).toMatch(UUID);
     expect(remixed.id).not.toBe("living-room");
     expect(remixed.metadata?.remixOf).toEqual(PARENT);
     expect(remixed.metadata?.name).toBe("Primary (remix)");

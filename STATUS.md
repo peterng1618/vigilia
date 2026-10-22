@@ -21,6 +21,7 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 - **A remix mints a fresh UUID and mounts with no base**, so the fork's first save is a first save rather than a gated write against its parent.
 - **The fork credits its parent**: `metadata.remixOf` is the origin's catalogue id, the entry's current name and the origin version; `version`, `createdAt`, `updatedAt` and `author` are deleted.
 - **`ThemeRemix` is exported from `renderer-core`**, so the editor names the shape rather than restating it.
+- **Fix round 1**: the remix control also reads the selected kind (a template and a theme can share an id), and the manager test is formatted for Biome.
 
 ## Next
 
