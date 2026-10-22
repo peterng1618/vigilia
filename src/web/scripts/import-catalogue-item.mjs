@@ -215,6 +215,10 @@ export async function driveImport({ plan, token, fetch }) {
   );
 
   let status = finalized?.status;
+  // The CLI prints this status and exits 0 on it, so an answer without one is
+  // not "probably fine" — it is a shape this flow does not understand.
+  if (typeof status !== "string" || status === "")
+    throw new Error("The finalize request did not answer with a status.");
   if (status === "pending") {
     const approved = await fetch(`${origin}/api/admin/items/${id}/approve`, {
       method: "POST",

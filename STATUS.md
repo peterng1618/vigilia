@@ -18,10 +18,8 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **`scripts/import-catalogue-item.mjs` imports the catalogue item as its owner** through the Worker's author flow (version request, signed PUT, finalize, approve) — no D1 or R2 writes.
-- **Two silent rewrites are refused**: an envelope id that is not `item.json`'s (both named) and any version but `1.0.0`, at the plan and at the Worker's answer; a rejected PUT reports only the redacted URL, and an approve answer with no status is refused rather than invented.
-- **`tsx` 4.23.15 (MIT) is a pinned `src/web` devDependency** so the usage line `npx tsx scripts/import-catalogue-item.mjs …` runs; `docs/engineering/dependencies.md` and the notices carry the row.
-- **18 tests** drive a fake Worker through the four calls, the refusal arms, and two spawns: exit 2 for no arguments, exit 1 with a "No readable item.json" sentence.
+- **A finalize answer with no `status` is refused** instead of printing `<id> <version> undefined`; the exit-1 spawn asserts the whole `No readable item.json in <source>.` sentence, not just the file name.
+- **19 tests** in `tests/scripts/import-catalogue-item.test.ts`; the focused suite, typecheck and `status:check` are green.
 
 ## Next
 

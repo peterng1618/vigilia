@@ -356,6 +356,18 @@ it("redacts the signed upload URL when the PUT itself rejects", async () => {
   expect((failure as Error).message).not.toContain("secret");
 });
 
+it("refuses a finalize answer with no status", async () => {
+  const worker = fakeWorker([
+    JSON_ANSWER({ version: "1.0.0", status: "pending", uploadUrl: UPLOAD }),
+    new Response(null, { status: 200 }),
+    JSON_ANSWER({ ok: true, version: "1.0.0" }),
+  ]);
+
+  await expect(
+    driveImport({ plan: planOf(), token: session.token, fetch: worker.fetch }),
+  ).rejects.toThrow(/finalize request did not answer with a status/);
+});
+
 it("refuses an approve answer with no status rather than inventing one", async () => {
   const worker = fakeWorker([
     JSON_ANSWER({ version: "1.0.0", status: "pending", uploadUrl: UPLOAD }),
@@ -432,7 +444,7 @@ it("says what is missing in a source directory and exits 1", async () => {
 
     expect(run.code).toBe(1);
     expect(run.stdout).toBe("");
-    expect(run.stderr).toContain("item.json");
+    expect(run.stderr).toContain(`No readable item.json in ${source}.`);
     expect(run.stderr).not.toContain("Bearer");
   } finally {
     await rm(source, { recursive: true, force: true });
