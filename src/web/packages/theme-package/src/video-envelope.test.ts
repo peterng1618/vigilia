@@ -91,6 +91,29 @@ function patchUint32(
   return copy;
 }
 
+/** audio.mp4's video trak, then 1100 free boxes inside `moov`, so the box walk's
+ *  budget runs out before the audio trak is reached. Only `moov`'s length moves;
+ *  every other byte is a copy of the fixture. */
+function exhaustedWalk(): Uint8Array {
+  const moov = boxAt(audio, ["moov"]);
+  const videoTrak = childBox(audio, moov.payload, moov.end, "trak");
+  if (videoTrak === undefined) throw new Error("no video trak");
+  const freeBoxes = new Uint8Array(1100 * 8);
+  for (let index = 0; index < 1100; index += 1)
+    freeBoxes.set([0, 0, 0, 8, 0x66, 0x72, 0x65, 0x65], index * 8);
+
+  const crafted = new Uint8Array(audio.length + freeBoxes.length);
+  crafted.set(audio.subarray(0, videoTrak.end), 0);
+  crafted.set(freeBoxes, videoTrak.end);
+  crafted.set(audio.subarray(videoTrak.end), videoTrak.end + freeBoxes.length);
+  new DataView(
+    crafted.buffer,
+    crafted.byteOffset,
+    crafted.byteLength,
+  ).setUint32(moov.start, moov.end - moov.start + freeBoxes.length);
+  return crafted;
+}
+
 describe("readVideoFacts", () => {
   it("reads duration, dimensions, cadence and faststart from a conforming file", () => {
     const facts = readVideoFacts(conforming);
@@ -191,30 +214,24 @@ describe("readVideoFacts", () => {
   it("reads an exhausted box walk as unreadable, not as a video without audio", () => {
     // audio.mp4 has the video trak first. Enough free boxes between it and the
     // audio trak exhaust the walk's budget before the audio is reached.
-    const moov = boxAt(audio, ["moov"]);
-    const videoTrak = childBox(audio, moov.payload, moov.end, "trak");
-    if (videoTrak === undefined) throw new Error("no video trak");
-    const freeBoxes = new Uint8Array(1100 * 8);
-    for (let index = 0; index < 1100; index += 1)
-      freeBoxes.set([0, 0, 0, 8, 0x66, 0x72, 0x65, 0x65], index * 8);
+    expect(readVideoFacts(exhaustedWalk())).toBeUndefined();
+  });
 
-    const crafted = new Uint8Array(audio.length + freeBoxes.length);
-    crafted.set(audio.subarray(0, videoTrak.end), 0);
-    crafted.set(freeBoxes, videoTrak.end);
-    crafted.set(
-      audio.subarray(videoTrak.end),
-      videoTrak.end + freeBoxes.length,
-    );
-    // Only moov's own length moved to cover the insert; every other byte is a
-    // copy of the fixture.
-    new DataView(
-      crafted.buffer,
-      crafted.byteOffset,
-      crafted.byteLength,
-    ).setUint32(moov.start, moov.end - moov.start + freeBoxes.length);
-    expect(crafted.subarray(videoTrak.end + freeBoxes.length)).toEqual(
-      audio.subarray(videoTrak.end),
-    );
+  it("reads a zero sample delta as unreadable, not as a zero-rate constant video", () => {
+    const mdhd = boxAt(conforming, ["moov", "trak", "mdia", "mdhd"]);
+    const stts = boxAt(conforming, [
+      "moov",
+      "trak",
+      "mdia",
+      "minf",
+      "stbl",
+      "stts",
+    ]);
+    // mdhd claims 1 s while the 60-sample table's one entry claims 0 ticks. A
+    // zero delta is an absent measurement, not a cadence, so the file must not
+    // read as a conforming 0 fps constant-rate video.
+    let crafted = patchUint32(conforming, mdhd.payload + 16, 15_360);
+    crafted = patchUint32(crafted, stts.payload + 12, 0);
 
     expect(readVideoFacts(crafted)).toBeUndefined();
   });
@@ -339,6 +356,26 @@ describe("videoRefusals", () => {
 
     expect(themeVideoRefusals(envelope, { "assets/clip.webm": webm })).toEqual([
       "assets/clip.webm: video cannot be read; an H.264 MP4 is required",
+    ]);
+  });
+
+  it("names truncation apart from a wrong codec", () => {
+    // An actually-H.264 file whose walk ran out of budget: it does not need a
+    // different codec, so the codec sentence would send the author in circles.
+    const envelope = {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "aurora",
+      artboard: { width: 1920, height: 1080 },
+      metadata: { name: "Aurora", themeLanguage: "en" },
+      scene: { version: "7.4.0", objects: [] },
+      assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
+    } as FabricThemeEnvelope;
+
+    expect(
+      themeVideoRefusals(envelope, { "assets/clip.mp4": exhaustedWalk() }),
+    ).toEqual([
+      "assets/clip.mp4: video cannot be read; the file is truncated or too complex, so re-export it as a plain H.264 MP4",
     ]);
   });
 

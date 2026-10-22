@@ -88,6 +88,27 @@ describe("normalizeVideo", () => {
     expect(result.message).not.toContain("avc1");
   });
 
+  it("refuses encoder output that parses but breaks the envelope", async () => {
+    // The case above dies at "not even a readable MP4"; this one reaches the
+    // `videoRefusals` arm: an encoder that ignored the bounds wrote a parseable
+    // 31.5-second file, which must not be handed back as a success.
+    const encoded = fixture("long.mp4");
+    const refusal = videoRefusals("normalized", readVideoFacts(encoded)!);
+    expect(refusal).toContain(
+      "normalized: duration 31500 ms exceeds the 30000 ms maximum",
+    );
+    const run = runWriting(encoded);
+
+    const result = await normalizeVideo(fixture("wide.mp4"), {
+      ffmpegPath: "ffmpeg-stub",
+      run,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("publish envelope");
+  });
+
   it("covers the requested aspect, and the output conforms to it", async () => {
     // The stub plays the encoder: the bytes it writes are a conforming 16:9
     // clip, so the test proves the route's options reach the filter and the

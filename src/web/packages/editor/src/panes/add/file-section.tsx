@@ -189,15 +189,16 @@ export function FileSection({
   const normalizeVideo = async (fit: "contain" | "cover"): Promise<void> => {
     const asset = chosen;
     if (asset === undefined || asset.kind !== "video") return;
+    // A held copy belongs to the press that produced it: a second press, even
+    // one the host refuses, must never leave the previous mode's result armed.
+    // Cleared before the bytes check too, so no early return keeps it.
+    setHeld(undefined);
+    setMessage("");
     const bytes = manager.assets[asset.path];
     if (bytes === undefined) {
       refuse(new Error(`Missing declared asset bytes for ${asset.id}.`));
       return;
     }
-    // A held copy belongs to the press that produced it: a second press, even
-    // one the host refuses, must never leave the previous mode's result armed.
-    setHeld(undefined);
-    setMessage("");
     setNormalizing(true);
     try {
       const outcome = await requestNormalizedVideo(

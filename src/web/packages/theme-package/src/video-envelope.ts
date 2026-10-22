@@ -80,16 +80,30 @@ interface Track {
   chromaFormat: number | undefined;
 }
 
+interface VideoRead {
+  readonly facts: VideoFacts | undefined;
+  /** An MP4-shaped file whose walk stopped before its declared end: it is
+   *  incomplete or too complex, which is not the claim "not an H.264 MP4". */
+  readonly truncated: boolean;
+}
+
 /** `undefined` means the bytes are not an MP4 this parser can read. */
 export function readVideoFacts(bytes: Uint8Array): VideoFacts | undefined {
+  return readVideo(bytes).facts;
+}
+
+function readVideo(bytes: Uint8Array): VideoRead {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const budget: Budget = { left: MAX_BOXES, truncated: false };
   const top = boxes(view, 0, view.byteLength, budget, 0);
+  // A top-level `ftyp` is what separates an incomplete MP4 from bytes that are
+  // not an MP4 at all: only the former may be told it is truncated.
+  const mp4 = top.some((box) => box.type === "ftyp");
   // A walk that stopped early has not seen the whole file, so its silence about
   // a track means nothing; only a completed walk can answer "no audio".
-  if (budget.truncated) return undefined;
+  if (budget.truncated) return unreadable(budget, mp4);
   const moov = top.find((box) => box.type === "moov");
-  if (moov === undefined) return undefined;
+  if (moov === undefined) return unreadable(budget, mp4);
   const mdat = top.find((box) => box.type === "mdat");
   const faststart = mdat !== undefined && moov.start < mdat.start;
 
@@ -97,14 +111,14 @@ export function readVideoFacts(bytes: Uint8Array): VideoFacts | undefined {
   for (const box of boxes(view, moov.start, moov.end, budget, 1)) {
     if (box.type === "trak") tracks.push(readTrak(view, box, budget));
   }
-  if (budget.truncated) return undefined;
+  if (budget.truncated) return unreadable(budget, mp4);
   const video = tracks.find((track) => track.handler === "vide");
-  if (video === undefined) return undefined;
+  if (video === undefined) return unreadable(budget, mp4);
 
   // Timing the parser cannot read is unreadable, not a zero-duration video: a
   // cap must never be satisfied by an absent measurement.
   const timescale = video.timescale;
-  if (timescale === undefined || timescale <= 0) return undefined;
+  if (timescale === undefined || timescale <= 0) return unreadable(budget, mp4);
 
   const mdhdMs =
     video.duration === undefined
@@ -118,6 +132,11 @@ export function readVideoFacts(bytes: Uint8Array): VideoFacts | undefined {
 
   const uniformDelta =
     video.deltas.size === 1 ? [...video.deltas][0] : undefined;
+  // A zero delta is not a cadence. Left alone it would read as 0 fps and a
+  // constant rate while the table carries no time at all, which is the absent
+  // measurement this parser exists to refuse.
+  if (uniformDelta !== undefined && uniformDelta <= 0)
+    return unreadable(budget, mp4);
   const sampleSeconds = sampleMs === undefined ? undefined : sampleMs / 1000;
   const frameRateRaw =
     video.samples <= 0
@@ -131,17 +150,24 @@ export function readVideoFacts(bytes: Uint8Array): VideoFacts | undefined {
           : 0;
 
   return {
-    width: video.width,
-    height: video.height,
-    durationMs: capCeil(durationMsRaw),
-    frameRate: capCeil(frameRateRaw * 1000) / 1000,
-    constantFrameRate: video.samples > 0 && video.deltas.size === 1,
-    codec: video.codec,
-    profile: video.profile,
-    chromaFormat: video.chromaFormat,
-    hasAudio: tracks.some((track) => track.handler === "soun"),
-    faststart,
+    facts: {
+      width: video.width,
+      height: video.height,
+      durationMs: capCeil(durationMsRaw),
+      frameRate: capCeil(frameRateRaw * 1000) / 1000,
+      constantFrameRate: video.samples > 0 && video.deltas.size === 1,
+      codec: video.codec,
+      profile: video.profile,
+      chromaFormat: video.chromaFormat,
+      hasAudio: tracks.some((track) => track.handler === "soun"),
+      faststart,
+    },
+    truncated: false,
   };
+}
+
+function unreadable(budget: Budget, mp4: boolean): VideoRead {
+  return { facts: undefined, truncated: mp4 && budget.truncated };
 }
 
 /** Rounds a bound up, tolerating only floating-point noise. A rounded display
@@ -206,10 +232,16 @@ export function themeVideoRefusals(
   for (const asset of envelope.assets ?? []) {
     if (asset.kind !== "video") continue;
     const bytes = assets[asset.path];
-    const facts = bytes === undefined ? undefined : readVideoFacts(bytes);
-    if (facts === undefined)
-      return [`${asset.path}: video cannot be read; an H.264 MP4 is required`];
-    const refusals = videoRefusals(asset.path, facts);
+    const read = bytes === undefined ? undefined : readVideo(bytes);
+    if (read === undefined || read.facts === undefined)
+      return [
+        // Truncation is not a codec fault: telling the author to change the
+        // codec would send them to re-export the same way again.
+        read?.truncated === true
+          ? `${asset.path}: video cannot be read; the file is truncated or too complex, so re-export it as a plain H.264 MP4`
+          : `${asset.path}: video cannot be read; an H.264 MP4 is required`,
+      ];
+    const refusals = videoRefusals(asset.path, read.facts);
     if (refusals.length > 0) return refusals;
   }
   return [];

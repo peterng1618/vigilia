@@ -824,6 +824,28 @@ describe("the Add pane's file section", () => {
     expect(saveState.mock.calls.length).toBe(afterImport);
   });
 
+  /** The early return before the host is called is still a press that starts a
+   *  run: the previous copy must not stay armed for the write. */
+  it("clears a held copy when a press finds the declared bytes gone", async () => {
+    stubNormalize(() =>
+      normalizeAnswer({
+        ok: true,
+        bytes: new TextEncoder().encode("mp4-normalized"),
+      }),
+    );
+    const { host, manager } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    await press(host, "[data-vigilia-asset-normalize]");
+    expect(useControl(host)).not.toBeNull();
+
+    vi.spyOn(manager, "assets", "get").mockReturnValue({});
+    await press(host, "[data-vigilia-asset-normalize]");
+
+    expect(useControl(host)).toBeNull();
+  });
+
   it("drops a removal while the held copy is being written", async () => {
     stubNormalize(() =>
       normalizeAnswer({
