@@ -6,7 +6,8 @@ unverified. The code is the authority for every binding named below
 (`src/env.ts`, `src/auth.ts`, `src/index.ts`, `wrangler.toml`).
 
 Run every command in this README from `src/web/packages/store-worker`
-(`wrangler.toml` lives there). Node 22 or newer (`engines` in `package.json`).
+(`wrangler.toml` lives there), except steps 9–10, which state their directory.
+Node 22 or newer (`engines` in `package.json`).
 Wrangler is this package's devDependency (4.152.0).
 
 ## 1. Prerequisites
@@ -82,7 +83,7 @@ Where each value comes from:
   Create API token (Object Read & Write on `yunari-store-packages`).
 - `R2_BUCKET_NAME` — the bucket name, literally `yunari-store-packages`.
 - `OWNER_EMAILS` — the account(s) allowed to approve and unpublish, comma-separated.
-- `MIGRATE_TOKEN` — any random string; you send the same value in step 7.
+- `MIGRATE_TOKEN` — any random string; you send the same value in step 6.
 
 Setting secrets before the first deploy is fine: `wrangler secret put` offers to
 create a draft Worker with that name.
@@ -97,7 +98,7 @@ It prints `https://yunari-store.<account-subdomain>.workers.dev`. That URL is
 the origin everywhere below. `BETTER_AUTH_URL` in `wrangler.toml`'s `[vars]`
 still holds a placeholder; replace it with the printed origin and deploy again.
 Better Auth uses it as its `baseURL`, so a wrong value breaks sign-in and the
-callback registration in step 8.
+callback registration in step 7.
 
 ## 6. Create the D1 tables
 
