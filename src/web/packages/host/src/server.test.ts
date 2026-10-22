@@ -4678,8 +4678,14 @@ describe("Credential routes", () => {
 
     expect(res.status).toBe(200);
     expect(res.json()).toEqual([
-      { id: "demo", label: "Demo source", set: false, hint: "" },
-      { id: "session", label: "Session source", set: false, hint: "" },
+      { id: "demo", label: "Demo source", set: false, hint: "", verify: false },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+      },
     ]);
     expect(res.text()).not.toMatch(/"value"/);
   });
@@ -4697,8 +4703,20 @@ describe("Credential routes", () => {
 
     const read = await request(hosted.server, "GET", "/api/credentials");
     expect(read.json()).toEqual([
-      { id: "demo", label: "Demo source", set: true, hint: "9f2c" },
-      { id: "session", label: "Session source", set: false, hint: "" },
+      {
+        id: "demo",
+        label: "Demo source",
+        set: true,
+        hint: "9f2c",
+        verify: false,
+      },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+      },
     ]);
     // The whole point of the route: the value it stored never comes back.
     expect(read.text()).not.toContain("sk-live-9f2c");
@@ -4721,8 +4739,14 @@ describe("Credential routes", () => {
 
     expect(cleared.status).toBe(200);
     expect(await rows()).toEqual([
-      { id: "demo", label: "Demo source", set: false, hint: "" },
-      { id: "session", label: "Session source", set: false, hint: "" },
+      { id: "demo", label: "Demo source", set: false, hint: "", verify: false },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+      },
     ]);
   });
 
@@ -4821,8 +4845,14 @@ describe("Credential routes", () => {
     ).toBe(403);
     // Refused, not stored.
     expect(await rows()).toEqual([
-      { id: "demo", label: "Demo source", set: false, hint: "" },
-      { id: "session", label: "Session source", set: false, hint: "" },
+      { id: "demo", label: "Demo source", set: false, hint: "", verify: false },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+      },
     ]);
   });
 

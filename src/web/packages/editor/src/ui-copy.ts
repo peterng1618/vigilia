@@ -135,8 +135,23 @@ export const uiCopy = {
     title: "Settings",
     appearance: "Appearance",
     keyboard: "Keyboard",
+    connections: "Connections",
     about: "About",
     close: "Close",
+    /** The Connections tab: the one place a provider key is entered, because
+     *  every remote source reads from here rather than growing its own field. */
+    connectionsHeading: "Asset sources",
+    connectionsIntro:
+      "Keys stay on this machine. Stored values are never shown again, only the last four characters.",
+    connectionsEmpty: "No source needs a key yet.",
+    connectionsSaved: (hint: string): string => `Saved ····${hint}`,
+    connectionsNotSet: "Not set",
+    connectionsPlaceholder: "Access key",
+    connectionsSave: "Save",
+    connectionsClear: "Clear",
+    connectionsVerify: "Verify",
+    connectionsFooter:
+      "Keys are stored in a local settings file and sent only to the source that owns them.",
     /** §7's About tab: what the editor is, and the facts this build can read.
      *  The provenance is one sentence naming the product; the three fact labels
      *  say which fact each row is, and the release fact's *label* is the

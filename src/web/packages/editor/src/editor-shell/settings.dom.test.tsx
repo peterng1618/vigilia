@@ -6,6 +6,7 @@ import { SUPPORTED_SCHEMA_VERSION } from "@yunari/renderer-core";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CredentialRow } from "../asset-finder/credentials-client.js";
 import {
   readShortcutOverrides,
   resolveShortcuts,
@@ -28,6 +29,17 @@ import {
 } from "./palette.js";
 import { RAIL_SLOTS, Rail, type RailSlot } from "./rail.js";
 import { Settings, versionFacts } from "./settings.js";
+
+// The host's half, mocked so the tab's own wiring is what these cases read.
+// The mock is hoisted above the imports, so the panel and the assertions see
+// the same functions.
+const credentials = vi.hoisted(() => ({
+  listCredentials: vi.fn(),
+  saveCredential: vi.fn(),
+  clearCredential: vi.fn(),
+  verifyCredential: vi.fn(),
+}));
+vi.mock("../asset-finder/credentials-client.js", () => credentials);
 
 // jsdom has never had a `PointerEvent`, and Base UI re-dispatches a click
 // through one to carry modifier state — the shim `control.dom.test.tsx` supplies
@@ -279,9 +291,51 @@ function aboutText(): string {
   );
 }
 
+/** The Connections tab, after its first list has settled. */
+async function openConnections(): Promise<void> {
+  await openTab(uiCopy.settings.connections);
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
+/** One credential row, by the id it renders under. */
+function credentialRow(id: string): HTMLElement {
+  const found = document.querySelector<HTMLElement>(
+    `[data-yunari-credential-row="${id}"]`,
+  );
+  if (found === null) throw new Error(`no ${id} credential row.`);
+  return found;
+}
+
+const rowOf = (
+  overrides: Partial<CredentialRow> & Pick<CredentialRow, "id" | "label">,
+): CredentialRow => ({ set: false, hint: "", verify: false, ...overrides });
+
+/** A controlled input's value, set the way a keystroke sets it: React reads
+ *  the native setter's result rather than the property's old value. */
+async function typeInto(input: HTMLInputElement, value: string): Promise<void> {
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute("data-shell-palette");
+  credentials.listCredentials.mockReset();
+  credentials.saveCredential.mockReset();
+  credentials.clearCredential.mockReset();
+  credentials.verifyCredential.mockReset();
+  credentials.listCredentials.mockResolvedValue([]);
+  credentials.saveCredential.mockResolvedValue({ ok: true });
+  credentials.clearCredential.mockResolvedValue({ ok: true });
+  credentials.verifyCredential.mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -297,7 +351,7 @@ afterEach(() => {
 });
 
 describe("Settings", () => {
-  it("opens the settings modal from the gear, and offers exactly the three tabs the spec names", async () => {
+  it("opens the settings modal from the gear, and offers exactly the four tabs the spec names", async () => {
     const host = mount();
     await press(gear(host));
 
@@ -305,6 +359,7 @@ describe("Settings", () => {
     expect(tabLabels()).toEqual([
       uiCopy.settings.appearance,
       uiCopy.settings.keyboard,
+      uiCopy.settings.connections,
       uiCopy.settings.about,
     ]);
     // A pane, or a fifth rail slot, fails here and only here: the rail still
@@ -574,6 +629,100 @@ describe("Settings", () => {
     expect(document.documentElement.getAttribute("data-shell-palette")).toBe(
       resolveShellPalette(undefined, prefersDarkAppearance()),
     );
+  });
+});
+
+/** The Connections tab. The contract that matters is that a value goes one way:
+ *  the row shows a four-character hint and never the value, and Verify is
+ *  offered only where the host has a check to run. */
+describe("Connections", () => {
+  const unset = rowOf({ id: "demo", label: "Demo source" });
+  const stored = rowOf({
+    id: "demo",
+    label: "Demo source",
+    set: true,
+    hint: "9f2c",
+  });
+
+  it("says no source needs a key when the host knows none", async () => {
+    const host = mount();
+    await press(gear(host));
+    await openConnections();
+
+    expect(
+      document.querySelector<HTMLElement>("[data-yunari-connections]")
+        ?.textContent,
+    ).toContain(uiCopy.settings.connectionsEmpty);
+  });
+
+  it("shows the hint for a stored credential and Not set for one without", async () => {
+    credentials.listCredentials.mockResolvedValue([
+      rowOf({ id: "saved", label: "Saved source", set: true, hint: "9f2c" }),
+      rowOf({ id: "empty", label: "Empty source" }),
+    ]);
+    const host = mount();
+    await press(gear(host));
+    await openConnections();
+
+    expect(credentialRow("saved").textContent).toContain("Saved ····9f2c");
+    expect(credentialRow("empty").textContent).toContain(
+      uiCopy.settings.connectionsNotSet,
+    );
+    // The value itself has no way into the page: not in the row, not anywhere.
+    expect(document.body.textContent).not.toContain("sk-live-9f2c");
+  });
+
+  it("disables Verify when the credential has no verifier", async () => {
+    credentials.listCredentials.mockResolvedValue([
+      rowOf({ id: "no-check", label: "No check", set: true, hint: "9f2c" }),
+      rowOf({
+        id: "has-check",
+        label: "Has check",
+        set: true,
+        hint: "9f2c",
+        verify: true,
+      }),
+    ]);
+    const host = mount();
+    await press(gear(host));
+    await openConnections();
+
+    const verify = (id: string) =>
+      document.querySelector<HTMLButtonElement>(
+        `[data-yunari-credential-verify="${id}"]`,
+      );
+    expect(verify("no-check")?.disabled).toBe(true);
+    expect(verify("has-check")?.disabled).toBe(false);
+  });
+
+  it("saves once and refreshes the row from the host", async () => {
+    credentials.listCredentials
+      .mockResolvedValueOnce([unset])
+      .mockResolvedValueOnce([stored]);
+    const host = mount();
+    await press(gear(host));
+    await openConnections();
+
+    const input = document.querySelector<HTMLInputElement>(
+      '[data-yunari-credential-input="demo"]',
+    );
+    if (input === null) throw new Error("no credential input.");
+    await typeInto(input, "sk-live-9f2c");
+
+    const save = document.querySelector<HTMLButtonElement>(
+      '[data-yunari-credential-save="demo"]',
+    );
+    if (save === null) throw new Error("no save control.");
+    await press(save);
+
+    expect(credentials.saveCredential).toHaveBeenCalledTimes(1);
+    expect(credentials.saveCredential).toHaveBeenCalledWith(
+      "demo",
+      "sk-live-9f2c",
+    );
+    // The row is the host's answer, not the draft: gone unset before, set after.
+    expect(credentials.listCredentials).toHaveBeenCalledTimes(2);
+    expect(credentialRow("demo").textContent).toContain("Saved ····9f2c");
   });
 });
 

@@ -20,6 +20,7 @@ import {
   Info,
   Keyboard,
   Layers2,
+  Link,
   LoaderCircle,
   Lock,
   LogIn,
@@ -182,8 +183,9 @@ export const SHAPE_GLYPHS: Readonly<Record<ShapeKind, LucideIcon>> = {
   wedge: TriangleRight,
 };
 
-/** The settings column's other two tabs. */
+/** The settings column's other tabs. */
 export const KEYBOARD_GLYPH: LucideIcon = Keyboard;
+export const CONNECTIONS_GLYPH: LucideIcon = Link;
 export const INFO_GLYPH: LucideIcon = Info;
 
 /** One-off chrome marks: the row's rename and the keyboard row's rebind, the

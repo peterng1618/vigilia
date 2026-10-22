@@ -1842,6 +1842,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
             label: known.label,
             set: value !== undefined,
             hint: value === undefined ? "" : hintOf(value),
+            verify: known.verify !== undefined,
           });
         }
 

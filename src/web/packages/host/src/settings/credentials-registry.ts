@@ -27,6 +27,8 @@ export interface CredentialRow {
   readonly set: boolean;
   /** The last four characters, or "" when unset. */
   readonly hint: string;
+  /** Whether this host has a check to run, which is what enables Verify. */
+  readonly verify: boolean;
 }
 
 export const KNOWN_CREDENTIALS: readonly KnownCredential[] = [];
