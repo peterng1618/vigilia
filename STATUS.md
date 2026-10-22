@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phases 1–3 and Tasks 4.1–4.5 complete; Phase 5 follows in plan order.
+- **Subagent-driven execution**: Phases 1–4 and Task 5.1 complete (the import script and its tests); Task 5.2 (owner-run deploy), 5.3 and 5.4 follow.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,9 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **The current-truth docs name the Worker store**: ownership gains the catalogue-location and store-worker row, the gotchas' dead GitHub OAuth section becomes the loopback-return trap, and both store specs point at the new backend.
-- **`vg-696` is withdrawn into the archive**, its detail naming `c9f6b5aa`, and the store sign-in routes no longer call themselves GitHub's.
-- **The survivor grep finds no product or test hit**: what remains is archived plans, dated decisions and "what this replaces" prose.
+- **`scripts/import-catalogue-item.mjs` imports the catalogue item as its owner**: it reads the old package with `readThemePackage` and drives the Worker's author flow (version request, signed PUT, finalize, approve) — no D1 or R2 writes.
+- **Two silent rewrites are refused**: a package whose envelope id is not `item.json`'s (both named) and any old version but `1.0.0`, including a first answer from the Worker that computes another.
+- **13 tests in `tests/scripts/import-catalogue-item.test.ts`** drive a fake Worker through the four calls in order; the token never reaches the signed URL, an error, or a 404 approve answer, and the default settings path is pinned to the host's `DEFAULT_SETTINGS_DIR`.
 
 ## Next
 
