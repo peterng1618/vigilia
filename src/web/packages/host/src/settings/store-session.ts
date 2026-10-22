@@ -5,12 +5,14 @@ import path from "node:path";
  * The store session the host holds after signing in through the Worker's
  * social flow, beside the other settings as `store-session.json`.
  *
- * Plaintext at mode `0600`, for the reason `github-token.ts` gives: a local
- * host has nowhere to keep a key a local attacker with this user's access
- * could not also read. The mode is the real control where the platform honours
- * it; on Windows the file inherits the profile directory's ACL. The token is
- * never logged, never sent to the browser, and goes only to the file and the
- * `Authorization` header.
+ * Plaintext at mode `0600`, which is the honest shape for a local host: it has
+ * nowhere to keep an encryption key that a local attacker with this user's
+ * access could not also read, so encrypting it would add a second file to
+ * protect beside the one that matters. The mode is the real control where the
+ * platform honours it; on Windows the file inherits the profile directory's
+ * ACL, which is already this user's alone. The token is never logged, never
+ * sent to the browser, and goes only to the file and the `Authorization`
+ * header.
  */
 
 export interface StoreSession {
@@ -78,8 +80,8 @@ export function createStoreSessionStore(directory: string): StoreSessionStore {
   // Written beside the target and renamed over it, so a crash mid-write loses
   // the write rather than leaving a truncated token. On Windows a rename over a
   // file another handle holds open fails with EPERM instead of waiting, so
-  // reads and writes queue rather than overlap — the pattern `github-token.ts`
-  // already uses.
+  // reads and writes queue rather than overlap — the pattern the other settings
+  // stores already use.
   const temporary = `${file}.tmp`;
 
   const save = async (session: StoreSession): Promise<void> => {

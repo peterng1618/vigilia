@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1 and Tasks 2.2–2.3 complete; Task 2.4 is dispatched (host session storage, OAuth start/return). Tasks 2.5 and Phases 3–5 follow in plan order.
+- **Subagent-driven execution**: Phase 1 and Tasks 2.2–2.4 complete; Task 2.5 is dispatched (host store client, submission rework, GitHub path deletion). Phases 3–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,9 +18,11 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **A refused `/api/me` stores nothing**: cases cover a 401 answer and a 200 without `userId`/`email`; both leave `store-session.json` unwritten.
-- **Session cookies are read by both exact names**: `better-auth.session_token` and `__Secure-better-auth.session_token`, URL-decoded, so a token containing `%2F` round-trips.
-- **Sign-in states belong to their server**: minted per `createHostServer`, spent once, refused after ten minutes and capped at 64, so one instance cannot redeem another's state.
+- **Submissions go to the Worker**: `themes/store-client.ts` sends the session as a bearer token on every authenticated call and none on the presigned PUT; a non-2xx throws the Worker's sentence.
+- **The ladder reads `/baseline`**: `submissionFiles` bumps against the authenticated baseline envelope and returns the package, thumbnail and Worker-computed version, not an item file.
+- **One submit route**: `/api/themes/submit` delegates to `catalogue/submit.ts`, answers `{ ok, status, version }`, 401 without a session, 400 for a refusal, 502 when the store is unreachable.
+- **The GitHub path is gone**: the fork/PR client, device flow, CI validator, published-item reader and `github-token.json` store are deleted with their tests and options.
+- **The orphaned `readBody` grew a second catalogue edge**: `catalogue/submit.ts` imports the same `server.ts` helpers `catalogue/routes.ts` already does, the same cycle class.
 
 ## Next
 

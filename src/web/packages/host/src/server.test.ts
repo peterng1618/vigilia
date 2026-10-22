@@ -50,16 +50,11 @@ import {
   LOCAL_DISPLAY_ID,
 } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
-import { createGithubTokenStore } from "./settings/github-token.js";
-import { createStoreSessionStore } from "./settings/store-session.js";
 import type { HostRecord } from "./settings/host-record.js";
 import type { Monitor } from "./settings/monitors.js";
+import { createStoreSessionStore } from "./settings/store-session.js";
 import { createThemeOriginsStore } from "./settings/theme-origins.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
-import {
-  CATALOGUE_RAW_BASE,
-  cataloguePackageUrl,
-} from "./themes/catalogue-source.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
 import { encodeThemeContent } from "./themes/wire.js";
@@ -1584,219 +1579,6 @@ describe("Host theme routes", () => {
     });
   });
 
-  describe("The GitHub identity routes", () => {
-    const CLIENT_ID = "client-from-the-registry";
-    const DEVICE_ENDPOINT = "https://github.com/login/device/code";
-    const TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token";
-    const USER_ENDPOINT = "https://api.github.com/user";
-    const SECRET = "ghs_the-access-token";
-
-    let library: string;
-    let settings: string;
-    let signing: ReturnType<typeof createHostServer>;
-    let token: ReturnType<typeof createGithubTokenStore>;
-    let calls: { url: string; method: string; authorization: string | null }[];
-    let tokenAnswer: () => Record<string, unknown>;
-
-    function json(body: unknown): Response {
-      return new Response(JSON.stringify(body), {
-        headers: { "content-type": "application/json" },
-      });
-    }
-
-    beforeEach(async () => {
-      library = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-github-ui-"));
-      settings = await fs.mkdtemp(
-        path.join(os.tmpdir(), "yunari-github-settings-ui-"),
-      );
-      token = createGithubTokenStore(settings);
-      calls = [];
-      tokenAnswer = () => ({ error: "authorization_pending" });
-      signing = createHostServer({
-        registry: new ProviderRegistry([]),
-        bundles: { player: library, editor: library },
-        themeStore: createThemeStore(library),
-        githubToken: token,
-        githubClientId: CLIENT_ID,
-        // No network: the flow is driven by this answer, and every call is
-        // recorded so a case can show what the host sent and what it did not.
-        fetch: async (input, init) => {
-          const url = String(input);
-          calls.push({
-            url,
-            method: init?.method ?? "GET",
-            authorization: new Headers(init?.headers).get("authorization"),
-          });
-          if (url === DEVICE_ENDPOINT) {
-            return json({
-              device_code: "the-device-code",
-              user_code: "ABCD-1234",
-              verification_uri: "https://github.com/login/device",
-              expires_in: 900,
-              interval: 5,
-            });
-          }
-          if (url === TOKEN_ENDPOINT) return json(tokenAnswer());
-          if (url === USER_ENDPOINT) return json({ login: "aurora-author" });
-          return new Response("unknown", { status: 404 });
-        },
-      });
-    });
-
-    afterEach(async () => {
-      await signing.close();
-      await fs.rm(library, { recursive: true, force: true });
-      await fs.rm(settings, { recursive: true, force: true });
-    });
-
-    it("starts a sign-in and answers only the code the author types", async () => {
-      const res = await request(signing.server, "POST", "/api/github/device");
-
-      expect(res.status).toBe(200);
-      expect(res.json()).toEqual({
-        userCode: "ABCD-1234",
-        verificationUri: "https://github.com/login/device",
-        expiresIn: 900,
-        interval: 5,
-      });
-      // The device code is what redeems the token. It stays in host memory.
-      expect(res.text()).not.toContain("the-device-code");
-    });
-
-    it("polls pending, then ok with the login, and stores the identity", async () => {
-      await request(signing.server, "POST", "/api/github/device");
-
-      const pending = await request(
-        signing.server,
-        "POST",
-        "/api/github/device/poll",
-      );
-      expect(pending.status).toBe(200);
-      expect(pending.json()).toEqual({ state: "pending" });
-
-      tokenAnswer = () => ({ access_token: SECRET, scope: "public_repo" });
-
-      const done = await request(
-        signing.server,
-        "POST",
-        "/api/github/device/poll",
-      );
-      expect(done.status).toBe(200);
-      expect(done.json()).toEqual({ state: "ok", login: "aurora-author" });
-      // The browser learns who signed in, and nothing else.
-      expect(done.text()).not.toContain(SECRET);
-
-      const userCall = calls.find((call) => call.url === USER_ENDPOINT);
-      expect(userCall?.authorization).toBe(`Bearer ${SECRET}`);
-
-      expect(await token.read()).toMatchObject({
-        accessToken: SECRET,
-        scope: "public_repo",
-        login: "aurora-author",
-      });
-    });
-
-    it("does not answer a second poll once the flow has finished", async () => {
-      await request(signing.server, "POST", "/api/github/device");
-      tokenAnswer = () => ({ access_token: SECRET, scope: "public_repo" });
-      await request(signing.server, "POST", "/api/github/device/poll");
-
-      expect(
-        (await request(signing.server, "POST", "/api/github/device/poll"))
-          .status,
-      ).toBe(409);
-    });
-
-    it("signs out by deleting the stored token", async () => {
-      await token.write({
-        accessToken: SECRET,
-        scope: "public_repo",
-        login: "aurora-author",
-        obtainedAt: new Date().toISOString(),
-      });
-
-      const res = await request(signing.server, "DELETE", "/api/github/token");
-
-      expect(res.status).toBe(200);
-      expect(res.json()).toEqual({ ok: true });
-      expect(await token.read()).toBeUndefined();
-    });
-
-    it("refuses every route from another origin", async () => {
-      const routes = [
-        ["POST", "/api/github/device"],
-        ["POST", "/api/github/device/poll"],
-        ["DELETE", "/api/github/token"],
-      ] as const;
-
-      for (const [method, urlPath] of routes) {
-        const res = await request(signing.server, method, urlPath, undefined, {
-          headers: {
-            origin: "https://evil.example",
-            host: "127.0.0.1:5173",
-          },
-        });
-        expect(res.status, `${method} ${urlPath}`).toBe(403);
-      }
-    });
-
-    it("refuses a name that only resolves to this machine", async () => {
-      const res = await request(
-        signing.server,
-        "POST",
-        "/api/github/device",
-        undefined,
-        {
-          headers: {
-            origin: "http://evil.example:5173",
-            host: "evil.example:5173",
-          },
-        },
-      );
-
-      expect(res.status).toBe(403);
-    });
-
-    it("refuses every route from off loopback", async () => {
-      const routes = [
-        ["POST", "/api/github/device"],
-        ["POST", "/api/github/device/poll"],
-        ["DELETE", "/api/github/token"],
-      ] as const;
-
-      for (const [method, urlPath] of routes) {
-        const res = await request(signing.server, method, urlPath, undefined, {
-          remoteAddress: "10.0.0.2",
-        });
-        expect(res.status, `${method} ${urlPath}`).toBe(403);
-      }
-    });
-
-    it("answers 503 naming registration when no client id is configured", async () => {
-      const saved = process.env.YUNARI_GITHUB_CLIENT_ID;
-      delete process.env.YUNARI_GITHUB_CLIENT_ID;
-      const unregistered = createHostServer({
-        registry: new ProviderRegistry([]),
-        bundles: { player: library, editor: library },
-        themeStore: createThemeStore(library),
-        githubToken: token,
-      });
-
-      try {
-        const res = await request(
-          unregistered.server,
-          "POST",
-          "/api/github/device",
-        );
-        expect(res.status).toBe(503);
-        expect(res.text().toLowerCase()).toContain("register");
-      } finally {
-        await unregistered.close();
-        if (saved !== undefined) process.env.YUNARI_GITHUB_CLIENT_ID = saved;
-      }
-    });
-  });
-
   describe("The store session routes", () => {
     const ORIGIN = "https://store.example";
     // A slash is URL-encoded on the wire, so every case that redeems this token
@@ -2228,13 +2010,13 @@ describe("Host theme routes", () => {
   });
 
   describe("The submit route", () => {
-    const CLIENT_ID = "client-from-the-registry";
-    const PR_URL = "https://github.com/peterng1618/yunari-store/pull/7";
-    const SECRET = "ghs_the-access-token";
+    const ORIGIN = "https://store.example";
+    // A slash is URL-encoded on the wire, so the token path is exercised too.
+    const SESSION_TOKEN = "session/token.value";
     // New documents get UUID ids; these fixtures mirror that.
     const THEME_ID = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
     const BARE_ID = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
-    const FORK_PATH = "https://api.github.com/repos/aurora-author/yunari-store";
+    const UPLOAD_URL = `https://r2.example/packages/${THEME_ID}/1.0.0.zip`;
     // The store's own check: a picture is any file that starts with a PNG's
     // eight magic bytes, and a submission refuses a theme without one.
     const PNG = new Uint8Array([
@@ -2244,18 +2026,13 @@ describe("Host theme routes", () => {
     let library: string;
     let settings: string;
     let submitting: ReturnType<typeof createHostServer>;
-    let token: ReturnType<typeof createGithubTokenStore>;
+    let session: ReturnType<typeof createStoreSessionStore>;
     let calls: { url: string; method: string; authorization: string | null }[];
-    /** What the catalogue already publishes, when a case is about a bump; absent
-     *  is the first-publication catalogue every other case runs against. */
-    let published:
-      | {
-          readonly itemUrl: string;
-          readonly packageUrl: string;
-          readonly item: string;
-          readonly bytes: Uint8Array<ArrayBuffer>;
-        }
-      | undefined;
+    /** The Worker's baseline answer; absent is a first publication. */
+    let storedBaseline: FabricThemeEnvelope | undefined;
+    let storedVersion: string;
+    let plan: { version: string; status: string; uploadUrl: string };
+    let finalStatus: string;
 
     function json(body: unknown, status = 200): Response {
       return new Response(JSON.stringify(body), {
@@ -2269,9 +2046,12 @@ describe("Host theme routes", () => {
       settings = await fs.mkdtemp(
         path.join(os.tmpdir(), "yunari-submit-settings-ui-"),
       );
-      token = createGithubTokenStore(settings);
+      session = createStoreSessionStore(settings);
       calls = [];
-      published = undefined;
+      storedBaseline = undefined;
+      storedVersion = "1.0.0";
+      plan = { version: "1.0.0", status: "pending", uploadUrl: UPLOAD_URL };
+      finalStatus = "pending";
 
       const store = createThemeStore(library);
       await store.write(THEME_ID, createValidPackage(THEME_ID, "Aurora"));
@@ -2284,10 +2064,10 @@ describe("Host theme routes", () => {
         bundles: { player: library, editor: library },
         themeStore: store,
         thumbnails: createThumbnailStore(library),
-        githubToken: token,
-        githubClientId: CLIENT_ID,
-        // No network: the submission is driven by this answer, and every call is
-        // recorded so a case can show what the host sent and what it did not.
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        // No network: the Worker's four calls are answered in order, and every
+        // call is recorded so a case can show what the host sent.
         fetch: async (input, init) => {
           const url = String(input);
           const method = init?.method ?? "GET";
@@ -2296,30 +2076,32 @@ describe("Host theme routes", () => {
             method,
             authorization: new Headers(init?.headers).get("authorization"),
           });
-          // The catalogue's own published files: only a case about a bump
-          // serves them, and every other case meets the 404 a first
-          // publication reads as ordinary.
-          if (published !== undefined && url === published.itemUrl) {
-            return new Response(published.item, {
-              status: 200,
-              headers: { "content-type": "application/json" },
+
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/baseline`) {
+            if (storedBaseline === undefined) {
+              return new Response("Not found", { status: 404 });
+            }
+            return json({
+              version: storedVersion,
+              createdAt: "2026-10-01T00:00:00.000Z",
+              envelope: storedBaseline,
+              status: "published",
             });
           }
-          if (published !== undefined && url === published.packageUrl) {
-            return new Response(published.bytes, { status: 200 });
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/versions`) {
+            return json(plan);
           }
-          if (url.endsWith("/forks")) return json({}, 201);
-          if (url.endsWith("/pulls")) return json({ html_url: PR_URL }, 201);
-          if (url.endsWith("/git/ref/heads/main")) {
-            return json({ object: { sha: "head-sha" } });
+          if (url === UPLOAD_URL) return new Response(null, { status: 200 });
+          if (
+            url ===
+            `${ORIGIN}/api/me/items/${THEME_ID}/versions/${plan.version}/finalize`
+          ) {
+            return json({
+              ok: true,
+              status: finalStatus,
+              version: plan.version,
+            });
           }
-          if (url.endsWith("/git/refs")) return json({}, 201);
-          if (url.includes("/contents/")) {
-            return method === "GET"
-              ? new Response(null, { status: 404 })
-              : json({}, 201);
-          }
-          if (url === FORK_PATH) return json({ full_name: "aurora-author/x" });
           return new Response("unknown", { status: 404 });
         },
       });
@@ -2336,15 +2118,15 @@ describe("Host theme routes", () => {
     }
 
     async function signedIn(): Promise<void> {
-      await token.write({
-        accessToken: SECRET,
-        scope: "public_repo",
-        login: "aurora-author",
+      await session.write({
+        token: SESSION_TOKEN,
+        userId: "user-1",
+        email: "author@example.com",
         obtainedAt: "2026-10-22T00:00:00.000Z",
       });
     }
 
-    it("opens a pull request for a library theme and answers its URL", async () => {
+    it("submits the package to the Worker and answers its status", async () => {
       await signedIn();
 
       const res = await request(
@@ -2359,63 +2141,43 @@ describe("Host theme routes", () => {
       // `null`, because an absent key would be a different answer.
       expect(res.json()).toEqual({
         ok: true,
-        url: PR_URL,
+        status: "pending",
         version: { from: null, to: "1.0.0", level: "initial" },
       });
-      // The token only ever travels in the header, and only to GitHub's API:
-      // the catalogue read that computes the version is unauthenticated.
-      const api = "https://api.github.com";
-      expect(
-        calls
-          .filter((call) => call.url.startsWith(api))
-          .every((call) => call.authorization === `Bearer ${SECRET}`),
-      ).toBe(true);
-      expect(
-        calls
-          .filter((call) => !call.url.startsWith(api))
-          .every((call) => call.authorization === null),
-      ).toBe(true);
-      expect(res.text()).not.toContain(SECRET);
+
+      // The four calls, in the order the store's own protocol requires: the
+      // baseline, the version request, the presigned PUT, the finalize.
+      expect(calls.map((call) => [call.method, call.url])).toEqual([
+        ["GET", `${ORIGIN}/api/me/items/${THEME_ID}/baseline`],
+        ["POST", `${ORIGIN}/api/me/items/${THEME_ID}/versions`],
+        ["PUT", UPLOAD_URL],
+        ["POST", `${ORIGIN}/api/me/items/${THEME_ID}/versions/1.0.0/finalize`],
+      ]);
+      // The session token travels on every authenticated call and on no other:
+      // the presigned PUT is the one call that must not carry it.
+      expect(calls.map((call) => call.authorization)).toEqual([
+        `Bearer ${SESSION_TOKEN}`,
+        `Bearer ${SESSION_TOKEN}`,
+        null,
+        `Bearer ${SESSION_TOKEN}`,
+      ]);
+      expect(res.text()).not.toContain(SESSION_TOKEN);
     });
 
-    it("answers the version a bumping submission published", async () => {
+    it("answers the status and version the Worker computed for a bump", async () => {
       await signedIn();
-      // The store already holds `1.4.0`, tagged where this library's copy is
-      // not: a tag leaving the set is a minor change, so the ladder answers
-      // `1.5.0` and the route carries that to the author.
-      const publishedEnvelope: FabricThemeEnvelope = {
-        schemaVersion: 2,
-        fabricVersion: "7.4.0",
-        id: THEME_ID,
-        artboard: { width: 1920, height: 1080 },
+      // The store already holds `1.4.0` with a tag this library's copy lacks: a
+      // tag leaving the set is a minor change, so the ladder answers `1.5.0`.
+      storedVersion = "1.4.0";
+      storedBaseline = {
+        ...createValidPackage(THEME_ID, "Aurora").envelope,
         metadata: {
-          name: "Aurora",
-          themeLanguage: "en",
+          ...createValidPackage(THEME_ID, "Aurora").envelope.metadata,
           tags: ["warm"],
         },
-        scene: { version: "7.4.0", objects: [] },
       };
-      const written = writeThemePackage({
-        envelope: publishedEnvelope,
-        assets: {},
-      });
-      if (!written.ok) throw new Error(written.message);
-      published = {
-        itemUrl: `${CATALOGUE_RAW_BASE}/catalogue/${THEME_ID}/item.json`,
-        packageUrl: cataloguePackageUrl(THEME_ID),
-        item: JSON.stringify({
-          kind: DASHBOARD_THEME_KIND,
-          name: "Aurora",
-          version: "1.4.0",
-          createdAt: "2026-10-01T00:00:00.000Z",
-          updatedAt: "2026-10-01T00:00:00.000Z",
-          downloads: 7,
-          favorites: 3,
-          packageUrl: cataloguePackageUrl(THEME_ID),
-          thumbnail: `catalogue/${THEME_ID}/thumbnail.png`,
-        }),
-        bytes: new Uint8Array(written.bytes),
-      };
+      plan = { version: "1.5.0", status: "published", uploadUrl: UPLOAD_URL };
+      finalStatus = "published";
 
       const res = await request(
         submitting.server,
@@ -2427,12 +2189,12 @@ describe("Host theme routes", () => {
       expect(res.status).toBe(200);
       expect(res.json()).toEqual({
         ok: true,
-        url: PR_URL,
+        status: "published",
         version: { from: "1.4.0", to: "1.5.0", level: "minor" },
       });
     });
 
-    it("answers 401 asking the author to sign in when no identity is stored", async () => {
+    it("answers 401 asking the author to sign in when no session is held", async () => {
       const res = await request(
         submitting.server,
         "POST",
@@ -2441,8 +2203,11 @@ describe("Host theme routes", () => {
       );
 
       expect(res.status).toBe(401);
-      expect(res.text().toLowerCase()).toContain("sign in");
-      expect(calls, "an unsigned submission reached GitHub").toEqual([]);
+      expect(res.json()).toEqual({
+        ok: false,
+        message: "Sign in to the store before submitting.",
+      });
+      expect(calls, "an unsigned submission reached the store").toEqual([]);
     });
 
     it("refuses a non-loopback POST", async () => {
@@ -2502,7 +2267,7 @@ describe("Host theme routes", () => {
       expect(calls).toEqual([]);
     });
 
-    it("names the package stage that refused a theme with no picture", async () => {
+    it("answers 400 with the local refusal for a theme with no picture", async () => {
       await signedIn();
 
       const res = await request(
@@ -2512,39 +2277,129 @@ describe("Host theme routes", () => {
         submitBody(BARE_ID),
       );
 
-      expect(res.status).toBe(422);
+      expect(res.status).toBe(400);
       expect(res.json()).toEqual({
         ok: false,
-        stage: "package",
         message: expect.stringContaining("picture"),
       });
-      expect(calls, "a theme with no picture reached GitHub").toEqual([]);
+      expect(calls, "a theme with no picture reached the store").toEqual([]);
     });
 
-    it("answers 503 naming registration when no client id is configured", async () => {
+    it("answers 400 with the Worker's own sentence when it refuses", async () => {
       await signedIn();
-      const saved = process.env.YUNARI_GITHUB_CLIENT_ID;
-      delete process.env.YUNARI_GITHUB_CLIENT_ID;
-      const unregistered = createHostServer({
+      const refusing = createHostServer({
         registry: new ProviderRegistry([]),
         bundles: { player: library, editor: library },
         themeStore: createThemeStore(library),
         thumbnails: createThumbnailStore(library),
-        githubToken: token,
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () =>
+          new Response("This theme has not changed.", {
+            status: 400,
+          }),
       });
 
       try {
         const res = await request(
-          unregistered.server,
+          refusing.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(400);
+        expect(res.json()).toEqual({
+          ok: false,
+          message: "This theme has not changed.",
+        });
+      } finally {
+        await refusing.close();
+      }
+    });
+
+    it("answers 401 when the Worker refuses the stored session", async () => {
+      await signedIn();
+      const stale = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () => new Response("Unauthorized", { status: 401 }),
+      });
+
+      try {
+        const res = await request(
+          stale.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(401);
+        expect(res.json()).toEqual({ ok: false, message: "Unauthorized" });
+      } finally {
+        await stale.close();
+      }
+    });
+
+    it("answers 502 when the store cannot be reached", async () => {
+      await signedIn();
+      const unreachable = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () => {
+          throw new Error("offline");
+        },
+      });
+
+      try {
+        const res = await request(
+          unreachable.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(502);
+        expect(res.json()).toEqual({
+          ok: false,
+          message: "The store could not be reached.",
+        });
+      } finally {
+        await unreachable.close();
+      }
+    });
+
+    it("answers 503 when the host has no store address", async () => {
+      await signedIn();
+      const saved = process.env.YUNARI_STORE_ORIGIN;
+      delete process.env.YUNARI_STORE_ORIGIN;
+      const unaddressed = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeSession: session,
+      });
+
+      try {
+        const res = await request(
+          unaddressed.server,
           "POST",
           "/api/themes/submit",
           submitBody(),
         );
         expect(res.status).toBe(503);
-        expect(res.text().toLowerCase()).toContain("register");
       } finally {
-        await unregistered.close();
-        if (saved !== undefined) process.env.YUNARI_GITHUB_CLIENT_ID = saved;
+        await unaddressed.close();
+        if (saved !== undefined) process.env.YUNARI_STORE_ORIGIN = saved;
       }
     });
   });

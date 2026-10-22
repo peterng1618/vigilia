@@ -1,7 +1,6 @@
-import {
-  DASHBOARD_THEME_KIND,
-  type FabricThemeEnvelope,
-  parseCatalogueItemFile,
+import type {
+  CatalogueStatus,
+  FabricThemeEnvelope,
 } from "@yunari/renderer-core";
 import {
   classifyThemeChange,
@@ -12,51 +11,47 @@ import {
   versionFor,
   writeThemePackage,
 } from "@yunari/theme-package";
-import { cataloguePackageUrl } from "./catalogue-source.js";
-import { readPublishedItem } from "./published-item.js";
 import {
   isValidThemeId,
   ThemeConflictError,
   type ThemeStore,
 } from "./store.js";
+import type { StoreClient } from "./store-client.js";
 import type { ThumbnailStore } from "./thumbnails.js";
 
 /**
- * One library theme as the files a catalogue submission commits.
+ * One library theme as the bytes a store submission sends.
  *
- * The catalogue repo is the only reader of what this writes, so the item file is
- * run back through `parseCatalogueItemFile` before it is returned: the file the
- * host writes is the file the catalogue accepts, checked by the one parser that
- * decides that.
- *
- * The version is the ladder's, never the document's: the published package is
- * the only prior release, and this is the one place both are in hand.
+ * The Worker builds the item JSON and computes the authoritative version; this
+ * only does what needs the local library: read the document, refuse what the
+ * store will not take, run the ladder against the authenticated baseline, write
+ * the version into the document and build the package.
  */
 
-/** The picture's name inside a catalogue item's directory, as in the library. */
-const THUMBNAIL_FILE = "thumbnail.png";
-
 export interface SubmissionFiles {
-  readonly itemJson: string;
   readonly packageBytes: Uint8Array;
   readonly thumbnailBytes: Uint8Array;
-  /** The version this submission publishes; written into the library document. */
+  /** The versioned document the Worker validates and the package carries. */
+  readonly envelope: FabricThemeEnvelope;
+  /** The version the Worker computed for this submission. */
   readonly version: string;
   /** The version it bumps from, absent on a first publication. */
   readonly from: string | undefined;
-  /** What the ladder decided, which the store surface shows after the PR opens. */
+  /** What the ladder decided, which the store surface shows after submission. */
   readonly level: VersionLevel;
-  /** The catalogue directory the files belong in: `catalogue/<themeId>`. */
-  readonly path: string;
+  /** The state the item holds after finalize, as the version request answered. */
+  readonly status: CatalogueStatus;
+  /** The presigned address this package is PUT to. */
+  readonly uploadUrl: string;
 }
 
 export async function submissionFiles(
   themeId: string,
   store: ThemeStore,
-  options?: {
+  options: {
     readonly thumbnails?: ThumbnailStore;
     readonly now?: () => Date;
-    readonly fetch?: typeof globalThis.fetch;
+    readonly client: StoreClient;
   },
 ): Promise<
   { ok: true; files: SubmissionFiles } | { ok: false; message: string }
@@ -86,16 +81,16 @@ export async function submissionFiles(
     };
   }
 
-  // The catalogue's CI refuses this package, so the author is told here, before
-  // a submission exists to upload.
+  // The store refuses this package, so the author is told here, before a
+  // submission exists to upload.
   const videoRefusal = themeVideoRefusals(theme.envelope, theme.assets)[0];
   if (videoRefusal !== undefined) return { ok: false, message: videoRefusal };
 
   const thumbnail =
-    options?.thumbnails === undefined
+    options.thumbnails === undefined
       ? undefined
       : await options.thumbnails.read(themeId);
-  // Every item commits a picture beside its header, so a theme without one
+  // Every item commits a picture beside its version, so a theme without one
   // cannot be submitted: the storefront would hold a path to no file.
   if (thumbnail === undefined) {
     return {
@@ -104,20 +99,16 @@ export async function submissionFiles(
     };
   }
 
-  // The store's copy of this id is the only prior release a submission may
-  // descend from. Its refusal is the author's answer, unchanged.
-  const published = await readPublishedItem(
-    themeId,
-    options?.fetch === undefined ? undefined : { fetch: options.fetch },
-  );
-  if (!published.ok) return { ok: false, message: published.message };
-  const item = published.item;
+  // The author's own stored version is the only prior release a submission may
+  // descend from — in any state, which is what the authenticated route buys. A
+  // refusal throws to the route, which owns the status an author sees.
+  const item = await options.client.baseline(themeId);
 
   if (item !== undefined && !isSemanticVersion(item.version)) {
     return { ok: false, message: unbumpableVersion(item.version) };
   }
 
-  // The published package is the baseline, and the library document the
+  // The stored envelope is the baseline, and the library document the
   // candidate — the order the ladder expects.
   const change = classifyThemeChange(item?.envelope, theme.envelope);
   if (item !== undefined && change.level === "none") {
@@ -128,7 +119,7 @@ export async function submissionFiles(
   }
   const version = versionFor(item?.version, change);
   if (version === undefined) {
-    // `initial` (no published item) always mints a version, so only a published
+    // `initial` (no published item) always mints a version, so only a stored
     // one the ladder refuses can land here.
     return {
       ok: false,
@@ -175,9 +166,8 @@ export async function submissionFiles(
   });
   if (!written.ok) return { ok: false, message: written.message };
 
-  // The reader refuses a package this large, and the catalogue's CI reads it
-  // with that reader: saying so here is the last chance to spare the author a
-  // failed upload.
+  // The reader refuses a package this large, and the Worker checks the object
+  // it receives with the same bound: saying so here spares a failed upload.
   if (written.bytes.byteLength > MAX_ARCHIVE_BYTES) {
     return {
       ok: false,
@@ -187,39 +177,27 @@ export async function submissionFiles(
     };
   }
 
-  // The submission instant, not the document's: the catalogue derives an item's
-  // real history from git, and these fields must be the instants this file
-  // claims. Everything a published item owns is carried forward.
-  const at = (options?.now?.() ?? new Date()).toISOString();
-  // The credit the document declares is copied, never re-derived: it names the
-  // theme this one was forked from, and a document without one has no key.
-  const remixOf = withVersion.metadata?.remixOf;
-  const parsed = parseCatalogueItemFile({
-    kind: DASHBOARD_THEME_KIND,
-    name: theme.name,
-    version,
-    createdAt: item?.createdAt ?? at,
-    updatedAt: at,
-    // Option B has no download counter and no reactions for repository files.
-    downloads: item?.downloads ?? 0,
-    favorites: item?.favorites ?? 0,
-    packageUrl: cataloguePackageUrl(themeId),
-    // The picture this submission commits, beside `item.json`.
-    thumbnail: `catalogue/${themeId}/${THUMBNAIL_FILE}`,
-    ...(remixOf === undefined ? {} : { remixOf }),
+  // The Worker requires a name for a new item; the document's own is the one
+  // the storefront should show, and the library's is the fallback the old
+  // submission code read.
+  const name = withVersion.metadata?.name ?? theme.name;
+
+  const plan = await options.client.createVersion(themeId, {
+    envelope: withVersion,
+    name,
   });
-  if (!parsed.ok) return { ok: false, message: parsed.reason };
 
   return {
     ok: true,
     files: {
-      itemJson: `${JSON.stringify(parsed.file, null, 2)}\n`,
       packageBytes: written.bytes,
       thumbnailBytes: thumbnail,
-      version,
+      envelope: withVersion,
+      version: plan.version,
       from: item?.version,
       level: change.level,
-      path: `catalogue/${themeId}`,
+      status: plan.status,
+      uploadUrl: plan.uploadUrl,
     },
   };
 }
