@@ -80,7 +80,23 @@ describe("auth", () => {
     expect(
       location.startsWith("https://github.com/login/oauth/authorize"),
     ).toBe(true);
-    expect(location).toContain("state=");
+    const expected = new URL("/auth/return", BASE);
+    expected.searchParams.set("host", "http://127.0.0.1:5173");
+    expected.searchParams.set("state", "opaque");
+    // The provider's `redirect_uri` is the Worker's own /api/auth/callback;
+    // Better Auth carries our callback destination inside the stored OAuth
+    // state. Without host and state there, every real login dies on the return
+    // page's 400.
+    const providerState = new URL(location).searchParams.get("state");
+    expect(providerState).not.toBeNull();
+    const stored = await env.DB.prepare(
+      "SELECT value FROM verification WHERE identifier = ?",
+    )
+      .bind(`auth-state:${providerState}`)
+      .first<{ value: string }>();
+    expect(stored).not.toBeNull();
+    const state = JSON.parse(stored?.value ?? "{}") as { callbackURL?: string };
+    expect(state.callbackURL).toBe(expected.toString());
     expect(
       (
         await SELF.fetch(
@@ -105,12 +121,20 @@ describe("auth", () => {
         )
       ).status,
     ).toBe(400);
+    const host = "http://127.0.0.1:5173";
+    const state = "state-9f1c";
     const page = await SELF.fetch(
-      `${BASE}/auth/return?host=${LOOPBACK}&state=a`,
+      `${BASE}/auth/return?host=${encodeURIComponent(host)}&state=${state}`,
     );
     expect(page.status).toBe(200);
     expect(page.headers.get("content-type")).toContain("text/html");
     const html = await page.text();
     expect(html).toContain("/api/auth/one-time-token/generate");
+    expect(html).toContain('credentials: "include"');
+    expect(html).toContain('searchParams.set("token"');
+    // The page reads host and state at runtime; echoing them would bake a
+    // caller-supplied destination into the markup.
+    expect(html).not.toContain(host);
+    expect(html).not.toContain(state);
   });
 });

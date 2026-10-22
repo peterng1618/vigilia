@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1 complete (Tasks 1.1–1.3); Task 2.1 is dispatched. Phases 2–5 follow in plan order.
+- **Subagent-driven execution**: Phase 1 complete; Task 2.1 is in an OAuth test-proof fix round, then Task 2.2. Phases 2–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,11 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Better Auth runs on D1**: `createAuth` wires GitHub/Google, `bearer()` and `oneTimeToken()`, with `testUtils()` only under `TEST_MODE`.
-- **`POST /migrate` creates Better Auth's tables** behind `x-migrate-token` (404 missing, 403 wrong) and answers 200 on a second run.
-- **`GET /api/me` returns exactly `{ userId, email }`** through `sessionOf`; a forged bearer is 401 and a real session reaches it.
-- **`/auth/start` redirects to the provider** for github|google; `/auth/return` exchanges the cookie session for a one-time token, loopback hosts only.
-- **The vitest config resolves its files from its own directory** (`fileURLToPath`), closing the carried Task 1.1 review item.
+- **Auth tests prove the OAuth return destination**: the start test reads the stored OAuth state and asserts its `callbackURL` carries the loopback `host` and the caller's `state`.
+- **The return page is proven, not just served**: the test asserts `credentials: "include"` and the encoded `searchParams.set("token"`, and that host and state never appear literally in the markup.
+- **Each assertion was red-proved**: dropping the callback parameters and baking literals into the page failed exactly those assertions; restored files verified with `cmp`.
 
 ## Next
 
