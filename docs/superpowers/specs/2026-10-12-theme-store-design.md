@@ -319,6 +319,11 @@ auto-merges on the strength of a username will happily carry a diff that edits
 author is in the verified list; validation is green; **and the diff touches only
 that author's own `catalogue/<id>/` path**.
 
+**A merge must also regenerate `index.json` in the same workflow.** A push made
+with `GITHUB_TOKEN` starts no workflow, so the `catalogue/**` trigger never sees
+an auto-merge's own commit and the listing silently keeps the item it had before.
+Proved on a real repo 2026-10-22: PR #1 merged with `entries: []` still on `main`.
+
 **The app-opened PR adds a fourth requirement.** Because the *client*, not the
 person, composes the branch and the PR, the client must not be able to name the
 target path: the app commits only to the author's own fork and the path is
@@ -329,17 +334,13 @@ client that can name a path is a store-wide write primitive in a compromised bui
 
 Browsing and downloading need **no identity at all** — `index.json` is a static
 file and downloads are plain URLs, so neither a token nor an API call is involved.
-**Which plain URL is the load-bearing part, and it is measured**: the browser
-download URL (`github.com/<owner>/<repo>/releases/download/…`) answered with no
-rate-limit headers at all, while the API asset endpoint answered
-`X-RateLimit-Limit: 60` — the anonymous hourly quota, per IP, shared with every
-other anonymous API call. So `item.json` records the browser download URL and the
-API endpoint is not an alternative, and the raw path that serves `index.json`
-carries its own ETag and a 5-minute cache (§ "Measured 2026-10-21"). Favorite
-**counts** are baked into `index.json` by the
-Action, so an anonymous viewer still sees them; only *casting* a favorite needs a
-token. Anonymous downloads still increment the asset counter, so the download
-metric survives anonymity.
+**Which plain URL is the load-bearing part, and it is measured**: the raw path
+that serves `index.json` carries its own ETag and a 5-minute cache, and it is the
+same path that serves every `packageUrl` — the package rides in the catalogue
+repo beside `item.json` (§ "Open questions", 1, decided 2026-10-21). Favorites and
+download counts are baked into `index.json` by the Action, so an anonymous viewer
+still sees them; only *casting* a favorite needs a token, and under the decided
+hosting there is no asset counter to increment.
 
 **Publishing does need a token, and the previous draft was wrong to imply
 otherwise.** "Sign-in is a just-in-time prompt on the heart control and nothing
