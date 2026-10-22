@@ -204,6 +204,34 @@ describe("classifyThemeChange — scene objects", () => {
       reasons: ["content"],
     });
   });
+  it("is patch when a kept object is re-parented into another group", () => {
+    const before = base({
+      scene: scene([
+        { id: "left", objects: [{ id: "panel", type: "Rect" }] },
+        { id: "right", objects: [] },
+      ]),
+    });
+    const after = base({
+      scene: scene([
+        { id: "left", objects: [] },
+        { id: "right", objects: [{ id: "panel", type: "Rect" }] },
+      ]),
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
+  it("is patch when an object gains an unknown member carrying an id", () => {
+    const before = base({ scene: scene([{ id: "panel", type: "Rect" }]) });
+    const after = base({
+      scene: scene([{ id: "panel", type: "Rect", clipPath: { id: "clip" } }]),
+    });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "patch",
+      reasons: ["content"],
+    });
+  });
 });
 
 describe("classifyThemeChange — assets", () => {
@@ -257,6 +285,21 @@ describe("classifyThemeChange — globals", () => {
       reasons: ["structure"],
     });
     expect(classifyThemeChange(withPreset, empty)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is minor when a token group arrives or leaves whole", () => {
+    // `globals` itself is optional, so the group can be absent on one side.
+    const withoutGlobals = base();
+    const withPalette = base({
+      globals: { typePresets: {}, palette: { accent } },
+    });
+    expect(classifyThemeChange(withoutGlobals, withPalette)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+    expect(classifyThemeChange(withPalette, withoutGlobals)).toEqual({
       level: "minor",
       reasons: ["structure"],
     });

@@ -254,6 +254,76 @@ function compareByIndex(
   return merged(changes);
 }
 
+/** A scene object is an element of an `objects` array at any depth. Its id is
+ *  unique across the document, so a re-parent keeps the same identity. */
+interface SceneObject {
+  readonly node: unknown;
+  readonly parent: string | undefined;
+}
+
+function collectSceneObjects(
+  value: unknown,
+  parent: string | undefined,
+  into: Map<string, SceneObject>,
+): void {
+  if (!isRecord(value)) return;
+  const children = value["objects"];
+  if (!Array.isArray(children)) return;
+  for (const child of children) {
+    if (!hasId(child)) continue;
+    into.set(child.id, { node: child, parent });
+    collectSceneObjects(child, child.id, into);
+  }
+}
+
+/** Z-order among the ids that stay in this same array; an object that moved to
+ *  another parent is compared where it landed, not reordered here. */
+function objectOrderChange(
+  before: unknown,
+  after: unknown,
+): ThemeChange | undefined {
+  if (!Array.isArray(before) || !Array.isArray(after)) return undefined;
+  const beforeIds = before.filter(hasId).map((node) => node.id);
+  const afterIds = after.filter(hasId).map((node) => node.id);
+  const beforeSet = new Set(beforeIds);
+  const afterSet = new Set(afterIds);
+  const stayedBefore = beforeIds.filter((id) => afterSet.has(id));
+  const stayedAfter = afterIds.filter((id) => beforeSet.has(id));
+  return stayedBefore.length === stayedAfter.length &&
+    stayedBefore.some((id, index) => id !== stayedAfter[index])
+    ? change("patch", "content")
+    : undefined;
+}
+
+/** A scene object's own members; its `objects` children are matched
+ *  document-wide, so only their order is compared here. */
+function compareSceneNode(
+  before: unknown,
+  after: unknown,
+): ThemeChange | undefined {
+  if (!isRecord(before) || !isRecord(after))
+    return stable(before) === stable(after)
+      ? undefined
+      : change("patch", "content");
+  const changes: (ThemeChange | undefined)[] = [];
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    const inBefore = Object.hasOwn(before, key);
+    const inAfter = Object.hasOwn(after, key);
+    if (key === "objects" && inBefore && inAfter) {
+      changes.push(objectOrderChange(before[key], after[key]));
+      continue;
+    }
+    if (!inBefore || !inAfter) {
+      // Only `objects` holds scene objects; any other member joining or
+      // leaving a known object is content, even when its value carries an id.
+      changes.push(change("patch", "content"));
+      continue;
+    }
+    changes.push(compareValues(before[key], after[key]));
+  }
+  return merged(changes);
+}
+
 const ARTBOARD_VOLATILE_KEYS = ["width", "height", "backgroundMedia"] as const;
 
 function artboardChange(
@@ -323,10 +393,24 @@ function metadataChange(
 
 /** `scene.version` moves when the editor upgrades, not when the theme does. */
 function sceneChange(before: unknown, after: unknown): ThemeChange | undefined {
-  return compareRecords(
-    withoutKeys(before, ["version"]),
-    withoutKeys(after, ["version"]),
-  );
+  const a = withoutKeys(before, ["version"]);
+  const b = withoutKeys(after, ["version"]);
+  const beforeIds = new Map<string, SceneObject>();
+  const afterIds = new Map<string, SceneObject>();
+  collectSceneObjects(a, undefined, beforeIds);
+  collectSceneObjects(b, undefined, afterIds);
+  const changes: (ThemeChange | undefined)[] = [];
+  const removed = [...beforeIds.keys()].some((id) => !afterIds.has(id));
+  const added = [...afterIds.keys()].some((id) => !beforeIds.has(id));
+  if (removed || added) changes.push(change("minor", "structure"));
+  for (const [id, entry] of beforeIds) {
+    const next = afterIds.get(id);
+    if (next === undefined) continue;
+    if (entry.parent !== next.parent) changes.push(change("patch", "content"));
+    changes.push(compareSceneNode(entry.node, next.node));
+  }
+  changes.push(compareSceneNode(a, b));
+  return merged(changes);
 }
 
 function assetsChange(
@@ -371,7 +455,9 @@ function globalsChange(
   for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
     const inBefore = Object.hasOwn(a, key);
     const inAfter = Object.hasOwn(b, key);
-    if (inBefore && inAfter && TOKEN_GROUPS.has(key)) {
+    if (TOKEN_GROUPS.has(key)) {
+      // The group itself may be absent on one side; `tokenGroupChange` reads
+      // that as an empty map, so its tokens are still additions/removals.
       changes.push(tokenGroupChange(a[key], b[key]));
     } else if (!inBefore || !inAfter) {
       // Only tokens and presets are interface; another group joining the
