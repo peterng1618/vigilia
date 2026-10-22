@@ -44,6 +44,12 @@ export interface FinalizedVersion {
   readonly version: string;
 }
 
+/** The Worker's answer to unpublish or republish: the state it landed in. */
+export interface Transitioned {
+  readonly ok: true;
+  readonly status: CatalogueStatus;
+}
+
 export interface StoreClient {
   /** The latest stored version in any state, or undefined when there is none. */
   baseline(id: string): Promise<StoreBaseline | undefined>;
@@ -58,8 +64,8 @@ export interface StoreClient {
     version: string,
     thumbnail: Uint8Array,
   ): Promise<FinalizedVersion>;
-  unpublish(id: string): Promise<{ readonly ok: true }>;
-  publish(id: string): Promise<{ readonly ok: true }>;
+  unpublish(id: string): Promise<Transitioned>;
+  publish(id: string): Promise<Transitioned>;
   mine(): Promise<{ readonly entries: readonly MineEntry[] }>;
   favorite(id: string, on: boolean): Promise<{ readonly favorites: number }>;
 }
@@ -182,13 +188,13 @@ export function createStoreClient(options: {
 
     unpublish(id) {
       return send(`${itemPath(id)}/unpublish`, "POST").then((response) =>
-        payload<{ ok: true }>(response),
+        payload<Transitioned>(response),
       );
     },
 
     publish(id) {
       return send(`${itemPath(id)}/publish`, "POST").then((response) =>
-        payload<{ ok: true }>(response),
+        payload<Transitioned>(response),
       );
     },
 

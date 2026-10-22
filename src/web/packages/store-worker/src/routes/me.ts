@@ -1,6 +1,7 @@
 import type {
   CatalogueStatus,
   FabricThemeEnvelope,
+  MineEntry,
 } from "@yunari/renderer-core";
 import {
   DASHBOARD_THEME_KIND,
@@ -9,7 +10,12 @@ import {
 } from "@yunari/renderer-core";
 import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 import { type Session, sessionOf } from "../auth/session.js";
-import { favoriteCount, toggleFavorite } from "../db/favorites.js";
+import { entryOf } from "../catalogue/entry.js";
+import {
+  countsByItem,
+  favoriteCount,
+  toggleFavorite,
+} from "../db/favorites.js";
 import {
   insertVersion,
   itemById,
@@ -46,6 +52,10 @@ export async function handleMe(
   env: Env,
   url: URL,
 ): Promise<Response | undefined> {
+  // The listing itself, beside the item routes that all carry a trailing id.
+  if (url.pathname === "/api/me/items" && request.method === "GET")
+    return mine(request, env, url);
+
   if (!url.pathname.startsWith(ITEMS_PREFIX)) return undefined;
   const parts = url.pathname.slice(ITEMS_PREFIX.length).split("/");
   const itemId = parts[0];
@@ -81,6 +91,53 @@ export async function handleMe(
   )
     return favorite(request, env, itemId);
   return undefined;
+}
+
+/**
+ * The author's own rows, in every state a finalize has reached — a `draft`
+ * with no version is a presign leftover and is not an item yet. Newest first,
+ * with the id as the tiebreak so two requests never disagree about the order.
+ */
+async function mine(request: Request, env: Env, url: URL): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const items = await env.DB.prepare(
+    `SELECT * FROM item WHERE author_user_id = ?
+       AND EXISTS (SELECT 1 FROM item_version v WHERE v.item_id = item.id)
+     ORDER BY updated_at DESC, id ASC`,
+  )
+    .bind(session.userId)
+    .all<ItemRow>();
+
+  // One count query for the whole listing, as the public index does.
+  const counts = await countsByItem(
+    env.DB,
+    items.results.map((item) => item.id),
+  );
+
+  const entries: MineEntry[] = [];
+  for (const item of items.results) {
+    // The same latest-version selection `publishedListings` and the public
+    // item read use, so one item is shown at one version everywhere.
+    const version = await latestVersion(env.DB, item.id);
+    if (version === undefined) continue;
+    entries.push({
+      ...entryOf(
+        item,
+        version,
+        counts.get(item.id) ?? 0,
+        `${url.origin}/catalogue/${item.id}/${version.version}.zip`,
+        `catalogue/${item.id}/thumbnail.png`,
+      ),
+      status: item.status,
+      ...(item.status_reason === null
+        ? {}
+        : { statusReason: item.status_reason }),
+    });
+  }
+
+  return Response.json({ entries });
 }
 
 /**

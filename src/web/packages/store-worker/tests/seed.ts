@@ -137,6 +137,66 @@ export async function seedItem(
 }
 
 /**
+ * One item in a named state with a single version row, owned by `owner`.
+ *
+ * `seedItem` stops at the row, which is a presign leftover; a listing of the
+ * author's own items needs the states an item reaches after a finalize, and
+ * `seedPublished` only owns the fixed `ITEM_ID`.
+ */
+export async function seedStatus(options: {
+  readonly id: string;
+  readonly owner: string;
+  readonly status: CatalogueStatus;
+  readonly statusReason?: string;
+  /** Defaults to the seed instant, so a spec picks the listing's order. */
+  readonly updatedAt?: string;
+}): Promise<void> {
+  const updatedAt = options.updatedAt ?? CREATED_AT;
+
+  await env.DB.prepare("DELETE FROM item_version WHERE item_id = ?")
+    .bind(options.id)
+    .run();
+  await env.DB.prepare("DELETE FROM favorite WHERE item_id = ?")
+    .bind(options.id)
+    .run();
+  await env.DB.prepare("DELETE FROM item WHERE id = ?").bind(options.id).run();
+
+  await env.DB.prepare(
+    `INSERT INTO item (id, kind, author_user_id, name, status, status_reason,
+       created_at, updated_at, published_at, unpublished_at, removed_at,
+       downloads, remix_of_id)
+     VALUES (?, 'dashboard-theme', ?, 'Seeded theme', ?, ?, ?, ?, NULL, NULL,
+       NULL, 0, NULL)`,
+  )
+    .bind(
+      options.id,
+      options.owner,
+      options.status,
+      options.statusReason ?? null,
+      CREATED_AT,
+      updatedAt,
+    )
+    .run();
+
+  await env.DB.prepare(
+    `INSERT INTO item_version (item_id, version, envelope_json, facets_json,
+       package_key, thumbnail_key, bytes, sha256, created_at)
+     VALUES (?, '1.0.0', ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      options.id,
+      ENVELOPE_JSON,
+      JSON.stringify(FACETS),
+      packageKey(options.id, "1.0.0"),
+      thumbnailKey(options.id),
+      PACKAGE_BYTES.byteLength,
+      "0".repeat(64),
+      versionInstant(0),
+    )
+    .run();
+}
+
+/**
  * `count` versionless items owned by one account. The first is `ITEM_ID`, so a
  * spec can name it after seeding; the rest are valid catalogue ids of their own.
  * The owner's rows are cleared first, because the pool keeps D1 rows between

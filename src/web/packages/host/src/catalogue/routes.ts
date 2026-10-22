@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
+import { isCatalogueId } from "@yunari/renderer-core";
 import {
   hostnameOf,
   isForeignOrigin,
@@ -7,6 +8,7 @@ import {
   isLoopbackRemote,
 } from "../server.js";
 import type { StoreSessionStore } from "../settings/store-session.js";
+import { createStoreClient, StoreClientError } from "../themes/store-client.js";
 
 /**
  * The host's store session routes, kept out of `server.ts` because that file is
@@ -16,12 +18,19 @@ import type { StoreSessionStore } from "../settings/store-session.js";
  * social flow, the Worker's return page hands the host a one-time token, and the
  * host redeems it here — writing the session it buys to the settings directory
  * and answering the popup with a page that has nothing in it but a sentence.
+ *
+ * The author proxies beside those routes (`/api/store/mine` and the item's
+ * unpublish and publish) share the same guards and carry the stored token; the
+ * editor talks to them, never to the Worker.
  */
 
 const SESSION_PATH = "/api/store/session";
 const START_PATH = "/api/store/auth/start";
 const RETURN_PATH = "/api/store/auth/return";
 const SIGN_OUT_PATH = "/api/store/auth/sign-out";
+const MINE_PATH = "/api/store/mine";
+/** The author's own item write, proxied for the editor's Mine surface. */
+const AUTHOR_ITEM_PATH = /^\/api\/store\/items\/([^/]+)\/(unpublish|publish)$/;
 
 const PATHS = new Set([SESSION_PATH, START_PATH, RETURN_PATH, SIGN_OUT_PATH]);
 
@@ -330,12 +339,89 @@ async function signOut(
   return json(200, { ok: true });
 }
 
+/** The client for this host's stored session, or undefined when it holds none. */
+async function clientFor(
+  origin: string,
+  store: StoreSessionStore,
+  doFetch: typeof fetch,
+): Promise<ReturnType<typeof createStoreClient> | undefined> {
+  const session = await store.read();
+  return session === undefined
+    ? undefined
+    : createStoreClient({ origin, token: session.token, fetch: doFetch });
+}
+
+function signedOut(): Response {
+  return json(401, {
+    ok: false,
+    message: "Sign in to the Yunari store first.",
+  });
+}
+
+/** The Worker's refusal keeps its status; an unreachable store is a 502. */
+function storeRefusal(error: unknown): Response {
+  if (!(error instanceof StoreClientError)) throw error;
+  return json(error.status === 0 ? 502 : error.status, {
+    ok: false,
+    message: error.message,
+  });
+}
+
+/** `GET /api/store/mine`: the author's own rows, in the Worker's own order. */
+async function mine(
+  origin: string,
+  store: StoreSessionStore,
+  doFetch: typeof fetch,
+): Promise<Response> {
+  const client = await clientFor(origin, store, doFetch);
+  if (client === undefined) return signedOut();
+
+  try {
+    return json(200, await client.mine());
+  } catch (error) {
+    return storeRefusal(error);
+  }
+}
+
+/**
+ * `POST /api/store/items/:id/{unpublish,publish}`. The path id is checked
+ * against the catalogue's shape first, so anything else is a 400 here and
+ * never a request to the Worker.
+ */
+async function authorTransition(
+  origin: string,
+  store: StoreSessionStore,
+  doFetch: typeof fetch,
+  match: RegExpExecArray,
+): Promise<Response> {
+  const id = match[1];
+  const action = match[2];
+  if (id === undefined || action === undefined || !isCatalogueId(id))
+    return text(400, "That is not a catalogue id.");
+
+  const client = await clientFor(origin, store, doFetch);
+  if (client === undefined) return signedOut();
+
+  try {
+    return json(
+      200,
+      action === "unpublish"
+        ? await client.unpublish(id)
+        : await client.publish(id),
+    );
+  } catch (error) {
+    return storeRefusal(error);
+  }
+}
+
 export async function handleCatalogueRoutes(
   request: IncomingMessage,
   url: URL,
   deps: CatalogueRouteDeps,
 ): Promise<Response | undefined> {
-  if (!PATHS.has(url.pathname)) return undefined;
+  const authorItem = AUTHOR_ITEM_PATH.exec(url.pathname);
+  const authorRoute = authorItem !== null || url.pathname === MINE_PATH;
+  if (!authorRoute && !PATHS.has(url.pathname)) return undefined;
 
   // The same guards, in the same order, as the GitHub sign-in routes: these
   // act as the author's store account, and pairing in particular answers only
@@ -353,6 +439,15 @@ export async function handleCatalogueRoutes(
   const store = deps.sessionStore;
   if (origin === undefined || store === undefined) {
     return text(503, "This host has no store to sign in to.");
+  }
+
+  if (authorItem !== null) {
+    if (request.method !== "POST") return text(405, "Only POST is supported.");
+    return authorTransition(origin, store, deps.fetch, authorItem);
+  }
+  if (url.pathname === MINE_PATH) {
+    if (request.method !== "GET") return text(405, "Only GET is supported.");
+    return mine(origin, store, deps.fetch);
   }
 
   switch (url.pathname) {

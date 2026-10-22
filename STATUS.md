@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phase 1, Phase 2 and Tasks 3.1–3.2 complete; Task 3.3 is dispatched (favourites, live counts, host path correction). Task 3.4 and Phases 4–5 follow in plan order.
+- **Subagent-driven execution**: Phase 1, Phase 2 and Tasks 3.1–3.3 complete; Task 3.4 is dispatched (Mine listing and host proxies). Phase 4–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,10 +18,10 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Favourites have a write path**: `PUT|DELETE /api/me/items/:id/favorite` calls `toggleFavorite`, which inserts idempotently, refuses a PUT on an unpublished item, and keeps rows across status changes.
-- **Public reads count live**: `db/favorites.ts` owns `favoriteCount`/`countsByItem`; the index batches one `GROUP BY` per 100-id chunk (D1's bound-parameter cap) and `item.json` runs one, replacing `favoritesOf`.
-- **`tests/favorites.spec.ts` proves the count follows a PUT and a DELETE** through `index.json` and `item.json`, plus 401/404 and survival across unpublish.
-- **The host toggles the corrected path**: `store-client.ts` calls `/api/me/items/:id/favorite`; `store-client.test.ts` pins the exact PUT/DELETE URLs.
+- **The Mine listing exists**: `GET /api/me/items` answers the session author's items that hold a version, newest first by `updated_at` then id, each an `entryOf` row from its latest version plus `status` and `statusReason`.
+- **The host proxies it**: `GET /api/store/mine` and `POST /api/store/items/:id/unpublish|publish` reuse the sign-in module's loopback guard, send the stored bearer token, pass the Worker's status through, and answer 401/502 as `{ ok, message }`; a non-UUID path id is a 400 before any call.
+- **`store-client.ts` types the transitions**: `unpublish`/`publish` answer `Transitioned` (with `status`), so the proxy hands back the state the Worker landed in.
+- **Proven by** `tests/mine.spec.ts` (states, ordering, entry shape, 401) and `packages/host/src/catalogue/routes.test.ts` (bearer, pass-through, 400/401/403/502).
 
 ## Next
 

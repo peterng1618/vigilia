@@ -102,6 +102,26 @@ describe("createStoreClient", () => {
     ]);
   });
 
+  it("reads the author's own listing with the token", async () => {
+    const calls: { url: string; method: string | undefined }[] = [];
+    const authorization: (string | null)[] = [];
+    const entries = [{ id: ITEM_ID, status: "unpublished" }];
+    const client = createStoreClient({
+      origin: ORIGIN,
+      token: "t",
+      fetch: (async (input: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(input), method: init?.method });
+        authorization.push(new Headers(init?.headers).get("authorization"));
+        return json({ entries });
+      }) as typeof fetch,
+    });
+
+    expect(await client.mine()).toEqual({ entries });
+
+    expect(calls).toEqual([{ url: `${ORIGIN}/api/me/items`, method: "GET" }]);
+    expect(authorization).toEqual(["Bearer t"]);
+  });
+
   it("answers undefined for a baseline the store does not hold", async () => {
     const client = createStoreClient({
       origin: ORIGIN,
