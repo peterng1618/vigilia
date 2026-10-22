@@ -3037,3 +3037,150 @@ it("does not poll after the surface unmounts", async () => {
 
   expect(host.polls(), "a poll fired after the surface unmounted").toBe(0);
 });
+
+/** The author's own item, as `/api/store/mine` answers it: a catalogue entry
+ *  plus the state the public listing has no room for. */
+const MINE_ID = "5d41402a-bc4b-4c8a-9d0e-2f1a3b4c5d6e";
+
+function mineEntry(
+  status: string,
+  facts: { readonly name?: string } = {},
+): Record<string, unknown> {
+  return {
+    ...catalogueEntry(MINE_ID, "1.0.0", "dashboard-theme", {
+      name: facts.name ?? "Withdrawn theme",
+    }),
+    status,
+  };
+}
+
+/** A host answering the store's session probe and the author's own listing, and
+ *  recording every path it was asked for. */
+function mineHost(options: {
+  readonly signedIn?: boolean;
+  readonly entries?: readonly unknown[];
+  readonly sessionStatus?: number;
+}): { readonly fetch: typeof fetch; readonly calls: string[] } {
+  const calls: string[] = [];
+  const fetchStub = (async (input: RequestInfo | URL) => {
+    const path = String(input);
+    calls.push(path);
+    if (path === "/api/store/session") {
+      if (options.sessionStatus !== undefined) {
+        return new Response("", { status: options.sessionStatus });
+      }
+      return new Response(
+        JSON.stringify(
+          options.signedIn === false
+            ? { signedIn: false }
+            : { signedIn: true, email: "author@example.com" },
+        ),
+        { status: 200 },
+      );
+    }
+    if (path === "/api/store/mine") {
+      return new Response(JSON.stringify({ entries: options.entries ?? [] }), {
+        status: 200,
+      });
+    }
+    return new Response("Not found", { status: 404 });
+  }) as unknown as typeof fetch;
+  return { fetch: fetchStub, calls };
+}
+
+/** The Mine toggle, or the absence this file reports in its own words. */
+function mineToggle(): HTMLButtonElement | null {
+  return document.body.querySelector<HTMLButtonElement>(
+    "[data-yunari-store-mine]",
+  );
+}
+
+/**
+ * **The toggle is the session's, not the store's.** A host holding no session
+ * answers `{ signedIn: false }`, and the region draws no Mine control for it:
+ * a toggle that lists nothing would be a promise the host cannot keep.
+ */
+it("draws no Mine toggle when the host holds no session", async () => {
+  vi.stubGlobal("fetch", mineHost({ signedIn: false }).fetch);
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+  ]);
+  await settle();
+
+  expect(
+    mineToggle(),
+    "a host with no session still draws a Mine toggle",
+  ).toBeNull();
+});
+
+/**
+ * **A held session draws the toggle, named from the copy.** The control is
+ * read by the word beside it, which is the same word the copy owns.
+ */
+it("offers a Mine toggle when a session is held", async () => {
+  vi.stubGlobal("fetch", mineHost({}).fetch);
+  await mountStore([]);
+  await settle();
+
+  const toggle = must(mineToggle(), "Mine toggle");
+  expect(
+    toggle.textContent?.trim(),
+    "the Mine toggle does not carry the copy's own word",
+  ).toBe(uiCopy.store.mine.label);
+  expect(
+    toggle.getAttribute("aria-pressed"),
+    "the Mine toggle does not open unpressed",
+  ).toBe("false");
+});
+
+/**
+ * **Mine lists the author's own rows from the online half, and the public
+ * filters still narrow them.** Turning it on from the local half moves the
+ * region to the online half, because that is the half the source belongs to.
+ */
+it("lists the author's own items when Mine is turned on", async () => {
+  const host = mineHost({ entries: [mineEntry("unpublished")] });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+  ]);
+  await settle();
+
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+
+  expect(
+    halves(headerRow(document.body)).map((segment) =>
+      segment.getAttribute("aria-pressed"),
+    ),
+    "turning Mine on did not move the region to the online half",
+  ).toEqual(["false", "true"]);
+  expect(
+    cells().map((cell) => cell.getAttribute("data-yunari-store-cell")),
+    "Mine did not list the author's own rows",
+  ).toEqual([MINE_ID]);
+  expect(
+    document.body.querySelector(`[data-yunari-store-cell="${MINE_ID}"]`)
+      ?.textContent,
+    "the Mine row does not draw the item's own name",
+  ).toContain("Withdrawn theme");
+
+  // The public filters are the listing's, not the source's: a query that
+  // matches no Mine row draws the filter's own sentence.
+  await type("nothing matches this");
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-empty]"),
+      "empty state after a query over Mine",
+    ).textContent,
+    "a filter that matched no Mine row does not say so",
+  ).toContain(uiCopy.store.empty.filter);
+});

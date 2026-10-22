@@ -39,7 +39,7 @@ import {
   type StoreItem,
   settledTags,
 } from "./local-source.js";
-import { useOnlineListing } from "./online-listing.js";
+import { useMineListing } from "./mine-listing.js";
 import { Pager } from "./pager.js";
 import { DEFAULT_SORT, SORT_KEYS, SORT_ORDERS } from "./sort-orders.js";
 import { useInstall } from "./use-install.js";
@@ -535,7 +535,8 @@ function StoreRegion(props: {
     };
   }, [source]);
 
-  const online = useOnlineListing(items);
+  // The online half chooses its source: the catalogue, or the author's own rows.
+  const online = useMineListing(items, () => setTab("online"));
 
   // **Each half reads its own listing**, and neither ever draws the other's:
   // the point of the halves is that the catalogue and this PC's library are two
@@ -657,6 +658,19 @@ function StoreRegion(props: {
             toFirstPage();
           }}
         />
+        {/* The author's own listing, beside the filters it is still narrowed by.
+            Drawn only where the host holds a session; pressing it moves the
+            region to the online half, which is the half it lists through. */}
+        {online.offered ? (
+          <Toggle
+            data-yunari-store-mine=""
+            pressed={online.on}
+            onPressedChange={online.setOn}
+            className="flex-none rounded-md border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-6)] text-xs text-muted data-[pressed]:border-accent data-[pressed]:text-text"
+          >
+            {uiCopy.store.mine.label}
+          </Toggle>
+        ) : null}
         {/* §5's select, which is a **labelled row** and stays one here: the set
             has one select and this is it, and a bare well with a chevron would
             be a second copy of its popup, its keyboard model and its `readOnly`
@@ -689,10 +703,7 @@ function StoreRegion(props: {
           />
         ) : null}
         {body.kind === "empty-catalogue" ? (
-          <Empty
-            lead={uiCopy.store.empty.catalogue}
-            hint={uiCopy.store.empty.catalogueHint}
-          />
+          <Empty lead={online.empty.lead} hint={online.empty.hint} />
         ) : null}
         {body.kind === "empty-filter" ? (
           <Empty lead={uiCopy.store.empty.filter} hint={undefined} />

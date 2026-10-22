@@ -575,6 +575,23 @@ export const uiCopy = {
       local: "Your themes",
       online: "Store",
     },
+    /** The author's own listing, behind a toggle in the online half's row. The
+     *  empty sentence is the surface's own: an author with nothing submitted is
+     *  not a store with nothing published. */
+    mine: {
+      label: "Mine",
+      empty: "You have no store submissions yet.",
+    },
+    /** The states a Mine row can carry, as the word beside it. `published` has
+     *  no word because the public surface already shows it, and `draft` is not
+     *  a state this surface explains yet: a badge word the surface cannot
+     *  account for is worse than none (§9). */
+    status: {
+      pending: "Pending",
+      unpublished: "Unpublished",
+      rejected: "Rejected",
+      removed: "Removed",
+    },
     /** The search well's name and the word it shows while empty, as one string:
      *  a placeholder that could disagree with the name would be a second copy of
      *  one fact. What a query filters and pages is A.4's and A.5's. */

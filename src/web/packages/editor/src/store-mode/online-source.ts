@@ -37,7 +37,7 @@ export function onlineThemeSource(
         DASHBOARD_THEME_KIND,
       ]);
       refused = parsed.refused;
-      return parsed.entries.map(itemOf);
+      return parsed.entries.map(catalogueItemOf);
     },
     refused(): readonly CatalogueRefusal[] {
       return refused;
@@ -45,7 +45,9 @@ export function onlineThemeSource(
   };
 }
 
-function itemOf(entry: CatalogueEntry): StoreItem {
+/** One parsed catalogue entry as the item the gallery draws. Shared with the
+ *  author's own listing, which is the same entry plus the state it carries. */
+export function catalogueItemOf(entry: CatalogueEntry): StoreItem {
   return {
     id: entry.id,
     kind: entry.kind,

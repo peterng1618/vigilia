@@ -1,5 +1,6 @@
 import {
   type CatalogueRefusal,
+  type CatalogueStatus,
   DASHBOARD_THEME_KIND,
   type FacetRecord,
   type Orientation,
@@ -62,6 +63,12 @@ export interface StoreItem {
    *  leaves it absent and the join sets it. */
   readonly catalogue: CatalogueFacts | undefined;
   readonly facets: FacetRecord;
+  /** The item's own state, where the source is the author's own listing; the
+   *  public catalogue and the library hold none, so both keys are absent rather
+   *  than undefined (`exactOptionalPropertyTypes`). The Mine surface reads it as
+   *  display data, never as a filter. */
+  readonly status?: CatalogueStatus;
+  readonly statusReason?: string;
 }
 
 /**
