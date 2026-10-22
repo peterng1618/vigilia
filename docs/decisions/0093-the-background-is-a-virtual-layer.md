@@ -260,7 +260,8 @@ the live catalogue's smoke theme, which carries the old shape, must be reseeded
 by its owner. That reseed is an external follow-up, not a code task.
 
 The colour keeps the existing `StyleValue` rules: a reference must resolve to a
-declared palette token; a literal is preserved. `media.assetId` must resolve to
+declared palette token; a literal is refused by the envelope validator, as it
+was for `artboard.background`. `media.assetId` must resolve to
 a declared `image`, `svg` or `video`. `fit` and `bounds` are closed enums.
 
 The row, the selection flag and the inspector column are projections of this

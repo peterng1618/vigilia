@@ -112,8 +112,9 @@ needs.
 - `scale` finite and `0.1 ≤ scale ≤ 10`.
 - `offsetX`, `offsetY` finite and `-1 ≤ offset ≤ 1`.
 - Out-of-range values are refused, never clamped.
-- `color` keeps the existing `StyleValue` rules: a reference must resolve to a
-  declared palette token, a literal is accepted.
+- `color` is a palette reference in both the published schema and the envelope
+  validator, exactly as `artboard.background` was; a hand-written literal is
+  refused with `unresolved-global-ref`.
 - `media.assetId` must resolve to a declared `image`, `svg` or `video`.
 - `fit` and `bounds` are closed enums; an unknown member is refused.
 
@@ -168,10 +169,8 @@ selection:
   `background.fit`, `background.scale`, `background.offsetX`,
   `background.offsetY`. They route to the document setter, never to a Fabric
   write.
-- The blank colour reading removes `color` unless the document holds a literal,
-  which survives, exactly as the Document pane's control does today. The blank
-  media reading removes `media`. Choosing a media writes `bounds: "theme"` when
-  none was stored.
+- The blank colour reading removes `color`. The blank media reading removes
+  `media`. Choosing a media writes `bounds: "theme"` when none was stored.
 - Fractions are stored; scale and offsets display as percentages.
   `FieldView`'s number arm and `PairHalfView` gain `percent?: boolean`; the
   control shows `value × 100` and commits `entered ÷ 100`.

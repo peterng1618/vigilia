@@ -17,7 +17,7 @@
 - `schemaVersion` stays `2`. There is no converter, no fallback and no dual read of `artboard.background` / `artboard.backgroundMedia`.
 - The background is never a Fabric object: it does not enter `canvas.getObjects()`, `serialiseScene`, object counts, or history.
 - No transform handles; no canvas selection; the background row is select-only.
-- Background colour is a palette token reference or a preserved literal; no free-colour picker.
+- Background colour is a palette token reference; the envelope validator refuses a literal; no free-colour picker.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on: omit an optional property rather than assign `undefined`.
 - Defaults are `fit: "cover"`, `scale: 1`, `offsetX: 0`, `offsetY: 0`; they must reproduce today's centred cover exactly.
 - Ranges are refused, never clamped: `0.1 ≤ scale ≤ 10`, `-1 ≤ offset ≤ 1`.
