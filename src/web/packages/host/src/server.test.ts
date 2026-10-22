@@ -29,11 +29,11 @@ import { ProviderRegistry } from "./providers/registry.js";
 import { createDisplayLauncher } from "./serve/display-launcher.js";
 import {
   CA_CERTIFICATE_PATH,
-  MAX_THEME_UPLOAD_BYTES,
   createHostServer,
   displayKeyFor,
   type HostingState,
   type HostServerOptions,
+  MAX_THEME_UPLOAD_BYTES,
 } from "./server.js";
 import { newToken } from "./session/pairing.js";
 import { createPairingCodeStore } from "./session/pairing-code.js";

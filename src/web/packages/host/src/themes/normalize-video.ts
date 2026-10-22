@@ -3,9 +3,9 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
+  readVideoFacts,
   VIDEO_LIMITS,
   type VideoFacts,
-  readVideoFacts,
   videoRefusals,
 } from "@vigilia/theme-package";
 import ffmpegStatic from "ffmpeg-static";
@@ -254,7 +254,9 @@ export async function normalizeVideoCommand(
   const input = argv[1];
   const output = argv[2];
   if (input === undefined || output === undefined || argv.length > 3) {
-    console.error(`normalize-video needs <input.mp4> and <output.mp4>.\n${USAGE}`);
+    console.error(
+      `normalize-video needs <input.mp4> and <output.mp4>.\n${USAGE}`,
+    );
     return 1;
   }
 
