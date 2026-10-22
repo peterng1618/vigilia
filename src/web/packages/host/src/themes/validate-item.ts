@@ -2,6 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   DASHBOARD_THEME_KIND,
+  isCatalogueId,
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
 import {
@@ -43,6 +44,12 @@ async function firstRefusal(
   directory: string,
   id: string,
 ): Promise<string | undefined> {
+  // The catalogue boundary: the directory name is the item's id, so a name that
+  // is not a UUID is refused before any document is read.
+  if (!isCatalogueId(id)) {
+    return `the directory name "${id}" is not a catalogue id; a catalogue id is a lowercase UUID.`;
+  }
+
   const itemFile = path.join(directory, "item.json");
   let item: unknown;
   try {

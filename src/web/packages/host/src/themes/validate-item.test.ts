@@ -51,6 +51,10 @@ const LONG_VIDEO = new Uint8Array(
 const DURATION_REFUSAL =
   "assets/clip.mp4: duration 31500 ms exceeds the 30000 ms maximum";
 
+/** The catalogue id every fixture directory carries; the id gate precedes the
+ *  checks these cases were written for. */
+const ID = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
+
 const temporary: string[] = [];
 
 afterEach(async () => {
@@ -115,29 +119,40 @@ function packageWithLongVideo(id: string): Uint8Array {
 }
 
 describe("validateCatalogueItem", () => {
-  it("accepts a directory whose header, path and package agree", async () => {
+  it("refuses a directory whose name is not a catalogue id", async () => {
     const directory = await itemDirectory({ id: "aurora" });
-
-    expect(await validateCatalogueItem(directory)).toEqual({
-      ok: true,
-      id: "aurora",
-    });
-  });
-
-  it("refuses a directory with no item.json", async () => {
-    const directory = await itemDirectory({ id: "aurora", item: null });
 
     expect(await validateCatalogueItem(directory)).toEqual({
       ok: false,
       id: "aurora",
+      reason:
+        'the directory name "aurora" is not a catalogue id; a catalogue id is a lowercase UUID.',
+    });
+  });
+
+  it("accepts a directory whose header, path and package agree", async () => {
+    const directory = await itemDirectory({ id: ID });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: true,
+      id: ID,
+    });
+  });
+
+  it("refuses a directory with no item.json", async () => {
+    const directory = await itemDirectory({ id: ID, item: null });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: false,
+      id: ID,
       reason: "item.json is missing.",
     });
   });
 
   it("refuses a kind this build does not ship", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
-      item: { ...itemFor("aurora"), kind: "dashboard-theme " },
+      id: ID,
+      item: { ...itemFor(ID), kind: "dashboard-theme " },
     });
 
     const checked = await validateCatalogueItem(directory);
@@ -150,7 +165,7 @@ describe("validateCatalogueItem", () => {
 
   it("refuses a package that does not parse", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
+      id: ID,
       packageBytes: NOT_A_PACKAGE,
     });
 
@@ -164,9 +179,9 @@ describe("validateCatalogueItem", () => {
 
   it("refuses a packageUrl naming a file the PR does not carry", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
+      id: ID,
       item: {
-        ...itemFor("aurora"),
+        ...itemFor(ID),
         packageUrl: "https://example.test/aurora.zip",
       },
     });
@@ -175,16 +190,15 @@ describe("validateCatalogueItem", () => {
 
     expect(checked).toMatchObject({
       ok: false,
-      reason:
-        'packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip, not "https://example.test/aurora.zip".',
+      reason: `packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${ID}/${ID}.zip, not "https://example.test/aurora.zip".`,
     });
   });
 
   it("refuses a packageUrl whose path is right but whose host is not the store's", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
+      id: ID,
       item: {
-        ...itemFor("aurora"),
+        ...itemFor(ID),
         packageUrl: "https://attacker.example/catalogue/aurora/aurora.zip",
       },
     });
@@ -194,13 +208,13 @@ describe("validateCatalogueItem", () => {
     expect(checked).toMatchObject({
       ok: false,
       reason: expect.stringContaining(
-        "packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/aurora/aurora.zip",
+        `packageUrl must be https://raw.githubusercontent.com/peterng1618/vigilia-store/main/catalogue/${ID}/${ID}.zip`,
       ),
     });
   });
 
   it("refuses a directory with no thumbnail beside item.json", async () => {
-    const directory = await itemDirectory({ id: "aurora", thumbnail: null });
+    const directory = await itemDirectory({ id: ID, thumbnail: null });
 
     const checked = await validateCatalogueItem(directory);
 
@@ -212,9 +226,9 @@ describe("validateCatalogueItem", () => {
 
   it("refuses a thumbnail header that names another directory", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
+      id: ID,
       item: {
-        ...itemFor("aurora"),
+        ...itemFor(ID),
         thumbnail: "catalogue/elsewhere/thumbnail.png",
       },
     });
@@ -223,14 +237,13 @@ describe("validateCatalogueItem", () => {
 
     expect(checked).toMatchObject({
       ok: false,
-      reason:
-        'thumbnail must be catalogue/aurora/thumbnail.png, not "catalogue/elsewhere/thumbnail.png".',
+      reason: `thumbnail must be catalogue/${ID}/thumbnail.png, not "catalogue/elsewhere/thumbnail.png".`,
     });
   });
 
   it("refuses a package whose own id is another item's", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
+      id: ID,
       packageBytes: packageBytesFor("elsewhere"),
     });
 
@@ -244,7 +257,7 @@ describe("validateCatalogueItem", () => {
 
   it("refuses a directory with no package beside item.json", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
+      id: ID,
       packageBytes: null,
     });
 
@@ -252,7 +265,7 @@ describe("validateCatalogueItem", () => {
 
     expect(checked).toMatchObject({
       ok: false,
-      reason: "aurora.zip is missing.",
+      reason: `${ID}.zip is missing.`,
     });
   });
 });
@@ -266,16 +279,16 @@ describe("validateItemCommand", () => {
   });
 
   it("prints one line and exits zero for a valid directory", async () => {
-    const directory = await itemDirectory({ id: "aurora" });
+    const directory = await itemDirectory({ id: ID });
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
     expect(await validateItemCommand(["validate-item", directory])).toBe(0);
-    expect(log.mock.calls).toEqual([["catalogue/aurora is valid"]]);
+    expect(log.mock.calls).toEqual([[`catalogue/${ID} is valid`]]);
   });
 
   it("names the first refusal and exits one", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
+      id: ID,
       packageBytes: NOT_A_PACKAGE,
     });
     const errors = vi
@@ -284,14 +297,14 @@ describe("validateItemCommand", () => {
 
     expect(await validateItemCommand(["validate-item", directory])).toBe(1);
     expect(errors.mock.calls).toEqual([
-      ["Refused catalogue/aurora: That file is not a readable theme package."],
+      [`Refused catalogue/${ID}: That file is not a readable theme package.`],
     ]);
   });
 
   it("refuses a package carrying a video past the duration cap", async () => {
     const directory = await itemDirectory({
-      id: "aurora",
-      packageBytes: packageWithLongVideo("aurora"),
+      id: ID,
+      packageBytes: packageWithLongVideo(ID),
     });
     const errors = vi
       .spyOn(console, "error")
@@ -299,7 +312,7 @@ describe("validateItemCommand", () => {
 
     expect(await validateItemCommand(["validate-item", directory])).toBe(1);
     expect(errors.mock.calls).toEqual([
-      [`Refused catalogue/aurora: ${DURATION_REFUSAL}`],
+      [`Refused catalogue/${ID}: ${DURATION_REFUSAL}`],
     ]);
   });
 
