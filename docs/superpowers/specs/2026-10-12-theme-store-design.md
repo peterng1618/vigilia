@@ -958,9 +958,8 @@ refusal line, and five rendered claims against a routed index. **C is live
 end to end**: the Action's first run generated `index.json` from the pinned
 generator, and `https://raw.githubusercontent.com/peterng1618/vigilia-store/main/index.json`
 answers `200` with zero entries — the honest empty catalogue, since items arrive
-with E. **E and F are unstarted**, each behind a decision that is the reader's,
-and the acceptance below still decides whether A is accepted: landing is not
-acceptance.
+with E. **E landed 2026-10-22**; F is planned and unstarted. The acceptance
+below still decides whether A is accepted: landing is not acceptance.
 
 **D's implementation landed 2026-10-22** under
 `2026-10-21-theme-store-install.md`: the hosting probe and the option B ruling
@@ -973,6 +972,17 @@ sends no `access-control-allow-origin` on either hop — measured, not assumed.
 The route is loopback only and now also refuses a `Host` that is not a loopback
 name, which is the one check that covers a rebound DNS name. Every browser claim
 is against a routed fixture: the real catalogue stays empty until E.
+
+**E's implementation landed 2026-10-22** under `2026-10-22-theme-store-submission.md`:
+GitHub's device flow as one client with the token in the settings directory at
+`0600` and never in the browser, a hand-rolled fork-then-PR client whose target
+path is derived from the store's own validated id, `validate-item` as a command
+CI runs, the catalogue repo's `validate` and `auto-merge` workflows, and the
+editor's Submit control on a library theme. **A whole-branch review found the
+auto-merge gate was not a gate** — an unverified author's PR would have merged —
+and the fix round closed it along with the ownership rule and a `packageUrl`
+check that accepted any host. **The workflow's refusals are proved on the real
+repo; the unverified-author arm is not**, because it needs a second account.
 
 **A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
 `index.json` and no hosting decision. **C is the last phase that dodges open
