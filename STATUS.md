@@ -18,11 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **The host holds a store session**: `createStoreSessionStore` writes `settings/store-session.json` at mode `0600` and reads a malformed or incomplete file as no session.
-- **Sign-in runs through the Worker**: `POST /api/store/auth/start` answers the Worker's `/auth/start` URL carrying this host's loopback origin and a ten-minute state.
-- **The return redeems the token server-side**: `GET /api/store/auth/return` verifies the one-time token, reads `set-auth-token` or the session cookie, calls `/api/me` and answers a page that closes the popup.
-- **The token never reaches the browser**: `GET /api/store/session` answers `{ signedIn, email }` only, and `POST /api/store/auth/sign-out` clears the file.
-- **The Worker's return page names the callback path** it redirects to (`/api/store/auth/return`) rather than the host root.
+- **A refused `/api/me` stores nothing**: cases cover a 401 answer and a 200 without `userId`/`email`; both leave `store-session.json` unwritten.
+- **Session cookies are read by both exact names**: `better-auth.session_token` and `__Secure-better-auth.session_token`, URL-decoded, so a token containing `%2F` round-trips.
+- **Sign-in states belong to their server**: minted per `createHostServer`, spent once, refused after ten minutes and capped at 64, so one instance cannot redeem another's state.
 
 ## Next
 

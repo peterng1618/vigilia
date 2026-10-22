@@ -35,41 +35,67 @@ export interface CatalogueRouteDeps {
   readonly origin: string | undefined;
   readonly sessionStore: StoreSessionStore | undefined;
   readonly fetch: typeof fetch;
+  /** The sign-ins this server started, and nothing another server did. */
+  readonly states: PendingStates;
 }
 
-interface PendingState {
+export interface PendingStates {
+  /** Remember a sign-in started for `host`, and answer its state. */
+  remember(host: string): string;
+  /** Spend a state: true only when this server started it, for this host, and
+   *  it has not expired. A state is one redirect's worth of state. */
+  spend(state: string, host: string): boolean;
+}
+
+interface PendingEntry {
   /** The loopback origin the sign-in was started for. */
   readonly host: string;
   readonly at: number;
 }
 
 /**
- * The states this process has started and not yet spent.
+ * A server's own started sign-ins.
  *
- * In memory on purpose: a state is one redirect's worth of state, and a host
+ * Per server rather than module-wide, so a state one host instance minted is
+ * not redeemable by another in the same process. In memory on purpose: a host
  * restarted mid-sign-in asks the person to start again rather than resuming a
  * flow whose browser conversation is gone.
  */
-const pending = new Map<string, PendingState>();
+export function createPendingStates(): PendingStates {
+  const pending = new Map<string, PendingEntry>();
 
-function remember(host: string): string {
-  const now = Date.now();
+  return {
+    remember(host) {
+      const now = Date.now();
 
-  for (const [state, entry] of pending) {
-    if (now - entry.at > STATE_TTL_MS) pending.delete(state);
-  }
+      for (const [state, entry] of pending) {
+        if (now - entry.at > STATE_TTL_MS) pending.delete(state);
+      }
 
-  // Capped by dropping the oldest: a start route is the only writer, and the
-  // 64th sign-in is not one whose predecessor is still worth holding.
-  while (pending.size >= STATE_LIMIT) {
-    const oldest = pending.keys().next().value;
-    if (oldest === undefined) break;
-    pending.delete(oldest);
-  }
+      // Capped by dropping the oldest: a start route is the only writer, and
+      // the 64th sign-in is not one whose predecessor is still worth holding.
+      while (pending.size >= STATE_LIMIT) {
+        const oldest = pending.keys().next().value;
+        if (oldest === undefined) break;
+        pending.delete(oldest);
+      }
 
-  const state = randomUUID();
-  pending.set(state, { host, at: now });
-  return state;
+      const state = randomUUID();
+      pending.set(state, { host, at: now });
+      return state;
+    },
+
+    spend(state, host) {
+      const entry = pending.get(state);
+      // One use whatever it answers: a state that was replayed or refused is
+      // not one a second attempt gets to try again.
+      pending.delete(state);
+
+      if (entry === undefined) return false;
+      if (Date.now() - entry.at > STATE_TTL_MS) return false;
+      return entry.host === host;
+    },
+  };
 }
 
 function answer(status: number, body: string, type: string): Response {
@@ -137,7 +163,16 @@ function decode(value: string): string | undefined {
 /**
  * The session token the exchange bought: the bearer plugin's `set-auth-token`
  * header where the Worker sends one, else the session cookie's own value.
+ *
+ * Better Auth prefixes the cookie name with `__Secure-` when its own URL is
+ * https, so both exact names are read; a prefix or suffix match would accept a
+ * name the Worker never sets.
  */
+const SESSION_COOKIES = new Set([
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+]);
+
 function sessionTokenOf(exchanged: Response): string | undefined {
   const header = exchanged.headers.get("set-auth-token");
   if (header !== null && header !== "") return decode(header);
@@ -150,7 +185,7 @@ function sessionTokenOf(exchanged: Response): string | undefined {
   for (const cookie of cookies) {
     for (const pair of cookie.split(";")) {
       const [name, ...rest] = pair.trim().split("=");
-      if (name === "better-auth.session_token" && rest.length > 0) {
+      if (name !== undefined && SESSION_COOKIES.has(name) && rest.length > 0) {
         return decode(rest.join("="));
       }
     }
@@ -162,6 +197,7 @@ function sessionTokenOf(exchanged: Response): string | undefined {
 async function start(
   request: IncomingMessage,
   origin: string,
+  states: PendingStates,
 ): Promise<Response> {
   if (request.method !== "POST") return text(405, "Only POST is supported.");
 
@@ -174,7 +210,7 @@ async function start(
   target.searchParams.set("provider", "github");
   // The origin only: the Worker's return page appends the callback path.
   target.searchParams.set("host", host);
-  target.searchParams.set("state", remember(host));
+  target.searchParams.set("state", states.remember(host));
 
   return json(200, { url: target.toString() });
 }
@@ -196,22 +232,10 @@ async function complete(
 
   const state = url.searchParams.get("state");
   const token = url.searchParams.get("token");
-  const entry = state === null ? undefined : pending.get(state);
-  // One use whatever it answers: a state that was replayed or refused is not
-  // one a second attempt gets to try again.
-  if (state !== null) pending.delete(state);
+  const started = state !== null && deps.states.spend(state, host);
 
-  if (
-    entry === undefined ||
-    Date.now() - entry.at > STATE_TTL_MS ||
-    token === null ||
-    token === ""
-  ) {
+  if (!started || token === null || token === "") {
     return html(400, "This sign-in has expired, or was not started here.");
-  }
-
-  if (entry.host !== host) {
-    return html(400, "This sign-in was started for another address.");
   }
 
   let exchanged: Response;
@@ -333,7 +357,7 @@ export async function handleCatalogueRoutes(
 
   switch (url.pathname) {
     case START_PATH:
-      return start(request, origin);
+      return start(request, origin, deps.states);
     case RETURN_PATH:
       return complete(request, url, { ...deps, origin, sessionStore: store });
     case SIGN_OUT_PATH:

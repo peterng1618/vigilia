@@ -1799,7 +1799,9 @@ describe("Host theme routes", () => {
 
   describe("The store session routes", () => {
     const ORIGIN = "https://store.example";
-    const SESSION_TOKEN = "session-token.value";
+    // A slash is URL-encoded on the wire, so every case that redeems this token
+    // also exercises the decode.
+    const SESSION_TOKEN = "session/token.value";
     const EMAIL = "author@example.com";
 
     let settings: string;
@@ -1808,6 +1810,8 @@ describe("Host theme routes", () => {
     let calls: { url: string; method: string; authorization: string | null }[];
     /** What the Worker's one-time-token exchange answers. Replaced per case. */
     let verify: () => Response;
+    /** What the Worker's `/api/me` answers. Replaced per case. */
+    let me: (authorization: string | null) => Response;
 
     function json(body: unknown, headers?: Record<string, string>): Response {
       return new Response(JSON.stringify(body), {
@@ -1836,11 +1840,7 @@ describe("Host theme routes", () => {
           calls.push({ url, method: init?.method ?? "GET", authorization });
           if (url === `${ORIGIN}/api/auth/one-time-token/verify`)
             return verify();
-          if (url === `${ORIGIN}/api/me`) {
-            return authorization === `Bearer ${SESSION_TOKEN}`
-              ? json({ userId: "user-1", email: EMAIL })
-              : new Response("Unauthorized", { status: 401 });
-          }
+          if (url === `${ORIGIN}/api/me`) return me(authorization);
           return new Response("unknown", { status: 404 });
         },
       });
@@ -1864,6 +1864,10 @@ describe("Host theme routes", () => {
       calls = [];
       verify = () =>
         json({}, { "set-auth-token": encodeURIComponent(SESSION_TOKEN) });
+      me = (authorization) =>
+        authorization === `Bearer ${SESSION_TOKEN}`
+          ? json({ userId: "user-1", email: EMAIL })
+          : new Response("Unauthorized", { status: 401 });
       hosting = host({ storeOrigin: ORIGIN });
     });
 
@@ -1960,6 +1964,27 @@ describe("Host theme routes", () => {
       expect(await store.read()).toMatchObject({ token: SESSION_TOKEN });
     });
 
+    it("accepts the `__Secure-` cookie name the Worker uses over https", async () => {
+      verify = () =>
+        new Response("{}", {
+          headers: {
+            "set-cookie": `__Secure-better-auth.session_token=${encodeURIComponent(
+              SESSION_TOKEN,
+            )}; Path=/; HttpOnly; Secure`,
+          },
+        });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(await store.read()).toMatchObject({ token: SESSION_TOKEN });
+    });
+
     it("refuses a state it has already spent", async () => {
       const state = await signIn();
       const first = await request(
@@ -1997,6 +2022,68 @@ describe("Host theme routes", () => {
       expect(await store.read()).toBeUndefined();
     });
 
+    it("does not redeem a state another host instance started", async () => {
+      const state = await signIn();
+      const other = host({ storeOrigin: ORIGIN });
+
+      try {
+        const res = await request(
+          other.server,
+          "GET",
+          `/api/store/auth/return?token=one-time&state=${state}`,
+        );
+
+        expect(res.status).toBe(400);
+        expect(await store.read()).toBeUndefined();
+      } finally {
+        await other.close();
+      }
+    });
+
+    it("refuses a state older than ten minutes, without calling the Worker", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(new Date("2026-10-23T10:00:00.000Z"));
+        const state = await signIn();
+
+        vi.setSystemTime(new Date("2026-10-23T10:11:00.000Z"));
+        calls = [];
+        const res = await request(
+          hosting.server,
+          "GET",
+          `/api/store/auth/return?token=one-time&state=${state}`,
+        );
+
+        expect(res.status).toBe(400);
+        expect(calls).toHaveLength(0);
+        expect(await store.read()).toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("keeps 64 started sign-ins and drops the oldest", async () => {
+      const states: string[] = [];
+      for (let index = 0; index < 65; index += 1) states.push(await signIn());
+      const [oldestState] = states;
+      const newestState = states[64];
+
+      const oldest = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${oldestState}`,
+      );
+      expect(oldest.status).toBe(400);
+      expect(calls).toHaveLength(0);
+
+      const newest = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${newestState}`,
+      );
+      expect(newest.status).toBe(200);
+    });
+
     it("answers 401 and keeps nothing when the Worker refuses the token", async () => {
       verify = () => new Response("no", { status: 401 });
       const state = await signIn();
@@ -2013,6 +2100,34 @@ describe("Host theme routes", () => {
 
     it("answers 401 when the exchange carries no session token", async () => {
       verify = () => json({});
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("answers 401 and keeps nothing when the Worker's /api/me refuses the session", async () => {
+      me = () => new Response("Unauthorized", { status: 401 });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("answers 401 and keeps nothing when /api/me names no account", async () => {
+      me = () => json({ userId: "user-1" });
       const state = await signIn();
 
       const res = await request(

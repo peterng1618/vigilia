@@ -10,7 +10,10 @@ import {
   validateFabricThemeEnvelope,
 } from "@yunari/renderer-core";
 import type { ChartRefreshRate } from "@yunari/scene-fabric";
-import { handleCatalogueRoutes } from "./catalogue/routes.js";
+import {
+  createPendingStates,
+  handleCatalogueRoutes,
+} from "./catalogue/routes.js";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
@@ -894,6 +897,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const githubToken = options.githubToken;
   const storeOrigin = options.storeOrigin ?? process.env.YUNARI_STORE_ORIGIN;
   const storeSession = options.storeSession;
+  /** The store sign-in states this server minted, so another instance in the
+   *  same process cannot redeem them. */
+  const storeSignInStates = createPendingStates();
   /** The single device flow this host is waiting on. The browser sends nothing
    *  that could name another, so there is one value rather than a map. */
   let pendingDevice: string | undefined;
@@ -1188,6 +1194,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       origin: storeOrigin,
       sessionStore: storeSession,
       fetch: options.fetch ?? fetch,
+      states: storeSignInStates,
     });
     if (answered !== undefined) {
       await writeWebResponse(response, answered);
