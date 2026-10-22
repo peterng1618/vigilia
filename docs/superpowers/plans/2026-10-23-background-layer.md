@@ -623,7 +623,7 @@ Expected: FAIL — the old cover crop draws a cropped source.
 
 - [ ] **Step 3: Implement the paint**
 
-Compute `placement` with the box being the `device` rect's size, map its edges into the context by `device.width / box.width` and `device.height / box.height`, subtract `region.left`/`region.top`, and draw the full source into that destination. Delete `mediaDrawArgs` and update the tests that named it.
+Compute `placement` with the box being the layer's own `rect` (the `device` rect is that same box scaled by the caller — `glass.ts` `backdropFor` passes `media.rect` through the plane), map its edges into the context by `device.width / rect.width` and `device.height / rect.height`, subtract `region.left`/`region.top`, and draw the full source into that destination. Delete `mediaDrawArgs` (and its barrel export) and update the tests that named it.
 
 - [ ] **Step 4: Run to verify pass**
 
