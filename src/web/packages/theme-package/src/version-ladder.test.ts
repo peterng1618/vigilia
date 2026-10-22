@@ -230,6 +230,24 @@ describe("classifyThemeChange — scene objects", () => {
       reasons: ["content"],
     });
   });
+  it("is minor when an id-less object is added", () => {
+    const rect = { type: "Rect", left: 10 };
+    const before = base({ scene: scene([rect]) });
+    const after = base({ scene: scene([rect, { type: "Rect", left: 20 }]) });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
+  it("is minor when an id-less object is removed", () => {
+    const rect = { type: "Rect", left: 10 };
+    const before = base({ scene: scene([rect, { type: "Rect", left: 20 }]) });
+    const after = base({ scene: scene([rect]) });
+    expect(classifyThemeChange(before, after)).toEqual({
+      level: "minor",
+      reasons: ["structure"],
+    });
+  });
   it("is patch when an object gains an unknown member carrying an id", () => {
     const before = base({ scene: scene([{ id: "panel", type: "Rect" }]) });
     const after = base({

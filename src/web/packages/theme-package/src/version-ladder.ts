@@ -301,6 +301,22 @@ function fullyIdentified(value: unknown): boolean {
   return Array.isArray(value) && value.every(hasId);
 }
 
+/** An id-less `objects` array has no identity to match on: matched indexes are
+ *  content, and a length change is objects joining or leaving — structure, not
+ *  content as the generic primitive-array path would grade it. */
+function compareIndexedObjects(
+  before: readonly unknown[],
+  after: readonly unknown[],
+): ThemeChange | undefined {
+  const changes: (ThemeChange | undefined)[] = [];
+  const common = Math.min(before.length, after.length);
+  for (let index = 0; index < common; index += 1)
+    changes.push(compareValues(before[index], after[index]));
+  if (before.length !== after.length)
+    changes.push(change("minor", "structure"));
+  return merged(changes);
+}
+
 /** A scene object's own members; its `objects` children are matched
  *  document-wide, so only their order is compared here. */
 function compareSceneNode(
@@ -321,7 +337,7 @@ function compareSceneNode(
       changes.push(
         fullyIdentified(a) && fullyIdentified(b)
           ? objectOrderChange(a, b)
-          : compareByIndex(
+          : compareIndexedObjects(
               Array.isArray(a) ? a : [],
               Array.isArray(b) ? b : [],
             ),
