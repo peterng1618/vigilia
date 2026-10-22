@@ -18,6 +18,7 @@ declares. The closure half is this file's own **Release rule** below.
 | `fabric` | 7.4.0 | MIT | scene graph |
 | `lucide-react` | 1.48.0 | ISC, plus MIT for Feather-derived icons used | editor action-bar icons |
 | `fflate` | 0.8.3 | MIT | theme ZIP codec |
+| `ffmpeg-static` | 5.3.0 | GPL-3.0-or-later | host: re-encodes theme video; source offered at <https://github.com/eugeneware/ffmpeg-static> |
 | `@biomejs/biome` | 2.5.14 | MIT OR Apache-2.0 | format/lint |
 | `vite` | 8.3.0 | MIT | build/dev |
 | `typescript` | 7.0.2 | Apache-2.0 | build |

@@ -21,6 +21,7 @@ where its section is one.
 | Apache ECharts 6.1.0 | Apache-2.0 | charts |
 | Fabric.js 7.4.0 | MIT | scene graph |
 | fflate 0.8.3 | MIT | theme ZIP packages |
+| ffmpeg-static 5.3.0 | GPL-3.0-or-later | host: re-encodes theme video; source offered at <https://github.com/eugeneware/ffmpeg-static> |
 | react 19.3.0 | MIT | editor shell chrome |
 | react-dom 19.3.0 | MIT | editor shell chrome |
 | @base-ui/react 1.8.0 | MIT | editor shell primitives |
