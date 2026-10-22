@@ -453,11 +453,11 @@ function InstallFooter(props: {
  * the store, beside the four actions that keep it on this PC.
  *
  * **The flow can be longer than a press**, so the control states what a person
- * has to do next: the one-time code and the link while the host is authorising,
- * the pull request once it is opened, and the host's own refusal otherwise. The
- * control disables itself only while a press is in flight and after a
- * submission landed; a refusal re-enables it, because acting on the reason is
- * the point of stating it.
+ * has to do next: finish signing in while the host's window is open, the status
+ * and version once it lands, and the host's own refusal otherwise. The control
+ * disables itself only while a press is in flight and after a submission
+ * landed; a refusal re-enables it, because acting on the reason is the point of
+ * stating it.
  */
 function SubmitFooter(props: {
   readonly item: StoreItem;
@@ -466,15 +466,13 @@ function SubmitFooter(props: {
   const { item, submit } = props;
   // **Only this item's own answer is drawn**, on the same rule the install
   // footer follows: the flow lives on the region and outlives the modal, so a
-  // state kept without an id would show theme A's link, refusal or device code
-  // on theme B, and disable B's control with A's success.
+  // state kept without an id would show theme A's status or refusal on theme B,
+  // and disable B's control with A's success.
   const mine = submit.itemId === item.id;
   const state = mine ? submit.state : "idle";
-  const userCode = mine ? submit.userCode : undefined;
-  const verificationUri = mine ? submit.verificationUri : undefined;
-  const url = mine ? submit.url : undefined;
   const version = mine ? submit.version : undefined;
   const refusal = mine ? submit.refusal : undefined;
+  const status = mine ? submit.status : undefined;
   // **A flow on another item disables this one too.** The region holds one
   // flow at a time, and a press here would meet that guard and do nothing; the
   // control says so rather than looking pressable.
@@ -494,51 +492,27 @@ function SubmitFooter(props: {
       >
         {busy ? uiCopy.store.submit.busy : uiCopy.store.submit.label}
       </button>
-      {/* The code is data, so the sentence that names it is the copy group's
-          function rather than a composed sentence here. The link is the control
-          the sentence tells the author to use, and it opens a new tab so the
-          editor is not replaced mid-flow. */}
-      {state === "authorising" &&
-      userCode !== undefined &&
-      verificationUri !== undefined ? (
-        <span
-          data-yunari-store-item-submit-code=""
-          className="max-w-[40ch] text-xs text-muted"
-        >
-          {uiCopy.store.submit.authorising(userCode)}{" "}
-          <a
-            data-yunari-store-item-submit-open=""
-            href={verificationUri}
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            {uiCopy.store.submit.open}
-          </a>
-        </span>
-      ) : null}
-      {submitted && url !== undefined ? (
+      {submitted && status !== undefined ? (
         <span className="flex max-w-[40ch] flex-col gap-[var(--space-4)] text-xs text-muted">
-          <span>
-            {uiCopy.store.submit.submitted}{" "}
-            <a
-              data-yunari-store-item-submit-url=""
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
+          <span>{uiCopy.store.submit.submitted(status)}</span>
+          {/* **The version and the state it landed in**: the level is the
+              host's answer to what changed, and the status word is the store's
+              answer to what happens next. */}
+          <span className="flex flex-wrap items-center gap-[var(--space-4)]">
+            {version === undefined ? null : (
+              <span data-yunari-store-item-submit-version="">
+                {uiCopy.store.submit.version(version)}
+              </span>
+            )}
+            <span
+              data-yunari-store-item-submit-status={status}
+              className="font-medium"
             >
-              {url}
-            </a>
-          </span>
-          {/* **The version it published, under the link**: the level is the
-              host's answer to what changed, and this surface states it rather
-              than deriving a second ladder. */}
-          {version === undefined ? null : (
-            <span data-yunari-store-item-submit-version="">
-              {uiCopy.store.submit.version(version)}
+              {status === "pending"
+                ? uiCopy.store.status.pending
+                : uiCopy.store.status.published}
             </span>
-          )}
+          </span>
         </span>
       ) : null}
       {state === "refused" && refusal !== undefined ? (
@@ -568,7 +542,7 @@ export function ItemModal(props: {
    *  it causes is the listing's fact rather than any surface's. */
   readonly install: InstallControl;
   /** The library half's submission, owned by the region for the same reason:
-   *  the device flow outlives the press that started it. */
+   *  the sign-in outlives the press that started it. */
   readonly submit: SubmitControl;
   /** Opens another item's modal — the region's own open state, which is what
    *  moves the surface from a remix to the parent it credits. */

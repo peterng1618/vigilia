@@ -179,11 +179,10 @@ const NO_SUBMIT: SubmitControl = {
   itemId: undefined,
   state: "idle",
   inFlight: false,
-  userCode: undefined,
-  verificationUri: undefined,
   url: undefined,
   refusal: undefined,
   version: undefined,
+  status: undefined,
 };
 
 /** Where a theme came from, as the host records it: the catalogue item and the
@@ -920,33 +919,35 @@ function row(node: Element): string {
 }
 
 /**
- * **A landed submission tells the author which version it published**, under
- * the pull request link: the level is the host's own answer to what changed, so
- * this surface states it rather than deriving a second ladder.
+ * **A landed submission tells the author which version it published, beside the
+ * state the store landed it in**: the level is the host's own answer to what
+ * changed, and the status word is the store's answer to what happens next, so
+ * this surface states both rather than deriving a second ladder or a second
+ * state machine.
  */
-it("states the version a submission published under the pull request link", async () => {
+it("states the version a submission published beside its status word", async () => {
   const item = fixtureItem(LANDSCAPE);
   await mount(
     modalFor(item, [], NO_INSTALL, {
       ...NO_SUBMIT,
       itemId: item.id,
       state: "submitted",
-      url: "https://github.com/peterng1618/yunari-store/pull/7",
+      status: "pending",
       version: { from: "1.4.0", to: "1.5.0", level: "minor" },
     }),
   );
 
-  const link = must(
-    document.body.querySelector<HTMLAnchorElement>(
-      "[data-yunari-store-item-submit-url]",
-    ),
-    "pull request link",
-  );
   const sentence = must(
     document.body.querySelector<HTMLElement>(
       "[data-yunari-store-item-submit-version]",
     ),
     "version sentence",
+  );
+  const badge = must(
+    document.body.querySelector<HTMLElement>(
+      "[data-yunari-store-item-submit-status]",
+    ),
+    "status word",
   );
   expect(
     sentence.textContent,
@@ -959,9 +960,13 @@ it("states the version a submission published under the pull request link", asyn
     }),
   );
   expect(
-    link.compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_FOLLOWING,
-    "the version sentence is not under the pull request link",
-  ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    badge.textContent,
+    "the footer does not state the state the store landed",
+  ).toBe(uiCopy.store.status.pending);
+  expect(
+    badge.compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_PRECEDING,
+    "the status word is not beside the version sentence",
+  ).toBe(Node.DOCUMENT_POSITION_PRECEDING);
 });
 
 /** The modal's author command, read by the word a person presses rather than by

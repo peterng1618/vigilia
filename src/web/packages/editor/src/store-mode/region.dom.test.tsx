@@ -2419,14 +2419,15 @@ it("releases the control when the press rejects rather than answering", async ()
 });
 
 /**
- * The submission routes the editor's own surface reaches: each `submit` and
- * `poll` answer is drawn in turn, and the last one repeats, so a case can say
- * *the second submit* rather than counting whichever answer came back.
+ * The submission routes the editor's own surface reaches: each `submit` answer
+ * is drawn in turn, and the last one repeats, so a case can say *the second
+ * submit* rather than counting whichever answer came back. The sign-in start and
+ * the session probe answer once each unless a case says otherwise.
  */
 function submitHost(options: {
   readonly submit: readonly Response[];
-  readonly device?: Response;
-  readonly poll?: readonly Response[];
+  readonly start?: Response;
+  readonly session?: readonly Response[];
 }): {
   readonly fetch: typeof fetch;
   readonly calls: string[];
@@ -2434,7 +2435,7 @@ function submitHost(options: {
 } {
   const calls: string[] = [];
   const submits = [...options.submit];
-  const polls = [...(options.poll ?? [])];
+  const sessions = [...(options.session ?? [])];
   let polled = 0;
   const fetchStub = (async (input: RequestInfo | URL) => {
     const path = String(input);
@@ -2443,18 +2444,18 @@ function submitHost(options: {
       const answer = submits.length > 1 ? submits.shift() : submits[0];
       return answer?.clone() ?? new Response("", { status: 500 });
     }
-    if (path === "/api/github/device") {
+    if (path === "/api/store/auth/start") {
       return (
-        options.device?.clone() ??
-        new Response("No device flow.", { status: 503 })
+        options.start?.clone() ??
+        new Response(JSON.stringify({ url: SIGN_IN_URL }), { status: 200 })
       );
     }
-    if (path === "/api/github/device/poll") {
+    if (path === "/api/store/session") {
       polled += 1;
-      const answer = polls.length > 1 ? polls.shift() : polls[0];
+      const answer = sessions.length > 1 ? sessions.shift() : sessions[0];
       return (
         answer?.clone() ??
-        new Response(JSON.stringify({ state: "pending" }), { status: 200 })
+        new Response(JSON.stringify({ signedIn: false }), { status: 200 })
       );
     }
     return new Response("Not found", { status: 404 });
@@ -2462,20 +2463,14 @@ function submitHost(options: {
   return { fetch: fetchStub, calls, polls: () => polled };
 }
 
-/** The device flow's own answer: the code the author types and where. */
-function deviceAnswer(interval = 5): Response {
-  return new Response(
-    JSON.stringify({
-      userCode: "ABCD-1234",
-      verificationUri: "https://github.com/login/device",
-      expiresIn: 900,
-      interval,
-    }),
-    { status: 200 },
-  );
-}
+/** The host's sign-in address, as `POST /api/store/auth/start` answers it. */
+const SIGN_IN_URL = "https://store.test/auth/start?provider=github";
 
-const SUBMIT_PR_URL = "https://github.com/peterng1618/yunari-store/pull/7";
+/** The one popup the flow opens, so a case can watch it close once the host
+ *  holds the session. */
+function signInPopup(): { readonly closed: boolean; readonly close: unknown } {
+  return { closed: false, close: vi.fn() };
+}
 
 /** The modal's Submit control, or the failure that the library half draws none. */
 function submitControl(): HTMLButtonElement {
@@ -2517,88 +2512,88 @@ async function mountAndOpen(): Promise<void> {
 }
 
 /**
- * **A missing identity starts the device flow and nothing else.** The host
- * answers `401`; the surface asks for a code, shows it, and offers the link that
- * opens in a new tab — the browser never sees a token, so the code is all it is
- * given.
+ * **A missing identity opens the host's sign-in window and nothing else.** The
+ * host answers `401`; the surface asks the host for the address, opens that
+ * window, and says the author's part — finish signing in. The browser never sees
+ * a token, and no code is printed here because the host's own window holds the
+ * conversation.
  */
-it("shows the code and the verification link when the host asks for a sign-in", async () => {
-  vi.stubGlobal(
-    "fetch",
-    submitHost({
-      submit: [
-        new Response("Sign in to GitHub before submitting a theme.", {
-          status: 401,
-        }),
-      ],
-      device: deviceAnswer(),
-    }).fetch,
-  );
+it("opens the host's sign-in window and waits for the session", async () => {
+  vi.useFakeTimers();
+  const popup = signInPopup();
+  const open = vi.fn((..._args: unknown[]) => popup as never);
+  vi.stubGlobal("open", open);
+  const host = submitHost({
+    submit: [
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
+    ],
+  });
+  vi.stubGlobal("fetch", host.fetch);
   await mountAndOpen();
 
   await pressSubmit();
   await settle();
 
   expect(
-    must(
-      document.body.querySelector<HTMLElement>(
-        "[data-yunari-store-item-submit-code]",
-      ),
-      "the sign-in code",
-    ).textContent,
-    "the surface did not show the code the author types",
-  ).toContain("ABCD-1234");
-  const link = must(
-    document.body.querySelector<HTMLAnchorElement>(
-      "[data-yunari-store-item-submit-open]",
-    ),
-    "the verification link",
-  );
+    open.mock.calls.map((call) => call[0]),
+    "the surface did not open the address the host answered",
+  ).toEqual([SIGN_IN_URL]);
   expect(
-    link.getAttribute("href"),
-    "the verification link does not open GitHub's device page",
-  ).toBe("https://github.com/login/device");
-  expect(link.getAttribute("target"), "the link replaces the editor").toBe(
-    "_blank",
-  );
-  expect(link.getAttribute("rel"), "the link leaks no referrer").toBe(
-    "noreferrer",
-  );
+    host.calls,
+    "the surface did not ask the host to start a sign-in",
+  ).toContain("/api/store/auth/start");
+  expect(
+    document.body.querySelector("[data-yunari-store-item-submit-code]"),
+    "the surface printed a device code the host no longer sends",
+  ).toBeNull();
   expect(liveRegion(), "the authorising state reached no live region").toBe(
     uiCopy.store.submit.announcement(
       "Living room",
-      uiCopy.store.submit.authorising("ABCD-1234"),
+      uiCopy.store.submit.authorising,
     ),
   );
+  expect(
+    submitControl().textContent?.trim(),
+    "the control does not state the busy sentence while the window is open",
+  ).toBe(uiCopy.store.submit.busy);
 });
 
 /**
- * **A poll that answers `ok` retries the submission once**, and the retry's
- * answer is the pull request: the control then states the link and cannot be
- * pressed again, the footer names the version the host published, and the
- * library is read again so the listing carries that version.
+ * **A poll that answers signed in retries the submission once**, and the retry's
+ * answer names the state and version: the control states them, closes the
+ * sign-in window, cannot be pressed again, and the library is read again so the
+ * listing carries that version.
  */
-it("retries the submission once the poll answers ok and shows the pull request", async () => {
+it("retries the submission once the session lands and shows the status word", async () => {
   vi.useFakeTimers();
+  const popup = signInPopup();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => popup as never),
+  );
   const host = submitHost({
     submit: [
-      new Response("Sign in to GitHub before submitting a theme.", {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
       new Response(
         JSON.stringify({
           ok: true,
-          url: SUBMIT_PR_URL,
+          status: "pending",
           version: { from: "1.4.0", to: "1.5.0", level: "minor" },
         }),
         { status: 200 },
       ),
     ],
-    device: deviceAnswer(1),
-    poll: [
-      new Response(JSON.stringify({ state: "ok", login: "aurora-author" }), {
-        status: 200,
-      }),
+    session: [
+      new Response(
+        JSON.stringify({ signedIn: true, email: "author@example.test" }),
+        { status: 200 },
+      ),
     ],
   });
   vi.stubGlobal("fetch", host.fetch);
@@ -2626,16 +2621,19 @@ it("retries the submission once the poll answers ok and shows the pull request",
   });
   await settle();
 
-  const link = must(
-    document.body.querySelector<HTMLAnchorElement>(
-      "[data-yunari-store-item-submit-url]",
-    ),
-    "the pull request link",
-  );
   expect(
-    link.getAttribute("href"),
-    "the surface does not link to the pull request the host opened",
-  ).toBe(SUBMIT_PR_URL);
+    popup.close,
+    "the sign-in window was left open after the host held the session",
+  ).toHaveBeenCalledTimes(1);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-yunari-store-item-submit-status]",
+      ),
+      "the status word",
+    ).textContent,
+    "the footer does not state the state the store landed",
+  ).toBe(uiCopy.store.status.pending);
   expect(
     must(
       document.body.querySelector<HTMLElement>(
@@ -2657,16 +2655,16 @@ it("retries the submission once the poll answers ok and shows the pull request",
   ).toBe(listedBefore + 1);
   expect(
     host.calls.filter((call) => call === "/api/themes/submit"),
-    "the poll's `ok` did not retry the submission exactly once",
+    "the session's landing did not retry the submission exactly once",
   ).toHaveLength(2);
   expect(
     submitControl().disabled,
-    "the control is still pressable after the pull request was opened",
+    "the control is still pressable after the submission landed",
   ).toBe(true);
   expect(liveRegion(), "the submitted state reached no live region").toBe(
     uiCopy.store.submit.announcement(
       "Living room",
-      uiCopy.store.submit.submitted,
+      uiCopy.store.submit.submitted("pending"),
     ),
   );
 });
@@ -2776,14 +2774,18 @@ it("keeps one theme's submission answer off another theme's surface", async () =
  * authorisation window, not only after A's flow has ended.
  */
 it("draws another theme's Submit busy while a submission is in flight", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => signInPopup() as never),
+  );
   const host = submitHost({
     submit: [
-      new Response("Sign in to GitHub before submitting a theme.", {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
     ],
-    // Long enough that A is still authorising when B is opened.
-    device: deviceAnswer(900),
   });
   vi.stubGlobal("fetch", host.fetch);
   await mountStore([
@@ -2803,9 +2805,9 @@ it("draws another theme's Submit busy while a submission is in flight", async ()
   await pressSubmit();
   await settle();
   expect(
-    document.body.querySelector("[data-yunari-store-item-submit-code]"),
+    host.calls,
     "A did not reach the authorising window the case is about",
-  ).not.toBeNull();
+  ).toContain("/api/store/auth/start");
 
   await closeItem();
   await pressCellSurface("office-wall");
@@ -2836,23 +2838,27 @@ it("draws another theme's Submit busy while a submission is in flight", async ()
 });
 
 /**
- * **An expired sign-in is a refusal the surface can name**, because the poll
- * answers a state and no sentence: the author is told to submit again, and the
- * control is their way to.
+ * **A sign-in the host never confirms is a refusal the surface can name**,
+ * because the poll answers without a sentence: after five minutes the author is
+ * told to submit again, and the control is their way to.
  */
-it("states an expired sign-in and lets the author submit again", async () => {
+it("states an unconfirmed sign-in and lets the author submit again", async () => {
   vi.useFakeTimers();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => signInPopup() as never),
+  );
   vi.stubGlobal(
     "fetch",
     submitHost({
       submit: [
-        new Response("Sign in to GitHub before submitting a theme.", {
-          status: 401,
-        }),
+        new Response(
+          JSON.stringify({ ok: false, message: "Sign in to the store." }),
+          { status: 401 },
+        ),
       ],
-      device: deviceAnswer(1),
-      poll: [
-        new Response(JSON.stringify({ state: "expired" }), { status: 200 }),
+      session: [
+        new Response(JSON.stringify({ signedIn: false }), { status: 200 }),
       ],
     }).fetch,
   );
@@ -2861,7 +2867,7 @@ it("states an expired sign-in and lets the author submit again", async () => {
   await pressSubmit();
   await settle();
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(300_000);
   });
   await settle();
 
@@ -2870,13 +2876,13 @@ it("states an expired sign-in and lets the author submit again", async () => {
       document.body.querySelector<HTMLElement>(
         "[data-yunari-store-item-submit-refusal]",
       ),
-      "the expired sign-in's sentence",
+      "the unconfirmed sign-in's sentence",
     ).textContent,
-    "an expired sign-in stated nothing",
-  ).toBe(uiCopy.store.submit.expired);
+    "an unconfirmed sign-in stated nothing",
+  ).toBe(uiCopy.store.submit.noSignIn);
   expect(
     submitControl().disabled,
-    "an expired sign-in left the control dead",
+    "an unconfirmed sign-in left the control dead",
   ).toBe(false);
   expect(
     submitControl().textContent?.trim(),
@@ -3017,16 +3023,23 @@ it("draws a library item's credit as text with no control", async () => {
 
 it("does not poll after the surface unmounts", async () => {
   vi.useFakeTimers();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => signInPopup() as never),
+  );
   const host = submitHost({
     submit: [
-      new Response("Sign in to GitHub before submitting a theme.", {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
     ],
-    device: deviceAnswer(1),
   });
   vi.stubGlobal("fetch", host.fetch);
   await mountAndOpen();
+  // The region's own mount reads the session; this case is about the polls the
+  // flow would add on top of it.
+  const sessionsBefore = host.polls();
 
   await pressSubmit();
   await settle();
@@ -3035,7 +3048,10 @@ it("does not poll after the surface unmounts", async () => {
     await vi.advanceTimersByTimeAsync(5_000);
   });
 
-  expect(host.polls(), "a poll fired after the surface unmounted").toBe(0);
+  expect(
+    host.polls() - sessionsBefore,
+    "a poll fired after the surface unmounted",
+  ).toBe(0);
 });
 
 /** The author's own item, as `/api/store/mine` answers it: a catalogue entry

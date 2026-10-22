@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phases 1–3 and Tasks 4.1–4.3 complete; Tasks 4.4–4.5 and Phase 5 follow in plan order.
+- **Subagent-driven execution**: Phases 1–3 and Tasks 4.1–4.4 complete; Task 4.5 and Phase 5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,9 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **A removed row says it cannot be republished even with no reason**, because the Worker omits the reason and permanence belongs to the state.
-- **The newest command's sentence wins the store's live region**, so a fresh status refusal is heard over an older install success.
-- **Republish and the saved-but-not-refreshed branch are pinned** by region cases proving `/publish`, the re-read, and the spoken fallback.
+- **A missing session opens the host's sign-in window** at the address `/api/store/auth/start` answers, and the `/api/store/session` poll is the flow's truth rather than the popup.
+- **A landed submission states the store's status word** — `Pending` beside the version it published, `Published` when listed.
+- **The editor no longer names the GitHub device flow**: the poll runs once a second for five minutes, then says the store did not confirm the sign-in.
 
 ## Next
 

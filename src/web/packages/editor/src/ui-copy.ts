@@ -583,9 +583,10 @@ export const uiCopy = {
       empty: "You have no store submissions yet.",
     },
     /** The states a Mine row can carry, as the word beside it. `published` has
-     *  no word because the public surface already shows it, and `draft` is not
-     *  a state this surface explains yet: a badge word the surface cannot
-     *  account for is worse than none (§9).
+     *  no badge word because the public surface already shows it, and `draft`
+     *  is not a state this surface explains yet: a badge word the surface cannot
+     *  account for is worse than none (§9). `published` is still here because a
+     *  landed submission's footer names the state beside its version.
      *
      *  **The two sentences are the modal's, not the cell's**: a badge is a word
      *  and a reason is a sentence, and the item's own surface is the one that
@@ -593,6 +594,7 @@ export const uiCopy = {
      *  owner's reason because it is the fact a reason alone may not carry. */
     status: {
       pending: "Pending",
+      published: "Published",
       unpublished: "Unpublished",
       rejected: "Rejected",
       removed: "Removed",
@@ -751,22 +753,24 @@ export const uiCopy = {
       installed: (name: string): string => `${name} was installed.`,
     },
     /** The library half's submission, whose sentence the client composes only
-     *  where the poll answers a state and no host sentence exists: the sign-in's
-     *  code and expiry, and the busy label. **A refusal is never composed here** —
-     *  the host knows which part of the submission failed, so its own words are
-     *  passed through unchanged (`use-submit.ts`). */
+     *  where the host answers a state and no sentence exists: the wait for the
+     *  sign-in, the status a landed submission carries, and the busy label.
+     *  **A refusal is never composed here** — the host knows which part of the
+     *  submission failed, so its own words are passed through unchanged
+     *  (`use-submit.ts`). */
     submit: {
       label: "Submit to the store",
       busy: "Submitting…",
-      /** Names the one-time code and where to type it, so the sentence is a
-       *  function of the code rather than a sentence with a hole a screen reader
-       *  reads in the wrong order. */
-      authorising: (code: string): string =>
-        `Enter ${code} at github.com to approve this submission.`,
-      /** The link's own words: the sentence above says what the code is for, and
-       *  this is the control that takes the author there. */
-      open: "Open github.com to approve",
-      submitted: "Pull request opened.",
+      /** The host holds the sign-in conversation in its own window; this surface
+       *  has no code to name, only the author's part left to do. */
+      authorising: "Waiting for you to sign in…",
+      /** What the store did with the submission: a new author's first items
+       *  wait for the owner, so the sentence names the wait rather than a link
+       *  this surface would have to invent. */
+      submitted: (status: "pending" | "published"): string =>
+        status === "pending"
+          ? "Submitted. The owner reviews new authors' items before they are listed."
+          : "Submitted and listed.",
       /** What the host published, in the caption's own shape: the version it
        *  bumped from, the one it wrote, and the ladder's word for the change.
        *  **A first release names no `from`** because there is none to name;
@@ -784,8 +788,12 @@ export const uiCopy = {
        *  modal, so an answer for one item can arrive while another is open. */
       announcement: (name: string, sentence: string): string =>
         `${name}: ${sentence}`,
-      expired: "The GitHub sign-in expired. Submit again.",
-      denied: "The GitHub sign-in was denied. Submit again.",
+      /** The poll ran out or the retry still had no session: the one sentence
+       *  the client composes because the host answered without one. */
+      noSignIn: "The store did not confirm the sign-in; try submitting again.",
+      /** A browser that blocks the popup left the flow with no window to finish
+       *  it in, so the author is told to act on the blocker. */
+      blocked: "This browser blocked the sign-in window.",
     },
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */
