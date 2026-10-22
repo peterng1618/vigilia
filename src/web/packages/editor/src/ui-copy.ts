@@ -965,6 +965,8 @@ export const uiCopy = {
     unknownAssetFile: "That asset is not a file type the editor can import.",
     hostUnavailable: "The host is not connected.",
     bytesUnavailable: "The host did not send that asset.",
+    creditsFull:
+      "This theme already carries the last attribution it can hold, so the import would leave it unsavable.",
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */

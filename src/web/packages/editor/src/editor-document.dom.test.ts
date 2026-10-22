@@ -66,6 +66,24 @@ describe("EditorDocument credits", () => {
     expect(document.credits()[0]?.license).toBe("ISC v2");
   });
 
+  it("refuses the entry past the package's own cap, but not a repeat", () => {
+    const document = documentWith();
+    const first = entry("icon-0", "https://lucide.dev/icons/icon-0");
+    document.addCredit(first);
+    for (let index = 1; index < 256; index += 1) {
+      document.addCredit(
+        entry(`icon-${index}`, `https://lucide.dev/icons/${index}`),
+      );
+    }
+
+    // The writer refuses a 257th entry, so the collection stops one short.
+    expect(document.canAddCredit(entry("one-more", "https://x.test/1"))).toBe(
+      false,
+    );
+    // An item already credited is a replacement, which never grows the list.
+    expect(document.canAddCredit(first)).toBe(true);
+  });
+
   it("seeds the collection from the package it opened", () => {
     const seeded = entry("house", "https://lucide.dev/icons/house");
     const document = documentWith([seeded]);

@@ -14,6 +14,7 @@ let running: http.Server | undefined;
 async function start(
   assets: AssetRouteOptions | undefined,
   loopback = true,
+  foreignOrigin = false,
 ): Promise<string> {
   const server = http.createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -22,6 +23,7 @@ async function start(
       response,
       url,
       loopback,
+      foreignOrigin,
       assets,
       fetch: globalThis.fetch,
       readBody,
@@ -152,6 +154,34 @@ describe("the asset routes", () => {
 
   it("keeps search and bytes on this PC", async () => {
     const base = await start({}, false);
+
+    expect(
+      (
+        await fetch(`${base}/api/assets/search`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query: "arrow", enabled: ["lucide"] }),
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (await fetch(`${base}/api/assets/bytes?source=lucide&id=arrow-down`))
+        .status,
+    ).toBe(403);
+  });
+
+  it("answers a search-prefixed id, which is what the grid shows", async () => {
+    const base = await start({});
+    const response = await fetch(
+      `${base}/api/assets/bytes?source=lucide&id=lucide:arrow-down`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-yunari-filename")).toBe("arrow-down.svg");
+  });
+
+  it("refuses a request another page made", async () => {
+    const base = await start({}, true, true);
 
     expect(
       (

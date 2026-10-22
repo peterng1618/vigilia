@@ -36,6 +36,12 @@ export async function importFinderResult(input: {
   if (mime === undefined)
     return { ok: false, message: uiCopy.assets.unknownAssetFile };
 
+  // Checked before the bytes are declared: an over-cap entry would leave the
+  // document unable to save, and no surface can remove one.
+  const credit = creditOf(input.result);
+  if (!input.document.canAddCredit(credit))
+    return { ok: false, message: uiCopy.assets.creditsFull };
+
   try {
     const file = new File(
       [input.bytes as unknown as BlobPart],
@@ -45,7 +51,7 @@ export async function importFinderResult(input: {
       },
     );
     const reference = await input.manager.import(file);
-    input.document.addCredit(creditOf(input.result));
+    input.document.addCredit(credit);
     input.place(reference.id);
     return { ok: true, imported: { reference, opened: true } };
   } catch (error) {

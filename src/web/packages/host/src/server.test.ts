@@ -4700,6 +4700,26 @@ describe("Credential routes", () => {
     expect(res.text()).not.toMatch(/"value"/);
   });
 
+  it("refuses a request another page made, and stores nothing", async () => {
+    const put = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "sk-live-9f2c" }),
+      {
+        headers: { origin: "https://evil.example", host: "127.0.0.1:5173" },
+      },
+    );
+
+    expect(put.status).toBe(403);
+    expect(put.text()).toBe("Credentials are not available to another page.");
+    const read = await rows();
+    expect(read).toEqual([
+      expect.objectContaining({ id: "demo", set: false }),
+      expect.objectContaining({ id: "session", set: false }),
+    ]);
+  });
+
   it("carries the guide a credential names, and nulls when it names none", async () => {
     hosted = start([
       {

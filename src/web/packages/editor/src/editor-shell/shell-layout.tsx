@@ -45,7 +45,7 @@ import { PublishIndicator } from "./publish-indicator.js";
 import { Rail, type RailSlot } from "./rail.js";
 import { SaveState } from "./save-state.js";
 import type { EditorViewControls } from "./session-facade.js";
-import { Settings } from "./settings.js";
+import { Settings, type SettingsTab } from "./settings.js";
 import { ShellMenuBar } from "./shell-menu-bar.js";
 import {
   FinderStore,
@@ -290,6 +290,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      *  palette above: it is a shell surface, not document state, and it is
      *  never serialized. */
     const [settingsOpen, setSettingsOpen] = useState(false);
+    /** The tab a surface asked Settings to open on, cleared when it closes so
+     *  the next open is the author's own last choice. */
+    const [settingsTab, setSettingsTab] = useState<SettingsTab | undefined>(
+      undefined,
+    );
     /** The author's bindings, held here because the effective table lives
      *  outside React. Initialized from storage — the same read
      *  `createShellLayout` made for the live table — and moved from there by
@@ -466,7 +471,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             slot={slot}
             collapsed={collapsed}
             onChoose={choosePane}
-            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenSettings={() => {
+              setSettingsTab(undefined);
+              setSettingsOpen(true);
+            }}
           />
           <aside className="editor-shell-panel editor-glass" hidden={collapsed}>
             {/* Every pane wears the same chrome — a title bar, a body and a
@@ -620,12 +628,17 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               }}
               onOpenConnections={() => {
                 finder.set(false);
+                setSettingsTab("connections");
                 setSettingsOpen(true);
               }}
             />
             <Settings
               open={settingsOpen}
-              onOpenChange={setSettingsOpen}
+              onOpenChange={(next) => {
+                setSettingsOpen(next);
+                if (!next) setSettingsTab(undefined);
+              }}
+              initialTab={settingsTab}
               storage={storage}
               palette={palette}
               following={following}

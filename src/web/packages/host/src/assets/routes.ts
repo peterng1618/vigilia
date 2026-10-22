@@ -21,6 +21,8 @@ export interface AssetRouteInput {
   readonly response: http.ServerResponse;
   readonly url: URL;
   readonly loopback: boolean;
+  /** Whether the request states another page's origin; a search spends a key. */
+  readonly foreignOrigin: boolean;
   readonly assets: AssetRouteOptions | undefined;
   readonly fetch: typeof fetch;
   readonly readBody: (
@@ -120,6 +122,11 @@ export async function handleAssetRoutes(
     return true;
   }
 
+  if (input.foreignOrigin) {
+    text(response, 403, "Asset sources are not available to another page.");
+    return true;
+  }
+
   if (assets === undefined) {
     text(response, 503, "Asset sources are not enabled on this host.");
     return true;
@@ -209,7 +216,12 @@ export async function handleAssetRoutes(
     fetch: assets.fetch ?? input.fetch,
   };
 
-  const bytes = await source.bytesOf(resultId, ctx);
+  // A grid row's id is the search's namespaced `<source>:<entry>`; the source
+  // names its own assets unprefixed, so the prefix is removed once, here.
+  const entryId = resultId.startsWith(`${source.id}:`)
+    ? resultId.slice(source.id.length + 1)
+    : resultId;
+  const bytes = await source.bytesOf(entryId, ctx);
   if (bytes === undefined) {
     text(response, 404, "That source does not have this asset.");
     return true;

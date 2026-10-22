@@ -137,9 +137,11 @@ export function AssetFinder({
   >(undefined);
   const [shown, setShown] = useState<readonly Row[]>([]);
   const [cursors, setCursors] = useState<Readonly<Record<string, string>>>({});
-  /** How many answers this session has drawn. The host notice is the first
-   *  search's, once (spec §5), and the second search removes it. */
-  const [answerCount, setAnswerCount] = useState(0);
+  /** The hosts the first host-contacting search reached, shown once (spec §5).
+   *  A search that reached none is not the disclosure: a person is told before
+   *  the term leaves, not after. */
+  const [notice, setNotice] = useState<string | undefined>(undefined);
+  const announced = useRef(false);
   const [moreBusy, setMoreBusy] = useState(false);
   const [message, setMessage] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -166,10 +168,12 @@ export function AssetFinder({
       if (!live) return;
       setSources(next);
       setActive((current) => {
-        if (current !== undefined && present(current, next)) return current;
+        // A caller that names a category wins over the last one: the font
+        // field opens Fonts every time, not only the first time.
         if (initialCategory !== undefined && present(initialCategory, next)) {
           return initialCategory;
         }
+        if (current !== undefined && present(current, next)) return current;
         return next[0]?.category ?? (bodyKinds.font != null ? "font" : "local");
       });
     });
@@ -234,7 +238,20 @@ export function AssetFinder({
           setAnswer(next);
           setShown(rowsAfter(next.pages, []));
           setCursors(cursorsAfter({}, next.pages));
-          setAnswerCount((count) => count + 1);
+          const reached = [
+            ...new Set(
+              enabledSources
+                .filter((source) => enabled.includes(source.id))
+                .map((source) => source.host)
+                .filter((host): host is string => host !== null),
+            ),
+          ];
+          if (!announced.current && reached.length > 0) {
+            announced.current = true;
+            setNotice(reached.join(", "));
+          } else if (announced.current) {
+            setNotice(undefined);
+          }
           setSelected(undefined);
         },
       );
@@ -251,15 +268,6 @@ export function AssetFinder({
   const empty =
     answer !== undefined && failures.length === 0 && rows.length === 0;
 
-  /** The hosts an enabled search term reaches, once, on the first answer. */
-  const hosts = [
-    ...new Set(
-      enabledSources
-        .map((source) => source.host)
-        .filter((host): host is string => host !== null),
-    ),
-  ];
-  const showNotice = answerCount === 1 && hosts.length > 0;
   const more = enabledSources.some(
     (source) => cursors[source.id] !== undefined,
   );
@@ -281,7 +289,6 @@ export function AssetFinder({
     setAnswer(next);
     setShown((current) => rowsAfter(next.pages, current));
     setCursors((current) => cursorsAfter(current, next.pages));
-    setAnswerCount((count) => count + 1);
   };
 
   const sourceOf = (id: string): AssetSourceListing | undefined =>
@@ -399,14 +406,14 @@ export function AssetFinder({
                     </div>
                   ) : null}
 
-                  {showNotice ? (
+                  {notice === undefined ? null : (
                     <p
                       className="text-xs text-muted"
                       data-yunari-asset-host-notice=""
                     >
-                      {uiCopy.assets.remoteHostNotice(hosts.join(", "))}
+                      {uiCopy.assets.remoteHostNotice(notice)}
                     </p>
-                  ) : null}
+                  )}
 
                   {failures.map((page) => {
                     const source = sourceOf(page.source);

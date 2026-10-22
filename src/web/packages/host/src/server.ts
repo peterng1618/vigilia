@@ -1828,6 +1828,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
+      if (isForeignOrigin(request)) {
+        sendText(
+          response,
+          403,
+          "Credentials are not available to another page.",
+        );
+        return;
+      }
+
       if (credentials === undefined) {
         sendText(response, 503, "Credentials are not enabled on this host.");
         return;
@@ -1949,6 +1958,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         response,
         url,
         loopback: isLoopbackRemote(request.socket.remoteAddress),
+        foreignOrigin: isForeignOrigin(request),
         assets,
         fetch: fetcher ?? fetch,
         readBody,

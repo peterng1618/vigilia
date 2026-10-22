@@ -17,17 +17,16 @@ Branch: `main`
 
 ## Last completed change
 
-- **The finder's browser boundary** (Task 17): `tests/e2e/asset-finder.spec.ts` asserts the mixed grid with no shared id, the chip that drops a source and its requests, a failure beside a survivor, Load more's per-source cursors, the host notice appearing once, the stale answer's discard, and the font field opening Fonts.
-- **Four captures, registered first**: Fonts, mixed icons, a failed source, and Connections showing the key guide and its link.
-- **Three red-proofs** (source badge, disabled chip, stale answer) each failed when its code was broken and passed when restored from `cmp`-verified copies outside the repo.
-- **The stale test now really races**: it waits for the first request before issuing the second, so the ticket guard is what it exercises.
-- **A result card is its content's height**: one grid class ends the stretch to the footer, asserted by a bounding-box check in the mixed-grid test.
+- **The whole-branch review's findings, fixed**: the import's bytes request now resolves the grid's namespaced id (every import used to 404), the font field reopens the finder on Fonts, a needs-key row opens Settings on Connections, and the asset and credential routes refuse another page's origin.
+- **The gate is green again**: generated icon manifests leave biome's scope, and the draft/commit sweep names the finder's search field and the credential field exempt with their reasons.
+- **A 257th credit is refused before the bytes are declared**, so an imported row can no longer leave the document unsavable; the host notice now waits for the first search that reaches a host.
+- **All-sources-fail has its test**, an e2e clicks the footer's action, and Lineicons is recorded in `THIRD-PARTY-NOTICES.md` and `dependencies.md`.
+- **Nine Minor review findings deferred** to the ledger; `scratch-gate`'s self-test expects `/tmp/full.json` refused but maps it to the sanctioned `C:\tmp` on this box — pre-existing.
 
 ## Next
 
-1. The final whole-branch review, then finishing the branch.
-2. Task 16 waits on the Wallpaper Engine host module (queued plan).
-3. Weigh `vg-620` (a client disconnecting mid-stream kills the host) before the next plan opens.
+1. Finishing the branch; Task 16 waits on the Wallpaper Engine host module (queued plan).
+2. Weigh `vg-620` (a client disconnecting mid-stream kills the host) before the next plan opens.
 
 ## Blockers / unverified
 

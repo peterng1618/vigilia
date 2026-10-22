@@ -39,7 +39,7 @@ import { SettingsKeyboard } from "./settings-keyboard.js";
 /** The settings tabs, in the order the column draws them. One owner of "which
  *  tabs there are": the column and the panels both read it, so a tab cannot
  *  appear with a body and no word, or the reverse. */
-type SettingsTab = "appearance" | "keyboard" | "connections" | "about";
+export type SettingsTab = "appearance" | "keyboard" | "connections" | "about";
 
 const SETTINGS_TABS: readonly SettingsTab[] = [
   "appearance",
@@ -452,6 +452,8 @@ export function Settings(props: {
    *  `undefined` where the document carries none. The About tab renders it and
    *  invents nothing in its place. */
   readonly releaseVersion: string | undefined;
+  /** The tab a caller opens the modal on; the last chosen tab otherwise. */
+  readonly initialTab?: SettingsTab | undefined;
 }): React.JSX.Element {
   const {
     open,
@@ -464,16 +466,21 @@ export function Settings(props: {
     overrides,
     onOverrides,
     releaseVersion,
+    initialTab,
   } = props;
   /** The row whose capture is listening. Held here rather than in the tab so
    *  closing the modal clears it from one place — the `open` effect below — and
    *  no armed row can outlive the surface it belongs to. */
   const [armed, setArmed] = useState<ProductShortcutId | undefined>(undefined);
+  /** The open tab. Held here because a caller (the finder's needs-key state)
+   *  opens the modal on Connections, and the tab must follow that ask. */
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? "appearance");
   // Whether the modal has been open at all, so closing the *initial* closed
   // state does not fire a focus restore on mount.
   const wasOpen = useRef(false);
   useEffect(() => {
     if (open) {
+      if (initialTab !== undefined) setTab(initialTab);
       wasOpen.current = true;
       return;
     }
@@ -481,7 +488,7 @@ export function Settings(props: {
     if (!wasOpen.current) return;
     wasOpen.current = false;
     document.getElementById(SETTINGS_TRIGGER_ID)?.focus();
-  }, [open]);
+  }, [open, initialTab]);
 
   /** Whether a capture is armed is the row's state, and it never stands between
    *  the author and the way out.
@@ -514,7 +521,8 @@ export function Settings(props: {
           orientation and treatment change; `orientation` is what points the
           arrow keys up and down the three rows rather than across. */}
       <Tabs.Root
-        defaultValue="appearance"
+        value={tab}
+        onValueChange={(value) => setTab(value as SettingsTab)}
         orientation="vertical"
         className="editor-shell-settings"
       >

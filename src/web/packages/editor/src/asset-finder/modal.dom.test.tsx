@@ -6,7 +6,7 @@ import type {
   AssetSearchAnswer,
   AssetSourceListing,
 } from "@yunari/renderer-core";
-import { act } from "react";
+import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
@@ -129,20 +129,7 @@ async function render(
   container = createRoot(root);
 
   await act(async () => {
-    container?.render(
-      <AssetFinder
-        open
-        onOpenChange={() => {}}
-        bodies={{
-          "font-picker": <p data-yunari-asset-body="font-picker">faces</p>,
-          "wallpaper-engine": (
-            <p data-yunari-asset-body="wallpaper-engine">scenes</p>
-          ),
-        }}
-        onAction={async () => ({ ok: true })}
-        {...props}
-      />,
-    );
+    container?.render(finder(props));
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -152,6 +139,41 @@ async function render(
       await Promise.resolve();
     }
   });
+}
+
+/** The same instance with new props, so a case can close and reopen it. */
+async function rerender(
+  props: Partial<Parameters<typeof AssetFinder>[0]>,
+): Promise<void> {
+  await act(async () => {
+    container?.render(finder(props));
+    await Promise.resolve();
+  });
+  await act(async () => {
+    for (let pass = 0; pass < 3; pass += 1) {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    }
+  });
+}
+
+function finder(
+  props: Partial<Parameters<typeof AssetFinder>[0]>,
+): ReactElement {
+  return (
+    <AssetFinder
+      open
+      onOpenChange={() => {}}
+      bodies={{
+        "font-picker": <p data-yunari-asset-body="font-picker">faces</p>,
+        "wallpaper-engine": (
+          <p data-yunari-asset-body="wallpaper-engine">scenes</p>
+        ),
+      }}
+      onAction={async () => ({ ok: true })}
+      {...props}
+    />
+  );
 }
 
 function tab(value: string): HTMLElement {
@@ -246,6 +268,20 @@ describe("AssetFinder tabs", () => {
     ).not.toBeNull();
   });
 
+  it("reopens on the category a caller asks for, after an earlier open", async () => {
+    // The font field's button must land on Fonts even when the finder has been
+    // opened before: the selection is kept for a plain reopen, not over a
+    // caller that names a category.
+    await render([lucide, curatedFonts]);
+    await settle();
+    expect(tab("icon").getAttribute("aria-selected")).toBe("true");
+
+    await rerender({ open: false });
+    await rerender({ open: true, initialCategory: "font" });
+
+    expect(tab("font").getAttribute("aria-selected")).toBe("true");
+  });
+
   it("renders a body-only category's body and no chips", async () => {
     await render([curatedFonts]);
     await settle();
@@ -325,6 +361,48 @@ describe("AssetFinder search", () => {
     });
 
     expect(rowIds()).toEqual(["lucide:newer"]);
+  });
+
+  it("names every source's failure and never reads as no results", async () => {
+    searchAssets.mockResolvedValue({
+      pages: [
+        page("lucide", [], {
+          failure: { reason: "failed", message: "Lucide answered 500." },
+        }),
+        page("fontawesome-free", [], {
+          failure: { reason: "failed", message: "Font Awesome answered 502." },
+        }),
+      ],
+    });
+
+    await render([lucide, fontAwesome]);
+    await settle();
+
+    const sentences = [
+      ...document.querySelectorAll("[data-yunari-asset-failure]"),
+    ].map((node) => node.textContent ?? "");
+    expect(sentences.join(" ")).toContain("Lucide answered 500.");
+    expect(sentences.join(" ")).toContain("Font Awesome answered 502.");
+    expect(document.querySelector("[data-yunari-asset-empty]")).toBeNull();
+  });
+
+  it("names the host on the first search that reaches one, not before", async () => {
+    // A search that contacted no host is not the disclosure: a person is told
+    // before their term leaves, which is the Images tab's first search.
+    searchAssets.mockResolvedValue({ pages: [] });
+
+    await render([lucide, unsplash]);
+    await settle();
+    expect(
+      document.querySelector("[data-yunari-asset-host-notice]"),
+    ).toBeNull();
+
+    await act(async () => tab("image").click());
+    await settle();
+
+    expect(
+      document.querySelector("[data-yunari-asset-host-notice]")?.textContent,
+    ).toContain("api.unsplash.com");
   });
 
   it("draws a failed page's sentence and keeps the other source's rows", async () => {

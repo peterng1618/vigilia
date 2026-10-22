@@ -417,6 +417,73 @@ test("captures the finder's failed source", async ({ page }, testInfo) => {
   await captureVisualReview(page, testInfo, "editor-finder-failure");
 });
 
+test("the footer's action imports the selected row, asking for its namespaced id", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  const asked: string[] = [];
+  await page.route("**/api/assets/bytes*", async (route) => {
+    asked.push(route.request().url());
+    await route.fulfill({
+      status: 200,
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>',
+      headers: { "content-type": "image/svg+xml" },
+    });
+  });
+  await stubAssets(page, {
+    sources: [lucide],
+    answer: () => ({
+      pages: [answered("lucide", [result("lucide:house")])],
+    }),
+  });
+  const dialog = await openFinder(page);
+
+  await page.locator("[data-yunari-asset-row]").first().click();
+  await page.locator("[data-yunari-asset-action]").click();
+
+  // The grid's id is `<source>:<entry>`, which is what the host must accept.
+  await expect.poll(() => asked.length).toBe(1);
+  expect(decodeURIComponent(asked[0] ?? "")).toContain("id=lucide:house");
+  // A refusal would print the reason beside the count; a successful import
+  // leaves none.
+  await expect(dialog.locator("[data-yunari-asset-count]")).not.toContainText(
+    "did not send",
+  );
+});
+
+test("a source that needs a key opens Settings on Connections", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.route("**/api/credentials", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await stubAssets(page, {
+    sources: [unsplash],
+    answer: () => ({
+      pages: [
+        {
+          source: "unsplash",
+          results: [],
+          next: undefined,
+          failure: { reason: "needs-credential", credential: "unsplash" },
+        },
+      ],
+    }),
+  });
+  await openFinder(page);
+
+  await page.locator("[data-yunari-asset-connections]").click();
+
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(settings).toBeVisible();
+  await expect(
+    settings.getByRole("tab", { name: "Connections" }),
+  ).toHaveAttribute("aria-selected", "true");
+});
+
 test("captures the Connections tab's provider row", async ({
   page,
 }, testInfo) => {

@@ -28,7 +28,7 @@ import {
   shellPalettes,
 } from "./palette.js";
 import { RAIL_SLOTS, Rail, type RailSlot } from "./rail.js";
-import { Settings, versionFacts } from "./settings.js";
+import { Settings, type SettingsTab, versionFacts } from "./settings.js";
 
 // The host's half, mocked so the tab's own wiring is what these cases read.
 // The mock is hoisted above the imports, so the panel and the assertions see
@@ -164,8 +164,10 @@ let host: HTMLDivElement | undefined;
 function Harness({
   storage,
   releaseVersion,
+  initialTab,
 }: {
   readonly storage: Storage | undefined;
+  readonly initialTab?: SettingsTab | undefined;
   /** The open document's release version, as the shell reads it from the
    *  bridge snapshot and hands it down. `undefined` models a document that
    *  carries none — a new or unsaved theme — which is the About tab's absent
@@ -173,6 +175,11 @@ function Harness({
   readonly releaseVersion: string | undefined;
 }): React.JSX.Element {
   const [open, setOpen] = useState(false);
+  /** Mirrors `Shell`: a surface asks for a tab and opens the modal; closing
+   *  forgets the ask, so the gear returns to the author's own last choice. */
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | undefined>(
+    initialTab,
+  );
   const [slot, setSlot] = useState<RailSlot>("composition");
   const [palette, setPalette] = useState<ShellPalette>(DEFAULT_SHELL_PALETTE);
   const [following, setFollowing] = useState(true);
@@ -193,11 +200,27 @@ function Harness({
         slot={slot}
         collapsed={false}
         onChoose={setSlot}
-        onOpenSettings={() => setOpen(true)}
+        onOpenSettings={() => {
+          setSettingsTab(undefined);
+          setOpen(true);
+        }}
       />
+      <button
+        type="button"
+        data-yunari-ask-connections=""
+        onClick={() => {
+          setSettingsTab("connections");
+          setOpen(true);
+        }}
+      >
+        {uiCopy.settings.connections}
+      </button>
       <Settings
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setSettingsTab(undefined);
+        }}
         storage={storage}
         palette={palette}
         following={following}
@@ -206,6 +229,7 @@ function Harness({
         overrides={overrides}
         onOverrides={applyOverrides}
         releaseVersion={releaseVersion}
+        initialTab={settingsTab}
       />
     </>
   );
@@ -218,6 +242,7 @@ function Harness({
 function mountWith(
   storage: Storage | undefined,
   releaseVersion: string | undefined = undefined,
+  initialTab: SettingsTab | undefined = undefined,
 ): HTMLElement {
   const mount = document.createElement("div");
   document.body.append(mount);
@@ -226,7 +251,11 @@ function mountWith(
   host = mount;
   act(() =>
     reactRoot.render(
-      <Harness storage={storage} releaseVersion={releaseVersion} />,
+      <Harness
+        storage={storage}
+        releaseVersion={releaseVersion}
+        initialTab={initialTab}
+      />,
     ),
   );
   return mount;
@@ -649,6 +678,29 @@ describe("Connections", () => {
     label: "Demo source",
     set: true,
     hint: "9f2c",
+  });
+
+  it("opens on Connections when a surface asks, even after an earlier open", async () => {
+    // The finder's needs-key state offers this tab; landing on Appearance
+    // leaves the author hunting for the very thing the link promised. The
+    // first open is the gear's, so the tab's own last choice is Appearance.
+    const host = mount();
+    await press(gear(host));
+    expect(
+      document.querySelector('[role="tab"][aria-selected="true"]')?.textContent,
+    ).toContain(uiCopy.settings.appearance);
+    await pressEscape();
+
+    const ask = host.querySelector<HTMLButtonElement>(
+      "[data-yunari-ask-connections]",
+    );
+    if (ask === null) throw new Error("no connections ask.");
+    await press(ask);
+
+    const selected = document.querySelector<HTMLElement>(
+      '[role="tab"][aria-selected="true"]',
+    );
+    expect(selected?.textContent).toContain(uiCopy.settings.connections);
   });
 
   it("says no source needs a key when the host knows none", async () => {

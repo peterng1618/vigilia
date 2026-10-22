@@ -6,7 +6,11 @@ import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
 } from "@yunari/renderer-core";
-import type { ThemeCredits, ThemeCreditsEntry } from "@yunari/theme-package";
+import {
+  MAX_CREDITS_ENTRIES,
+  type ThemeCredits,
+  type ThemeCreditsEntry,
+} from "@yunari/theme-package";
 import type { ArtboardPanel } from "./artboard-panel.js";
 import type { AssetManager } from "./asset-manager/index.js";
 import { insertCard } from "./card-library.js";
@@ -214,6 +218,16 @@ export class EditorDocument {
   /** The attribution the saved package will carry, in arrival order. */
   credits(): readonly ThemeCreditsEntry[] {
     return [...this.#credits];
+  }
+
+  /** Whether one more credit can be held: the package writer refuses a list
+   *  past its cap, and nothing removes an entry, so the refusal happens before
+   *  the bytes are declared rather than at the next save. */
+  canAddCredit(entry: ThemeCreditsEntry): boolean {
+    return (
+      this.#credits.length < MAX_CREDITS_ENTRIES ||
+      this.#credits.some((current) => creditKey(current) === creditKey(entry))
+    );
   }
 
   /** One imported asset's attribution. The same source item twice is one

@@ -46,13 +46,16 @@ const page: AssetPage = {
   failure: undefined,
 };
 
-function documentStub(): {
+function documentStub(canAddCredit = true): {
   document: EditorDocument;
   addCredit: ReturnType<typeof vi.fn>;
 } {
   const addCredit = vi.fn();
   return {
-    document: { addCredit } as unknown as EditorDocument,
+    document: {
+      addCredit,
+      canAddCredit: () => canAddCredit,
+    } as unknown as EditorDocument,
     addCredit,
   };
 }
@@ -106,6 +109,30 @@ describe("importFinderResult", () => {
     });
 
     expect(outcome.ok).toBe(false);
+    expect(addCredit).not.toHaveBeenCalled();
+    expect(place).not.toHaveBeenCalled();
+  });
+
+  it("refuses the import that would pass the credits cap, before it declares bytes", async () => {
+    const manager = new AssetManager();
+    const { document, addCredit } = documentStub(false);
+    const place = vi.fn();
+    const declare = vi.spyOn(manager, "import");
+
+    const outcome = await importFinderResult({
+      page,
+      result: lucide,
+      bytes: svg,
+      filename: "house.svg",
+      manager,
+      document,
+      place,
+    });
+
+    expect(outcome).toMatchObject({ ok: false });
+    // A 257th entry would make every later save refuse, and nothing in the
+    // product can remove one, so the row is refused rather than orphaned.
+    expect(declare).not.toHaveBeenCalled();
     expect(addCredit).not.toHaveBeenCalled();
     expect(place).not.toHaveBeenCalled();
   });
