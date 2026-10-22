@@ -17,10 +17,9 @@ Give every display client its own theme, then let a person browse, install and s
 
 ## Last completed change
 
-- **Phase F task 4 landed**: `normalizeVideo` copies a conforming video as the same bytes object, refuses a source over 30 s, and otherwise re-encodes through the bundled GPL ffmpeg into the envelope (High/4:2:0, even, 30 fps CFR, silent, faststart).
-- **End-to-end proof**: `wide.mp4` (2048×180) normalized with the real binary to 1920×168, and the output re-read by `readVideoFacts` has no refusals; `conforming.mp4` returns `reencoded: false` and the identical object.
-- **Doors**: `POST /api/themes/normalize-video` behind the install route's loopback + foreign-origin guard and the 96 MB upload cap; `vigilia normalize-video <in> <out>` sits beside `validate-item`.
-- **Evidence**: 6 normalizer unit tests green, `server.test.ts` 194 green, typecheck and biome exit 0.
+- **Phase F task 4 follow-up**: `normalizeVideo` gained `aspect`; `cover` now requires it, fills that ratio and centre-crops at an even, 1920-capped box, while `contain` keeps the source aspect.
+- **Cover proof** (real binary): `wide.mp4` 2048×180 with `aspect` 16:9 → 1920×1080, 1000 ms, 30 fps CFR, avc1 High, 4:2:0, silent, faststart; re-probed `videoRefusals` empty.
+- **Tests**: cover with an aspect checks the crop filter and re-probes the output; cover without one refuses before spawning; 8 normalizer tests green, `server.test.ts` 194 green (one known `vg-695` assignment flake seen, green on re-run), typecheck and biome exit 0.
 
 ## Next
 

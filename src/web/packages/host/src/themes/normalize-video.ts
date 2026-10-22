@@ -36,10 +36,17 @@ export type NormalizeResult =
     }
   | { readonly ok: false; readonly message: string };
 
+/** The framing shape `cover` crops to, e.g. 16:9. */
+export interface NormalizeAspect {
+  readonly width: number;
+  readonly height: number;
+}
+
 export async function normalizeVideo(
   bytes: Uint8Array,
   options: {
     readonly fit?: "cover" | "contain";
+    readonly aspect?: NormalizeAspect;
     readonly ffmpegPath?: string;
     readonly run?: Run;
   } = {},
@@ -63,6 +70,15 @@ export async function normalizeVideo(
         `${VIDEO_LIMITS.maxDurationMs} ms. Trim it and try again.`,
     };
 
+  const fit = options.fit ?? "contain";
+  if (fit === "cover" && !validAspect(options.aspect))
+    return {
+      ok: false,
+      message:
+        "cover needs an aspect (a positive width and height) to crop to; " +
+        "contain preserves the source aspect.",
+    };
+
   const executable = options.ffmpegPath ?? ffmpegStatic;
   if (executable === null)
     return {
@@ -80,7 +96,7 @@ export async function normalizeVideo(
     const output = path.join(directory, "out.mp4");
     await writeFile(input, bytes);
     const outcome = await run(
-      ffmpegArgs(input, output, facts, options.fit ?? "contain"),
+      ffmpegArgs(input, output, facts, fit, options.aspect),
     );
     // The child's stderr can carry paths and encoder internals; the sentence
     // names the failure without echoing them.
@@ -106,6 +122,7 @@ export function ffmpegArgs(
   output: string,
   facts: VideoFacts,
   fit: "cover" | "contain",
+  aspect?: NormalizeAspect,
 ): string[] {
   return [
     "-hide_banner",
@@ -115,7 +132,7 @@ export function ffmpegArgs(
     input,
     "-an",
     "-vf",
-    scaleFilter(facts, fit),
+    scaleFilter(facts, fit, aspect),
     "-r",
     "30",
     "-c:v",
@@ -135,24 +152,68 @@ export function ffmpegArgs(
 }
 
 /**
- * Caps the long edge and lands both dimensions on even numbers.
+ * The capped, even box a re-encode lands in.
  *
- * `contain` fits the whole frame inside the capped box and pads the rounding
- * remainder; `cover` fills the box and crops it. Both derive the box from the
- * source, not the live artboard: a bake to today's shape is wrong after the
+ * `contain` derives the box from the source, so the whole frame survives and
+ * only the long edge is capped. `cover` derives it from the requested aspect,
+ * fills it and crops the centre: the one mode that changes framing. Both stay
+ * off the live artboard, because a bake to today's shape is wrong after the
  * next artboard edit (spec, "four rules").
  */
-function scaleFilter(facts: VideoFacts, fit: "cover" | "contain"): string {
-  const longEdge = Math.max(facts.width, facts.height);
+function scaleFilter(
+  facts: VideoFacts,
+  fit: "cover" | "contain",
+  aspect: NormalizeAspect | undefined,
+): string {
+  const box =
+    fit === "cover" && validAspect(aspect)
+      ? boxForAspect(aspect)
+      : boxForSource(facts.width, facts.height);
+  return fit === "cover"
+    ? `scale=${box.width}:${box.height}:force_original_aspect_ratio=increase:force_divisible_by=2,crop=${box.width}:${box.height}`
+    : `scale=${box.width}:${box.height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${box.width}:${box.height}:(ow-iw)/2:(oh-ih)/2:color=black`;
+}
+
+/** The source box, capped at the long edge and never upscaled. */
+function boxForSource(
+  width: number,
+  height: number,
+): { readonly width: number; readonly height: number } {
+  const longEdge = Math.max(width, height);
   const factor =
     longEdge > VIDEO_LIMITS.maxLongEdge
       ? VIDEO_LIMITS.maxLongEdge / longEdge
       : 1;
-  const width = evenAtMost(facts.width * factor);
-  const height = evenAtMost(facts.height * factor);
-  return fit === "cover"
-    ? `scale=${width}:${height}:force_original_aspect_ratio=increase:force_divisible_by=2,crop=${width}:${height}`
-    : `scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black`;
+  return {
+    width: evenAtMost(width * factor),
+    height: evenAtMost(height * factor),
+  };
+}
+
+/** The requested ratio, always mapped to the full long edge: a cover box is a
+ *  framing, so it is the same wherever the source started. */
+function boxForAspect(aspect: NormalizeAspect): {
+  readonly width: number;
+  readonly height: number;
+} {
+  const factor =
+    VIDEO_LIMITS.maxLongEdge / Math.max(aspect.width, aspect.height);
+  return {
+    width: evenAtMost(aspect.width * factor),
+    height: evenAtMost(aspect.height * factor),
+  };
+}
+
+function validAspect(
+  aspect: NormalizeAspect | undefined,
+): aspect is NormalizeAspect {
+  return (
+    aspect !== undefined &&
+    Number.isFinite(aspect.width) &&
+    Number.isFinite(aspect.height) &&
+    aspect.width > 0 &&
+    aspect.height > 0
+  );
 }
 
 function evenAtMost(value: number): number {

@@ -80,7 +80,10 @@ import {
   installCatalogueItem,
   parseInstallRequest,
 } from "./themes/install.js";
-import { normalizeVideo } from "./themes/normalize-video.js";
+import {
+  type NormalizeAspect,
+  normalizeVideo,
+} from "./themes/normalize-video.js";
 import {
   createThemeStore,
   isValidThemeId,
@@ -500,6 +503,23 @@ async function knownDisplayKey(
 ): Promise<boolean> {
   if (key === DEFAULT_DISPLAY || key === LOCAL_DISPLAY_ID) return true;
   return ((await displays?.list()) ?? []).some((record) => record.id === key);
+}
+
+/** `undefined` when absent, `null` when present but not two positive numbers. */
+function parseAspect(value: unknown): NormalizeAspect | undefined | null {
+  if (value === undefined) return undefined;
+  if (typeof value !== "object" || value === null) return null;
+  const { width, height } = value as { width?: unknown; height?: unknown };
+  if (
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0
+  )
+    return null;
+  return { width, height };
 }
 
 /** Bounded JSON body for admin writes; a runaway body must not be buffered. */
@@ -2319,9 +2339,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      let body: { bytesBase64?: unknown; fit?: unknown };
+      let body: { bytesBase64?: unknown; fit?: unknown; aspect?: unknown };
       try {
-        body = JSON.parse(raw) as { bytesBase64?: unknown; fit?: unknown };
+        body = JSON.parse(raw) as {
+          bytesBase64?: unknown;
+          fit?: unknown;
+          aspect?: unknown;
+        };
       } catch {
         sendText(response, 400, "That normalize request is not JSON.");
         return;
@@ -2340,10 +2364,18 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendText(response, 400, "fit must be cover or contain.");
         return;
       }
+      const aspect = parseAspect(body.aspect);
+      if (aspect === null) {
+        sendText(response, 400, "aspect must be a positive width and height.");
+        return;
+      }
 
       const normalized = await normalizeVideo(
         new Uint8Array(Buffer.from(body.bytesBase64, "base64")),
-        fit === undefined ? {} : { fit },
+        {
+          ...(fit === undefined ? {} : { fit }),
+          ...(aspect === undefined ? {} : { aspect }),
+        },
       );
       if (!normalized.ok) {
         // The normalizer's own sentence: it names which rule was broken, and a

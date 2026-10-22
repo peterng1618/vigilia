@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
+import { readVideoFacts, videoRefusals } from "@vigilia/theme-package";
 import { describe, expect, it, vi } from "vitest";
 import { ffmpegArgs, normalizeVideo } from "./normalize-video.js";
 
@@ -71,6 +72,50 @@ describe("normalizeVideo", () => {
     expect(args[args.indexOf("-vf") + 1]).toMatch(/^scale=1920:168:.*,pad=/);
   });
 
+  it("covers the requested aspect, and the output conforms to it", async () => {
+    // The stub plays the encoder: the bytes it writes are a conforming 16:9
+    // clip, so the test proves the route's options reach the filter and the
+    // answer is re-probed, without a 30-second encode in the suite.
+    const encoded = fixture("conforming.mp4");
+    const run = runWriting(encoded);
+
+    const result = await normalizeVideo(fixture("wide.mp4"), {
+      fit: "cover",
+      aspect: { width: 16, height: 9 },
+      ffmpegPath: "ffmpeg-stub",
+      run,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.reencoded).toBe(true);
+    expect(run).toHaveBeenCalledTimes(1);
+    const args = run.mock.calls[0]?.[0] ?? [];
+    expect(args[args.indexOf("-vf") + 1]).toBe(
+      "scale=1920:1080:force_original_aspect_ratio=increase:force_divisible_by=2,crop=1920:1080",
+    );
+    const facts = readVideoFacts(result.bytes);
+    expect(facts?.width).toBe(320);
+    expect(facts?.height).toBe(180);
+    expect(facts === undefined ? [] : videoRefusals("out.mp4", facts)).toEqual(
+      [],
+    );
+  });
+
+  it("refuses cover without an aspect, without spawning", async () => {
+    const run = vi.fn(async () => ({ code: 0, stderr: "" }));
+
+    const result = await normalizeVideo(fixture("wide.mp4"), {
+      fit: "cover",
+      run,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("aspect");
+    expect(run).not.toHaveBeenCalled();
+  });
+
   it("refuses a non-zero exit without echoing the raw stderr", async () => {
     const result = await normalizeVideo(fixture("wide.mp4"), {
       ffmpegPath: "ffmpeg-stub",
@@ -110,10 +155,13 @@ describe("ffmpegArgs", () => {
       faststart: true,
     };
 
-    const args = ffmpegArgs("in.mp4", "out.mp4", facts, "cover");
+    const args = ffmpegArgs("in.mp4", "out.mp4", facts, "cover", {
+      width: 16,
+      height: 9,
+    });
 
     expect(args[args.indexOf("-vf") + 1]).toMatch(
-      /^scale=1920:168:.*force_original_aspect_ratio=increase.*,crop=1920:168$/,
+      /^scale=1920:1080:.*force_original_aspect_ratio=increase.*,crop=1920:1080$/,
     );
   });
 });
