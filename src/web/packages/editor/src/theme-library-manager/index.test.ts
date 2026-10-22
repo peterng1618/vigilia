@@ -29,6 +29,29 @@ const envelope: FabricThemeEnvelope = {
   scene: { version: "7.4.0", objects: [] },
 };
 
+/** An installed theme as the library stored it: it declares everything the
+ *  remix has to drop. */
+const storedInstalled: FabricThemeEnvelope = {
+  ...envelope,
+  metadata: {
+    name: "Primary",
+    author: "Ada",
+    version: "1.2.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-02-01T00:00:00.000Z",
+    themeLanguage: "en",
+  },
+};
+
+const PARENT = {
+  catalogueId: "5f0c4f30-0f8c-4e4f-9c1f-1f0f0f0f0f0f",
+  name: "Primary",
+  version: "1.2.0",
+} as const;
+
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const PNG = new Uint8Array([137, 80, 78, 71]);
 const OTHER = new Uint8Array([137, 80, 78, 72]);
 
@@ -94,7 +117,13 @@ function harness(options: {
   const onSaved = vi.fn();
   const onError = vi.fn();
   const onNewFromStarter = vi.fn(async () => {});
-  const onOpenTheme = vi.fn(async () => {});
+  const onOpenTheme = vi.fn<
+    (
+      envelope: FabricThemeEnvelope,
+      assets: Readonly<Record<string, Uint8Array>>,
+      base?: string,
+    ) => Promise<void>
+  >(async () => {});
   const errors: ErrorManager = { error: vi.fn(), warn };
   // Built before the manager so the harness can hand back the very client it
   // wired: the defaults above are not what the manager received once an
@@ -327,6 +356,45 @@ describe("ThemeLibraryManager", () => {
       "base-from-open",
     );
     expect(manager.isStored()).toBe(true);
+  });
+
+  it("opens a remix as a new document under a fresh id, crediting its parent", async () => {
+    // A remix forks: the copy descends from nothing the library holds, so it
+    // mounts with no base, and the parent is recorded at the fork rather than
+    // left to be guessed from whatever the author does next.
+    const open = vi.fn(async () => ({
+      envelope: storedInstalled,
+      assets: { "assets/backdrop.png": PNG },
+      base: "base-from-open",
+    }));
+    const { manager, onOpenTheme } = harness({
+      base: "stored-base",
+      client: { list: async () => [], open, save: async () => "base" },
+    });
+    selectionMock.mockResolvedValue({
+      kind: "remix",
+      id: "living-room",
+      remixOf: PARENT,
+    });
+
+    await manager.open();
+
+    expect(open).toHaveBeenCalledWith("living-room");
+    expect(onOpenTheme).toHaveBeenCalledOnce();
+    const [remixed, assets, base] = onOpenTheme.mock.calls[0]!;    expect(remixed.id).toMatch(UUID);
+    expect(remixed.id).not.toBe("living-room");
+    expect(remixed.metadata?.remixOf).toEqual(PARENT);
+    expect(remixed.metadata?.name).toBe("Primary (remix)");
+    // Provenance belongs to the parent; the fork is a first version of its own.
+    expect(remixed.metadata).not.toHaveProperty("version");
+    expect(remixed.metadata).not.toHaveProperty("author");
+    expect(remixed.metadata).not.toHaveProperty("createdAt");
+    expect(remixed.metadata).not.toHaveProperty("updatedAt");
+    // Its language is not provenance, so it travels with the document.
+    expect(remixed.metadata?.themeLanguage).toBe("en");
+    expect(assets).toEqual({ "assets/backdrop.png": PNG });
+    expect(base).toBeUndefined();
+    expect(manager.isStored()).toBe(false);
   });
 
   it("opens one stored theme by id, under the base its own read came from", async () => {

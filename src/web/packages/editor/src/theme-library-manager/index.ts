@@ -1,4 +1,8 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type {
+  FabricThemeEnvelope,
+  ThemeMetadata,
+  ThemeRemix,
+} from "@vigilia/renderer-core";
 import type { AssetManager } from "../asset-manager/index.js";
 import type { ErrorManager } from "../error-manager/index.js";
 import {
@@ -43,6 +47,34 @@ function libraryBase(
           : [[declared.path, declared.sha256] as const],
       ),
     ),
+  };
+}
+
+/**
+ * The document a remix opens as: a new document that credits its parent.
+ *
+ * Four fields are **deleted, not blanked**: a version, its timestamps and its
+ * author describe the stored parent, and a remix is a first version of its own.
+ * `exactOptionalPropertyTypes` is why this is a delete — an `undefined` on an
+ * optional key is a value, and the format distinguishes "declares none" from
+ * "declares undefined".
+ */
+function remixedEnvelope(
+  stored: FabricThemeEnvelope,
+  remixOf: ThemeRemix,
+): FabricThemeEnvelope {
+  const kept: Record<string, unknown> = { ...(stored.metadata ?? {}) };
+  for (const key of ["version", "createdAt", "updatedAt", "author"]) {
+    delete kept[key];
+  }
+  return {
+    ...stored,
+    id: crypto.randomUUID(),
+    metadata: {
+      ...(kept as ThemeMetadata),
+      name: `${remixOf.name} (remix)`,
+      remixOf,
+    },
   };
 }
 
@@ -172,6 +204,10 @@ export class ThemeLibraryManager {
         await options.onNewFromStarter();
         return;
       }
+      if (choice.kind === "remix") {
+        await this.#openRemix(client, choice.id, choice.remixOf);
+        return;
+      }
       await this.#openStored(client, choice.id);
     } catch (error) {
       options.onError?.(error instanceof Error ? error.message : String(error));
@@ -213,6 +249,28 @@ export class ThemeLibraryManager {
       this.#base = libraryBase(opened.base, opened.envelope.assets ?? []);
       await options.onOpenTheme(opened.envelope, opened.assets, opened.base);
     }
+  }
+
+  /**
+   * Reads an installed theme and mounts it as a new document that credits its
+   * parent.
+   *
+   * **No base**: a remix descends from nothing the library holds — its id is
+   * fresh — so the first save must be a first save rather than a gated write
+   * against the theme it copied.
+   */
+  async #openRemix(
+    client: ThemeLibraryClient,
+    id: string,
+    remixOf: ThemeRemix,
+  ): Promise<void> {
+    const options = this.#options;
+    const opened = await client.open(id);
+    this.#base = undefined;
+    await options.onOpenTheme?.(
+      remixedEnvelope(opened.envelope, remixOf),
+      opened.assets,
+    );
   }
 
   /**

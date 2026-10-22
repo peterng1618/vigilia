@@ -16,6 +16,7 @@ import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
 import type {
   ThemeLibraryClient,
   ThemeLibraryEntry,
+  ThemeOrigin,
 } from "./theme-library-client.js";
 import {
   promptThemeConflict,
@@ -68,6 +69,21 @@ const FACETS: FacetRecord = {
 /** A stored theme as these cases hand one to the chooser. */
 function listedTheme(id: string, name: string): ThemeLibraryEntry {
   return { id, name, updatedAt: "", facets: FACETS };
+}
+
+/** A theme the host records a catalogue origin for — an installed one. */
+const ORIGIN: ThemeOrigin = {
+  catalogueId: "5f0c4f30-0f8c-4e4f-9c1f-1f0f0f0f0f0f",
+  version: "1.2.0",
+  installedAt: "2026-10-01T00:00:00.000Z",
+};
+
+function installedTheme(
+  id: string,
+  name: string,
+  origin: ThemeOrigin = ORIGIN,
+): ThemeLibraryEntry {
+  return { ...listedTheme(id, name), origin };
 }
 
 /** Opens the chooser the way the session opens it. */
@@ -171,6 +187,45 @@ describe("the library chooser", () => {
 
     await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
+  });
+
+  it("offers a remix only for a theme the host knows a catalogue parent for", async () => {
+    const pending = open([
+      installedTheme("from-store", "Store theme"),
+      listedTheme("mine", "My theme"),
+    ]);
+    const remix = remixButton();
+
+    // A template has no catalogue parent, and neither has a theme the author
+    // made here: a remix control beside either would invent provenance.
+    expect(remix.disabled).toBe(true);
+
+    await chooseIn("theme", "mine");
+    expect(remix.disabled).toBe(true);
+
+    await chooseIn("theme", "from-store");
+    expect(remix.disabled).toBe(false);
+
+    await pressButton("[data-vigilia-library-cancel]");
+    await expect(pending).resolves.toBeUndefined();
+  });
+
+  it("remixes the chosen theme from the parent its origin names", async () => {
+    const pending = open([installedTheme("from-store", "Store theme")]);
+    await chooseIn("theme", "from-store");
+    await pressButton("[data-vigilia-library-remix]");
+
+    // The parent is the catalogue item the copy was installed from, and its
+    // version is the one this copy holds — not a version the theme declares.
+    await expect(pending).resolves.toEqual({
+      kind: "remix",
+      id: "from-store",
+      remixOf: {
+        catalogueId: ORIGIN.catalogueId,
+        name: "Store theme",
+        version: ORIGIN.version,
+      },
+    });
   });
 
   it("confirms by name before removing, and the row goes afterwards", async () => {
@@ -509,6 +564,14 @@ function deleteButton(): HTMLButtonElement {
     "[data-vigilia-library-delete]",
   );
   if (button === null) throw new Error("no delete control");
+  return button;
+}
+
+function remixButton(): HTMLButtonElement {
+  const button = document.querySelector<HTMLButtonElement>(
+    "[data-vigilia-library-remix]",
+  );
+  if (button === null) throw new Error("no remix control");
   return button;
 }
 

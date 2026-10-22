@@ -267,6 +267,7 @@ export type {
   TextContent,
   TextRun,
   ThemeMetadata,
+  ThemeRemix,
   TypePreset,
   WidgetProvenance,
 } from "./theme/document.js";

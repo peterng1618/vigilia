@@ -1,3 +1,4 @@
+import type { ThemeRemix } from "@vigilia/renderer-core";
 import { createElement, useState } from "react";
 import {
   type ControlOption,
@@ -19,7 +20,15 @@ import { uiCopy } from "./ui-copy.js";
  *  fetched over the library API — so the choice has to carry which it was. */
 export type ThemeLibraryChoice =
   | { readonly kind: "template"; readonly id: string }
-  | { readonly kind: "theme"; readonly id: string };
+  | { readonly kind: "theme"; readonly id: string }
+  /** A copy of an installed theme, carrying the parent it must credit. The
+   *  chooser reads that parent off the host's origin record, because a document
+   *  cannot describe where it came from without the catalogue. */
+  | {
+      readonly kind: "remix";
+      readonly id: string;
+      readonly remixOf: ThemeRemix;
+    };
 
 /**
  * What the author is asked before a theme is removed.
@@ -43,6 +52,10 @@ function confirmWords(id: string, name: string | undefined): string {
  *  because the copy table's owner is another surface's concern and this string
  *  exists only beside the button it names. */
 const DELETE_LABEL = "Delete";
+
+/** Beside the delete, for the same reason: one control, one word, and it is
+ *  only ever drawn next to the act it names. */
+const REMIX_LABEL = "Remix";
 
 /** The client a removal goes through, or undefined when there is none — in
  *  which case the chooser offers no deletion rather than failing when the
@@ -126,6 +139,26 @@ export function ThemeLibraryChooser({
     return undefined;
   };
   const selectedKind = kind(selected);
+  /** The origin record, which only an installed theme has: a template is not
+   *  in `own`, so this is `undefined` for it without asking its kind. */
+  const selectedEntry = own.find((entry) => entry.id === selected);
+  const origin = selectedEntry?.origin;
+
+  /** A remix settles the choice here rather than opening anything: the caller
+   *  fetches the theme, and the parent has to travel with the answer because
+   *  the fetched document does not know what it was installed from. */
+  const remix = (): void => {
+    if (selectedEntry === undefined || origin === undefined) return;
+    settle.close({
+      kind: "remix",
+      id: selectedEntry.id,
+      remixOf: {
+        catalogueId: origin.catalogueId,
+        name: selectedEntry.name,
+        version: origin.version,
+      },
+    });
+  };
 
   const open = (): void => {
     const chosen = selectedKind;
@@ -189,6 +222,18 @@ export function ThemeLibraryChooser({
             onChange={setSelected}
           />
           <div className="vigilia-dialog-actions">
+            <button
+              type="button"
+              className={ACTION_BUTTON}
+              data-vigilia-library-remix=""
+              // Disabled rather than absent, as the delete is: a template has
+              // no catalogue parent, and neither has a theme made here, so
+              // there is nothing to credit.
+              disabled={origin === undefined}
+              onClick={remix}
+            >
+              {REMIX_LABEL}
+            </button>
             {canRemove === undefined ? null : (
               <button
                 type="button"

@@ -17,10 +17,10 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 4.1 landed**: `ThemeMetadata.remixOf` names the immediate parent (`catalogueId`, `name`, `version`).
-- **Type, runtime validator and published schema land together**, because `metadata` closes itself on both sides.
-- **`isThemeRemix` reuses the catalogue's UUID pattern**, and the schema repeats it under `$defs.remix`.
-- **Each malformed member is refused at its own path** under `/metadata/remixOf`.
+- **Task 4.2 landed**: the library chooser offers **Remix** for an installed theme carrying a catalogue origin, disabled for templates and origin-less themes.
+- **A remix mints a fresh UUID and mounts with no base**, so the fork's first save is a first save rather than a gated write against its parent.
+- **The fork credits its parent**: `metadata.remixOf` is the origin's catalogue id, the entry's current name and the origin version; `version`, `createdAt`, `updatedAt` and `author` are deleted.
+- **`ThemeRemix` is exported from `renderer-core`**, so the editor names the shape rather than restating it.
 
 ## Next
 
