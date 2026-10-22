@@ -1,0 +1,19 @@
+name = "yunari-store"
+main = "src/index.ts"
+# 2026-08-22 is the newest date @cloudflare/vitest-pool-workers@0.23.0's bundled workerd supports; Task 5.2 may raise it only if the deploy requires it.
+compatibility_date = "2026-08-22"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "yunari-store"
+# Placeholder; Task 5.2 replaces it with the id `wrangler d1 create` returns.
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "yunari-store-packages"
+
+[vars]
+# No secrets here. BETTER_AUTH_SECRET, the OAuth pairs, the R2 credentials,
+# OWNER_EMAILS and MIGRATE_TOKEN are `wrangler secret put` values.

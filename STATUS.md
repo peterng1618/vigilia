@@ -18,9 +18,10 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Orca is documented as an execution venue**: a worktree runs inside the plan `STATUS.md` names, its `.superpowers/` ledger is local to it, and liveness comes from `orca worktree show` or `terminal wait`.
-- **The register stays `docs/product/backlog.jsonl`**: Orca links issues and PRs to a worktree, it does not own a register, so no row moves into GitHub issues.
-- **Fixed Playwright port ranges are recorded** so two worktrees never run the same project at once, and `docs/product/probes/cdp.mjs` now resolves Playwright from the checkout instead of `D:/git-repos/yunari`.
+- **Store Worker package added**: `@yunari/store-worker` ships `Env`, a `GET /api/health` route and `wrangler.toml` with D1 `DB`, R2 `BUCKET` and an empty `[vars]`.
+- **D1 schema `0001_catalogue.sql`**: `item` (six-state status CHECK), `item_version`, `favorite`, `author_profile`, `presign_event`, with the four spec indexes.
+- **Workers harness proven against real bindings**: `cloudflareTest` plus `readD1Migrations`; the harness spec counts rows through the D1 binding after the migration.
+- **Root gate gains `test:worker`**, and every new pin and licence is recorded in the notices and dependency map.
 
 ## Next
 

@@ -42,6 +42,12 @@ declares. The closure half is this file's own **Release rule** below.
 | `@tailwindcss/vite` | 4.3.3 | MIT | editor dev |
 | `@types/react` | 19.3.0 | MIT | types |
 | `@types/react-dom` | 19.3.0 | MIT | types |
+| `better-auth` | 1.7.12 | MIT | store worker: OAuth sign-in and session storage |
+| `aws4fetch` | 1.0.20 | MIT | store worker: SigV4 signing for R2 presigned uploads |
+| `@cloudflare/vitest-pool-workers` | 0.23.0 | MIT | devDependency: runs the Worker suite inside workerd |
+| `@cloudflare/workers-types` | 5.20261022.1 | MIT OR Apache-2.0 | devDependency: Worker runtime types |
+| `wrangler` | 4.152.0 | MIT OR Apache-2.0 | devDependency: Worker dev and deploy CLI |
+| `vitest` (nested, `packages/store-worker`) | 4.1.12 | MIT | devDependency: the pool peers on `^4.1.0`; the workspace runs 5.0.0 |
 
 `node-forge` 1.4.0 was added on 2026-10-18 with `docs/decisions/0070`. Its
 licence is dual, `(BSD-3-Clause OR GPL-2.0)`, verified from the installed
