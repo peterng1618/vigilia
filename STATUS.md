@@ -17,11 +17,11 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Theme versioning spec written** (`2026-10-22-theme-versioning-design.md`): a machine-checkable ladder where the interface is the bound sensor set and the canvas, everything else is content.
+- **Theme versioning spec written** (`2026-10-22-theme-versioning-design.md`, spec only — no code changed): a machine-checkable ladder where the interface is the bound sensor set and the canvas, everything else is content.
+- **Theme ids become UUIDs** minted at document creation; the catalogue accepts only UUID ids, and the library keeps its old shape so no local theme disappears.
 - **Submit computes and writes the version**: the host diffs the published package, bumps by the ladder, stores `metadata.version`, and refuses an unchanged re-publish naming the published version.
 - **Catalogue CI enforces the same ruling** through `validate-item --previous-item/--previous-package`, so a hand-made PR that under-claims its diff is refused.
-- **Theme ids become UUIDs** minted at document creation; the catalogue accepts only UUID ids, and the library keeps its old shape so no local theme disappears.
-- **Not yet implemented**: no code changed in this commit; the spec is the deliverable.
+- **Remixes credit their parent**: a modified installed theme opens as a copy under a fresh UUID carrying `remixOf`, and the storefront links to the parent's item by id.
 
 ## Next
 

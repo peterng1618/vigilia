@@ -18,6 +18,9 @@ properties of one item's identity:
    catalogue already treats the id as the item's identity — directory name,
    file name, `packageUrl`, and the package's own envelope — but ids are
    currently literals, so two authors can aim at one directory.
+3. **A remix credits its parent**, because a modified copy of an installed
+   theme cannot keep the original id: ownership refuses it, so the app mints a
+   new one, and that is the moment provenance is either recorded or lost.
 
 ## Current state
 
@@ -40,6 +43,11 @@ Facts this design is argued from, each at its owner:
   (`:270`), and a save lands under the document's own id
   (`theme-library-manager/index.ts:232`). Import keeps the package's id when it
   is free and stamps a suffixed one when it is not (`import.ts:102-107,141-148`).
+- The host already records where a theme came from, beside the library and
+  outside the document: `ThemeOrigin { catalogueId, version, installedAt }`,
+  keyed by library id (`settings/theme-origins.ts`, surfaced as
+  `ThemeLibraryEntry.origin`). Nothing copies it into the document or into a
+  published item, so it dies with the machine.
 - The catalogue's CI runs `validate-item` per touched directory
   (`C:\tmp\vigilia-store\.github\workflows\validate.yml:38-56`) with
   `fetch-depth: 0`, and auto-merge admits only paths matching
@@ -68,7 +76,7 @@ major.**
 | `initial` | No published item. The version is `1.0.0`. |
 | `major` | `schemaVersion` changed; `artboard.width` or `artboard.height` changed; the set of bound sensors shrank. |
 | `minor` | A sensor was added; a scene object, asset, palette token, type preset or tag was added or removed; `artboard.backgroundMedia` was added, removed or changed. |
-| `patch` | Any other change inside an existing structure: paint, text, geometry, z-order, an object's own properties, a kept sensor's binding, `metadata.name`/`author`/`description`/`themeLanguage`. |
+| `patch` | Any other change inside an existing structure: paint, text, geometry, z-order, an object's own properties, a kept sensor's binding, `metadata.name`/`author`/`description`/`themeLanguage`/`remixOf`. |
 | `none` | Nothing changed but the fields classified as ignored below. |
 
 The set of bound sensors is the union of every binding's `semanticKey` across
@@ -161,8 +169,8 @@ package and must make the identical ruling from the package bytes alone.
    write (a concurrent save moved the theme) is the refusal; nothing is
    uploaded.
 6. `item.json` carries the same version, the published item's `createdAt`,
-   `downloads` and `favorites` when there is one, and the submission instant as
-   `updatedAt`.
+   `downloads` and `favorites` when there is one, the document's `remixOf` when
+   it has one, and the submission instant as `updatedAt`.
 7. `SubmissionFiles` gains `version` and `level`; the submit route returns
    them, and the store surface shows `1.4.0 → 1.5.0 · minor` after the PR is
    opened, then re-reads the library so the caption line shows the new version.
@@ -205,7 +213,9 @@ unless **all** of these hold:
 - the package envelope's `metadata.version` equals it too, and is present —
   the app now writes it, so a missing version is a malformed package rather
   than a default;
-- the change is not `none`.
+- the change is not `none`;
+- `remixOf` is unchanged from the previous item, or absent on both — provenance
+  is recorded once and never rewritten (see *Attribution*).
 
 Without a previous item the item must be `1.0.0`.
 
@@ -249,6 +259,77 @@ as before, and is **refused at submit**:
 
 Pre-release, the library on any machine is a developer's own work and the
 catalogue is empty, so there is no published item to strand.
+
+## Attribution
+
+A theme produced by modifying one that was installed from the catalogue credits
+the theme it was forked from.
+
+### The field
+
+`ThemeMetadata` gains one optional member:
+
+```ts
+readonly remixOf?: {
+  readonly catalogueId: string; // the parent's UUID — the authority
+  readonly name: string;        // the parent's name at remix time
+  readonly version: string;     // the version remixed from
+};
+```
+
+`catalogueId` is what a link resolves through. `name` and `version` are a
+snapshot for the case where the parent is not in the index — a deleted item, or
+an offline package — where the credit renders as plain text rather than a dead
+link. It is **immediate parent only**: a chain is walked by opening remixes that
+are themselves remixes.
+
+`metadata` is `additionalProperties: false` in
+`schema/theme-document.schema.json:27-39`, so the member lands in the type, the
+schema and the runtime validator in one commit — the format rule that stops a
+document validating in the app and failing the schema.
+
+### Where it comes from
+
+The host already knows: `ThemeOrigin.catalogueId` and `.version` are recorded at
+install (`settings/theme-origins.ts`), keyed by library id.
+
+- A library theme **with an origin record** gains **Remix**: it opens a copy
+  under a fresh `crypto.randomUUID()` with `remixOf` set from that record and
+  the theme's current name.
+- A library theme **without** one gains **Duplicate** instead, and no credit —
+  there is no catalogue item to name.
+
+Not at submit: minting an id there would move the stored folder and orphan the
+open document, and a fork is something the author chose.
+
+### Where it is read
+
+- `submissionFiles` copies `metadata.remixOf` into `item.json`, and
+  `CatalogueItemFile`, `CatalogueEntry` and `parseCatalogueItemFile` accept it,
+  so the index carries credit without downloading a package.
+- The storefront's item modal renders *Remixed from <name>* and, when that id is
+  in the index, opens that item. The link target is resolved from the index by
+  id; **no string out of a document ever reaches an `href`**, the rule the
+  submission review imposed on PR links.
+- The author-facing remix is visible in the library entry, which already prints
+  author and version from the same metadata.
+
+### Checks
+
+`validate-item` refuses when:
+
+- `remixOf.catalogueId` is not a UUID, or equals the item's own id;
+- the package's `metadata.remixOf` and `item.json`'s `remixOf` are not deep-equal;
+- a previous item's `remixOf` differs from this one's, or existed and is gone.
+
+Existence of the parent is **not** checked: a remix may be merged before its
+parent, and a parent may be removed later. The storefront degrades to text.
+
+### Ladder
+
+`metadata.remixOf` classifies as patch. In practice it is set before the first
+publish and then frozen by the check above, so the rule exists to keep the
+coverage test's set complete rather than to grade a real change.
 
 ## Offline and unpublished themes
 
@@ -294,16 +375,22 @@ Each is one host sentence, shown verbatim by the store surface:
 - **Host**: plan read — first submission, normal bump, `none`, 404 vs 500 vs
   unreadable package, id mismatch; the store write lands the version and a
   concurrent base is refused; `item.json` carries the carried-forward
-  `createdAt`.
+  `createdAt` and the document's `remixOf`.
 - **CI**: `validate-item` with both flags — correct bump passes, a version that
   under-claims a major refuses, a missing envelope version refuses, an
   unchanged repackage refuses, no flags on a first submission requires `1.0.0`.
+- **Attribution**: a remix of an installed theme mints a new UUID and records
+  the parent; a duplicate of a local theme records none; `validate-item`
+  refuses a mismatched, self-referencing, non-UUID or rewritten `remixOf`; the
+  index round-trips `remixOf` through `parseCatalogueItemFile`.
 - **Browser**: submitting a stored theme shows `1.4.0 → 1.5.0 · minor` and the
-  store's caption line then reads `1.5.0` (routed: the catalogue is empty).
+  store's caption line then reads `1.5.0` (routed: the catalogue is empty); a
+  routed index holding a remix renders *Remixed from* and opening it shows the
+  parent item, while a parent the index lacks renders as text.
 - **Red-proofs**: break the CI version comparison and watch a lying item pass;
   break the ignored-field list and watch an editor-metadata-only save compute a
-  patch instead of `none`. Restore from copies kept outside the repo and verify
-  with `cmp`.
+  patch instead of `none`; break the parent-id lookup and watch the link render
+  as text. Restore from copies kept outside the repo and verify with `cmp`.
 
 ## Non-goals
 
@@ -312,3 +399,5 @@ Each is one host sentence, shown verbatim by the store surface:
   The install path keeps comparing exact versions.
 - An export control, and lineage for offline forks.
 - Migrating legacy local ids.
+- Enforcing permission or licence for remixes, a full lineage view, and credit
+  for a source that was never in the catalogue.
