@@ -24,6 +24,7 @@ import {
 import { CA_CERTIFICATE_PATH, createHostServer } from "./server.js";
 import { createPairingCodeStore } from "./session/pairing-code.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
+import { createCredentialStore } from "./settings/credentials.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
 import { createDisplayStore } from "./settings/displays.js";
@@ -195,6 +196,9 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Which curated font trios this author reaches for. Author preference about
   // this PC, so it sits with the other settings and never in a theme folder.
   const fontFavorites = createFontFavoritesStore(settingsDir);
+  // Provider keys, in the same directory and with the same rules: the browser
+  // may write one and never read it back.
+  const credentials = createCredentialStore(settingsDir);
   // The GitHub identity the author signed in as, beside the other records this
   // machine keeps. The browser never reads it; the host uses it to submit.
   const githubToken = createGithubTokenStore(settingsDir);
@@ -290,6 +294,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     devices: deviceSettings,
     display: displaySettings,
     fontFavorites,
+    credentials,
     onDisplayChange: (settings) => clockProvider.setTimeZone(settings.timeZone),
     activeTheme,
     // Both providers know the machine's devices; LHM's list is richer, so its

@@ -38,6 +38,8 @@ import {
 import { newToken } from "./session/pairing.js";
 import { createPairingCodeStore } from "./session/pairing-code.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
+import { createCredentialStore } from "./settings/credentials.js";
+import type { KnownCredential } from "./settings/credentials-registry.js";
 import {
   ASSIGNABLE_GROUPS,
   createDeviceSettingsStore,
@@ -4628,6 +4630,224 @@ describe("Font favourite routes", () => {
     } finally {
       await bare.close();
     }
+  });
+});
+
+describe("Credential routes", () => {
+  const bearer: KnownCredential = {
+    id: "demo",
+    label: "Demo source",
+    kind: "bearer",
+  };
+  const cookie: KnownCredential = {
+    id: "session",
+    label: "Session source",
+    kind: "cookie",
+  };
+
+  let tmpDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const start = (
+    known: readonly KnownCredential[] = [bearer, cookie],
+    extra: Partial<HostServerOptions> = {},
+  ): ReturnType<typeof createHostServer> =>
+    createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      credentials: createCredentialStore(tmpDir),
+      knownCredentials: known,
+      ...extra,
+    });
+
+  const rows = async () =>
+    (await request(hosted.server, "GET", "/api/credentials")).json();
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-credentials-"));
+    hosted = start();
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("answers set and hint, and no value, for every known credential", async () => {
+    const res = await request(hosted.server, "GET", "/api/credentials");
+
+    expect(res.status).toBe(200);
+    expect(res.json()).toEqual([
+      { id: "demo", label: "Demo source", set: false, hint: "" },
+      { id: "session", label: "Session source", set: false, hint: "" },
+    ]);
+    expect(res.text()).not.toMatch(/"value"/);
+  });
+
+  it("stores a value and answers only its four-character hint", async () => {
+    const put = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "sk-live-9f2c" }),
+    );
+
+    expect(put.status).toBe(200);
+    expect(put.json()).toEqual({ ok: true });
+
+    const read = await request(hosted.server, "GET", "/api/credentials");
+    expect(read.json()).toEqual([
+      { id: "demo", label: "Demo source", set: true, hint: "9f2c" },
+      { id: "session", label: "Session source", set: false, hint: "" },
+    ]);
+    // The whole point of the route: the value it stored never comes back.
+    expect(read.text()).not.toContain("sk-live-9f2c");
+    expect(read.text()).not.toMatch(/"value"/);
+  });
+
+  it("clears a stored value", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "sk-live-9f2c" }),
+    );
+
+    const cleared = await request(
+      hosted.server,
+      "DELETE",
+      "/api/credentials/demo",
+    );
+
+    expect(cleared.status).toBe(200);
+    expect(await rows()).toEqual([
+      { id: "demo", label: "Demo source", set: false, hint: "" },
+      { id: "session", label: "Session source", set: false, hint: "" },
+    ]);
+  });
+
+  it("refuses a credential id the table does not know", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/unknown",
+      json({ value: "value" }),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses a cookie credential, naming R10", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/session",
+      json({ value: "session-cookie" }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.text()).toContain("R10");
+  });
+
+  it("refuses an empty value", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "" }),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses verify when the credential has no verifier", async () => {
+    const res = await request(
+      hosted.server,
+      "POST",
+      "/api/credentials/demo/verify",
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("verifies through the injected fetch with the stored value", async () => {
+    const calls: { value: string; fetchImpl: typeof fetch }[] = [];
+    const stubFetch = vi.fn() as unknown as typeof fetch;
+    const verifiable: KnownCredential = {
+      id: "verifiable",
+      label: "Verifiable source",
+      kind: "bearer",
+      verify: async (value, fetchImpl) => {
+        calls.push({ value, fetchImpl });
+        return { ok: true };
+      },
+    };
+    hosted = start([verifiable], { fetch: stubFetch });
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/verifiable",
+      json({ value: "sk-live-9f2c" }),
+    );
+
+    const res = await request(
+      hosted.server,
+      "POST",
+      "/api/credentials/verifiable/verify",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    expect(calls).toEqual([{ value: "sk-live-9f2c", fetchImpl: stubFetch }]);
+  });
+
+  it("keeps every credential route on this PC", async () => {
+    const lan = { remoteAddress: "192.168.1.50" };
+
+    expect(
+      (await request(hosted.server, "GET", "/api/credentials", undefined, lan))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/credentials/demo",
+          json({ value: "sk-live-9f2c" }),
+          lan,
+        )
+      ).status,
+    ).toBe(403);
+    // Refused, not stored.
+    expect(await rows()).toEqual([
+      { id: "demo", label: "Demo source", set: false, hint: "" },
+      { id: "session", label: "Session source", set: false, hint: "" },
+    ]);
+  });
+
+  it("reports a host that keeps no credential store", async () => {
+    const bare = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+    });
+    try {
+      const res = await request(bare.server, "GET", "/api/credentials");
+
+      expect(res.status).toBe(503);
+      expect(res.text()).toContain("not enabled");
+    } finally {
+      await bare.close();
+    }
+  });
+
+  it("supports only the methods each path names", async () => {
+    expect(
+      (await request(hosted.server, "POST", "/api/credentials")).status,
+    ).toBe(405);
+    expect(
+      (await request(hosted.server, "GET", "/api/credentials/demo")).status,
+    ).toBe(405);
   });
 });
 
