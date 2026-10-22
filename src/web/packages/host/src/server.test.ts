@@ -1796,7 +1796,7 @@ describe("Host theme routes", () => {
     const CLIENT_ID = "client-from-the-registry";
     const PR_URL = "https://github.com/peterng1618/vigilia-store/pull/7";
     const SECRET = "ghs_the-access-token";
-    // The catalogue refuses a library slug id, so these fixtures are UUIDs.
+    // New documents get UUID ids; these fixtures mirror that.
     const THEME_ID = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
     const BARE_ID = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
     const FORK_PATH =

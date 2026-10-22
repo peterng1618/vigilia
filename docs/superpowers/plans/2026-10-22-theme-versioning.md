@@ -394,6 +394,9 @@ git commit -m "feat(editor): a new document's id is a UUID, not a shared literal
 **Files:**
 - Modify: `src/web/packages/renderer-core/src/theme/catalogue-index.ts`
 - Modify: `src/web/packages/renderer-core/src/theme/catalogue-index.test.ts`
+- Modify: `src/web/packages/renderer-core/src/index.ts` (export the predicate)
+- Modify: `src/web/packages/host/src/themes/github-item.test.ts` and
+  `src/web/packages/host/src/server.test.ts` (fixture ids move to UUIDs)
 
 **Interfaces:**
 - Produces: `export function isCatalogueId(text: string): boolean` and
