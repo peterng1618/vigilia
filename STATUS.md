@@ -5,15 +5,15 @@ Branch: `main`
 
 ## Current objective
 
-The theme store spec (phases A–G) and the theme-versioning spec are **landed**, their plans archived: semver computed from the published package, UUID theme ids and a remix credit are in the product. **No plan is running**; the user picks the next one from the queue. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md).
+**The asset finder plan** ([`2026-10-21-asset-finder.md`](docs/superpowers/plans/2026-10-21-asset-finder.md)) is **active**, executing inline in the `asset-finder-hub` worktree: 17 tasks across six phases. The theme store and theme-versioning specs are landed and archived. Editor redesign contract: [spec](docs/superpowers/specs/2026-10-08-editor-design-language-design.md), [DESIGN.md](DESIGN.md), [checked drawings](docs/design/mockups/README.md).
 
 ## Active work
 
-- **The R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md)) is written and **awaits the owner's execution choice**; the spec was approved 2026-10-23 and no task has run.
-- **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; the user picks when one starts.
-- **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0), and `ci/catalogue-workflows` is merged so the `682379fc` pin and UUID regex are live.
-- **Decisions `0088`–`0092`** carry the store's measured choices: raw-path index, host-side download, a hand-rolled GitHub client, a bundled GPL `ffmpeg-static`, and the token ratchet's scope.
-- **Captures `store-submit-version` and `store-remix-credit`** are the newest registered actions, beside the install and submission ones.
+- **Asset finder, Phase 1**: Task 1 (decision note `0093`) is landing; credentials, registry and grid follow. Ledger: `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
+- **Task 15 builds the Wallpaper Engine credits types here** (user ruling, 2026-10-23); the WE plan drops its Task 8 when it executes.
+- **Task 16 is blocked**: the WE host module does not exist, so the Wallpaper Engine tab waits on that plan.
+- **Queued:** `2026-10-21-wallpaper-engine-import.md`, then the R2 backend [`2026-10-23-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md), whose spec was approved 2026-10-23.
+- **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0), and `ci/catalogue-workflows` is merged.
 
 ## Last completed change
 
