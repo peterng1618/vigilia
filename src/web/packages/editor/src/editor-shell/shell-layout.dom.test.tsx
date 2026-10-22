@@ -146,6 +146,7 @@ function bridgeStub(
     can: () => false,
     canArrange: () => false,
     layers: () => [],
+    backgroundSelected: () => false,
     groupContext: () => [],
     selectLayers: vi.fn(),
     selectLayer: vi.fn(),

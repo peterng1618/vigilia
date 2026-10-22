@@ -35,7 +35,7 @@ const chartFamilyLabels = {
 
 /**
  * The generic word for each kind of layer. `layer-tree.ts`'s row-name fallback
- * reads these, so the five kind words have one owner rather than a private
+ * reads these, so the six kind words have one owner rather than a private
  * table beside the projection. Keys mirror `LayerKind`: a kind added there
  * without one fails to compile where the projection indexes this.
  */
@@ -45,6 +45,7 @@ const layerKindLabels = {
   chart: "Chart",
   group: "Group",
   image: "Image",
+  background: "Background",
 } as const;
 
 /**
@@ -60,6 +61,7 @@ const layerRoles = {
   text: (): string => layerKindLabels.text,
   shape: (): string => layerKindLabels.shape,
   image: (): string => layerKindLabels.image,
+  background: (): string => layerKindLabels.background,
   group: (unit: string | undefined): string => unit ?? layerKindLabels.group,
   chart: (family: ChartFamily | undefined, series: number): string => {
     const label =
