@@ -8,8 +8,13 @@ import {
   type FabricThemeEnvelope,
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
-import { MAX_ARCHIVE_BYTES, readThemePackage } from "@vigilia/theme-package";
+import {
+  MAX_ARCHIVE_BYTES,
+  readThemePackage,
+  writeThemePackage,
+} from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { CATALOGUE_RAW_BASE, cataloguePackageUrl } from "./catalogue-source.js";
 import { submissionFiles } from "./github-item.js";
 import {
   createThemeStore,
@@ -51,6 +56,85 @@ function themeOf(
   return { envelope, assets: {} };
 }
 
+const ITEM_URL = `${CATALOGUE_RAW_BASE}/catalogue/${THEME_ID}/item.json`;
+const PACKAGE_URL = cataloguePackageUrl(THEME_ID);
+const PUBLISHED_AT = "2026-10-01T00:00:00.000Z";
+
+/** A published `item.json`; every field a catalogue item needs. */
+function publishedItemJson(overrides: Record<string, unknown> = {}): string {
+  return JSON.stringify({
+    kind: DASHBOARD_THEME_KIND,
+    name: "Aurora",
+    version: "1.4.0",
+    createdAt: PUBLISHED_AT,
+    updatedAt: PUBLISHED_AT,
+    downloads: 7,
+    favorites: 3,
+    packageUrl: cataloguePackageUrl(THEME_ID),
+    thumbnail: `catalogue/${THEME_ID}/thumbnail.png`,
+    ...overrides,
+  });
+}
+
+type Route = () => Response | Promise<Response>;
+
+/** A `typeof fetch` keyed on the two URLs a submission may ask for. */
+function routeFetch(routes: {
+  readonly item?: Route;
+  readonly package?: Route;
+}): typeof globalThis.fetch {
+  const fetcher: typeof globalThis.fetch = async (input) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    if (url === ITEM_URL && routes.item !== undefined) return routes.item();
+    if (url === PACKAGE_URL && routes.package !== undefined)
+      return routes.package();
+    throw new Error(`unexpected request: ${url}`);
+  };
+  return fetcher;
+}
+
+/** The store holds nothing under this id yet. */
+const noPublishedItem = (): typeof globalThis.fetch =>
+  routeFetch({ item: () => new Response(null, { status: 404 }) });
+
+function packageBytesOf(
+  envelope: FabricThemeEnvelope,
+): Uint8Array<ArrayBuffer> {
+  const written = writeThemePackage({ envelope, assets: {} });
+  if (!written.ok) throw new Error(written.message);
+  return new Uint8Array(written.bytes);
+}
+
+/** The store already publishes `envelope` as this item's package. */
+function publishedFetch(
+  envelope: FabricThemeEnvelope,
+  item: Record<string, unknown> = {},
+): typeof globalThis.fetch {
+  return routeFetch({
+    item: () => new Response(publishedItemJson(item)),
+    package: () => new Response(packageBytesOf(envelope)),
+  });
+}
+
+/** One scene object whose `left` is the only thing that moves. */
+function sceneAt(left: number): FabricThemeEnvelope["scene"] {
+  return { version: "7.4.0", objects: [{ id: "node", type: "rect", left }] };
+}
+
+/** The library theme, with a scene the published copy can differ from. */
+function themeWithScene(
+  left: number,
+  version: string | undefined,
+): ThemeContent {
+  const theme = themeOf(THEME_ID, "Aurora", version);
+  return { ...theme, envelope: { ...theme.envelope, scene: sceneAt(left) } };
+}
+
 describe("submissionFiles", () => {
   let libraryDir: string;
   let store: ThemeStore;
@@ -75,18 +159,24 @@ describe("submissionFiles", () => {
     const result = await submissionFiles(THEME_ID, store, {
       thumbnails,
       now: () => NOW,
+      fetch: noPublishedItem(),
     });
     if (!result.ok) throw new Error(result.message);
 
     const { files } = result;
     expect(files.path).toBe(`catalogue/${THEME_ID}`);
+    // The store holds nothing under this id, so the ladder mints 1.0.0 — the
+    // document's own 1.2.0 never chooses a published version.
+    expect(files.version).toBe("1.0.0");
+    expect(files.from).toBeUndefined();
+    expect(files.level).toBe("initial");
 
     const parsed = parseCatalogueItemFile(JSON.parse(files.itemJson));
     if (!parsed.ok) throw new Error(parsed.reason);
     expect(parsed.file).toEqual({
       kind: DASHBOARD_THEME_KIND,
       name: "Aurora",
-      version: "1.2.0",
+      version: "1.0.0",
       createdAt: NOW.toISOString(),
       updatedAt: NOW.toISOString(),
       // Option B: a repository file has no download counter and no reactions.
@@ -100,8 +190,177 @@ describe("submissionFiles", () => {
     if (!read.ok) throw new Error(read.message);
     expect(read.envelope.id).toBe(THEME_ID);
     expect(read.envelope.metadata?.name).toBe("Aurora");
+    expect(read.envelope.metadata?.version).toBe("1.0.0");
     expect(files.thumbnailBytes).toEqual(PNG);
     expect(read.thumbnail).toEqual(PNG);
+  });
+
+  it("lets a local metadata.version never choose the published version", async () => {
+    await store.write(THEME_ID, themeOf(THEME_ID, "Aurora", "0.9.0"), {
+      expectFree: true,
+    });
+    await thumbnails.write(THEME_ID, PNG);
+
+    const result = await submissionFiles(THEME_ID, store, {
+      thumbnails,
+      now: () => NOW,
+      fetch: noPublishedItem(),
+    });
+    if (!result.ok) throw new Error(result.message);
+
+    expect(result.files.version).toBe("1.0.0");
+    const parsed = parseCatalogueItemFile(JSON.parse(result.files.itemJson));
+    if (!parsed.ok) throw new Error(parsed.reason);
+    expect(parsed.file.version).toBe("1.0.0");
+    // The first release is written back over the local guess.
+    const stored = await store.read(THEME_ID);
+    expect(stored?.envelope.metadata?.version).toBe("1.0.0");
+  });
+
+  it("bumps a changed theme to the next patch above the published version", async () => {
+    await store.write(THEME_ID, themeWithScene(10, undefined), {
+      expectFree: true,
+    });
+    await thumbnails.write(THEME_ID, PNG);
+    const published = themeWithScene(0, "1.4.0").envelope;
+
+    const result = await submissionFiles(THEME_ID, store, {
+      thumbnails,
+      now: () => NOW,
+      fetch: publishedFetch(published),
+    });
+    if (!result.ok) throw new Error(result.message);
+
+    expect(result.files.version).toBe("1.4.1");
+    expect(result.files.from).toBe("1.4.0");
+    expect(result.files.level).toBe("patch");
+
+    const parsed = parseCatalogueItemFile(JSON.parse(result.files.itemJson));
+    if (!parsed.ok) throw new Error(parsed.reason);
+    // The item keeps the published item's history; only `updatedAt` moves.
+    expect(parsed.file.version).toBe("1.4.1");
+    expect(parsed.file.createdAt).toBe(PUBLISHED_AT);
+    expect(parsed.file.updatedAt).toBe(NOW.toISOString());
+    expect(parsed.file.downloads).toBe(7);
+    expect(parsed.file.favorites).toBe(3);
+
+    // The version is written to the library document before the package is
+    // built, and the package is built from that written document.
+    const stored = await store.read(THEME_ID);
+    expect(stored?.envelope.metadata?.version).toBe("1.4.1");
+    const read = readThemePackage(result.files.packageBytes);
+    if (!read.ok) throw new Error(read.message);
+    expect(read.envelope.metadata?.version).toBe("1.4.1");
+  });
+
+  it("refuses a theme that has not changed since the published version", async () => {
+    const unchanged = themeWithScene(10, "1.4.0");
+    await store.write(THEME_ID, unchanged, { expectFree: true });
+    await thumbnails.write(THEME_ID, PNG);
+    const before = await store.read(THEME_ID);
+
+    const result = await submissionFiles(THEME_ID, store, {
+      thumbnails,
+      now: () => NOW,
+      fetch: publishedFetch(unchanged.envelope),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        "Version 1.4.0 is published and this theme has not changed since it.",
+    });
+    // Nothing was written: the stored document is byte-for-byte the one read.
+    expect((await store.read(THEME_ID))?.base).toBe(before?.base);
+  });
+
+  it("passes a published-item refusal through verbatim", async () => {
+    await store.write(THEME_ID, themeOf(THEME_ID, "Aurora", undefined), {
+      expectFree: true,
+    });
+    await thumbnails.write(THEME_ID, PNG);
+    const before = await store.read(THEME_ID);
+
+    const result = await submissionFiles(THEME_ID, store, {
+      thumbnails,
+      fetch: routeFetch({ item: () => new Response(null, { status: 500 }) }),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        "The store's copy of this theme could not be read; submit again when it is reachable.",
+    });
+    expect((await store.read(THEME_ID))?.base).toBe(before?.base);
+  });
+
+  it("refuses a published version the ladder cannot bump", async () => {
+    await store.write(THEME_ID, themeWithScene(10, undefined), {
+      expectFree: true,
+    });
+    await thumbnails.write(THEME_ID, PNG);
+    // Version-shaped, but past the safe-integer range `bumpVersion` refuses.
+    const unsafe = "9007199254740993.0.0";
+
+    const result = await submissionFiles(THEME_ID, store, {
+      thumbnails,
+      fetch: publishedFetch(themeWithScene(0, undefined).envelope, {
+        version: unsafe,
+      }),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: `The store's copy of this theme records version "${unsafe}", which cannot be bumped.`,
+    });
+  });
+
+  it("refuses a write that raced a save, keeping the save's version", async () => {
+    const real = store;
+    let saved = false;
+    const racing: ThemeStore = {
+      ...real,
+      async write(id, content, options) {
+        // Another save lands between the submission's read and its write.
+        if (!saved && options?.base !== undefined) {
+          saved = true;
+          const current = await real.read(id);
+          if (current !== undefined) {
+            await real.write(
+              id,
+              {
+                envelope: {
+                  ...current.envelope,
+                  metadata: { ...current.envelope.metadata, version: "9.9.9" },
+                },
+                assets: current.assets,
+              },
+              { overwrite: true },
+            );
+          }
+        }
+        return real.write(id, content, options);
+      },
+    };
+    await store.write(THEME_ID, themeWithScene(10, undefined), {
+      expectFree: true,
+    });
+    await thumbnails.write(THEME_ID, PNG);
+
+    const result = await submissionFiles(THEME_ID, racing, {
+      thumbnails,
+      now: () => NOW,
+      fetch: publishedFetch(themeWithScene(0, "1.4.0").envelope),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.message).toContain(
+      "changed by someone else",
+    );
+    // The racing save is the stored document; the submission did not replace it.
+    expect((await store.read(THEME_ID))?.envelope.metadata?.version).toBe(
+      "9.9.9",
+    );
   });
 
   it("publishes a theme that declares no version as its first release", async () => {
@@ -110,7 +369,10 @@ describe("submissionFiles", () => {
     });
     await thumbnails.write(THEME_ID, PNG);
 
-    const result = await submissionFiles(THEME_ID, store, { thumbnails });
+    const result = await submissionFiles(THEME_ID, store, {
+      thumbnails,
+      fetch: noPublishedItem(),
+    });
     if (!result.ok) throw new Error(result.message);
 
     const parsed = parseCatalogueItemFile(JSON.parse(result.files.itemJson));
@@ -184,12 +446,15 @@ describe("submissionFiles", () => {
     };
     const oversized = {
       read: async () => ({ envelope, assets: { "assets/big.bin": big } }),
+      // The version write itself succeeds; the package is what is measured.
+      write: async () => ({ ok: true }),
     } as unknown as ThemeStore;
     const picture = { read: async () => PNG } as unknown as ThumbnailStore;
 
     const result = await submissionFiles(THEME_ID, oversized, {
       thumbnails: picture,
       now: () => NOW,
+      fetch: noPublishedItem(),
     });
 
     expect(result.ok).toBe(false);

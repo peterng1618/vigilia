@@ -1,14 +1,24 @@
 import {
   DASHBOARD_THEME_KIND,
+  type FabricThemeEnvelope,
   parseCatalogueItemFile,
 } from "@vigilia/renderer-core";
 import {
+  classifyThemeChange,
+  isSemanticVersion,
   MAX_ARCHIVE_BYTES,
   themeVideoRefusals,
+  type VersionLevel,
+  versionFor,
   writeThemePackage,
 } from "@vigilia/theme-package";
 import { cataloguePackageUrl } from "./catalogue-source.js";
-import { isValidThemeId, type ThemeStore } from "./store.js";
+import { readPublishedItem } from "./published-item.js";
+import {
+  isValidThemeId,
+  ThemeConflictError,
+  type ThemeStore,
+} from "./store.js";
 import type { ThumbnailStore } from "./thumbnails.js";
 
 /**
@@ -18,20 +28,24 @@ import type { ThumbnailStore } from "./thumbnails.js";
  * run back through `parseCatalogueItemFile` before it is returned: the file the
  * host writes is the file the catalogue accepts, checked by the one parser that
  * decides that.
+ *
+ * The version is the ladder's, never the document's: the published package is
+ * the only prior release, and this is the one place both are in hand.
  */
 
 /** The picture's name inside a catalogue item's directory, as in the library. */
 const THUMBNAIL_FILE = "thumbnail.png";
 
-/** A theme that declares no version is published as its first release: the
- *  catalogue's header requires one and refusing would block every theme whose
- *  author never filled the field in. */
-const FIRST_VERSION = "1.0.0";
-
 export interface SubmissionFiles {
   readonly itemJson: string;
   readonly packageBytes: Uint8Array;
   readonly thumbnailBytes: Uint8Array;
+  /** The version this submission publishes; written into the library document. */
+  readonly version: string;
+  /** The version it bumps from, absent on a first publication. */
+  readonly from: string | undefined;
+  /** What the ladder decided, which the store surface shows after the PR opens. */
+  readonly level: VersionLevel;
   /** The catalogue directory the files belong in: `catalogue/<themeId>`. */
   readonly path: string;
 }
@@ -42,6 +56,7 @@ export async function submissionFiles(
   options?: {
     readonly thumbnails?: ThumbnailStore;
     readonly now?: () => Date;
+    readonly fetch?: typeof globalThis.fetch;
   },
 ): Promise<
   { ok: true; files: SubmissionFiles } | { ok: false; message: string }
@@ -89,10 +104,72 @@ export async function submissionFiles(
     };
   }
 
+  // The store's copy of this id is the only prior release a submission may
+  // descend from. Its refusal is the author's answer, unchanged.
+  const published = await readPublishedItem(
+    themeId,
+    options?.fetch === undefined ? undefined : { fetch: options.fetch },
+  );
+  if (!published.ok) return { ok: false, message: published.message };
+  const item = published.item;
+
+  if (item !== undefined && !isSemanticVersion(item.version)) {
+    return { ok: false, message: unbumpableVersion(item.version) };
+  }
+
+  // The published package is the baseline, and the library document the
+  // candidate — the order the ladder expects.
+  const change = classifyThemeChange(item?.envelope, theme.envelope);
+  if (item !== undefined && change.level === "none") {
+    return {
+      ok: false,
+      message: `Version ${item.version} is published and this theme has not changed since it.`,
+    };
+  }
+  const version = versionFor(item?.version, change);
+  if (version === undefined) {
+    // `initial` (no published item) always mints a version, so only a published
+    // one the ladder refuses can land here.
+    return {
+      ok: false,
+      message:
+        item === undefined
+          ? "This theme could not be given a version."
+          : unbumpableVersion(item.version),
+    };
+  }
+
+  // Written before the package is built, so the package and the library agree
+  // on the version and the next submission diffs against the same baseline.
+  // `metadata` is created only when the document has none, and every other
+  // field is carried across untouched.
+  const withVersion: FabricThemeEnvelope = {
+    ...theme.envelope,
+    metadata: { ...theme.envelope.metadata, version },
+  };
+  try {
+    await store.write(
+      themeId,
+      { envelope: withVersion, assets: theme.assets },
+      { base: theme.base },
+    );
+  } catch (error) {
+    // A stale base is the store's own sentence: another save moved the
+    // document on, and the author has to choose what happens next. Any other
+    // refusal could name an absolute path, so it is reported without one.
+    return {
+      ok: false,
+      message:
+        error instanceof ThemeConflictError
+          ? error.message
+          : "This theme's new version could not be saved in this PC's library.",
+    };
+  }
+
   // The same writer the export path uses, so the package a reviewer downloads
   // is the package the Install action can open.
   const written = writeThemePackage({
-    envelope: theme.envelope,
+    envelope: withVersion,
     assets: theme.assets,
     thumbnail,
   });
@@ -112,22 +189,17 @@ export async function submissionFiles(
 
   // The submission instant, not the document's: the catalogue derives an item's
   // real history from git, and these fields must be the instants this file
-  // claims.
+  // claims. Everything a published item owns is carried forward.
   const at = (options?.now?.() ?? new Date()).toISOString();
-  const version =
-    theme.version === undefined || theme.version === ""
-      ? FIRST_VERSION
-      : theme.version;
-
   const parsed = parseCatalogueItemFile({
     kind: DASHBOARD_THEME_KIND,
     name: theme.name,
     version,
-    createdAt: at,
+    createdAt: item?.createdAt ?? at,
     updatedAt: at,
     // Option B has no download counter and no reactions for repository files.
-    downloads: 0,
-    favorites: 0,
+    downloads: item?.downloads ?? 0,
+    favorites: item?.favorites ?? 0,
     packageUrl: cataloguePackageUrl(themeId),
     // The picture this submission commits, beside `item.json`.
     thumbnail: `catalogue/${themeId}/${THUMBNAIL_FILE}`,
@@ -140,7 +212,15 @@ export async function submissionFiles(
       itemJson: `${JSON.stringify(parsed.file, null, 2)}\n`,
       packageBytes: written.bytes,
       thumbnailBytes: thumbnail,
+      version,
+      from: item?.version,
+      level: change.level,
       path: `catalogue/${themeId}`,
     },
   };
+}
+
+/** The one sentence a version-shaped value the ladder cannot bump gets. */
+function unbumpableVersion(version: string): string {
+  return `The store's copy of this theme records version "${version}", which cannot be bumped.`;
 }

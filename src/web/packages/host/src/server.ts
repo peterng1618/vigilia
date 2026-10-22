@@ -2653,6 +2653,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
       const files = await submissionFiles(id, themeStore, {
         ...(thumbnails === undefined ? {} : { thumbnails }),
+        ...(fetcher === undefined ? {} : { fetch: fetcher }),
       });
       if (!files.ok) {
         sendJson(response, 422, {

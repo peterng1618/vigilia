@@ -15,6 +15,9 @@ const FILES: SubmissionFiles = {
   itemJson: '{\n  "kind": "dashboard-theme",\n  "name": "Aurora"\n}\n',
   packageBytes: new TextEncoder().encode("zip bytes"),
   thumbnailBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+  version: "1.0.0",
+  from: undefined,
+  level: "initial",
   path: "catalogue/aurora",
 };
 

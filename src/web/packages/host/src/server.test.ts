@@ -1899,11 +1899,20 @@ describe("Host theme routes", () => {
 
       expect(res.status).toBe(200);
       expect(res.json()).toEqual({ ok: true, url: PR_URL });
-      // The token only ever travels in the header.
-      expect(res.text()).not.toContain(SECRET);
+      // The token only ever travels in the header, and only to GitHub's API:
+      // the catalogue read that computes the version is unauthenticated.
+      const api = "https://api.github.com";
       expect(
-        calls.every((call) => call.authorization === `Bearer ${SECRET}`),
+        calls
+          .filter((call) => call.url.startsWith(api))
+          .every((call) => call.authorization === `Bearer ${SECRET}`),
       ).toBe(true);
+      expect(
+        calls
+          .filter((call) => !call.url.startsWith(api))
+          .every((call) => call.authorization === null),
+      ).toBe(true);
+      expect(res.text()).not.toContain(SECRET);
     });
 
     it("answers 401 asking the author to sign in when no identity is stored", async () => {

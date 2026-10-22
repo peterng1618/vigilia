@@ -17,11 +17,11 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 3.1 landed**: `readPublishedItem` reads an id's `item.json` and package; a 404 item is `{ ok: true }` with no item.
-- **Two refusals only**: an unreadable store and an unopenable package, each one fixed sentence with no URL, path or body.
-- **Version is checked, never invented**: an item whose `version` is not `major.minor.patch` is refused with the recorded value quoted.
-- **Package id must match**: the opened envelope's id is compared to the requested id before any of its fields are returned.
-- **Fix round 1**: the package goes through `downloadPackage`, so its 120 s patience and streaming 64 MiB cap apply; only `item.json` keeps 15 s.
+- **Task 3.2 landed**: `submissionFiles` reads the published item, classifies, refuses `none`, and writes the ladder's version into the library document.
+- **First publication** mints `1.0.0` regardless of the document's `metadata.version`; a bump writes `1.4.1` with `from: "1.4.0"` and `level: "patch"` into `SubmissionFiles`.
+- **`item.json` carries the published `createdAt`, `downloads` and `favorites`**, and a first publication uses the submission instant and zeros.
+- **A refused write is the refusal**: the store's own conflict message reaches the author and nothing is uploaded.
+- **The submit route passes its injected `fetch`** through, so the catalogue read is driven by the same fake in tests.
 
 ## Next
 
