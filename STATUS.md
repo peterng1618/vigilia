@@ -17,11 +17,11 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 3.2 landed**: `submissionFiles` reads the published item, classifies, refuses `none`, and writes the ladder's version into the library document.
-- **First publication** mints `1.0.0` regardless of the document's `metadata.version`; a bump writes `1.4.1` with `from: "1.4.0"` and `level: "patch"` into `SubmissionFiles`.
-- **`item.json` carries the published `createdAt`, `downloads` and `favorites`**, and a first publication uses the submission instant and zeros.
-- **A refused write is the refusal**: the store's own conflict message reaches the author and nothing is uploaded.
-- **The submit route passes its injected `fetch`** through, so the catalogue read is driven by the same fake in tests.
+- **Task 3.3 landed**: the submit route answers the version a submission published — `from` (`null` on a first release), `to` and the ladder's `level`.
+- **The editor names that version under the pull request link**: `1.4.0 → 1.5.0 · minor`, or `1.0.0 · first release` when there is no `from`.
+- **A landed submission re-reads the library**, so the caption line carries the version the host just wrote.
+- **`uiCopy.store.submit.version` owns the sentence**, pinned for `initial`, `minor`, `major` and `none`.
+- **A `200` without the three version facts is refused**, not drawn as a submitted state.
 
 ## Next
 

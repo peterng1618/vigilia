@@ -202,6 +202,37 @@ it("pins the submission's sentences as literals", () => {
   expect(uiCopy.store.submit.denied).toBe(
     "The GitHub sign-in was denied. Submit again.",
   );
+  // **The version sentence is the same ladder the host computed**: the arrows
+  // and the level word are what the author reads, and a first release names no
+  // `from` because there is none to name.
+  expect(
+    uiCopy.store.submit.version({
+      from: null,
+      to: "1.0.0",
+      level: "initial",
+    }),
+  ).toBe("1.0.0 · first release");
+  expect(
+    uiCopy.store.submit.version({
+      from: "1.4.0",
+      to: "1.5.0",
+      level: "minor",
+    }),
+  ).toBe("1.4.0 → 1.5.0 · minor");
+  expect(
+    uiCopy.store.submit.version({
+      from: "1.5.0",
+      to: "2.0.0",
+      level: "major",
+    }),
+  ).toBe("1.5.0 → 2.0.0 · major");
+  expect(
+    uiCopy.store.submit.version({
+      from: "1.4.1",
+      to: "1.4.1",
+      level: "none",
+    }),
+  ).toBe("1.4.1 → 1.4.1 · none");
 });
 
 /**

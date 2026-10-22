@@ -469,6 +469,7 @@ function SubmitFooter(props: {
   const userCode = mine ? submit.userCode : undefined;
   const verificationUri = mine ? submit.verificationUri : undefined;
   const url = mine ? submit.url : undefined;
+  const version = mine ? submit.version : undefined;
   const refusal = mine ? submit.refusal : undefined;
   // **A flow on another item disables this one too.** The region holds one
   // flow at a time, and a press here would meet that guard and do nothing; the
@@ -513,17 +514,27 @@ function SubmitFooter(props: {
         </span>
       ) : null}
       {submitted && url !== undefined ? (
-        <span className="max-w-[40ch] text-xs text-muted">
-          {uiCopy.store.submit.submitted}{" "}
-          <a
-            data-vigilia-store-item-submit-url=""
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            {url}
-          </a>
+        <span className="flex max-w-[40ch] flex-col gap-[var(--space-4)] text-xs text-muted">
+          <span>
+            {uiCopy.store.submit.submitted}{" "}
+            <a
+              data-vigilia-store-item-submit-url=""
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              {url}
+            </a>
+          </span>
+          {/* **The version it published, under the link**: the level is the
+              host's answer to what changed, and this surface states it rather
+              than deriving a second ladder. */}
+          {version === undefined ? null : (
+            <span data-vigilia-store-item-submit-version="">
+              {uiCopy.store.submit.version(version)}
+            </span>
+          )}
         </span>
       ) : null}
       {state === "refused" && refusal !== undefined ? (

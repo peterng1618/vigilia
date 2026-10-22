@@ -368,9 +368,13 @@ function FacetFixture(props: {
  *  this one. */
 function clientListing(
   entries: readonly ThemeLibraryEntry[],
+  onList?: () => void,
 ): ThemeLibraryClient {
   return {
-    list: async () => entries,
+    list: async () => {
+      onList?.();
+      return entries;
+    },
     open: () => Promise.reject(new Error("the region lists; the shell opens")),
     save: () => Promise.reject(new Error("the store does not save")),
     assign: () => Promise.reject(new Error("the store does not assign")),
@@ -395,11 +399,12 @@ function listing(count: number): readonly ThemeLibraryEntry[] {
 async function mountStore(
   entries: readonly ThemeLibraryEntry[],
   onOpenTheme?: (id: string) => void,
+  onList?: () => void,
 ): Promise<HTMLElement> {
   return mount(
     <StoreModeRegion
       mode="themes"
-      client={clientListing(entries)}
+      client={clientListing(entries, onList)}
       {...(onOpenTheme === undefined ? {} : { onOpenTheme })}
     />,
   );
@@ -2575,7 +2580,8 @@ it("shows the code and the verification link when the host asks for a sign-in", 
 /**
  * **A poll that answers `ok` retries the submission once**, and the retry's
  * answer is the pull request: the control then states the link and cannot be
- * pressed again.
+ * pressed again, the footer names the version the host published, and the
+ * library is read again so the listing carries that version.
  */
 it("retries the submission once the poll answers ok and shows the pull request", async () => {
   vi.useFakeTimers();
@@ -2584,9 +2590,14 @@ it("retries the submission once the poll answers ok and shows the pull request",
       new Response("Sign in to GitHub before submitting a theme.", {
         status: 401,
       }),
-      new Response(JSON.stringify({ ok: true, url: SUBMIT_PR_URL }), {
-        status: 200,
-      }),
+      new Response(
+        JSON.stringify({
+          ok: true,
+          url: SUBMIT_PR_URL,
+          version: { from: "1.4.0", to: "1.5.0", level: "minor" },
+        }),
+        { status: 200 },
+      ),
     ],
     device: deviceAnswer(1),
     poll: [
@@ -2596,7 +2607,22 @@ it("retries the submission once the poll answers ok and shows the pull request",
     ],
   });
   vi.stubGlobal("fetch", host.fetch);
-  await mountAndOpen();
+  let lists = 0;
+  await mountStore(
+    [
+      fixtureEntry({
+        id: "living-room",
+        name: "Living room",
+        ground: DARK_GROUND,
+      }),
+    ],
+    undefined,
+    () => {
+      lists += 1;
+    },
+  );
+  await pressCellSurface("living-room");
+  const listedBefore = lists;
 
   await pressSubmit();
   await settle();
@@ -2615,6 +2641,25 @@ it("retries the submission once the poll answers ok and shows the pull request",
     link.getAttribute("href"),
     "the surface does not link to the pull request the host opened",
   ).toBe(SUBMIT_PR_URL);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-vigilia-store-item-submit-version]",
+      ),
+      "the version sentence",
+    ).textContent,
+    "the footer does not name the version the host published",
+  ).toBe(
+    uiCopy.store.submit.version({
+      from: "1.4.0",
+      to: "1.5.0",
+      level: "minor",
+    }),
+  );
+  expect(
+    lists,
+    "the library was not read again after the submission landed",
+  ).toBe(listedBefore + 1);
   expect(
     host.calls.filter((call) => call === "/api/themes/submit"),
     "the poll's `ok` did not retry the submission exactly once",

@@ -178,6 +178,7 @@ const NO_SUBMIT: SubmitControl = {
   verificationUri: undefined,
   url: undefined,
   refusal: undefined,
+  version: undefined,
 };
 
 /** Where a theme came from, as the host records it: the catalogue item and the
@@ -819,4 +820,49 @@ it("draws no catalogue reading for a library item", async () => {
     document.body.querySelectorAll("[data-vigilia-store-item-action]"),
     "a library item lost the footer's four actions",
   ).toHaveLength(4);
+});
+
+/**
+ * **A landed submission tells the author which version it published**, under
+ * the pull request link: the level is the host's own answer to what changed, so
+ * this surface states it rather than deriving a second ladder.
+ */
+it("states the version a submission published under the pull request link", async () => {
+  const item = fixtureItem(LANDSCAPE);
+  await mount(
+    modalFor(item, [], NO_INSTALL, {
+      ...NO_SUBMIT,
+      itemId: item.id,
+      state: "submitted",
+      url: "https://github.com/peterng1618/vigilia-store/pull/7",
+      version: { from: "1.4.0", to: "1.5.0", level: "minor" },
+    }),
+  );
+
+  const link = must(
+    document.body.querySelector<HTMLAnchorElement>(
+      "[data-vigilia-store-item-submit-url]",
+    ),
+    "pull request link",
+  );
+  const sentence = must(
+    document.body.querySelector<HTMLElement>(
+      "[data-vigilia-store-item-submit-version]",
+    ),
+    "version sentence",
+  );
+  expect(
+    sentence.textContent,
+    "the footer does not name the version it published",
+  ).toBe(
+    uiCopy.store.submit.version({
+      from: "1.4.0",
+      to: "1.5.0",
+      level: "minor",
+    }),
+  );
+  expect(
+    link.compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_FOLLOWING,
+    "the version sentence is not under the pull request link",
+  ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 });

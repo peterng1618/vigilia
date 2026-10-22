@@ -13,6 +13,7 @@ import {
   type Orientation,
   type SemanticFamily,
 } from "@vigilia/renderer-core";
+import type { VersionLevel } from "@vigilia/theme-package";
 import type { DisplayLensId } from "./display-lens.js";
 import type { AssignableGroup } from "./host-settings-mode/client.js";
 import type { ShortcutPrefix } from "./shortcut-manager/display.js";
@@ -725,6 +726,19 @@ export const uiCopy = {
        *  this is the control that takes the author there. */
       open: "Open github.com to approve",
       submitted: "Pull request opened.",
+      /** What the host published, in the caption's own shape: the version it
+       *  bumped from, the one it wrote, and the ladder's word for the change.
+       *  **A first release names no `from`** because there is none to name;
+       *  `none` is the ladder's answer for an unchanged theme and is never
+       *  reached by a submission that can land. */
+      version: (version: {
+        readonly from: string | null;
+        readonly to: string;
+        readonly level: VersionLevel;
+      }): string =>
+        version.level === "initial"
+          ? `${version.to} · first release`
+          : `${version.from ?? version.to} → ${version.to} · ${version.level}`,
       /** Names the item an answer belongs to. The live region outlives the
        *  modal, so an answer for one item can arrive while another is open. */
       announcement: (name: string, sentence: string): string =>

@@ -1,3 +1,4 @@
+import type { VersionLevel } from "@vigilia/theme-package";
 import { useEffect, useRef, useState } from "react";
 import { uiCopy } from "../ui-copy.js";
 import type { StoreItem } from "./local-source.js";
@@ -12,6 +13,22 @@ export type SubmitState =
   | "submitting"
   | "submitted"
   | "refused";
+
+/** What the host published, as the author is told it: the version bumped from
+ *  (`null` on a first release), the one written, and the ladder's word for it. */
+export interface SubmittedVersion {
+  readonly from: string | null;
+  readonly to: string;
+  readonly level: VersionLevel;
+}
+
+const VERSION_LEVELS: readonly VersionLevel[] = [
+  "initial",
+  "none",
+  "patch",
+  "minor",
+  "major",
+];
 
 /**
  * What the modal's Submit control needs from the region that owns the press:
@@ -32,6 +49,7 @@ export interface SubmitControl {
   readonly userCode: string | undefined;
   readonly verificationUri: string | undefined;
   readonly url: string | undefined;
+  readonly version: SubmittedVersion | undefined;
   readonly refusal: string | undefined;
 }
 
@@ -84,6 +102,25 @@ function flowOf(
 }
 
 /**
+ * The three version facts, or nothing. **A malformed answer refuses the
+ * claim**: a footer naming a version the host did not publish would be a lie,
+ * and `from` is `null` on the wire rather than an absent key.
+ */
+function versionOf(value: unknown): SubmittedVersion | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return undefined;
+  const { from, to, level } = value as Record<string, unknown>;
+  if (from !== null && typeof from !== "string") return undefined;
+  if (typeof to !== "string" || to === "") return undefined;
+  if (
+    typeof level !== "string" ||
+    !VERSION_LEVELS.includes(level as VersionLevel)
+  )
+    return undefined;
+  return { from, to, level: level as VersionLevel };
+}
+
+/**
  * The library half's submission, and the sentence a screen reader hears for it.
  *
  * It posts the theme's id and nothing else: the host reads the theme, builds the
@@ -95,7 +132,12 @@ function flowOf(
  * continuation checks that the hook is still mounted: a poll that fires after
  * the modal closed has no surface to answer.
  */
-export function useSubmit(options: { readonly fetch?: typeof fetch }): {
+export function useSubmit(options: {
+  readonly fetch?: typeof fetch;
+  /** Called once when a submission lands: the region re-reads the library so
+   *  the listing carries the version the host just wrote. */
+  readonly onSubmitted?: () => void;
+}): {
   readonly control: SubmitControl;
   readonly announcement: string;
 } {
@@ -109,6 +151,9 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
     undefined,
   );
   const [url, setUrl] = useState<string | undefined>(undefined);
+  const [version, setVersion] = useState<SubmittedVersion | undefined>(
+    undefined,
+  );
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
 
   /** The guard a second press meets before any state has committed. */
@@ -149,6 +194,8 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
     busy.current = false;
     setState("refused");
     setRefusal(message);
+    setUrl(undefined);
+    setVersion(undefined);
     setUserCode(undefined);
     setVerificationUri(undefined);
   }
@@ -258,9 +305,17 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
       refuse(text);
       return;
     }
-    const prUrl = jsonOf(text)?.["url"];
+    const answer = jsonOf(text);
+    const prUrl = answer?.["url"];
     if (typeof prUrl !== "string" || prUrl === "") {
       // A `200` with no link is not a pull request this surface may claim.
+      refuse(text);
+      return;
+    }
+    // A landed submission names what it published; an answer without those
+    // three facts is not one this surface can report.
+    const published = versionOf(answer?.["version"]);
+    if (published === undefined) {
       refuse(text);
       return;
     }
@@ -268,9 +323,11 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
     busy.current = false;
     setState("submitted");
     setUrl(prUrl);
+    setVersion(published);
     setRefusal(undefined);
     setUserCode(undefined);
     setVerificationUri(undefined);
+    options.onSubmitted?.();
   }
 
   const onSubmit = (item: StoreItem): void => {
@@ -283,6 +340,7 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
     setState("submitting");
     setRefusal(undefined);
     setUrl(undefined);
+    setVersion(undefined);
     setUserCode(undefined);
     setVerificationUri(undefined);
     void attempt(item.id);
@@ -307,6 +365,7 @@ export function useSubmit(options: { readonly fetch?: typeof fetch }): {
       userCode,
       verificationUri,
       url,
+      version,
       refusal,
     },
     // **The item is named in the live region**, because the region outlives

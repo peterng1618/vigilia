@@ -55,6 +55,10 @@ import type { HostRecord } from "./settings/host-record.js";
 import type { Monitor } from "./settings/monitors.js";
 import { createThemeOriginsStore } from "./settings/theme-origins.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
+import {
+  CATALOGUE_RAW_BASE,
+  cataloguePackageUrl,
+} from "./themes/catalogue-source.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
 import { encodeThemeContent } from "./themes/wire.js";
@@ -1812,6 +1816,16 @@ describe("Host theme routes", () => {
     let submitting: ReturnType<typeof createHostServer>;
     let token: ReturnType<typeof createGithubTokenStore>;
     let calls: { url: string; method: string; authorization: string | null }[];
+    /** What the catalogue already publishes, when a case is about a bump; absent
+     *  is the first-publication catalogue every other case runs against. */
+    let published:
+      | {
+          readonly itemUrl: string;
+          readonly packageUrl: string;
+          readonly item: string;
+          readonly bytes: Uint8Array<ArrayBuffer>;
+        }
+      | undefined;
 
     function json(body: unknown, status = 200): Response {
       return new Response(JSON.stringify(body), {
@@ -1827,6 +1841,7 @@ describe("Host theme routes", () => {
       );
       token = createGithubTokenStore(settings);
       calls = [];
+      published = undefined;
 
       const store = createThemeStore(library);
       await store.write(THEME_ID, createValidPackage(THEME_ID, "Aurora"));
@@ -1851,6 +1866,18 @@ describe("Host theme routes", () => {
             method,
             authorization: new Headers(init?.headers).get("authorization"),
           });
+          // The catalogue's own published files: only a case about a bump
+          // serves them, and every other case meets the 404 a first
+          // publication reads as ordinary.
+          if (published !== undefined && url === published.itemUrl) {
+            return new Response(published.item, {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          }
+          if (published !== undefined && url === published.packageUrl) {
+            return new Response(published.bytes, { status: 200 });
+          }
           if (url.endsWith("/forks")) return json({}, 201);
           if (url.endsWith("/pulls")) return json({ html_url: PR_URL }, 201);
           if (url.endsWith("/git/ref/heads/main")) {
@@ -1898,7 +1925,13 @@ describe("Host theme routes", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(res.json()).toEqual({ ok: true, url: PR_URL });
+      // A first publication mints `1.0.0` and names no `from`: the wire says
+      // `null`, because an absent key would be a different answer.
+      expect(res.json()).toEqual({
+        ok: true,
+        url: PR_URL,
+        version: { from: null, to: "1.0.0", level: "initial" },
+      });
       // The token only ever travels in the header, and only to GitHub's API:
       // the catalogue read that computes the version is unauthenticated.
       const api = "https://api.github.com";
@@ -1913,6 +1946,60 @@ describe("Host theme routes", () => {
           .every((call) => call.authorization === null),
       ).toBe(true);
       expect(res.text()).not.toContain(SECRET);
+    });
+
+    it("answers the version a bumping submission published", async () => {
+      await signedIn();
+      // The store already holds `1.4.0`, tagged where this library's copy is
+      // not: a tag leaving the set is a minor change, so the ladder answers
+      // `1.5.0` and the route carries that to the author.
+      const publishedEnvelope: FabricThemeEnvelope = {
+        schemaVersion: 2,
+        fabricVersion: "7.4.0",
+        id: THEME_ID,
+        artboard: { width: 1920, height: 1080 },
+        metadata: {
+          name: "Aurora",
+          themeLanguage: "en",
+          tags: ["warm"],
+        },
+        scene: { version: "7.4.0", objects: [] },
+      };
+      const written = writeThemePackage({
+        envelope: publishedEnvelope,
+        assets: {},
+      });
+      if (!written.ok) throw new Error(written.message);
+      published = {
+        itemUrl: `${CATALOGUE_RAW_BASE}/catalogue/${THEME_ID}/item.json`,
+        packageUrl: cataloguePackageUrl(THEME_ID),
+        item: JSON.stringify({
+          kind: DASHBOARD_THEME_KIND,
+          name: "Aurora",
+          version: "1.4.0",
+          createdAt: "2026-10-01T00:00:00.000Z",
+          updatedAt: "2026-10-01T00:00:00.000Z",
+          downloads: 7,
+          favorites: 3,
+          packageUrl: cataloguePackageUrl(THEME_ID),
+          thumbnail: `catalogue/${THEME_ID}/thumbnail.png`,
+        }),
+        bytes: new Uint8Array(written.bytes),
+      };
+
+      const res = await request(
+        submitting.server,
+        "POST",
+        "/api/themes/submit",
+        submitBody(),
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.json()).toEqual({
+        ok: true,
+        url: PR_URL,
+        version: { from: "1.4.0", to: "1.5.0", level: "minor" },
+      });
     });
 
     it("answers 401 asking the author to sign in when no identity is stored", async () => {

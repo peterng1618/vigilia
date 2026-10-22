@@ -2683,7 +2683,18 @@ export function createHostServer(options: HostServerOptions): HostServer {
         );
         return;
       }
-      sendJson(response, 200, submitted);
+      // **The author is told what was published**, not only where: the ladder's
+      // two versions and its level come from the same files that were committed.
+      // A first release has no `from`, and the wire says `null` rather than
+      // omitting the key.
+      sendJson(response, 200, {
+        ...submitted,
+        version: {
+          from: files.files.from ?? null,
+          to: files.files.version,
+          level: files.files.level,
+        },
+      });
       return;
     }
 
