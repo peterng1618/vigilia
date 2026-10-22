@@ -119,7 +119,8 @@ async function mine(request: Request, env: Env, url: URL): Promise<Response> {
   const entries: MineEntry[] = [];
   for (const item of items.results) {
     // The same latest-version selection `publishedListings` and the public
-    // item read use, so one item is shown at one version everywhere.
+    // item read use, so one item is shown at one version everywhere. One read
+    // per item; the 20-item quota bounds this — batch it if the limit rises.
     const version = await latestVersion(env.DB, item.id);
     if (version === undefined) continue;
     entries.push({

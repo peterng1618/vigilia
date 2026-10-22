@@ -122,9 +122,44 @@ describe("GET /api/me/items", () => {
       OTHER_ID,
     ]);
 
-    await env.DB.prepare("UPDATE item SET updated_at = ?")
-      .bind("2026-10-04T00:00:00.000Z")
+    await env.DB.prepare("UPDATE item SET updated_at = ? WHERE id IN (?, ?)")
+      .bind("2026-10-04T00:00:00.000Z", OTHER_ID, THIRD_ID)
       .run();
+    expect((await mine(headers)).entries.map((entry) => entry.id)).toEqual([
+      OTHER_ID,
+      THIRD_ID,
+    ]);
+  });
+
+  it("moves a transitioned item to the front because its updated_at advanced", async () => {
+    const headers = await sessionHeaders();
+    // The older item first in the seed, so the route's write is what moves it.
+    await seedStatus({
+      id: OTHER_ID,
+      owner: USER_ID,
+      status: "published",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    await seedStatus({
+      id: THIRD_ID,
+      owner: USER_ID,
+      status: "pending",
+      updatedAt: "2020-01-02T00:00:00.000Z",
+    });
+
+    expect((await mine(headers)).entries.map((entry) => entry.id)).toEqual([
+      THIRD_ID,
+      OTHER_ID,
+    ]);
+
+    const unpublished = await SELF.fetch(
+      `${BASE}/api/me/items/${OTHER_ID}/unpublish`,
+      { method: "POST", headers },
+    );
+    expect(unpublished.status).toBe(200);
+
+    // `setStatus` must bump `updated_at`; without it the item keeps its 2020
+    // instant and stays behind THIRD_ID.
     expect((await mine(headers)).entries.map((entry) => entry.id)).toEqual([
       OTHER_ID,
       THIRD_ID,

@@ -21,7 +21,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 - **The Mine listing exists**: `GET /api/me/items` answers the session author's items that hold a version, newest first by `updated_at` then id, each an `entryOf` row from its latest version plus `status` and `statusReason`.
 - **The host proxies it**: `GET /api/store/mine` and `POST /api/store/items/:id/unpublish|publish` reuse the sign-in module's loopback guard, send the stored bearer token, pass the Worker's status through, and answer 401/502 as `{ ok, message }`; a non-UUID path id is a 400 before any call.
 - **`store-client.ts` types the transitions**: `unpublish`/`publish` answer `Transitioned` (with `status`), so the proxy hands back the state the Worker landed in.
-- **Proven by** `tests/mine.spec.ts` (states, ordering, entry shape, 401) and `packages/host/src/catalogue/routes.test.ts` (bearer, pass-through, 400/401/403/502).
+- **Proven by** `tests/mine.spec.ts` (states, ordering including a real unpublish that must advance `updated_at`, entry shape, 401) and `packages/host/src/catalogue/routes.test.ts` (bearer, pass-through, 400/401/403/502 bodies).
 
 ## Next
 

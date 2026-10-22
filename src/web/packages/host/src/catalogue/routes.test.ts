@@ -246,6 +246,12 @@ describe("the store author proxies", () => {
       fetch: unreachable.fetch,
     });
     expect(offline?.status).toBe(502);
+    const body = (await offline?.json()) as {
+      readonly ok?: boolean;
+      readonly message?: unknown;
+    };
+    expect(body).toMatchObject({ ok: false });
+    expect(typeof body.message).toBe("string");
   });
 
   it("keeps the loopback-only guard it shares with the sign-in routes", async () => {
