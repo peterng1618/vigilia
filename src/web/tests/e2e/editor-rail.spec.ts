@@ -43,7 +43,7 @@ const HEADER_STRIP_PX = 42;
  *
  * The store region starts its online read when it mounts
  * (`online-listing.ts`), and that is true of the Local half too, so every case
- * that opens the themes mode would otherwise ask `raw.githubusercontent.com`
+ * that opens the themes mode would otherwise ask `yunari-store.workers.dev`
  * for a catalogue that does not exist until phase E. The answer would be
  * whatever the network says that day, not what the case is measuring.
  *

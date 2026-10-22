@@ -1,13 +1,11 @@
 import {
   type CatalogueEntry,
   type CatalogueRefusal,
+  catalogueIndexUrl,
+  catalogueThumbnailUrl,
   DASHBOARD_THEME_KIND,
   parseCatalogueIndex,
 } from "@yunari/renderer-core";
-import {
-  CATALOGUE_INDEX_URL,
-  catalogueThumbnailUrl,
-} from "./catalogue-location.js";
 import type { ItemSource, StoreItem } from "./local-source.js";
 
 /**
@@ -22,7 +20,7 @@ import type { ItemSource, StoreItem } from "./local-source.js";
 export function onlineThemeSource(
   options: { readonly url?: string; readonly fetch?: typeof fetch } = {},
 ): ItemSource {
-  const url = options.url ?? CATALOGUE_INDEX_URL;
+  const url = options.url ?? catalogueIndexUrl();
   let refused: readonly CatalogueRefusal[] = [];
 
   return {

@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
+  cataloguePackageUrl,
   DASHBOARD_THEME_KIND,
   type FabricThemeEnvelope,
 } from "@yunari/renderer-core";
@@ -23,8 +24,7 @@ import {
   type ThemeStore,
 } from "./store.js";
 
-const PACKAGE_URL =
-  "https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/aurora/aurora.zip";
+const PACKAGE_URL = cataloguePackageUrl("aurora", "1.2.0");
 
 function themeOf(id: string, name: string): ThemeContent {
   const envelope: FabricThemeEnvelope = {

@@ -13,6 +13,7 @@ import path from "node:path";
 import { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import {
+  cataloguePackageUrl,
   createAssetResolver,
   DASHBOARD_THEME_KIND,
   decodeBatch,
@@ -1226,8 +1227,7 @@ describe("Host theme routes", () => {
   });
 
   describe("The install route", () => {
-    const PACKAGE_URL =
-      "https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/aurora/aurora.zip";
+    const PACKAGE_URL = cataloguePackageUrl("aurora", "1.2.0");
     let library: string;
     let settings: string;
     let installing: ReturnType<typeof createHostServer>;
