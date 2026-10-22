@@ -13,6 +13,8 @@ const AUTHOR_EMAIL = "author-admin@example.com";
 const OTHER_ID = "10000000-0000-4000-8000-000000000002";
 const PUBLISHED_ID = "10000000-0000-4000-8000-000000000003";
 const GHOST_ID = "no-such-account";
+const BLANK_ID = "user-admin-blank";
+const BLANK_EMAIL = "blank@example.com";
 const CREATED_AT = "2026-10-01T00:00:00.000Z";
 const OLDER_AT = "2026-09-30T00:00:00.000Z";
 
@@ -37,6 +39,10 @@ describe("admin", () => {
     // An empty secret matches nobody, not everybody.
     expect(isOwner(session, "")).toBe(false);
     expect(isOwner(session, " , ")).toBe(false);
+    // Neither does a session with no email: comparing blanks would let a
+    // whitespace-only secret admit the session.
+    expect(isOwner({ userId: "u", email: "" }, " , ")).toBe(false);
+    expect(isOwner({ userId: "u", email: "   " }, "")).toBe(false);
   });
 
   it("401s without a session and 404s an authenticated non-owner", async () => {
@@ -45,6 +51,9 @@ describe("admin", () => {
 
     expect((await admin(author, "queue")).status).toBe(404);
     expect((await admin(author, `items/${ITEM_ID}/approve`)).status).toBe(404);
+    // Body-less POSTs still reach the owner check, never a 400.
+    expect((await admin(author, `items/${ITEM_ID}/remove`)).status).toBe(404);
+    expect((await admin(author, `items/${ITEM_ID}/restore`)).status).toBe(404);
     expect((await admin(author, `authors/${AUTHOR_ID}/verify`)).status).toBe(
       404,
     );
@@ -52,6 +61,8 @@ describe("admin", () => {
     for (const path of [
       "queue",
       `items/${ITEM_ID}/approve`,
+      `items/${ITEM_ID}/remove`,
+      `items/${ITEM_ID}/restore`,
       `authors/${AUTHOR_ID}/verify`,
     ]) {
       // The queue is the one GET; the rest are POST-only.
@@ -67,6 +78,40 @@ describe("admin", () => {
           })
         ).status,
       ).toBe(401);
+    }
+
+    // Anti-enumeration: an anonymous caller cannot learn an item id is missing.
+    expect(
+      (
+        await SELF.fetch(`${BASE}/api/admin/items/no-such-item/approve`, {
+          method: "POST",
+        })
+      ).status,
+    ).toBe(401);
+  });
+
+  it("404s a session with no email even on a whitespace-only secret", async () => {
+    await loginAs(BLANK_ID, BLANK_EMAIL);
+    // Better Auth validates the email, so blank the joined row instead; the
+    // session reads its user fresh on every request.
+    await env.DB.prepare('UPDATE "user" SET email = ? WHERE id = ?')
+      .bind("", BLANK_ID)
+      .run();
+    const session = await loginAs(BLANK_ID, BLANK_EMAIL);
+
+    const original = env.OWNER_EMAILS;
+    env.OWNER_EMAILS = " , ";
+    try {
+      expect(env.OWNER_EMAILS).toBe(" , ");
+      expect((await admin(session, "queue")).status).toBe(404);
+      expect((await admin(session, `items/${ITEM_ID}/approve`)).status).toBe(
+        404,
+      );
+    } finally {
+      env.OWNER_EMAILS = original;
+      await env.DB.prepare('UPDATE "user" SET email = ? WHERE id = ?')
+        .bind(BLANK_EMAIL, BLANK_ID)
+        .run();
     }
   });
 
@@ -116,6 +161,20 @@ describe("admin", () => {
         )
       ).status,
     ).toBe(404);
+  });
+
+  it("lets exactly one of two concurrent approves win", async () => {
+    const owner = await loginAs(OWNER_ID, OWNER_EMAIL);
+    await seedItem(ITEM_ID, AUTHOR_ID, { status: "pending" });
+
+    const [first, second] = await Promise.all([
+      admin(owner, `items/${ITEM_ID}/approve`),
+      admin(owner, `items/${ITEM_ID}/approve`),
+    ]);
+    expect([first.status, second.status].sort((a, b) => a - b)).toEqual([
+      200, 409,
+    ]);
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("published");
   });
 
   it("rejects with a trimmed reason and refuses an empty or oversized one", async () => {
@@ -185,6 +244,11 @@ describe("admin", () => {
     expect(await statusOf(env.DB, ITEM_ID)).toBe("published");
     // The stale sentence must not survive a restore.
     expect(await reasonOf(ITEM_ID)).toBeNull();
+
+    // A second restore has no `removed` row to guard.
+    const again = await admin(owner, `items/${ITEM_ID}/restore`);
+    expect(again.status).toBe(409);
+    expect(await again.text()).toContain("published");
   });
 
   it("removes a pending item and refuses a draft", async () => {
@@ -253,9 +317,16 @@ describe("admin", () => {
     const owner = await loginAs(OWNER_ID, OWNER_EMAIL);
     await clearProfile(AUTHOR_ID);
 
-    expect((await admin(owner, `authors/${AUTHOR_ID}/verify`)).status).toBe(
-      200,
-    );
+    const verified = await admin(owner, `authors/${AUTHOR_ID}/verify`);
+    expect(verified.status).toBe(200);
+    const verifiedBody = await verified.text();
+    expect(JSON.parse(verifiedBody)).toEqual({
+      ok: true,
+      userId: AUTHOR_ID,
+      verified: true,
+    });
+    // The account's email never rides along on the answer.
+    expect(verifiedBody).not.toContain(AUTHOR_EMAIL);
     expect(await profileOf(AUTHOR_ID)).toEqual({
       verified: 1,
       display_name: null,
@@ -266,9 +337,15 @@ describe("admin", () => {
     )
       .bind("Huy", AUTHOR_ID)
       .run();
-    expect((await admin(owner, `authors/${AUTHOR_ID}/unverify`)).status).toBe(
-      200,
-    );
+    const unverified = await admin(owner, `authors/${AUTHOR_ID}/unverify`);
+    expect(unverified.status).toBe(200);
+    const unverifiedBody = await unverified.text();
+    expect(JSON.parse(unverifiedBody)).toEqual({
+      ok: true,
+      userId: AUTHOR_ID,
+      verified: false,
+    });
+    expect(unverifiedBody).not.toContain(AUTHOR_EMAIL);
     expect(await profileOf(AUTHOR_ID)).toEqual({
       verified: 0,
       display_name: "Huy",

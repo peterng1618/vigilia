@@ -18,10 +18,8 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Owner routes land**: `routes/admin.ts` serves the queue, approve/reject/remove/restore and verify/unverify; a signed-in non-owner gets 404 and a missing or forged session 401.
-- **One guarded status write**: `setStatus` binds the `from` set as placeholders and clears a stale `status_reason`, so a lost race answers 409 naming the current status instead of overwriting it.
-- **The queue names its author**: `GET /api/admin/queue` answers oldest-first `{ entries }` with the Better Auth email read from the quoted `"user"` table and the item's latest version.
-- **Verification is an upsert**: `authors/:id/verify|unverify` writes `author_profile` even without a Better Auth account and keeps an existing `display_name`.
+- **Owner match refuses a blank session**: `isOwner` answers false before comparing when the session email trims empty, so a whitespace-only `OWNER_EMAILS` cannot admit a session with no email.
+- **Admin tests harden the contract**: anti-enumeration 401 before 404, non-owner 404 across queue/approve/remove/restore, two concurrent approves yielding one 200 and one 409, a second restore 409, and the exact verify/unverify bodies.
 
 ## Next
 
