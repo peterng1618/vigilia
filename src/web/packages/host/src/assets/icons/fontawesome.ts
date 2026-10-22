@@ -78,6 +78,7 @@ function resultOf(name: string, style: string, licence: string): AssetResult {
   return {
     id: `${style}:${name}`,
     name,
+    kind: "icon",
     preview: `${BASE}svgs/${style}/${name}.svg`,
     subtitle: style,
     licence,

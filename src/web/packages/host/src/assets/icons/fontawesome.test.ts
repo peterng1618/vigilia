@@ -75,6 +75,7 @@ describe("fontAwesomeSource", () => {
     expect(page.results[0]).toEqual({
       id: "solid:house",
       name: "house",
+      kind: "icon",
       preview: `${BASE}svgs/solid/house.svg`,
       subtitle: "solid",
       licence: LICENCE,

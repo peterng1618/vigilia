@@ -1,4 +1,4 @@
-import { strToU8, unzipSync, zipSync } from "fflate";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { readThemePackage, writeThemePackage } from "./index.js";
 
@@ -325,5 +325,85 @@ describe("a package's thumbnail", () => {
         assets: { "thumbnail.png": png(7) },
       }),
     ).toMatchObject({ ok: false });
+  });
+});
+
+describe("credits", () => {
+  const credits = {
+    format: "yunari-theme-credits" as const,
+    version: 1 as const,
+    entries: [
+      {
+        kind: "icon",
+        title: "house",
+        license: "ISC",
+        changes: "Imported unchanged",
+        source: { url: "https://lucide.dev/icons/house" },
+      },
+    ],
+  };
+
+  it("writes the member the manifest names, and reads it back", () => {
+    const written = writeThemePackage({
+      envelope,
+      assets: { "assets/logo.png": png(1) },
+      credits,
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+
+    const files = unzipSync(written.bytes);
+    expect(
+      JSON.parse(strFromU8(files["manifest.json"] ?? new Uint8Array())),
+    ).toMatchObject({ credits: "credits.json" });
+
+    const read = readThemePackage(written.bytes);
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.credits).toEqual(credits);
+  });
+
+  it("carries neither the member nor its manifest key without credits", () => {
+    const written = writeThemePackage({
+      envelope,
+      assets: { "assets/logo.png": png(1) },
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+
+    const files = unzipSync(written.bytes);
+    expect(Object.keys(files)).not.toContain("credits.json");
+    expect(
+      JSON.parse(strFromU8(files["manifest.json"] ?? new Uint8Array())),
+    ).not.toHaveProperty("credits");
+
+    const read = readThemePackage(written.bytes);
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.credits).toBeUndefined();
+  });
+
+  it("refuses an over-cap credits list with the reader's own limit", () => {
+    const sample = {
+      kind: "icon",
+      title: "house",
+      license: "ISC",
+      changes: "Imported unchanged",
+      source: { url: "https://lucide.dev/icons/house" },
+    };
+    const entries = Array.from({ length: 257 }, (_unused, index) => ({
+      ...sample,
+      title: `icon-${index}`,
+    }));
+    expect(
+      writeThemePackage({
+        envelope,
+        assets: { "assets/logo.png": png(1) },
+        credits: { ...credits, entries },
+      }),
+    ).toEqual({
+      ok: false,
+      message: "A theme package carries at most 256 credits.",
+    });
   });
 });

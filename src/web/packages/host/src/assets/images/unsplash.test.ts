@@ -130,6 +130,7 @@ describe("unsplashSource", () => {
     expect(page.results[0]).toEqual({
       id: "p1",
       name: "a cat on a wall",
+      kind: "image",
       preview: "https://images.unsplash.com/p1-small",
       subtitle: "Jane Doe",
       licence: "Unsplash License",
@@ -194,6 +195,7 @@ describe("unsplashSource.bytesOf", () => {
       unsplashSource.creditsOf({
         id: "p1",
         name: "a cat on a wall",
+        kind: "image",
         preview: "",
         subtitle: "Jane Doe",
         licence: "Unsplash License",

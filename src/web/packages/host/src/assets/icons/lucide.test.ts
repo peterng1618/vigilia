@@ -11,6 +11,7 @@ const context = {
 const result = (name: string): AssetResult => ({
   id: name,
   name,
+  kind: "icon",
   preview: "",
   subtitle: undefined,
   licence: "ISC",

@@ -90,6 +90,7 @@ function resultOf(photo: UnsplashPhoto): AssetResult | undefined {
     id,
     name:
       textOf(photo.alt_description) ?? textOf(photo.description) ?? "Untitled",
+    kind: "image",
     preview: small,
     subtitle: textOf(photo.user?.name),
     licence: LICENCE,

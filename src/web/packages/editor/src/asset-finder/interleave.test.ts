@@ -5,6 +5,7 @@ import { interleave } from "./interleave.js";
 const row = (id: string): AssetResult => ({
   id,
   name: id,
+  kind: "icon",
   preview: "",
   subtitle: undefined,
   licence: "MIT",

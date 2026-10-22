@@ -8,8 +8,10 @@ import { ActiveSelection, type FabricObject } from "fabric/es";
 import { createElement } from "react";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
+import { importFinderResult } from "./asset-finder/actions.js";
+import { assetBytes } from "./asset-finder/client.js";
 import { FontsBodyHost } from "./asset-finder/fonts-body.js";
-import { AssetManager } from "./asset-manager/index.js";
+import { type AssetManager, mimeOf } from "./asset-manager/index.js";
 import {
   type CanvasNudge,
   createCanvasNudge,
@@ -57,6 +59,7 @@ import {
   type TypePresetPanel,
   type TypePresets,
 } from "./type-preset-manager/index.js";
+import { uiCopy } from "./ui-copy.js";
 
 interface EditorPanelHosts {
   /** Text and chart creation, and the declared-asset library at its foot. */
@@ -588,6 +591,62 @@ export class EditorSession {
             void this.applyFontTrio(trioId);
           },
         }),
+      // One finder row's action. The bytes come from the host, the manager
+      // keeps its caps and sanitising, and the credit is written before the
+      // asset's own consequence runs — an import that places nothing still
+      // carries its attribution.
+      importAsset: async (page, result) => {
+        const fetched = await assetBytes(page.source, result.id);
+        if (fetched === undefined)
+          return {
+            ok: false as const,
+            message: uiCopy.assets.bytesUnavailable,
+          };
+
+        const file = new File(
+          [fetched.bytes as unknown as BlobPart],
+          fetched.filename,
+          { type: mimeOf(fetched.filename) ?? "" },
+        );
+        const outcome = await importFinderResult({
+          page,
+          result,
+          bytes: fetched.bytes,
+          filename: fetched.filename,
+          manager: this.#assets,
+          document: this.#document,
+          place: (assetId) => {
+            if (result.kind === "image") {
+              const artboard = this.#document.envelope.artboard;
+              this.#document.setArtboard({
+                ...artboard,
+                backgroundMedia: {
+                  assetId,
+                  fit: artboard.backgroundMedia?.fit ?? "theme",
+                },
+              });
+              return;
+            }
+            // The icon's own row places it: `placeImage` takes the declaration
+            // this import just made, so the file is not imported twice.
+            const declared = this.#assets.declarations.find(
+              (entry) => entry.id === assetId,
+            );
+            if (declared !== undefined) {
+              void this.#assets
+                .placeImage(editor, file, declared)
+                .catch((error: unknown) =>
+                  options.onError?.(
+                    error instanceof Error ? error.message : String(error),
+                  ),
+                );
+            }
+          },
+        });
+        return outcome.ok
+          ? { ok: true as const, imported: outcome.imported }
+          : { ok: false as const, message: outcome.message };
+      },
       openLibraryTheme: (id, onAccepted) =>
         this.#document.openLibraryTheme(id, onAccepted),
       saveLibrary: () => this.#document.saveLibrary(),

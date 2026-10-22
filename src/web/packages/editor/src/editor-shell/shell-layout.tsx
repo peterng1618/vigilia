@@ -609,10 +609,15 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               {...(finderState.category === undefined
                 ? {}
                 : { initialCategory: finderState.category })}
-              onAction={async () => ({
-                ok: false,
-                message: uiCopy.assets.actionUnavailable,
-              })}
+              onAction={async (page, result) => {
+                const session = store.bridge?.session;
+                if (session?.importAsset === undefined)
+                  return {
+                    ok: false,
+                    message: uiCopy.assets.hostUnavailable,
+                  };
+                return session.importAsset(page, result);
+              }}
               onOpenConnections={() => {
                 finder.set(false);
                 setSettingsOpen(true);

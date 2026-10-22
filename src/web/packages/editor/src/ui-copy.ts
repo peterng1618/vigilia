@@ -948,7 +948,6 @@ export const uiCopy = {
       local: "Open in Wallpaper Engine",
     } satisfies Record<ListingCategory, string>,
     searchPlaceholder: "Search assets…",
-    actionUnavailable: "Importing from the finder is not connected yet.",
     results: (count: number, sources: number): string =>
       `${count} ${count === 1 ? "result" : "results"} · ${sources} ${sources === 1 ? "source" : "sources"}`,
     noResults: "No results. Try another word.",
@@ -963,6 +962,9 @@ export const uiCopy = {
     remoteHostNotice: (hosts: string): string =>
       `Search terms go to ${hosts}. Nothing else leaves this computer.`,
     loadMore: "Load more",
+    unknownAssetFile: "That asset is not a file type the editor can import.",
+    hostUnavailable: "The host is not connected.",
+    bytesUnavailable: "The host did not send that asset.",
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */

@@ -10,6 +10,9 @@ export interface AssetResult {
   /** The source's own id; the host prefixes it. */
   readonly id: string;
   readonly name: string;
+  /** The credits entry's kind. The source's own word for what it serves, so
+   *  attribution at import does not have to guess from a file extension. */
+  readonly kind: string;
   /** A URL the editor may render, or "". */
   readonly preview: string;
   readonly subtitle: string | undefined;

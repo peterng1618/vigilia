@@ -15,6 +15,7 @@ const context = {
 const result = (name: string): AssetResult => ({
   id: name,
   name,
+  kind: "icon",
   preview: "",
   subtitle: undefined,
   licence: "MIT",
@@ -35,9 +36,7 @@ describe("the Lineicons manifest", () => {
 describe("searchLineicons", () => {
   it("treats a space and a hyphen as one separator", () => {
     expect(
-      searchLineicons("arrow down", undefined).results.map(
-        (entry) => entry.id,
-      ),
+      searchLineicons("arrow down", undefined).results.map((entry) => entry.id),
     ).toContain("arrow-downward");
   });
 
@@ -88,9 +87,7 @@ describe("the Lineicons source", () => {
   });
 
   it("credits the icon set and its licence", () => {
-    expect(
-      lineiconsSource.creditsOf(result("arrow-downward")),
-    ).toMatchObject({
+    expect(lineiconsSource.creditsOf(result("arrow-downward"))).toMatchObject({
       kind: "icon",
       title: "arrow-downward",
       license: "MIT",

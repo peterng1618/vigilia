@@ -463,12 +463,15 @@ describe("EditorSession", () => {
     const session = extensions.actionFacade();
     // The third argument is the picture the package carries; this canvas has
     // nothing laid out, so it renders none and the export happens regardless.
+    // The fourth is the credits member, and a document that imported nothing
+    // has none.
     await session.savePackage();
     expect(saveMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         metadata: { version: "1.2.3", themeLanguage: "en" },
       }),
       expect.anything(),
+      undefined,
       undefined,
     );
 
@@ -478,6 +481,7 @@ describe("EditorSession", () => {
         metadata: { version: "1.2.4", themeLanguage: "en" },
       }),
       expect.anything(),
+      undefined,
       undefined,
     );
     extensions.destroy();

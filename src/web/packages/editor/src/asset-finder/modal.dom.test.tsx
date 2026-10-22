@@ -79,6 +79,7 @@ const wallpaperEngine: AssetSourceListing = {
 const result = (id: string): AssetResult => ({
   id,
   name: id,
+  kind: "icon",
   preview: "",
   subtitle: undefined,
   licence: "ISC",

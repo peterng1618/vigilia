@@ -34,6 +34,7 @@ function resultOf(icon: LocalIcon, homeUrl: string): AssetResult {
   return {
     id: icon.name,
     name: icon.name,
+    kind: "icon",
     preview: previewOf(icon),
     subtitle: undefined,
     licence: "unknown",

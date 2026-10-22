@@ -382,6 +382,14 @@ function extensionOf(name: string): AssetExtension | undefined {
     : undefined;
 }
 
+/** The MIME type `import` pairs with a filename's extension. Shared rather
+ *  than restated, so a caller constructing a `File` cannot offer one the
+ *  manager's own check would refuse. */
+export function mimeOf(filename: string): string | undefined {
+  const extension = extensionOf(filename);
+  return extension === undefined ? undefined : TYPES[extension].mime;
+}
+
 function sanitisedSvg(bytes: Uint8Array): Uint8Array {
   const source = new TextDecoder().decode(bytes);
   const document = new DOMParser().parseFromString(source, "image/svg+xml");
