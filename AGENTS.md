@@ -52,6 +52,17 @@ Yunari process.
   the wrong plan (ADR-0010). A PreCompact hook snapshots git state and ledger
   tails to `.superpowers/sdd/checkpoint/` and re-injects dispatch state after
   compaction.
+- **Orca is an execution venue, not a second process owner.** An Orca worktree
+  runs inside the active plan, so the one-plan rule and the pulse cadence are
+  unchanged; Orca never licenses a second plan or a parallel register.
+  `.superpowers/` is gitignored, so each worktree has its own ledger: record a
+  dispatch in the worktree that runs the task and keep the card line current
+  with `orca worktree set --comment`, because the root's `.superpowers/` cannot
+  see a worker's. A worker's liveness is `orca worktree show` or
+  `terminal wait`, never an mtime alone. The register stays
+  `docs/product/backlog.jsonl`: Orca links issues and PRs to a worktree, it does
+  not own a register, so link an existing issue rather than filing a row or an
+  issue per worktree.
 - **A dispatched agent is pulsed, not awaited.** The silence between dispatch and a
   notification is not evidence that work is happening. Check every running subagent on a
   cadence — roughly every 30 minutes of expected runtime, and immediately after any task
@@ -264,6 +275,10 @@ than trusting a copy. The one command that is not a script is the host:
 - Use `fileURLToPath` for file URLs on Windows.
 - Symlinks are not reliable in tracked content in this repo.
 - Bare gitignore patterns match at any depth.
+- Playwright servers own fixed ports (`4173`–`4175` for the shared configs,
+  `4215`–`4237` for the per-config and per-spec hosts). Two worktrees must not
+  run the same Playwright project at once; a `strictPort` failure means another
+  run, in this worktree or another, still owns the port.
 - In PowerShell, single-quote Playwright `--grep` values containing spaces or
   `|`.
 

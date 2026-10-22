@@ -17,9 +17,9 @@ The theme store spec (phases A–G) and the theme-versioning spec are **landed**
 
 ## Last completed change
 
-- **Vigilia is renamed Yunari** across 722 tracked files: product name, `@yunari/*` packages, `yunari-dashboard` binary, `YUNARI_*` env vars, CSS/DOM prefixes and the `.yunari-theme` extension.
-- **Workspace relinked and rebuilt**: `npm install`, `npm run build`, and `npm run gate` exits 0 with 4385 tests.
-- **Git history and untracked SDD evidence keep the old name**, and the `~/.vigilia` local library is not migrated to `~/.yunari`.
+- **Orca is documented as an execution venue**: a worktree runs inside the plan `STATUS.md` names, its `.superpowers/` ledger is local to it, and liveness comes from `orca worktree show` or `terminal wait`.
+- **The register stays `docs/product/backlog.jsonl`**: Orca links issues and PRs to a worktree, it does not own a register, so no row moves into GitHub issues.
+- **Fixed Playwright port ranges are recorded** so two worktrees never run the same project at once, and `docs/product/probes/cdp.mjs` now resolves Playwright from the checkout instead of `D:/git-repos/yunari`.
 
 ## Next
 
