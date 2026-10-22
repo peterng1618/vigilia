@@ -57,6 +57,27 @@ export interface CatalogueIndex {
 }
 
 /**
+ * The six states an item can hold. Only `published` is listed publicly; the rest
+ * is the spec's status machine, shown by the Mine surface.
+ */
+export type CatalogueStatus =
+  | "draft"
+  | "pending"
+  | "published"
+  | "unpublished"
+  | "rejected"
+  | "removed";
+
+/**
+ * One row of `GET /api/me/items`: the entry a Mine row draws, plus the state the
+ * public wire shape has no room for and the owner's sentence where there is one.
+ */
+export interface MineEntry extends CatalogueEntry {
+  readonly status: CatalogueStatus;
+  readonly statusReason?: string;
+}
+
+/**
  * The authored header of one `catalogue/<id>/item.json`.
  *
  * It has no `author` — that is a facet the producer derives from `theme.json`'s

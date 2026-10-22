@@ -17,6 +17,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@yunari/renderer-core": "*",
+    "@yunari/theme-package": "*",
     "aws4fetch": "1.0.20",
     "better-auth": "1.7.12"
   },

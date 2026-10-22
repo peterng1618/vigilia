@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution, Phase 1**: Task 1.1 is dispatched; Phases 2–5 follow in plan order.
+- **Subagent-driven execution, Phase 1**: Tasks 1.1 complete; Task 1.2 dispatched. Phases 2–5 follow in plan order.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,10 +18,10 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **Store Worker package added**: `@yunari/store-worker` ships `Env`, a `GET /api/health` route and `wrangler.toml` with D1 `DB`, R2 `BUCKET` and an empty `[vars]`.
-- **D1 schema `0001_catalogue.sql`**: `item` (six-state status CHECK), `item_version`, `favorite`, `author_profile`, `presign_event`, with the four spec indexes.
-- **Workers harness proven against real bindings**: `cloudflareTest` plus `readD1Migrations`; the harness spec counts rows through the D1 binding after the migration.
-- **Root gate gains `test:worker`**, and every new pin and licence is recorded in the notices and dependency map.
+- **Catalogue projections**: `entryOf`, `itemFileOf` and `indexDocument` read `item`/`item_version` rows into the wire shapes, credit `remixOf` from the stored envelope and keep the thumbnail a repo-style path.
+- **`planVersion`** recomputes the ladder from the stored envelope and refuses a claimed version that disagrees, an unchanged theme, or an absent declared version.
+- **Mine types**: `CatalogueStatus` and `MineEntry` live in `renderer-core`'s catalogue index and are re-exported from its barrel.
+- **Worker typecheck gains the `DOM` lib**: renderer-core is consumed as source and its barrel names DOM types; both barrels run inside workerd and the Workers suite is green.
 
 ## Next
 

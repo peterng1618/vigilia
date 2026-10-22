@@ -238,6 +238,8 @@ export type {
   CatalogueItemFile,
   CatalogueItemFileResult,
   CatalogueRefusal,
+  CatalogueStatus,
+  MineEntry,
 } from "./theme/catalogue-index.js";
 export {
   CATALOGUE_ID_PATTERN,

@@ -2,9 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    // Worker runtime, not a browser: DOM lib would duplicate the Request,
-    // Response and ExecutionContext declarations workers-types already owns.
-    "lib": ["ES2022"],
+    // Workers runtime, and no DOM at runtime. The DOM lib is here only because
+    // renderer-core is consumed as source: its barrel names `HTMLElement` and
+    // `document`, which TypeScript must resolve even though workerd has neither.
+    // The declarations do coexist with workers-types under `skipLibCheck`.
+    "lib": ["ES2022", "DOM"],
     "types": [
       "@cloudflare/workers-types",
       "@cloudflare/vitest-pool-workers/types"
