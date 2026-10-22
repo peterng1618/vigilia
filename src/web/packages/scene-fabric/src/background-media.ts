@@ -1,4 +1,8 @@
-import type { Artboard, AssetReference } from "@yunari/renderer-core";
+import type {
+  Artboard,
+  AssetReference,
+  BackgroundMediaFit,
+} from "@yunari/renderer-core";
 import type { BackdropMedia, DeviceRect } from "./glass.js";
 
 export interface BackgroundMediaSource {
@@ -37,6 +41,57 @@ export interface MediaBox {
 export interface MediaBounds {
   readonly artboard: MediaBox;
   readonly display: MediaBox;
+}
+
+export interface PlacementInput {
+  readonly box: { readonly width: number; readonly height: number };
+  readonly source:
+    | { readonly width: number; readonly height: number }
+    | undefined;
+  readonly fit: BackgroundMediaFit;
+  readonly scale: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+}
+
+/** Finite, non-negative. A refused reading leaves nothing to draw. */
+const size = (value: number): number =>
+  Number.isFinite(value) ? Math.max(0, value) : 0;
+
+/**
+ * The one media placement: fit the source into the box, scale about the box
+ * centre, then shift by a fraction of the box. The result may extend outside
+ * the box; the box is the caller's clip.
+ */
+export function placement(input: PlacementInput): MediaBox {
+  const boxWidth = size(input.box.width);
+  const boxHeight = size(input.box.height);
+  const sourceWidth = input.source === undefined ? 0 : size(input.source.width);
+  const sourceHeight =
+    input.source === undefined ? 0 : size(input.source.height);
+
+  // No source size yet, and `fill` either way, mean the box is the base rect.
+  let baseWidth = boxWidth;
+  let baseHeight = boxHeight;
+  if (input.fit !== "fill" && sourceWidth > 0 && sourceHeight > 0) {
+    const x = boxWidth / sourceWidth;
+    const y = boxHeight / sourceHeight;
+    const factor = input.fit === "contain" ? Math.min(x, y) : Math.max(x, y);
+    baseWidth = sourceWidth * factor;
+    baseHeight = sourceHeight * factor;
+  }
+
+  const scale = Number.isFinite(input.scale) ? input.scale : 1;
+  const offsetX = Number.isFinite(input.offsetX) ? input.offsetX : 0;
+  const offsetY = Number.isFinite(input.offsetY) ? input.offsetY : 0;
+  const width = size(baseWidth * scale);
+  const height = size(baseHeight * scale);
+  return {
+    left: (boxWidth * (1 + 2 * offsetX)) / 2 - width / 2,
+    top: (boxHeight * (1 + 2 * offsetY)) / 2 - height / 2,
+    width,
+    height,
+  };
 }
 
 export interface BackgroundMediaHandle {
