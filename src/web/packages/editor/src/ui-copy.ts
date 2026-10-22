@@ -1245,6 +1245,18 @@ export const uiCopy = {
     /** Shown when a removal is refused because something still points at it. */
     assetReferenced: "That asset is in use and cannot be removed.",
     removeAsset: "Remove asset",
+    /** The two ways to bring a declared video into the publish envelope, named
+        for what each does to the picture: `normalizeVideo` keeps its own shape,
+        `fillArtboard` crops it to the theme's frame. Both produce a held copy;
+        `useNormalizedVideo` is the second press that writes it over the master,
+        so the author is never moved off the file they imported unasked. */
+    normalizeVideo: "Normalize video",
+    normalizingVideo: "Normalizing…",
+    fillArtboard: "Fill the artboard",
+    useNormalizedVideo: "Use the normalized copy",
+    /** Shown when a normalize press produced no answer the pane can read — a
+        host refusal arrives in its own words and is never replaced by this. */
+    videoNormalizeFailed: "That video could not be normalized.",
     themeSettings: "Theme settings",
     /** The Document pane's two sections. `themeSettings` names the pane's own
      *  heading; these name the groups under it, and the artboard one holds the

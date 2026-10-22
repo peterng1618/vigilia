@@ -198,18 +198,9 @@ export class AssetManager {
       throw new Error("A replacement must keep the asset's file extension.");
 
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const previewBytes = extension === "svg" ? sanitisedSvg(bytes) : bytes;
-    this.#assets[existing.path] = bytes;
-    const { sha256: _drop, ...kept } = existing;
-    const next: LocalAssetReference = {
-      ...kept,
-      sha256: await sha256(bytes),
-    };
-    this.#declarations.splice(index, 1, next);
-    // The preview URL is a blob of the old bytes; keeping it would leave the
-    // pane showing the picture the author just replaced.
-    this.#revoke(assetId);
+    const next = await this.replaceBytes(assetId, bytes);
     if (type.kind === "image" || type.kind === "svg") {
+      const previewBytes = extension === "svg" ? sanitisedSvg(bytes) : bytes;
       this.#previewUrls.set(
         assetId,
         URL.createObjectURL(
@@ -217,6 +208,35 @@ export class AssetManager {
         ),
       );
     }
+    return next;
+  }
+
+  /**
+   * Swaps an asset's bytes for bytes this manager did not read from a file —
+   * the host's normalized copy of a video. The declaration keeps its id, path,
+   * kind and any curated metadata; only the digest and the bytes change, so
+   * every reference bound to that id keeps working and the package does not
+   * grow.
+   */
+  async replaceBytes(
+    assetId: string,
+    bytes: Uint8Array,
+  ): Promise<LocalAssetReference> {
+    const index = this.#declarations.findIndex((asset) => asset.id === assetId);
+    const existing = this.#declarations[index];
+    if (index < 0 || existing === undefined)
+      throw new Error(`No declared asset to replace: ${assetId}.`);
+
+    const { sha256: _drop, ...kept } = existing;
+    const next: LocalAssetReference = {
+      ...kept,
+      sha256: await sha256(bytes),
+    };
+    this.#assets[existing.path] = bytes;
+    this.#declarations.splice(index, 1, next);
+    // The preview URL is a blob of the old bytes; keeping it would leave the
+    // pane showing the picture the author just replaced.
+    this.#revoke(assetId);
     return next;
   }
 

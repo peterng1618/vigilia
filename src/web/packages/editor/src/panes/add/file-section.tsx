@@ -61,6 +61,12 @@ export function FileSection({
     () => manager.declarations[0]?.id,
   );
   const [message, setMessage] = useState("");
+  /** The host's normalized copy, held until the author presses to write it.
+   *  Keyed by the asset, so choosing another row cannot draw the wrong one. */
+  const [held, setHeld] = useState<
+    { readonly assetId: string; readonly bytes: Uint8Array } | undefined
+  >();
+  const [normalizing, setNormalizing] = useState(false);
   // The manager's declarations are live external state, so a mutation has to be
   // followed by a render rather than by a state copy that could go stale.
   const [, render] = useReducer((count: number) => count + 1, 0);
@@ -148,6 +154,7 @@ export function FileSection({
       return;
     }
     setMessage("");
+    setHeld(undefined);
     editor.historyManager.saveState();
     editor.canvas.requestRenderAll();
     changed();
@@ -166,9 +173,67 @@ export function FileSection({
     if (manager.remove(id)) {
       setMessage("");
       setChosenId(undefined);
+      setHeld(undefined);
       changed();
     }
   };
+
+  /**
+   * Sends the chosen video to the host and holds the copy it answers with.
+   *
+   * Nothing is written here: the master is the file the author imported, and a
+   * re-encode shown to them for approval must not quietly become the document.
+   * `useNormalized` is the press that writes it. The host's own sentence is the
+   * refusal, because it names which envelope rule the video broke.
+   */
+  const normalizeVideo = async (fit: "contain" | "cover"): Promise<void> => {
+    const asset = chosen;
+    if (asset === undefined || asset.kind !== "video") return;
+    const bytes = manager.assets[asset.path];
+    if (bytes === undefined) {
+      refuse(new Error(`Missing declared asset bytes for ${asset.id}.`));
+      return;
+    }
+    setNormalizing(true);
+    try {
+      const outcome = await requestNormalizedVideo(
+        bytes,
+        fit,
+        fit === "cover" ? editor.artboard() : undefined,
+      );
+      if (!outcome.ok) {
+        setMessage(outcome.message);
+        return;
+      }
+      setHeld({ assetId: asset.id, bytes: outcome.bytes });
+      setMessage("");
+    } finally {
+      setNormalizing(false);
+    }
+  };
+
+  /** The second press: the held copy becomes the master's bytes, in place. */
+  const useNormalized = async (): Promise<void> => {
+    const pending = held;
+    if (pending === undefined || pending.assetId !== chosen?.id) return;
+    try {
+      await manager.replaceBytes(pending.assetId, pending.bytes);
+      // Rehydration carries the new bytes to whatever renders this id — the
+      // artboard's background media included.
+      await manager.hydrate(editor.canvas);
+    } catch (error) {
+      refuse(error);
+      return;
+    }
+    setHeld(undefined);
+    setMessage("");
+    editor.historyManager.saveState();
+    editor.canvas.requestRenderAll();
+    changed();
+  };
+
+  const video = chosen?.kind === "video" ? chosen : undefined;
+  const pending = held?.assetId === video?.id ? held : undefined;
 
   return (
     <section>
@@ -187,7 +252,12 @@ export function FileSection({
           id: asset.id,
           name: fileNameOf(asset),
         }))}
-        onChange={setChosenId}
+        onChange={(id) => {
+          setChosenId(id);
+          // A held copy belongs to the asset it was produced for.
+          setHeld(undefined);
+          setMessage("");
+        }}
       />
       {/* A video and a font have nothing to preview, and hiding the empty frame
           is what keeps the previous asset's picture from standing as if it were
@@ -221,6 +291,41 @@ export function FileSection({
         >
           {uiCopy.panels.removeAsset}
         </button>
+        {/* A video is the one kind with an envelope to fit. Both modes are the
+            author's to choose — one control standing for the other would hide
+            half the capability — and neither exists for a file that is not a
+            video. */}
+        {video !== undefined && (
+          <>
+            <button
+              type="button"
+              data-vigilia-asset-normalize=""
+              disabled={normalizing}
+              onClick={() => void submit(() => normalizeVideo("contain"))}
+            >
+              {normalizing
+                ? uiCopy.panels.normalizingVideo
+                : uiCopy.panels.normalizeVideo}
+            </button>
+            <button
+              type="button"
+              data-vigilia-asset-fill=""
+              disabled={normalizing}
+              onClick={() => void submit(() => normalizeVideo("cover"))}
+            >
+              {uiCopy.panels.fillArtboard}
+            </button>
+            {pending !== undefined && (
+              <button
+                type="button"
+                data-vigilia-asset-use-normalized=""
+                onClick={() => void submit(useNormalized)}
+              >
+                {uiCopy.panels.useNormalizedVideo}
+              </button>
+            )}
+          </>
+        )}
       </div>
       <p role="alert">{message}</p>
       <input
@@ -260,6 +365,85 @@ export function FileSection({
 const ASSET_FILE_ACCEPT = ASSET_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(
   ",",
 );
+
+/** Where the host brings a video into the publish envelope. Named once. */
+const VIDEO_NORMALIZE_PATH = "/api/themes/normalize-video";
+
+type NormalizeOutcome =
+  | { readonly ok: true; readonly bytes: Uint8Array }
+  | { readonly ok: false; readonly message: string };
+
+/**
+ * Posts one video to the host, which owns the encoder and the envelope rules
+ * (`POST /api/themes/normalize-video`). Every refusal is the host's own
+ * sentence — it names which rule the video broke — and only a transport failure
+ * with no sentence at all falls back to the pane's words.
+ */
+async function requestNormalizedVideo(
+  bytes: Uint8Array,
+  fit: "contain" | "cover",
+  aspect: { readonly width: number; readonly height: number } | undefined,
+): Promise<NormalizeOutcome> {
+  let response: Response;
+  try {
+    response = await fetch(VIDEO_NORMALIZE_PATH, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        bytesBase64: base64Of(bytes),
+        fit,
+        ...(aspect === undefined ? {} : { aspect }),
+      }),
+    });
+  } catch {
+    return { ok: false, message: uiCopy.panels.videoNormalizeFailed };
+  }
+
+  if (!response.ok) {
+    const reason = await response.text().catch(() => "");
+    return {
+      ok: false,
+      message:
+        reason.trim() === ""
+          ? uiCopy.panels.videoNormalizeFailed
+          : reason.trim(),
+    };
+  }
+
+  const answer = (await response.json().catch(() => undefined)) as
+    | {
+        readonly ok?: unknown;
+        readonly bytesBase64?: unknown;
+        readonly message?: unknown;
+      }
+    | undefined;
+  if (answer?.ok === true && typeof answer.bytesBase64 === "string")
+    return { ok: true, bytes: bytesFromBase64(answer.bytesBase64) };
+  return {
+    ok: false,
+    message:
+      typeof answer?.message === "string" && answer.message.trim() !== ""
+        ? answer.message
+        : uiCopy.panels.videoNormalizeFailed,
+  };
+}
+
+/** `btoa` over the bytes, chunked so a large video cannot overflow the stack. */
+function base64Of(bytes: Uint8Array): string {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function bytesFromBase64(encoded: string): Uint8Array {
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1)
+    bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
 
 /** The kinds a canvas image can be bound to; a video or a font is declared
  *  without ever becoming an object. */

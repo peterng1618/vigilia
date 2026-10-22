@@ -78,6 +78,7 @@ afterEach(async () => {
   if (root !== undefined) await act(async () => root?.unmount());
   root = undefined;
   document.body.replaceChildren();
+  vi.unstubAllGlobals();
 });
 
 /**
@@ -153,6 +154,8 @@ async function mount(
       getObjects: () => objects,
       requestRenderAll: vi.fn(),
     },
+    // The artboard `cover` is pressed against, not a constant in the section.
+    artboard: () => ({ width: 1920, height: 1080 }),
     historyManager: { saveState },
     errorManager: { error, warn: vi.fn() },
   } as unknown as EditorInteraction;
@@ -305,7 +308,11 @@ async function drain(): Promise<void> {
     inflight = [];
     await Promise.allSettled(batch);
   }
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  // Several turns, because the byte swap hashes with `crypto.subtle` and the
+  // fetch answer is another promise chain on top of it.
+  for (let round = 0; round < 3; round += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 }
 
 /**
@@ -666,7 +673,208 @@ describe("the Add pane's file section", () => {
     expect(opened[0]).toHaveBeenCalledOnce();
     expect(opened[1]).toHaveBeenCalledOnce();
   });
+
+  /**
+   * **Both controls, and only on a video.** The two modes the host offers are
+   * both the author's to choose — `Normalize video` keeps the picture's own
+   * shape, `Fill the artboard` crops it to the theme — so one control standing
+   * for the other would hide half the capability. An image, an SVG or a font
+   * has no video envelope to normalize, so neither control may appear for it.
+   */
+  it("offers the normalize controls only for a declared video", async () => {
+    const { host } = await mount();
+
+    await importFile(host, IMAGE_FILE);
+    await selectAsset(host, "logo");
+    expect(normalizeControl(host)).toBeNull();
+    expect(fillControl(host)).toBeNull();
+
+    await importFile(host, FONT_FILE);
+    await selectAsset(host, "body");
+    expect(normalizeControl(host)).toBeNull();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    expect(normalizeControl(host)).not.toBeNull();
+    expect(fillControl(host)).not.toBeNull();
+    expect(normalizeControl(host)?.textContent).toBe(
+      uiCopy.panels.normalizeVideo,
+    );
+    expect(fillControl(host)?.textContent).toBe(uiCopy.panels.fillArtboard);
+  });
+
+  /**
+   * **A refusal is the host's own sentence, and nothing was written.** The host
+   * knows which envelope rule the video broke; a sentence composed here would
+   * hide it, and a master swapped for a refused result would be a silent loss.
+   */
+  it("shows the host's refusal beside the control and leaves the master alone", async () => {
+    const sentence = "That video is not an H.264 MP4.";
+    const fetchStub = stubNormalize(() =>
+      normalizeAnswer({ ok: false, message: sentence }),
+    );
+    const { host, manager, saveState } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    const afterImport = saveState.mock.calls.length;
+    await press(host, "[data-vigilia-asset-normalize]");
+
+    expect(alert(host).textContent).toBe(sentence);
+    expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
+      bytesOf(new TextEncoder().encode("mp4")),
+    );
+    expect(useControl(host)).toBeNull();
+    expect(saveState.mock.calls.length).toBe(afterImport);
+    // `contain` is the shape-preserving mode, which is the plain press.
+    expect(postedBody(fetchStub)).toMatchObject({ fit: "contain" });
+  });
+
+  /**
+   * **The master is never replaced silently.** The run's result is held, and the
+   * bytes move only on the second press — an author who normalizes to inspect
+   * the result must not find the original already gone.
+   */
+  it("holds the normalized copy until the author presses Use the normalized copy", async () => {
+    const normalized = new TextEncoder().encode("mp4-normalized");
+    stubNormalize(() => normalizeAnswer({ ok: true, bytes: normalized }));
+    const { host, manager, hydrate, saveState } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    const afterImport = saveState.mock.calls.length;
+    await press(host, "[data-vigilia-asset-normalize]");
+
+    // Held, not applied: the master still carries the file the author imported.
+    expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
+      bytesOf(new TextEncoder().encode("mp4")),
+    );
+    expect(useControl(host)?.textContent).toBe(
+      uiCopy.panels.useNormalizedVideo,
+    );
+    expect(saveState.mock.calls.length).toBe(afterImport);
+
+    await press(host, "[data-vigilia-asset-use-normalized]");
+
+    // The second press is the one that writes, and it keeps the declaration.
+    expect(bytesOf(manager.assets["assets/clip.mp4"])).toEqual(
+      bytesOf(normalized),
+    );
+    expect(manager.declarations.map((asset) => [asset.id, asset.path])).toEqual(
+      [["clip", "assets/clip.mp4"]],
+    );
+    expect(hydrate).toHaveBeenCalledTimes(1);
+    expect(saveState.mock.calls.length - afterImport).toBe(1);
+    expect(useControl(host)).toBeNull();
+  });
+
+  /** `cover` is only meaningful against a frame, so the artboard's own aspect is
+   *  sent rather than guessed or omitted. The host refuses a cover without one. */
+  it("fills the artboard by sending cover with the artboard's aspect", async () => {
+    const fetchStub = stubNormalize(() =>
+      normalizeAnswer({
+        ok: false,
+        message: "refused to keep the case simple",
+      }),
+    );
+    const { host } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    await press(host, "[data-vigilia-asset-fill]");
+
+    expect(postedBody(fetchStub)).toMatchObject({
+      fit: "cover",
+      aspect: { width: 1920, height: 1080 },
+    });
+  });
+
+  /** The author sees the wait, because a re-encode of a large video outlives the
+   *  press that started it. */
+  it("says it is normalizing while the host has not answered", async () => {
+    let answer: (response: Response) => void = () => {};
+    const pending = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => pending),
+    );
+    const { host } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+    await selectAsset(host, "clip");
+    await act(async () => {
+      normalizeControl(host)!.click();
+    });
+
+    expect(normalizeControl(host)?.textContent).toBe(
+      uiCopy.panels.normalizingVideo,
+    );
+
+    await act(async () => {
+      answer(normalizeAnswer({ ok: false, message: "done" }));
+      await pending;
+      await drain();
+    });
+  });
 });
+
+/** An asset's bytes as plain numbers. The jsdom `File` shim and the manager's
+ *  own arrays come from different realms, so two identical contents are not
+ *  deep-equal by constructor. */
+const bytesOf = (bytes: Uint8Array | undefined): number[] =>
+  bytes === undefined ? [] : [...bytes];
+
+/** A normalize answer in the host's own shape. */
+function normalizeAnswer(
+  answer: { ok: true; bytes: Uint8Array } | { ok: false; message: string },
+): Response {
+  return new Response(
+    JSON.stringify(
+      answer.ok
+        ? {
+            ok: true,
+            bytesBase64: btoa(String.fromCharCode(...answer.bytes)),
+            reencoded: true,
+          }
+        : { ok: false, message: answer.message },
+    ),
+    { status: 200, headers: { "content-type": "application/json" } },
+  );
+}
+
+/** Answers the host route from `answer`, and records the body it was posted. */
+function stubNormalize(
+  answer: () => Response,
+): ReturnType<typeof vi.fn<typeof fetch>> {
+  const fetchStub = vi.fn<typeof fetch>(async () => answer());
+  vi.stubGlobal("fetch", fetchStub);
+  return fetchStub;
+}
+
+/** The JSON one normalize press posted. */
+function postedBody(fetchStub: ReturnType<typeof vi.fn>): unknown {
+  const init = fetchStub.mock.calls[0]?.[1] as RequestInit | undefined;
+  return JSON.parse(String(init?.body));
+}
+
+const normalizeControl = (host: HTMLElement): HTMLButtonElement | null =>
+  host.querySelector<HTMLButtonElement>("[data-vigilia-asset-normalize]");
+const fillControl = (host: HTMLElement): HTMLButtonElement | null =>
+  host.querySelector<HTMLButtonElement>("[data-vigilia-asset-fill]");
+const useControl = (host: HTMLElement): HTMLButtonElement | null =>
+  host.querySelector<HTMLButtonElement>("[data-vigilia-asset-use-normalized]");
+
+/** Presses a control and waits out the submission it starts. */
+async function press(host: HTMLElement, selector: string): Promise<void> {
+  const target = host.querySelector<HTMLButtonElement>(selector);
+  if (target === null) throw new Error(`no control ${selector}`);
+  await act(async () => {
+    target.click();
+    await drain();
+  });
+}
 
 /** The file types both pickers offer — derived from the manager's own exported
  *  list, so an extension added to `TYPES` and not offered here, or offered here

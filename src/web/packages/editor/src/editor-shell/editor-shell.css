@@ -1480,11 +1480,14 @@ body,
    utilities — a 30px bordered input inside a 26px bordered well, the same double
    box the inspector had, and a 4px right margin pulling a well off the column
    the drawing draws. What is left that still needs a box is one surface's own
-   DOM: the Add pane's three asset buttons, which no control in the set draws.
+   DOM: the Add pane's asset buttons, which no control in the set draws.
    Add a hook rather than widening the selector back to the ancestor. */
 .editor-shell-panel [data-vigilia-asset-import],
 .editor-shell-panel [data-vigilia-asset-replace],
-.editor-shell-panel [data-vigilia-asset-remove] {
+.editor-shell-panel [data-vigilia-asset-remove],
+.editor-shell-panel [data-vigilia-asset-normalize],
+.editor-shell-panel [data-vigilia-asset-fill],
+.editor-shell-panel [data-vigilia-asset-use-normalized] {
   max-width: 100%;
   min-height: 30px;
   margin: 4px 4px 4px 0;
@@ -1561,7 +1564,10 @@ body,
 }
 .editor-shell-panel [data-vigilia-asset-import]:hover,
 .editor-shell-panel [data-vigilia-asset-replace]:hover,
-.editor-shell-panel [data-vigilia-asset-remove]:hover {
+.editor-shell-panel [data-vigilia-asset-remove]:hover,
+.editor-shell-panel [data-vigilia-asset-normalize]:hover,
+.editor-shell-panel [data-vigilia-asset-fill]:hover,
+.editor-shell-panel [data-vigilia-asset-use-normalized]:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }

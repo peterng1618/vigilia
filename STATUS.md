@@ -17,9 +17,10 @@ Give every display client its own theme, then let a person browse, install and s
 
 ## Last completed change
 
-- **Phase F task 4 follow-up**: `normalizeVideo` gained `aspect`; `cover` now requires it, fills that ratio and centre-crops at an even, 1920-capped box, while `contain` keeps the source aspect.
-- **Cover proof** (real binary): `wide.mp4` 2048×180 with `aspect` 16:9 → 1920×1080, 1000 ms, 30 fps CFR, avc1 High, 4:2:0, silent, faststart; re-probed `videoRefusals` empty.
-- **Tests**: cover with an aspect checks the crop filter and re-probes the output; cover without one refuses before spawning; 8 normalizer tests green, `server.test.ts` 194 green (one known `vg-695` assignment flake seen, green on re-run), typecheck and biome exit 0.
+- **Phase F task 5**: the Add pane offers `Normalize video` and `Fill the artboard` for a declared video only; `cover` carries the artboard's own aspect.
+- **The master is never replaced silently**: the host's copy is held, a refusal shows the host's sentence and writes nothing, and `Use the normalized copy` swaps the bytes in place with one history entry.
+- **`AssetManager.replaceBytes`** swaps bytes the manager did not read from a file, keeping the declaration's id, path and metadata; the pane posts and reads the host route itself.
+- **Evidence**: 22 pane DOM tests, 75 affected editor tests, `typecheck`, `biome check`, `build` and the desktop Playwright claim all exit 0; the new `editor-video-normalize` capture is registered and shows the refusal beside both controls.
 
 ## Next
 
