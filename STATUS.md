@@ -17,10 +17,10 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 2.3 landed**: `validate-item` refuses a directory name that is not a lowercase UUID before reading `item.json`, the package or the URL.
-- **The id gate is the first refusal**: `isCatalogueId` runs first in `firstRefusal`, so no later check can mask a bad id.
-- **Fixtures moved to one UUID**: every `validate-item.test.ts` directory is `3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f`, so its cases still test the checks they were written for.
-- **Ordering pinned**: a non-existent directory still yields the id refusal, so the gate is proven above every file read.
+- **Task 3.1 landed**: `readPublishedItem` reads an id's `item.json` and package; a 404 item is `{ ok: true }` with no item.
+- **Two refusals only**: an unreadable store and an unopenable package, each one fixed sentence with no URL, path or body.
+- **Version is checked, never invented**: an item whose `version` is not `major.minor.patch` is refused with the recorded value quoted.
+- **Package id must match**: the opened envelope's id is compared to the requested id before any of its fields are returned.
 
 ## Next
 
