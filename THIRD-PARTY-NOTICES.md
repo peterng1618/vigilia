@@ -73,7 +73,8 @@ TypeScript 7.0.2 (Apache-2.0), Vite 8.3.0 (MIT), Vitest 5.0.0 (MIT),
 19.3.x (MIT), tailwindcss 4.3.3 (MIT, editor dev styling), @tailwindcss/vite
 4.3.3 (MIT, editor dev), jsqr 1.4.0 (Apache-2.0), @google/design.md 0.4.0
 (Apache-2.0, lints `DESIGN.md` in the design gate), @playwright/mcp 0.0.83
-(Apache-2.0, the Playwright MCP server used as an agent tool), @cloudflare/vitest-pool-workers 0.23.0 (MIT, Workers test pool), @cloudflare/workers-types 5.20261022.1 (MIT OR Apache-2.0, Worker runtime types), wrangler 4.152.0 (MIT OR Apache-2.0, Worker build/deploy), and a nested vitest 4.1.12 (MIT) under `packages/store-worker` — the pool peers on `^4.1.0` while the workspace runs 5.0.0. Native `canvas`
+(Apache-2.0, the Playwright MCP server used as an agent tool), @cloudflare/vitest-pool-workers 0.23.0 (MIT, Workers test pool), @cloudflare/workers-types 5.20261022.1 (MIT OR Apache-2.0, Worker runtime types), wrangler 4.152.0 (MIT OR Apache-2.0, Worker build/deploy), tsx 4.23.15 (MIT,
+runs scripts that import workspace TypeScript), and a nested vitest 4.1.12 (MIT) under `packages/store-worker` — the pool peers on `^4.1.0` while the workspace runs 5.0.0. Native `canvas`
 may carry linked-library obligations.
 
 Four entries were added on 2026-10-13 — `class-variance-authority`, `clsx` and

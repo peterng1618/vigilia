@@ -1,3 +1,9 @@
+import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { createRequire } from "node:module";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { writeThemePackage } from "@yunari/theme-package";
 import { expect, it } from "vitest";
 import { DEFAULT_SETTINGS_DIR } from "../../packages/host/src/cli/args.js";
@@ -301,6 +307,68 @@ it("reports a refused request without echoing the session token", async () => {
   expect((failure as Error).message).not.toContain(session.token);
 });
 
+it("refuses an empty package or thumbnail, and item.json that is not JSON", () => {
+  const base = {
+    itemJson: JSON.stringify(oldItem()),
+    packageBytes: packageOf(),
+    thumbnailBytes: PNG,
+    session,
+  };
+
+  expect(() => importPlan({ ...base, packageBytes: new Uint8Array() })).toThrow(
+    /package/,
+  );
+  expect(() =>
+    importPlan({ ...base, thumbnailBytes: new Uint8Array() }),
+  ).toThrow(/thumbnail/);
+  expect(() => importPlan({ ...base, itemJson: "{" })).toThrow(/JSON/);
+  expect(() => importPlan({ ...base, itemJson: "[]" })).toThrow(/object/);
+});
+
+it("redacts the signed upload URL when the PUT itself rejects", async () => {
+  let calls = 0;
+  const fetch = (input: RequestInfo | URL) => {
+    calls += 1;
+    if (calls === 1)
+      return Promise.resolve(
+        JSON_ANSWER({
+          version: "1.0.0",
+          status: "pending",
+          uploadUrl: UPLOAD,
+        }),
+      );
+    // What a refused connection reports: the URL, signature and all.
+    return Promise.reject(new TypeError(`fetch failed for ${String(input)}`));
+  };
+
+  const failure = await driveImport({
+    plan: planOf(),
+    token: session.token,
+    fetch: fetch as typeof globalThis.fetch,
+  }).catch((error: unknown) => error);
+
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toContain("upload");
+  expect((failure as Error).message).toContain(
+    "https://r2.example.test/package.zip",
+  );
+  expect((failure as Error).message).not.toContain("X-Amz-Signature");
+  expect((failure as Error).message).not.toContain("secret");
+});
+
+it("refuses an approve answer with no status rather than inventing one", async () => {
+  const worker = fakeWorker([
+    JSON_ANSWER({ version: "1.0.0", status: "pending", uploadUrl: UPLOAD }),
+    new Response(null, { status: 200 }),
+    JSON_ANSWER({ ok: true, status: "pending", version: "1.0.0" }),
+    JSON_ANSWER({ ok: true }),
+  ]);
+
+  await expect(
+    driveImport({ plan: planOf(), token: session.token, fetch: worker.fetch }),
+  ).rejects.toThrow(/status/);
+});
+
 it("asks for the two arguments it cannot default", () => {
   expect(parseArgs([])).toEqual({ kind: "usage" });
   expect(parseArgs(["--source", "catalogue/x"])).toEqual({ kind: "usage" });
@@ -308,4 +376,65 @@ it("asks for the two arguments it cannot default", () => {
 
 it("keeps the host's own settings directory as the default", () => {
   expect(defaultSettingsDir).toBe(DEFAULT_SETTINGS_DIR);
+});
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+/** `src/web`, which is both the cwd a run would use and where tsx is installed. */
+const WEB_ROOT = path.resolve(here, "..", "..");
+/** tsx's own CLI, spawned directly: no `npx` resolution and no network. */
+const TSX_CLI = createRequire(import.meta.url).resolve("tsx/cli");
+
+/** The executable contract, run the way the usage line runs it. */
+function runScript(argv: readonly string[]) {
+  return new Promise<{ code: number | null; stdout: string; stderr: string }>(
+    (resolve, reject) => {
+      const child = spawn(
+        process.execPath,
+        [
+          TSX_CLI,
+          path.join(WEB_ROOT, "scripts", "import-catalogue-item.mjs"),
+          ...argv,
+        ],
+        { cwd: WEB_ROOT },
+      );
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => {
+        stdout += String(chunk);
+      });
+      child.stderr.on("data", (chunk) => {
+        stderr += String(chunk);
+      });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stdout, stderr }));
+    },
+  );
+}
+
+it("prints its usage and exits 2 when run with no arguments", async () => {
+  const run = await runScript([]);
+
+  expect(run.code).toBe(2);
+  expect(run.stdout).toBe("");
+  expect(run.stderr).toContain("Usage:");
+  expect(run.stderr).toContain("--source");
+});
+
+it("says what is missing in a source directory and exits 1", async () => {
+  const source = await mkdtemp(path.join(os.tmpdir(), "yunari-import-"));
+  try {
+    const run = await runScript([
+      "--source",
+      source,
+      "--origin",
+      "https://store.test",
+    ]);
+
+    expect(run.code).toBe(1);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toContain("item.json");
+    expect(run.stderr).not.toContain("Bearer");
+  } finally {
+    await rm(source, { recursive: true, force: true });
+  }
 });

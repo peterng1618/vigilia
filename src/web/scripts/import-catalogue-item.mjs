@@ -7,6 +7,10 @@
  * session token. It refuses two silent rewrites: a package whose id is not the
  * item's, and an old version that is not `1.0.0` (a first submission computes
  * `1.0.0`, so anything else would publish a version the catalogue never had).
+ *
+ * Run it through `tsx` (`npx tsx scripts/import-catalogue-item.mjs`, the usage
+ * line): it imports the workspace's TypeScript packages, which plain `node`
+ * cannot resolve.
  */
 
 import { readFile } from "node:fs/promises";
@@ -35,7 +39,7 @@ const FILE = {
 };
 
 const USAGE =
-  "Usage: node scripts/import-catalogue-item.mjs --source <catalogue item dir> " +
+  "Usage: npx tsx scripts/import-catalogue-item.mjs --source <catalogue item dir> " +
   "--origin <worker origin> [--settings <dir>] [--token-file <path>]";
 
 const FLAGS = {
@@ -182,10 +186,18 @@ export async function driveImport({ plan, token, fetch }) {
   if (typeof uploadUrl !== "string" || uploadUrl === "")
     throw new Error("The Worker did not answer the version request with an upload URL.");
 
-  const uploaded = await fetch(uploadUrl, {
-    method: "PUT",
-    body: plan.packageBytes,
-  });
+  let uploaded;
+  try {
+    uploaded = await fetch(uploadUrl, {
+      method: "PUT",
+      body: plan.packageBytes,
+    });
+  } catch {
+    // A `fetch` rejection names the URL it could not reach, and this URL
+    // carries the upload signature in its query. Only the redacted form is
+    // reported.
+    throw new Error(`The package upload to ${redact(uploadUrl)} failed.`);
+  }
   if (!uploaded.ok)
     throw new Error(
       `The package upload to ${redact(uploadUrl)} was refused (${uploaded.status}).`,
@@ -219,7 +231,11 @@ export async function driveImport({ plan, token, fetch }) {
         `The approve request was refused (${approved.status})${await detail(approved)}`,
       );
     const answer = await jsonOf(approved, "The approve request");
-    status = answer?.status ?? "published";
+    // Never invent a status: the caller reports what the Worker said, and a
+    // missing one means the answer is not the shape this flow understands.
+    if (typeof answer?.status !== "string" || answer.status === "")
+      throw new Error("The approve request did not answer with a status.");
+    status = answer.status;
   }
 
   return { id, version, status };
@@ -258,6 +274,15 @@ function redact(url) {
   }
 }
 
+/** One file of the source directory, or a sentence naming what is missing. */
+async function readOr(file, what, source) {
+  try {
+    return await readFile(file);
+  } catch {
+    throw new Error(`No readable ${what} in ${source}.`);
+  }
+}
+
 /**
  * The session the operator's host already holds, or the `--token-file`
  * alternative. Only the token is read: this script acts, it does not attribute.
@@ -287,18 +312,21 @@ async function main(argv) {
   }
 
   try {
-    const itemJson = await readFile(
-      path.join(parsed.source, FILE.item),
-      "utf8",
-    );
+    const itemJson = (
+      await readOr(path.join(parsed.source, FILE.item), FILE.item, parsed.source)
+    ).toString("utf8");
     // Read before the version ZIP is named, so a path cannot be built from a
     // value the import would refuse.
     const id = parseItem(itemJson).id;
     const packageBytes = new Uint8Array(
-      await readFile(path.join(parsed.source, `${id}.zip`)),
+      await readOr(path.join(parsed.source, `${id}.zip`), `${id}.zip`, parsed.source),
     );
     const thumbnailBytes = new Uint8Array(
-      await readFile(path.join(parsed.source, FILE.thumbnail)),
+      await readOr(
+        path.join(parsed.source, FILE.thumbnail),
+        FILE.thumbnail,
+        parsed.source,
+      ),
     );
     const token = await readToken(parsed);
 
