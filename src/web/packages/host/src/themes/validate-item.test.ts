@@ -105,6 +105,57 @@ function packageBytesFor(id: string): Uint8Array {
   return written.bytes;
 }
 
+/** A package written from one exact envelope, so a case can choose the
+ *  version, the change that separates it from the base, and the credit. */
+function packageBytesOf(envelope: FabricThemeEnvelope): Uint8Array {
+  const written = writeThemePackage({ envelope, assets: {} });
+  if (!written.ok) throw new Error(written.message);
+  return written.bytes;
+}
+
+/** The smallest envelope, with the fields the ladder diffs overridden. */
+function envelopeWith(
+  id: string,
+  options: {
+    readonly version?: string;
+    readonly name?: string;
+    readonly width?: number;
+    readonly tags?: readonly string[];
+    readonly remixOf?: {
+      readonly catalogueId: string;
+      readonly name: string;
+      readonly version: string;
+    };
+  } = {},
+): FabricThemeEnvelope {
+  const theme = themeFor(id);
+  return {
+    ...theme,
+    artboard: {
+      ...theme.artboard,
+      ...(options.width === undefined ? {} : { width: options.width }),
+    },
+    metadata: {
+      ...theme.metadata,
+      ...(options.version === undefined ? {} : { version: options.version }),
+      ...(options.name === undefined ? {} : { name: options.name }),
+      ...(options.tags === undefined ? {} : { tags: options.tags }),
+      ...(options.remixOf === undefined ? {} : { remixOf: options.remixOf }),
+    },
+  };
+}
+
+/** The two files the workflow `git show`s out of the base commit. */
+function previousFiles(directory: string): {
+  readonly previousItem: string;
+  readonly previousPackage: string;
+} {
+  return {
+    previousItem: path.join(directory, "item.json"),
+    previousPackage: path.join(directory, `${ID}.zip`),
+  };
+}
+
 /** A package carrying the theme `id` with a remix credit of its own. */
 function packageBytesWithRemix(
   id: string,
@@ -366,6 +417,191 @@ describe("validateCatalogueItem", () => {
   });
 });
 
+describe("validateCatalogueItem — the version the ladder computes", () => {
+  it("accepts a first submission at 1.0.0", async () => {
+    const directory = await itemDirectory({ id: ID });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: true,
+      id: ID,
+    });
+  });
+
+  it("refuses a first submission at another version", async () => {
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: packageBytesOf(envelopeWith(ID, { version: "1.4.0" })),
+    });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: false,
+      id: ID,
+      reason: 'a first submission must be version 1.0.0, not "1.4.0".',
+    });
+  });
+
+  it("accepts a patch bump against the published item", async () => {
+    const before = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: packageBytesOf(envelopeWith(ID, { version: "1.4.0" })),
+    });
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.1" },
+      packageBytes: packageBytesOf(
+        envelopeWith(ID, { version: "1.4.1", name: "Renamed" }),
+      ),
+    });
+
+    expect(
+      await validateCatalogueItem(directory, previousFiles(before)),
+    ).toEqual({ ok: true, id: ID });
+  });
+
+  it("refuses a major change declared at a lower level, naming both", async () => {
+    const before = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: packageBytesOf(envelopeWith(ID, { version: "1.4.0" })),
+    });
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.1" },
+      packageBytes: packageBytesOf(
+        envelopeWith(ID, { version: "1.4.1", width: 2560 }),
+      ),
+    });
+
+    expect(
+      await validateCatalogueItem(directory, previousFiles(before)),
+    ).toEqual({
+      ok: false,
+      id: ID,
+      reason:
+        "the package changes major but item.json says 1.4.1; the ladder computes 2.0.0.",
+    });
+  });
+
+  it("refuses an unchanged repackage", async () => {
+    const bytes = packageBytesOf(envelopeWith(ID, { version: "1.4.0" }));
+    const before = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: bytes,
+    });
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: bytes,
+    });
+
+    expect(
+      await validateCatalogueItem(directory, previousFiles(before)),
+    ).toEqual({
+      ok: false,
+      id: ID,
+      reason:
+        "Version 1.4.0 is published and this package has not changed since it.",
+    });
+  });
+
+  it("refuses a package version the header disagrees with", async () => {
+    const before = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: packageBytesOf(envelopeWith(ID, { version: "1.4.0" })),
+    });
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.1" },
+      packageBytes: packageBytesOf(
+        envelopeWith(ID, { version: "1.4.2", name: "Renamed" }),
+      ),
+    });
+
+    expect(
+      await validateCatalogueItem(directory, previousFiles(before)),
+    ).toEqual({
+      ok: false,
+      id: ID,
+      reason: 'item.json says 1.4.1 but the package records version "1.4.2".',
+    });
+  });
+
+  it("refuses a package that records no metadata.version", async () => {
+    const before = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: packageBytesOf(envelopeWith(ID, { version: "1.4.0" })),
+    });
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.1" },
+      packageBytes: packageBytesOf(envelopeWith(ID, { name: "Renamed" })),
+    });
+
+    expect(
+      await validateCatalogueItem(directory, previousFiles(before)),
+    ).toEqual({
+      ok: false,
+      id: ID,
+      reason: "the package records no metadata.version; item.json says 1.4.1.",
+    });
+  });
+
+  it("refuses a remixOf that changed from the previous item", async () => {
+    const parent = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
+    const otherParent = "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e";
+    const before = await itemDirectory({
+      id: ID,
+      item: {
+        ...itemFor(ID),
+        version: "1.4.0",
+        remixOf: { catalogueId: parent, name: "Parent", version: "1.0.0" },
+      },
+      packageBytes: packageBytesOf(
+        envelopeWith(ID, {
+          version: "1.4.0",
+          remixOf: { catalogueId: parent, name: "Parent", version: "1.0.0" },
+        }),
+      ),
+    });
+    const directory = await itemDirectory({
+      id: ID,
+      item: {
+        ...itemFor(ID),
+        version: "1.4.1",
+        remixOf: {
+          catalogueId: otherParent,
+          name: "Other parent",
+          version: "2.0.0",
+        },
+      },
+      packageBytes: packageBytesOf(
+        envelopeWith(ID, {
+          version: "1.4.1",
+          remixOf: {
+            catalogueId: otherParent,
+            name: "Other parent",
+            version: "2.0.0",
+          },
+        }),
+      ),
+    });
+
+    expect(
+      await validateCatalogueItem(directory, previousFiles(before)),
+    ).toEqual({
+      ok: false,
+      id: ID,
+      reason:
+        "remixOf must not change from the previous item; provenance is recorded once and never rewritten.",
+    });
+  });
+});
+
 describe("validateItemCommand", () => {
   it("is absent for every other command line", async () => {
     expect(await validateItemCommand([])).toBeUndefined();
@@ -421,6 +657,85 @@ describe("validateItemCommand", () => {
     expect(await validateItemCommand(["validate-item", "a", "b"])).toBe(1);
     expect(errors.mock.calls.flat().join("\n")).toContain(
       "validate-item needs one <catalogueDir>.",
+    );
+  });
+
+  it("passes both previous files through and exits zero", async () => {
+    const before = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.0" },
+      packageBytes: packageBytesOf(envelopeWith(ID, { version: "1.4.0" })),
+    });
+    const directory = await itemDirectory({
+      id: ID,
+      item: { ...itemFor(ID), version: "1.4.1" },
+      packageBytes: packageBytesOf(
+        envelopeWith(ID, { version: "1.4.1", name: "Renamed" }),
+      ),
+    });
+    const files = previousFiles(before);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    expect(
+      await validateItemCommand([
+        "validate-item",
+        directory,
+        "--previous-item",
+        files.previousItem,
+        "--previous-package",
+        files.previousPackage,
+      ]),
+    ).toBe(0);
+    expect(log.mock.calls).toEqual([[`catalogue/${ID} is valid`]]);
+  });
+
+  it("refuses one previous flag without the other", async () => {
+    const directory = await itemDirectory({ id: ID });
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    expect(
+      await validateItemCommand([
+        "validate-item",
+        directory,
+        "--previous-item",
+        "item.json",
+      ]),
+    ).toBe(1);
+    expect(
+      await validateItemCommand([
+        "validate-item",
+        directory,
+        "--previous-package",
+        "package.zip",
+      ]),
+    ).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      "validate-item <catalogueDir> [--previous-item <file> --previous-package <file>]",
+    );
+  });
+
+  it("refuses an unknown argument or a flag with no value", async () => {
+    const directory = await itemDirectory({ id: ID });
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    expect(
+      await validateItemCommand(["validate-item", directory, "--other", "x"]),
+    ).toBe(1);
+    expect(
+      await validateItemCommand([
+        "validate-item",
+        directory,
+        "--previous-item",
+        "item.json",
+        "--previous-package",
+      ]),
+    ).toBe(1);
+    expect(errors.mock.calls.flat().join("\n")).toContain(
+      "validate-item <catalogueDir> [--previous-item <file> --previous-package <file>]",
     );
   });
 });

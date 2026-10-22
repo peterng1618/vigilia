@@ -17,10 +17,9 @@ The theme store spec is **fully landed** (phases A–G). The next objective is *
 
 ## Last completed change
 
-- **Task 4.4 landed**: a submission copies `metadata.remixOf` into `item.json`, and `validate-item` refuses a self-referencing or package-mismatched credit.
-- **The host listing carries `remixOf`** on `ThemeStoreEntry`, and the editor's `ThemeLibraryEntry`/`StoreItem` carry it from both sources.
-- **The item modal prints `Remixed from <name>`**: a button that opens the parent when the routed index holds it, text otherwise.
-- **A library item's credit is always text**, and a non-UUID credit is refused by the item parser at the catalogue boundary.
+- **Task 5.1 landed**: `validate-item` re-derives a submission's version from the base commit's `item.json` and package through the host's ladder.
+- **`--previous-item` / `--previous-package`** feed that base; either alone, an unknown argument or a missing value prints usage and exits 1.
+- **Refusals pin the ruling**: a first submission must be `1.0.0`, and the package's `metadata.version`, the change level and `remixOf` must agree with the base.
 
 ## Next
 
