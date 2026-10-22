@@ -61,6 +61,23 @@ export const HOST_GROUPED_THEME_ID = "e2e-grouped-glass";
  *  fixture that covers it. */
 export const HOST_MEDIA_THEME_ID = "e2e-media";
 /**
+ * A theme-bounded image the player must place by its authored transform and
+ * clip to the artboard, with a glass panel over it.
+ *
+ * **The board is wide and the source narrow on purpose.** `contain` then
+ * letterboxes the artboard vertically on any viewport, and the `scale`/`offsetX`
+ * push the media out of the board's top, bottom and right edges — so the
+ * placed-but-clipped region is on screen and a pixel read there is evidence
+ * rather than an off-screen coordinate. A square source in a 16:9 board
+ * happened to overflow only where a desktop viewport ends, which no screenshot
+ * can read.
+ */
+export const HOST_BACKGROUND_LAYER_THEME_ID = "e2e-background-layer";
+/** The ink the background-layer source paints, read back from a screenshot. */
+export const BACKGROUND_LAYER_INK = { r: 232, g: 236, b: 243 } as const;
+/** The theme's background colour, which is also the host's letterbox paint. */
+export const BACKGROUND_LAYER_PAINT = { r: 0x10, g: 0x13, b: 0x18 } as const;
+/**
  * A video background and **no glass** — the one cost whose answer depends on
  * the display the theme is given to, which is what the assignment's warning
  * table is read against. Nothing here is ever decoded: the cost is read from
@@ -354,6 +371,13 @@ const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width
 </svg>
 `;
 
+/** The background layer's own source: 12 × 24 of one ink, so a pixel inside the
+ *  placed rect has one answer and any other colour there is a wrong crop. */
+const backdrop = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 24" width="12" height="24">
+  <rect width="12" height="24" fill="#e8ecf3" />
+</svg>
+`;
+
 /** The ink colour the badge paints, kept as a constant so a media test counts
  *  pixels of the served bytes rather than of anything the theme draws. */
 export const BADGE_INK = { r: 232, g: 236, b: 243 } as const;
@@ -394,6 +418,94 @@ const mediaEnvelope = {
     },
   ],
   scene: { version: "7.4.0" as const, objects: [] },
+};
+
+/**
+ * The transform-and-clip fixture: a narrow source placed with `contain`,
+ * `scale: 1.4` and `offsetX: 0.25` inside a 640 × 200 board, under a glass
+ * panel that sits wholly inside the media.
+ *
+ * Worked out rather than eyeballed, because a media strip that stayed inside the
+ * board would make every clip assertion vacuous: the source is 12 × 24, so
+ * `contain` fits it to 100 × 200 with scale 8.33…, `1.4` makes it 140 × 280,
+ * the `0.25` offset moves its centre 160 units right, and the result is
+ * x 410…550, y −40…240 — over the board's top, bottom and right by 40, 40 and
+ * 0 units but for the panel already covering the middle.
+ */
+const backgroundLayerEnvelope = {
+  schemaVersion: 2 as const,
+  fabricVersion: "7.4.0",
+  id: HOST_BACKGROUND_LAYER_THEME_ID,
+  metadata: { name: "E2E background layer", themeLanguage: "en" },
+  artboard: {
+    width: 640,
+    height: 200,
+    contentFit: "contain" as const,
+  },
+  background: {
+    color: { ref: "palette.bar" as const },
+    media: {
+      assetId: "backdrop",
+      bounds: "theme" as const,
+      fit: "contain" as const,
+      scale: 1.4,
+      offsetX: 0.25,
+    },
+  },
+  globals: {
+    palette: {
+      none: {
+        name: "None",
+        value: { kind: "solid" as const, color: "transparent" },
+      },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+      panel: {
+        name: "Panel",
+        value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.10)" },
+      },
+      edge: {
+        name: "Edge",
+        value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.35)" },
+      },
+    },
+    typePresets: {},
+  },
+  assets: [
+    {
+      id: "backdrop",
+      kind: "svg" as const,
+      path: "assets/backdrop.svg",
+      license: { name: "MIT", attribution: "Yunari test fixture." },
+    },
+  ],
+  scene: {
+    version: "7.4.0" as const,
+    objects: [
+      {
+        // Wholly inside the media strip (x 410…550, y −40…240). The glass then
+        // samples the placed bitmap through Task 7's backdrop, and the strip is
+        // still visible below the panel where the pixel read looks.
+        type: "Rect" as const,
+        version: "7.4.0" as const,
+        originX: "left" as const,
+        originY: "top" as const,
+        left: 420,
+        top: 20,
+        width: 120,
+        height: 120,
+        rx: 16,
+        ry: 16,
+        fill: "rgba(255, 255, 255, 0.10)",
+        stroke: "rgba(255, 255, 255, 0.35)",
+        strokeWidth: 2,
+        id: "media-panel",
+        selectable: false,
+        evented: false,
+        yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
+        yunariGlass: { blurRadius: 16 },
+      },
+    ],
+  },
 };
 
 /** A video background, declared and never decoded: the bytes beside it are a
@@ -833,6 +945,7 @@ async function fontBytes(): Promise<Uint8Array> {
 export async function seedHostTheme(): Promise<void> {
   const assets = {
     "assets/badge.svg": new TextEncoder().encode(badge),
+    "assets/backdrop.svg": new TextEncoder().encode(backdrop),
     "assets/inter-400.woff2": await fontBytes(),
     // Declared by the video theme and never decoded by any test: the host's
     // warning table reads the declaration, and the library writer refuses a
@@ -868,6 +981,7 @@ export async function seedHostTheme(): Promise<void> {
     }),
     groupedGlassEnvelope,
     mediaEnvelope,
+    backgroundLayerEnvelope,
     videoEnvelope,
     chartEnvelope,
     overhangEnvelope,
