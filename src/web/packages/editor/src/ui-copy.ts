@@ -10,6 +10,7 @@ import {
   type ChartFamily,
   type ColourMode,
   DASHBOARD_THEME_KIND,
+  type ListingCategory,
   type Orientation,
   type SemanticFamily,
 } from "@yunari/renderer-core";
@@ -924,6 +925,36 @@ export const uiCopy = {
   themeImport: {
     landed: (id: string): string => `Imported ${id} to the library`,
     refused: (reason: string): string => `Could not import: ${reason}`,
+  },
+  /** The asset finder. A tab is a category, never a provider (R9), and the
+   *  footer names the kind's own action rather than a bare "Import" (R5). */
+  assets: {
+    title: "Assets",
+    category: {
+      font: "Fonts",
+      icon: "Icons",
+      image: "Images",
+      video: "Videos",
+      local: "Wallpaper Engine",
+    } satisfies Record<ListingCategory, string>,
+    action: {
+      font: "Apply to preset",
+      icon: "Place on canvas",
+      image: "Set as background",
+      video: "Set as background",
+      local: "Open in Wallpaper Engine",
+    } satisfies Record<ListingCategory, string>,
+    searchPlaceholder: "Search assets…",
+    results: (count: number, sources: number): string =>
+      `${count} ${count === 1 ? "result" : "results"} · ${sources} ${sources === 1 ? "source" : "sources"}`,
+    noResults: "No results. Try another word.",
+    clearQuery: "Clear query",
+    noSource: "No source serves this category.",
+    sourceFailed: (label: string, message: string): string =>
+      `${label} failed: ${message}`,
+    needsCredential: (label: string): string =>
+      `${label} needs a key this host does not have.`,
+    connectionsAction: "Open Connections",
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */
