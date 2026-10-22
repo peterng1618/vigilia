@@ -458,7 +458,7 @@ export function AssetFinder({
                     </p>
                   ) : (
                     <div
-                      className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-[var(--space-8)] overflow-y-auto"
+                      className="grid min-h-0 flex-1 content-start grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-[var(--space-8)] overflow-y-auto"
                       data-yunari-asset-grid=""
                     >
                       {rows.map(({ page, result }) => (

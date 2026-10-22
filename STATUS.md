@@ -9,7 +9,7 @@ Branch: `main`
 
 ## Active work
 
-- **Asset finder, Tasks 1–15, 18 and 19 complete**: the wire contract, `AssetSource` port, credential store and routes, Connections tab, all four providers, the client, the modal, its three entry points, the font picker's move, the mixed grid and import-with-credits are landed; the browser boundary (Task 17) is next. Ledger: `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
+- **Asset finder, Tasks 1–15, 17, 18 and 19 complete**: the wire contract, `AssetSource` port, credential store and routes, Connections tab, all four providers, the client, the modal, its three entry points, the font picker's move, the mixed grid, import-with-credits and the browser boundary are landed; Task 16 waits on the Wallpaper Engine host module. Ledger: `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
 - **Providers, in this order: Lucide, Lineicons, Font Awesome Free, Unsplash.** Free results only; Flaticon is skipped because its official API exposes no free/premium flag.
 - **Lineicons is a dev-only dependency** (`lineicons@1.3.2`, MIT), read by a generator; no shipped dependency is added.
 - **Task 15 builds the Wallpaper Engine credits types here** (user ruling, 2026-10-23); the WE plan drops its Task 8. Task 16 stays blocked on the WE host module.
@@ -17,17 +17,17 @@ Branch: `main`
 
 ## Last completed change
 
-- **An imported asset carries its attribution** (Task 15): the finder's action fetches the bytes, declares them through the asset manager, writes the source's credit, then runs the kind's own consequence (place an icon, set an image as the background); the package's `credits.json` is written at save and seeded when a document opens with one.
-- **One mixed grid** (Task 14): two sources' pages alternate row by row, Load more appends each page's new rows after the ones shown and asks only sources that still hold a cursor, and the first answer names the host the term reaches, once.
-- **The font picker lives in the finder** (Task 12): the inspector's face field is a button that opens Fonts, the Fonts body is the catalogue's own `FontPicker` in a `FontsBodyHost` that owns the specimen cache and favourites, and the session's façade builds that body and applies a picked face to the selected text's preset.
-- **The finder opens three ways** (Task 11): the Add pane's own control, a File row above *Import package*, and Ctrl+Shift+A, which defers to a focused text field and reaches the shell's modal through the session's dispatcher.
-- **The finder's modal** (Task 10): tabs derived from the registry's categories, per-source chips, a debounced search that discards a stale answer, failure/needs-key/empty states, and a footer action named by the category.
+- **The finder's browser boundary** (Task 17): `tests/e2e/asset-finder.spec.ts` asserts the mixed grid with no shared id, the chip that drops a source and its requests, a failure beside a survivor, Load more's per-source cursors, the host notice appearing once, the stale answer's discard, and the font field opening Fonts.
+- **Four captures, registered first**: Fonts, mixed icons, a failed source, and Connections showing the key guide and its link.
+- **Three red-proofs** (source badge, disabled chip, stale answer) each failed when its code was broken and passed when restored from `cmp`-verified copies outside the repo.
+- **The stale test now really races**: it waits for the first request before issuing the second, so the ticket guard is what it exercises.
+- **A result card is its content's height**: one grid class ends the stretch to the footer, asserted by a bounding-box check in the mixed-grid test.
 
 ## Next
 
-1. The owner reviews the plan and chooses subagent-driven or native execution.
-2. Weigh `vg-620` (a client disconnecting mid-stream kills the host) before the next plan opens.
-3. The user picks the next queued plan; the next register pass starts from `vg-691`…`vg-697`.
+1. The final whole-branch review, then finishing the branch.
+2. Task 16 waits on the Wallpaper Engine host module (queued plan).
+3. Weigh `vg-620` (a client disconnecting mid-stream kills the host) before the next plan opens.
 
 ## Blockers / unverified
 

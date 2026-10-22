@@ -156,6 +156,10 @@ result, not merely a mounted editor.
 | Composition panel | The panel at two hundred loose shapes | `composition-panel-two-hundred` / `two hundred loose shapes, re-measured` |
 | Composition panel | The Document pane's own controls over a selected card | `composition-panel-document` / `keeps the document's own controls reachable while a card is selected` |
 | Assets | Import, replace and reopen a packaged image | `editor-assets-desktop-chromium` / `imports and round-trips packaged images` |
+| Assets | Open the finder on Fonts and read the catalogue body | `editor-finder-fonts` / `captures the finder on Fonts` |
+| Assets | Search Icons across two sources and read the mixed grid | `editor-finder-icons` / `captures the finder's mixed icon grid` |
+| Assets | Read a source's failure beside the other source's rows | `editor-finder-failure` / `captures the finder's failed source` |
+| Assets | Read the Connections tab's provider row | `editor-finder-connections` / `captures the Connections tab's provider row` |
 | Assets | Normalize a declared video and read the host's refusal beside it | `editor-video-normalize` / `normalizes a declared video without replacing its master` |
 | Palette | Edit or reassign a palette token | `editor-palette-solid` or `editor-palette-reassignment` / `edits an artboard palette token|reassigns palette references` |
 | Type presets | Edit, reassign or apply a font trio | `editor-type-preset`, `editor-type-reassignment` or `editor-font-trio` / `edits a global type preset|reassigns text type presets|captures curated font trio` — two files, `-desktop-chromium` (graphite) and `-editorial-desktop-chromium`, because the face and trio choosers are wells whose boundary and popup read against the paper they sit on |
