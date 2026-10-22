@@ -846,9 +846,10 @@ test.describe("the per-kind inspector column", () => {
     // The stage behind a transparent chart is the same `#223047` as the
     // remainder's own ink, so the artboard is given a different ground first:
     // otherwise "no remainder" measures 6,610 pixels of somebody else's paint.
-    // The artboard panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
-    await chooseIn(page, "[data-yunari-artboard-background]", "palette.frost");
+    // The paint is the background layer's, so it is written where that layer
+    // is selected.
+    await selectLayer(page, "Background");
+    await chooseIn(page, "[data-yunari-background]", "palette.frost");
     await addChart(page, {
       family: "Pie",
       name: "pie",

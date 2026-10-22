@@ -44,7 +44,7 @@ import {
   PLATE_PAINT,
 } from "./editor-fixture.js";
 import { openPane } from "./editor-rail.js";
-import { openPosition } from "./rebuild-driver.js";
+import { openPosition, selectLayer } from "./rebuild-driver.js";
 import { choosePalette } from "./shell-palette.js";
 import { openThemeFromStore, storedThemeOfPackage } from "./store-library.js";
 import { isDesktopSurface } from "./surface.js";
@@ -1977,15 +1977,21 @@ test.describe("Fabric editor route", () => {
     await openPane(page, "Document");
     await page.locator("[data-yunari-artboard-width]").fill("1000");
     await page.locator("[data-yunari-artboard-width]").press("Tab");
-    await chooseIn(page, "[data-yunari-artboard-background]", "palette.bars");
-    await expect(page.locator("[data-yunari-artboard-width]")).toHaveValue(
-      "1000",
-    );
+    // The board's paint is the background layer's now, so it is written where
+    // the layer is selected rather than in the Document pane.
+    await selectLayer(page, "Background");
+    await chooseIn(page, "[data-yunari-background]", "palette.bars");
     // The committed reference, read off the control's own hook: the paint
     // chooser is plan 1's select now — a button, whose `.value` is always "".
     await expect(
-      page.locator("[data-yunari-artboard-background] [data-yunari-value]"),
+      page.locator("[data-yunari-background] [data-yunari-value]"),
     ).toHaveAttribute("data-yunari-value", "palette.bars");
+    // Back to the Document pane for the capture this action is registered for;
+    // selecting the background survives the pane swap.
+    await openPane(page, "Document");
+    await expect(page.locator("[data-yunari-artboard-width]")).toHaveValue(
+      "1000",
+    );
 
     await captureVisualReview(page, testInfo, "editor-artboard");
   });
@@ -2106,9 +2112,9 @@ test.describe("Fabric editor route", () => {
     // The artboard must reference the token before it is deleted, or the
     // reassignment has nothing to reassign and the test passes for the wrong
     // reason. The board's one paint is `background`, so it is pointed at `bars`
-    // here through the Document pane.
-    await openPane(page, "Document");
-    await chooseIn(page, "[data-yunari-artboard-background]", "palette.bars");
+    // here where the background layer is selected — the pane that owns it.
+    await selectLayer(page, "Background");
+    await chooseIn(page, "[data-yunari-background]", "palette.bars");
     // The palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
     await chooseIn(page, "[data-yunari-palette-token]", "bars");
@@ -2464,12 +2470,15 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    // The artboard panel is a document panel, so it is in the Document pane.
+    // The artboard's own size is a document property, so it stays in the
+    // Document pane; its paint and its picture's box moved to the inspector
+    // when the background became a layer.
     await openPane(page, "Document");
-    await chooseIn(page, "[data-yunari-background-media-fit]", "display");
     await page.locator("[data-yunari-artboard-width]").fill("1000");
     await page.locator("[data-yunari-artboard-width]").press("Tab");
-    await chooseIn(page, "[data-yunari-artboard-background]", "palette.bars");
+    await selectLayer(page, "Background");
+    await chooseIn(page, "[data-yunari-background-bounds]", "display");
+    await chooseIn(page, "[data-yunari-background]", "palette.bars");
 
     const envelope = (await saveEnvelope(page)) as {
       artboard: {
@@ -2500,18 +2509,21 @@ test.describe("Fabric editor route", () => {
     // The user read "Preview fit" as how their picture renders in the preview,
     // because it sat above "Media fit" and chose between the same two words.
     // It was the artboard content's fit, it is always contain, and no author
-    // sets it — so the panel must not offer it, and must still offer the media's.
-    // The artboard panel is a document panel, so the Document pane shows it.
+    // sets it — so neither owner must offer it, and the media's fit must still
+    // be offered where the background layer is selected.
     await page.goto(EDITOR);
+    // The artboard panel is a document panel, so the Document pane shows it.
     await openPane(page, "Document");
-    await page.waitForSelector(
-      "[data-yunari-artboard-fit-mode], [data-yunari-background-media-fit]",
-    );
-
     await expect(page.locator("[data-yunari-artboard-fit-mode]")).toHaveCount(
       0,
     );
-    const mediaFit = page.locator("[data-yunari-background-media-fit]");
+
+    await selectLayer(page, "Background");
+    const mediaFit = page.locator("[data-yunari-background-fit]");
+    await expect(mediaFit).toBeVisible();
+    await expect(page.locator("[data-yunari-artboard-fit-mode]")).toHaveCount(
+      0,
+    );
     const settingsPanel = page.locator("section", {
       has: mediaFit,
     });
@@ -2522,9 +2534,9 @@ test.describe("Fabric editor route", () => {
     // plan 1's select, and a button's `.value` is always "".
     expect(labels).toContain("Media fit");
     const chosen = mediaFit.locator("[data-yunari-value]");
-    await expect(chosen).toHaveAttribute("data-yunari-value", "theme");
-    await chooseIn(page, "[data-yunari-background-media-fit]", "display");
-    await expect(chosen).toHaveAttribute("data-yunari-value", "display");
+    await expect(chosen).toHaveAttribute("data-yunari-value", "cover");
+    await chooseIn(page, "[data-yunari-background-fit]", "contain");
+    await expect(chosen).toHaveAttribute("data-yunari-value", "contain");
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {
@@ -3197,7 +3209,7 @@ test.describe("Fabric editor route", () => {
     });
   });
 
-  test("authors a packaged background image through Theme settings", async ({
+  test("authors a packaged background image through the inspector", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -3211,10 +3223,11 @@ test.describe("Fabric editor route", () => {
         "base64",
       ),
     });
-    // The artboard's own panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The picture and its box are the background layer's properties, so they
+    // are written where that layer is selected.
+    await selectLayer(page, "Background");
     await chooseIn(page, "[data-yunari-background-asset]", "hero");
-    await chooseIn(page, "[data-yunari-background-media-fit]", "display");
+    await chooseIn(page, "[data-yunari-background-bounds]", "display");
     // The chosen asset, read off the hook the control commits through: it is a
     // plan-1 select, so there is no `select` element to ask `.value`.
     await expect(

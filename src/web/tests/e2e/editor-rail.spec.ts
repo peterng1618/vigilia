@@ -3628,8 +3628,10 @@ test("normalizes a declared video without replacing its master", async ({
     buffer: Buffer.from("mp4-source"),
   });
 
-  // The artboard's background media is the one surface that renders a video.
-  await openPane(page, "Document");
+  // The artboard's background media is the one surface that renders a video,
+  // and it is the background layer's, so it is chosen where that layer is
+  // selected; the Add pane was showing, so the selection is a real pane swap.
+  await selectLayer(page, "Background");
   await chooseIn(page, "[data-yunari-background-asset]", "clip");
   await openPane(page, "Add");
   await chooseIn(page, "[data-yunari-asset-select]", "clip");
