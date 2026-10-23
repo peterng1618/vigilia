@@ -5,33 +5,36 @@ Branch: `main`
 
 ## Current objective
 
-Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md)): replace the GitHub catalogue with one Cloudflare Worker, D1 and private R2, with server-side counters, author unpublish and a Worker-computed version. The spec is [approved](docs/superpowers/specs/2026-10-22-r2-store-backend-design.md).
+Close the **R2 store backend** plan ([`2026-10-23-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md)) locally: the Worker, D1 and R2 code is complete and gated, and only the owner's deploy and live proof remain.
 
 ## Active work
 
-- **Subagent-driven execution**: Phases 1–4, Task 5.1, Task 5.2's preparation and Task 5.3 are complete; the owner-run deployment and Task 5.4's close-out are pending.
-- **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
-- **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
-- **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
-- **Decision `0093`** records the backend's reuse gate and claims the four watched paths the plan writes.
-- **Decisions `0088`–`0092`** carry the superseded GitHub store's measured choices; the plan keeps their wire shape and client rules.
+- **The R2 store backend plan is complete locally**; Task 5.4 closed it and the plan stays in `docs/superpowers/plans/` pending the owner's acceptance.
+- **Task 5.2 is owner-run and pending**: Cloudflare resources, secrets, deploy, `/migrate`, health check, both OAuth callbacks and CPU measurement.
+- **Task 5.1's import is unrun**: the smoke item `6041df49-9c61-4d51-a184-716890560bdb` exists only in the old catalogue; the script is ready.
+- **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts until this plan is accepted.
+- **Two open findings from this close-out**: `vg-699` stale `vite preview` reuse on a shared port, and `vg-700` the `scratch-gate` self-test that makes `npm run gate` red.
+- **Decision `0093`** records the backend's reuse gate; `0088`–`0092` carry the superseded GitHub store's choices.
 
 ## Last completed change
 
-- **`store-mine.spec.ts` proves Mine, Unpublish and Republish in the built editor bundle**, with the session probe, the author's listing and both command POSTs answered by `page.route`.
-- **Three captures are registered and inspected**: `store-mine-listing`, `store-mine-unpublish` and `store-mine-republish`, all `-desktop-chromium`.
-- **A refused unpublish prints the Worker's own sentence in the store's live region** and leaves the row, the cell behind the modal and the listing read count unchanged.
+- **The R2 store backend is complete locally**: one Worker serves public reads, Better Auth sessions, author and owner operations from D1 and a private R2 bucket.
+- **Task 5.4 ran the gate and three red-proofs**: the gate is red only at a pre-existing `scratch-gate` case; each disabled predicate, increment and version check failed its named spec.
+- **Every red-proof restored by `cmp`** and all three focused specs re-ran green; `test:worker` passes 64 tests and the unit suite 4388.
+- **No deploy has run**: Task 5.2 remains the owner's, so no live path is claimed.
 
 ## Next
 
-1. Execute the plan's phases in order; each task is reviewed before the next.
-2. Weigh `vg-620` (a client disconnecting mid-stream kills the host) before the next plan opens.
-3. After this plan closes, the user picks the next queued plan; the next register pass starts from `vg-691`…`vg-697`.
+1. The owner runs Task 5.2: create D1 and R2, set the secrets, deploy, `/migrate`, health check, register both OAuth callbacks.
+2. Replace the placeholder `CATALOGUE_ORIGIN` with the deployed URL, rebuild, and measure CPU for `GET /index.json` and one auth callback.
+3. Run the Task 5.1 import against the deployed origin, then the real OAuth round trip in the built editor.
+4. After the owner accepts, archive the plan and start the next queued plan.
+5. Drain `vg-699` and `vg-700` in the next register pass.
 
 ## Blockers / unverified
 
-- **The store Worker is not deployed**: no D1, R2 bucket, secret, `database_id`, deploy, `/migrate`, D1 migration or health check has run, and the owner must register both OAuth callbacks.
-- **No live store path has run**: OAuth round trip, live CPU (10 ms Free threshold), live cache behaviour and the Task 5.1 import are unverified; `CATALOGUE_ORIGIN` still points at the placeholder, the catalogue holds only the smoke item and no normalized video has been played in a browser.
-- **The rescoped remainder leaves player and host chrome outside the design language** (decision `0092`); they can drift from the editor's scales, and no instrument reports it.
-- **The auto-merge workflow's unverified-author and ownership arms are reasoned from the YAML**, not exercised: both need a second GitHub account with a fork. PR #9 exercised only the verified-author first-submission arm.
+- **The store Worker is not deployed**: no D1 database, R2 bucket, secret, real `database_id`, deploy, `/migrate` or health check has run.
+- **`npm run gate` exits 1** at `gates:self-test` (`vg-700`, pre-existing); every later segment was run alone and exited 0.
+- **No live store path has run**: the real OAuth round trip, live CPU against the 10 ms Free tier, deployed cache behaviour and the import are unverified.
+- **`CATALOGUE_ORIGIN` is still the placeholder** `https://yunari-store.workers.dev`, and no normalized video has been played in a browser.
 - **`server.test.ts` flakes on assignment cases** in about one full run in three, measured pre-existing at `5e5be86f` (`vg-695`).
