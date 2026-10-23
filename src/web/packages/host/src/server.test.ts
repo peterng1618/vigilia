@@ -2242,6 +2242,43 @@ describe("Host theme routes", () => {
       }
     });
 
+    it("keeps the session when the presigned PUT answers 401", async () => {
+      await signedIn();
+      const expiredSignature = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async (input) => {
+          const url = String(input);
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/baseline`)
+            return new Response("Not found", { status: 404 });
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/versions`)
+            return json(plan);
+          if (url === UPLOAD_URL)
+            return new Response("Signature expired", { status: 401 });
+          return new Response("unknown", { status: 404 });
+        },
+      });
+
+      try {
+        const res = await request(
+          expiredSignature.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(401);
+        // R2's refusal is not the session's: the author is still signed in.
+        expect(await session.read()).toBeDefined();
+      } finally {
+        await expiredSignature.close();
+      }
+    });
+
     it("refuses a non-loopback POST", async () => {
       await signedIn();
 

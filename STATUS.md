@@ -18,11 +18,10 @@ Close the **R2 store backend** plan ([`2026-10-23-r2-store-backend.md`](docs/sup
 
 ## Last completed change
 
-- **Worker finalize is crash- and race-safe**: an interrupted retry applies the status its first attempt missed, `markFinalized` refuses a concurrent takedown, and a duplicate version insert converges instead of answering 500.
-- **Host forgets a session the Worker answers 401 to**, so `/api/store/session` says signed out; a successful sign-in deletes the old plaintext `github-token.json`.
-- **The Mine toggle re-probes the session on window focus**, so a sign-in started by the submit flow reveals it without a reload.
-- **Minor**: the `/api/me` spec row now describes its real `{ userId, email }` answer, the index cache comment says `max-age=60`, and the unreachable redirect hop is gone from `downloadPackage`.
-- **Every new regression test was shown red with its fix disabled** and restored `cmp`-clean from copies outside the repo.
+- **Finalize replays no longer clobber later transitions**: only a retry whose item has not moved since the version row landed (`item.updated_at < existing.created_at`) applies the status transition, so `unpublished`, `rejected` and an unverified author's demotion survive a replayed presign.
+- **The submit route clears the session only on an authenticated call's 401**, so an expired presigned PUT signature no longer signs the author out.
+- **The route contract is asserted directly**: a takedown answer is 409 with its stored reason, and a differing-bytes loser is 409.
+- **Red-proofs**: the settle guard and the 401 gate were removed; the three replay tests and the PUT-401 case failed, restored `cmp`-clean from `C:\tmp\r2-redproof`.
 
 ## Next
 

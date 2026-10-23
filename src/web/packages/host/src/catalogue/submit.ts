@@ -57,14 +57,17 @@ function text(status: number, body: string): Response {
 
 /** The status a thrown store refusal deserves: the session's own refusal is a
  *  sign-in problem, a 4xx is the author's submission being refused, and
- *  everything else is the store being unreachable. A 401 also spends the stored
- *  session, so the next press asks for a sign-in rather than repeating it. */
+ *  everything else is the store being unreachable. A 401 from an authenticated
+ *  call also spends the stored session, so the next press asks for a sign-in
+ *  rather than repeating it. The presigned PUT is not such a call: its 401 is
+ *  R2 refusing the signature, and the session is still good. */
 async function refusal(
   error: unknown,
   store: StoreSessionStore | undefined,
+  authenticatedCall: boolean,
 ): Promise<Response> {
   if (error instanceof StoreClientError) {
-    if (error.status === 401) await store?.clear();
+    if (authenticatedCall && error.status === 401) await store?.clear();
     const status =
       error.status === 401 || error.status === 403
         ? 401
@@ -141,14 +144,21 @@ export async function handleSubmitRoute(
       client,
     });
   } catch (error) {
-    return refusal(error, deps.sessionStore);
+    return refusal(error, deps.sessionStore, true);
   }
   if (!plan.ok) {
     return json(400, { ok: false, message: plan.message });
   }
 
+  // The presigned PUT is the one call whose 401 is not a session refusal: R2
+  // signs it, and an expired signature is a retry, not a sign-out.
   try {
     await client.upload(plan.files.uploadUrl, plan.files.packageBytes);
+  } catch (error) {
+    return refusal(error, deps.sessionStore, false);
+  }
+
+  try {
     const finalized = await client.finalize(
       id,
       plan.files.version,
@@ -164,6 +174,6 @@ export async function handleSubmitRoute(
       },
     });
   } catch (error) {
-    return refusal(error, deps.sessionStore);
+    return refusal(error, deps.sessionStore, true);
   }
 }

@@ -3,6 +3,7 @@ import { type FabricThemeEnvelope, facetRecordOf } from "@yunari/renderer-core";
 import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 import { beforeAll, describe, expect, it } from "vitest";
 import { insertVersion, markFinalized } from "../src/db/items";
+import { differentBytes, takenDown } from "../src/routes/me";
 import { packageKey, thumbnailKey } from "../src/storage/keys";
 import {
   BASE,
@@ -184,38 +185,94 @@ describe("finalize", () => {
     await putPackage(packageKey(ITEM_ID, version), PACKAGE_BYTES);
 
     // The crash the retry has to survive: the version row landed, and the item
-    // is still the draft the version request created.
-    const presign = await env.DB.prepare(
-      `SELECT envelope_json FROM presign_event
-       WHERE user_id = ? AND item_id = ? AND version = ?
-       ORDER BY id DESC LIMIT 1`,
-    )
-      .bind(USER_ID, ITEM_ID, version)
-      .first<{ envelope_json: string }>();
-    await env.DB.prepare(
-      `INSERT INTO item_version (item_id, version, envelope_json, facets_json,
-         package_key, thumbnail_key, bytes, sha256, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(
-        ITEM_ID,
-        version,
-        presign?.envelope_json ?? "{}",
-        JSON.stringify(
-          facetRecordOf(candidate(ITEM_ID) as unknown as FabricThemeEnvelope),
-        ),
-        packageKey(ITEM_ID, version),
-        thumbnailKey(ITEM_ID),
-        PACKAGE_BYTES.byteLength,
-        await sha256Hex(PACKAGE_BYTES),
-        "2026-10-01T00:00:00.000Z",
-      )
-      .run();
+    // is still the draft the version request created. A real finalize's instant
+    // is later than the item's last move, which is what the retry compares.
     expect(await statusOf(env.DB, ITEM_ID)).toBe("draft");
+    await insertLandedVersion(version, oneSecondAfter(await itemUpdatedAt()));
 
     const response = await finalize(headers, version);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
+      ok: true,
+      status: "published",
+      version,
+    });
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("published");
+  });
+
+  it("replays an unpublished item's version without republishing it", async () => {
+    const headers = await sessionHeaders();
+    await reset();
+    await verifyAuthor(1);
+    const { version } = await requestVersion(headers);
+    await putPackage(packageKey(ITEM_ID, version), PACKAGE_BYTES);
+    expect((await finalize(headers, version)).status).toBe(200);
+
+    const later = oneSecondAfter(await itemUpdatedAt());
+    await env.DB.prepare(
+      `UPDATE item SET status = 'unpublished', unpublished_at = ?,
+         updated_at = ? WHERE id = ?`,
+    )
+      .bind(later, later, ITEM_ID)
+      .run();
+
+    // The presigned address outlives the request that minted it, so a replay
+    // must not reverse the author's withdrawal.
+    const replay = await finalize(headers, version);
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toEqual({
+      ok: true,
+      status: "unpublished",
+      version,
+    });
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("unpublished");
+  });
+
+  it("replays a rejected item's version without undoing the rejection", async () => {
+    const headers = await sessionHeaders();
+    await reset();
+    const { version } = await requestVersion(headers);
+    await putPackage(packageKey(ITEM_ID, version), PACKAGE_BYTES);
+    expect((await finalize(headers, version)).status).toBe(200);
+
+    const later = oneSecondAfter(await itemUpdatedAt());
+    await env.DB.prepare(
+      `UPDATE item SET status = 'rejected', status_reason = 'Not yet.',
+         updated_at = ? WHERE id = ?`,
+    )
+      .bind(later, ITEM_ID)
+      .run();
+
+    const replay = await finalize(headers, version);
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toEqual({
+      ok: true,
+      status: "rejected",
+      version,
+    });
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("rejected");
+    const reason = await env.DB.prepare(
+      "SELECT status_reason FROM item WHERE id = ?",
+    )
+      .bind(ITEM_ID)
+      .first<{ status_reason: string | null }>();
+    expect(reason?.status_reason).toBe("Not yet.");
+  });
+
+  it("replays a published item's version without demoting an unverified author", async () => {
+    const headers = await sessionHeaders();
+    await reset();
+    await verifyAuthor(1);
+    const { version } = await requestVersion(headers);
+    await putPackage(packageKey(ITEM_ID, version), PACKAGE_BYTES);
+    expect((await finalize(headers, version)).status).toBe(200);
+
+    // The status write and the version row share one instant, so this replay is
+    // the equal-instant case: it must read as already settled.
+    await verifyAuthor(0);
+    const replay = await finalize(headers, version);
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toEqual({
       ok: true,
       status: "published",
       version,
@@ -241,6 +298,26 @@ describe("finalize", () => {
       ),
     ).toBe(false);
     expect(await statusOf(env.DB, ITEM_ID)).toBe("removed");
+  });
+
+  it("answers a takedown that raced the read with 409 and its reason", async () => {
+    await reset();
+    await seedItem(ITEM_ID, USER_ID, {
+      status: "removed",
+      statusReason: "Owner took it down.",
+    });
+
+    const response = await takenDown(env, ITEM_ID);
+    expect(response.status).toBe(409);
+    expect(await response.text()).toBe("Owner took it down.");
+  });
+
+  it("answers a differing-bytes loser with 409 and its sentence", async () => {
+    const response = differentBytes("2.0.0");
+    expect(response.status).toBe(409);
+    expect(await response.text()).toBe(
+      'Version "2.0.0" already exists with different bytes.',
+    );
   });
 
   it("lets a second version insert converge instead of failing on the key", async () => {
@@ -450,6 +527,53 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
+}
+
+/** The version row a crash between the two writes leaves: written at `createdAt`,
+ *  with the item's own state untouched. */
+async function insertLandedVersion(
+  version: string,
+  createdAt: string,
+): Promise<void> {
+  const presign = await env.DB.prepare(
+    `SELECT envelope_json FROM presign_event
+     WHERE user_id = ? AND item_id = ? AND version = ?
+     ORDER BY id DESC LIMIT 1`,
+  )
+    .bind(USER_ID, ITEM_ID, version)
+    .first<{ envelope_json: string }>();
+  await env.DB.prepare(
+    `INSERT INTO item_version (item_id, version, envelope_json, facets_json,
+       package_key, thumbnail_key, bytes, sha256, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      ITEM_ID,
+      version,
+      presign?.envelope_json ?? "{}",
+      JSON.stringify(
+        facetRecordOf(candidate(ITEM_ID) as unknown as FabricThemeEnvelope),
+      ),
+      packageKey(ITEM_ID, version),
+      thumbnailKey(ITEM_ID),
+      PACKAGE_BYTES.byteLength,
+      await sha256Hex(PACKAGE_BYTES),
+      createdAt,
+    )
+    .run();
+}
+
+/** The instant the finalize guard compares against a version row's `created_at`. */
+async function itemUpdatedAt(): Promise<string> {
+  const row = await env.DB.prepare("SELECT updated_at FROM item WHERE id = ?")
+    .bind(ITEM_ID)
+    .first<{ updated_at: string }>();
+  return row?.updated_at ?? "";
+}
+
+/** An instant strictly after `at`, which is what a later transition records. */
+function oneSecondAfter(at: string): string {
+  return new Date(Date.parse(at) + 1000).toISOString();
 }
 
 function pngWith(tail: number): Uint8Array {

@@ -418,17 +418,25 @@ async function finalizeVersion(
   const existing = await versionOf(env.DB, itemId, version);
   if (existing !== undefined) {
     if (
-      existing.sha256 === inspected.sha256 &&
-      existing.bytes === inspected.bytes
+      existing.sha256 !== inspected.sha256 ||
+      existing.bytes !== inspected.bytes
     )
-      // A retry whose first attempt was interrupted between the two writes: the
-      // version row landed but the status did not. Re-applying the transition is
-      // what makes that retry converge instead of leaving the item a draft.
+      return differentBytes(version);
+
+    // A retry whose first attempt was interrupted between the two writes has
+    // not moved the item since the version row landed, so it re-applies the
+    // transition. A replay after any later transition must not: `unpublished`,
+    // `rejected` and a demotion are the author's or the owner's, and the
+    // presigned address outlives the request that minted it.
+    //
+    // The version row and the status write in one finalize share one instant,
+    // which is why this is a strict `<`: an equal instant may be a write that
+    // landed, and treating it as one refuses a replay instead of undoing a
+    // later state. The limit is the same millisecond — a transition that lands
+    // within the version's own millisecond is indistinguishable here.
+    if (item.updated_at < existing.created_at)
       return await settle(env, session, item, version, now);
-    return new Response(
-      `Version "${version}" already exists with different bytes.`,
-      { status: 409 },
-    );
+    return Response.json({ ok: true, status: item.status, version });
   }
 
   await env.BUCKET.put(thumbnailKey(itemId), thumbnail.bytes, {
@@ -454,10 +462,7 @@ async function finalizeVersion(
       won.sha256 !== inspected.sha256 ||
       won.bytes !== inspected.bytes
     )
-      return new Response(
-        `Version "${version}" already exists with different bytes.`,
-        { status: 409 },
-      );
+      return differentBytes(version);
   }
 
   return await settle(env, session, item, version, now);
@@ -484,8 +489,16 @@ async function settle(
   return Response.json({ ok: true, status, version });
 }
 
+/** The one refusal a second finalize of one version with other bytes gets. */
+export function differentBytes(version: string): Response {
+  return new Response(
+    `Version "${version}" already exists with different bytes.`,
+    { status: 409 },
+  );
+}
+
 /** The reason a guarded finalize write changed no row: the item was removed. */
-async function takenDown(env: Env, itemId: string): Promise<Response> {
+export async function takenDown(env: Env, itemId: string): Promise<Response> {
   const item = await itemById(env.DB, itemId);
   return new Response(
     item?.status_reason ?? "This item is no longer available.",
