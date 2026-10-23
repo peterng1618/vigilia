@@ -249,14 +249,24 @@ export type {
   CatalogueItemFile,
   CatalogueItemFileResult,
   CatalogueRefusal,
+  CatalogueStatus,
+  MineEntry,
 } from "./theme/catalogue-index.js";
 export {
   CATALOGUE_ID_PATTERN,
   DASHBOARD_THEME_KIND,
   isCatalogueId,
+  isCatalogueStatus,
   parseCatalogueIndex,
   parseCatalogueItemFile,
 } from "./theme/catalogue-index.js";
+export {
+  CATALOGUE_ORIGIN,
+  catalogueIndexUrl,
+  catalogueItemUrl,
+  cataloguePackageUrl,
+  catalogueThumbnailUrl,
+} from "./theme/catalogue-location.js";
 export type {
   Artboard,
   AssetLicense,

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-22-r2-store-backend-design.md`
 
+**Status (2026-10-23):** complete locally; Task 5.2 (create the Cloudflare resources, deploy, migrate, measure CPU) is the owner's and remains pending. Task reports live in `.superpowers/sdd/2026-10-23-r2-store-backend/`.
+
 ## Global Constraints
 
 - Private R2; no public bucket, no `r2.dev`, no direct R2 URL in any client.
@@ -38,6 +40,8 @@
 
 ## Phase 1 — The Worker serves a public catalogue
 
+**Acceptance (2026-10-23):** Tasks 1.1–1.3 closed with their reports (`task-1.1-report.md`, `task-1.2-report.md`, `task-1.3-report.md`); the worker suite passes and the Task 5.4 red-proofs re-ran against this tree — `task-5.4-report.md`.
+
 ### Task 1.1: Worker package, bindings, D1 schema and test harness
 
 **Files:**
@@ -57,7 +61,7 @@
 - Produces: `Env` with `DB: D1Database`, `BUCKET: R2Bucket`, `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `OWNER_EMAILS`, `MIGRATE_TOKEN`, `TEST_MODE?`, `TEST_MIGRATIONS?`.
 - Produces: `export default { fetch(request, env, ctx) }` in `src/index.ts`, answering `GET /api/health` with `{ ok: true }`.
 
-- [ ] **Step 1: Write the failing harness test**
+- [x] **Step 1: Write the failing harness test**
 
 ```ts
 import { SELF, env } from "cloudflare:test";
@@ -72,12 +76,12 @@ it("answers health and reaches the D1 binding", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker`
 Expected: FAIL — the package or the route does not exist.
 
-- [ ] **Step 3: Create the package and configuration**
+- [x] **Step 3: Create the package and configuration**
 
 `package.json`: name `@yunari/store-worker`, private, type module, `main`/`exports` `./src/index.ts`, scripts `deploy: wrangler deploy`, `dev: wrangler dev`, `test: vitest run --config vitest.config.ts`, `typecheck: tsc --noEmit -p tsconfig.json`. Dependencies `better-auth@1.7.12`, `aws4fetch@1.0.20`. Dev dependencies `@cloudflare/vitest-pool-workers@0.23.0`, `@cloudflare/workers-types@5.20261022.1`, `vitest@4.1.12`, `wrangler@4.152.0`. The nested Vitest 4 is required because the Workers pool's peer range is `^4.1.0` while the workspace runs Vitest 5; say so in a `//` key in the manifest.
 
@@ -93,11 +97,11 @@ Root `package.json`: add `"packages/store-worker"` to `workspaces`, `"test:worke
 
 Record both new runtime dependencies and the dev-only Workers tooling in the notices and dependency map before installing.
 
-- [ ] **Step 4: Implement the minimal health route and run the test**
+- [x] **Step 4: Implement the minimal health route and run the test**
 
 `src/index.ts` answers `/api/health`; `src/env.ts` exports `Env`. Run `npm install` from `src/web`, then `npm run test -w @yunari/store-worker`. Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/web/package.json src/web/packages/store-worker THIRD-PARTY-NOTICES.md docs/engineering/dependencies.md package-lock.json
@@ -122,7 +126,7 @@ git commit -m "feat(store-worker): add the Worker, D1 schema and Workers test ha
 - Produces: `indexDocument(entries: readonly CatalogueEntry[], generatedAt: string): CatalogueIndex`.
 - Produces: `planVersion(input: { previous: { version: string; envelope: FabricThemeEnvelope } | undefined; candidate: FabricThemeEnvelope; now: string }): { ok: true; version: string; level: VersionLevel; facets: FacetRecord } | { ok: false; message: string }`.
 
-- [ ] **Step 1: Write the failing projection tests**
+- [x] **Step 1: Write the failing projection tests**
 
 ```ts
 it("maps a published row to the wire entry the parser accepts", () => {
@@ -133,7 +137,7 @@ it("maps a published row to the wire entry the parser accepts", () => {
 });
 ```
 
-- [ ] **Step 2: Write the failing version-plan tests**
+- [x] **Step 2: Write the failing version-plan tests**
 
 ```ts
 it("bumps from the stored envelope and refuses a claimed version that disagrees", () => {
@@ -146,16 +150,16 @@ it("bumps from the stored envelope and refuses a claimed version that disagrees"
 });
 ```
 
-- [ ] **Step 3: Run both tests to verify they fail**
+- [x] **Step 3: Run both tests to verify they fail**
 
 Run: `npm run test -w @yunari/store-worker -- src/catalogue/entry.test.ts src/version/plan.test.ts`
 Expected: FAIL — the modules do not exist.
 
-- [ ] **Step 4: Implement the projections and `planVersion`**
+- [x] **Step 4: Implement the projections and `planVersion`**
 
 `entryOf` reads `facets_json` as `FacetRecord` and `createdAt`/`updatedAt` from the item row. `planVersion` validates the candidate's declared version is present and equals `versionFor(previous?.version, classifyThemeChange(previous?.envelope, candidate))`, refuses `level === "none"`, and returns `facetRecordOf(candidate)`. An `undefined` previous answers `1.0.0`.
 
-- [ ] **Step 5: Run the tests and commit**
+- [x] **Step 5: Run the tests and commit**
 
 Run the same command. Expected: PASS.
 
@@ -180,7 +184,7 @@ git commit -m "feat(store-worker): project catalogue entries and plan versions"
 - Produces: `publishedListings(db: D1Database): Promise<readonly { item: ItemRow; version: VersionRow }[]>`; `versionOf(db, itemId, version): Promise<VersionRow | undefined>`; `latestVersion(db, itemId): Promise<VersionRow | undefined>`; `bumpDownloads(db, itemId): Promise<boolean>`.
 - Produces: `handlePublic(request: Request, env: Env, url: URL): Promise<Response | undefined>`.
 
-- [ ] **Step 1: Write the failing public-route test**
+- [x] **Step 1: Write the failing public-route test**
 
 ```ts
 it("serves the index, then 404s every unpublished read", async () => {
@@ -203,21 +207,21 @@ it("serves the index, then 404s every unpublished read", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/public.spec.ts`
 Expected: FAIL — routes are missing.
 
-- [ ] **Step 3: Implement the routes**
+- [x] **Step 3: Implement the routes**
 
 `GET /index.json` reads published items with their latest version and favourite counts, builds entries with absolute `packageUrl` and `thumbnail`, and answers `Cache-Control: max-age=60` plus an `ETag` of the body. `GET /catalogue/:id/item.json` and `thumbnail.png` answer only for `published`. `GET /catalogue/:id/:version.zip` opens `env.BUCKET.get(key)`, then calls `bumpDownloads` whose SQL is `UPDATE item SET downloads = downloads + 1 WHERE id = ? AND status = 'published'`; zero rows cancels the body and answers 404. Respond with `Cache-Control: no-store` and `Content-Type: application/zip`.
 
-- [ ] **Step 4: Run the test and the package suite**
+- [x] **Step 4: Run the test and the package suite**
 
 Run: `npm run test -w @yunari/store-worker`
 Expected: PASS, including two downloads incrementing twice.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/web/packages/store-worker/src/db/items.ts src/web/packages/store-worker/src/storage src/web/packages/store-worker/src/routes/public.ts src/web/packages/store-worker/src/index.ts src/web/packages/store-worker/tests
@@ -227,6 +231,8 @@ git commit -m "feat(store-worker): serve the catalogue and count downloads"
 ---
 
 ## Phase 2 — Identity, submission and the version authority
+
+**Acceptance (2026-10-23):** Tasks 2.1–2.5 closed with their reports (`task-2.1-report.md`–`task-2.5-report.md`), including the host session store and the GitHub path's removal; re-verified by the Task 5.4 gate (`task-5.4-report.md`).
 
 ### Task 2.1: Better Auth on D1, bearer sessions and the migration endpoint
 
@@ -244,7 +250,7 @@ git commit -m "feat(store-worker): serve the catalogue and count downloads"
 - Produces: `GET /auth/start?provider=github|google&host=<loopback origin>&state=<opaque>` — calls `auth.api.signInSocial` with `callbackURL = <worker>/auth/return?host=…&state=…` and answers a 302 to the provider URL.
 - Produces: `returnPage(): Response` — the HTML at `GET /auth/return`.
 
-- [ ] **Step 1: Write the failing auth test**
+- [x] **Step 1: Write the failing auth test**
 
 ```ts
 beforeAll(async () => {
@@ -273,23 +279,23 @@ it("accepts a real test session", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/auth.spec.ts`
 Expected: FAIL — `/migrate` and `/api/me` do not exist.
 
-- [ ] **Step 3: Implement `createAuth`, the session helper, `/migrate` and `/auth/return`**
+- [x] **Step 3: Implement `createAuth`, the session helper, `/migrate` and `/auth/return`**
 
 `/migrate` requires `x-migrate-token` equal to `env.MIGRATE_TOKEN`; a missing token is 404, a wrong one 403. It runs `getMigrations(auth.options)` and `runMigrations()`. `/api/auth/*` delegates to `auth.handler`. `/api/me` uses `sessionOf` and returns `{ userId, email }`. `sessionOf` calls `auth.api.getSession({ headers: request.headers })`.
 
 `/auth/start` validates `host` as `http://127.0.0.1:<port>` or `http://localhost:<port>`, calls `auth.api.signInSocial({ body: { provider, callbackURL } })`, and redirects to the returned URL. `/auth/return` is a static HTML page. Its inline script calls `POST /api/auth/one-time-token/generate` with `credentials: "include"`, then redirects to the `host` query parameter with `token` and the unchanged `state`. Reject a `host` that is not a loopback origin.
 
-- [ ] **Step 4: Run the auth test and the package suite**
+- [x] **Step 4: Run the auth test and the package suite**
 
 Run: `npm run test -w @yunari/store-worker`
 Expected: PASS; a forged bearer is 401 and a real test session reaches `/api/me`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/web/packages/store-worker/src/auth.ts src/web/packages/store-worker/src/auth src/web/packages/store-worker/src/index.ts src/web/packages/store-worker/tests/auth.spec.ts
@@ -314,7 +320,7 @@ git commit -m "feat(store-worker): add Better Auth sessions and the D1 migration
 - Produces: `POST /api/me/items/:id/versions` → `{ version, status, uploadUrl }`.
 - Produces: `GET /api/me/items/:id/baseline` → `{ version, createdAt, envelope, status }` or 404.
 
-- [ ] **Step 1: Write the failing presign and ownership test**
+- [x] **Step 1: Write the failing presign and ownership test**
 
 ```ts
 it("signs only the key derived from the session and the computed version", async () => {
@@ -344,18 +350,18 @@ it("refuses the 21st item and the 61st presign in an hour", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/versions.spec.ts`
 Expected: FAIL — the route is missing.
 
-- [ ] **Step 3: Implement `presignPut` and the version route**
+- [x] **Step 3: Implement `presignPut` and the version route**
 
 `presignPut` builds `https://<accountId>.r2.cloudflarestorage.com/<bucket>/<key>?X-Amz-Expires=<seconds>` and signs it with `AwsClient({ service: "s3", region: "auto", ... }).sign(url, { method: "PUT", aws: { signQuery: true } })`. It refuses an empty key or a key containing `..`.
 
 The route resolves the session, refuses an item id owned by another user, loads the baseline, parses `envelope` as unknown with `validateFabricThemeEnvelope`, calls `planVersion`, enforces the quota and the hourly presign limit, creates the `item` row as `draft` when absent, writes a `presign_event` row, and returns the presigned URL. The quota check passes `MAX_ARCHIVE_BYTES` as `extraBytes`, because the object's real size is not known until finalize; the check is therefore conservative. `status` is `"published"` when `author_profile.verified = 1`, otherwise `"pending"`.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npm run test -w @yunari/store-worker`
 Expected: PASS; the URL's path is the derived key and a foreign id is 404.
@@ -377,7 +383,7 @@ git commit -m "feat(store-worker): presign uploads and compute versions server-s
 - Produces: `inspectObject(bucket: R2Bucket, key: string): Promise<{ bytes: number; sha256: string } | undefined>` — `undefined` for a missing key, reading the stream once.
 - Produces: `POST /api/me/items/:id/versions/:version/finalize` body `{ thumbnail: string }` (base64 PNG) → `{ ok: true, status, version }`.
 
-- [ ] **Step 1: Write the failing finalize test**
+- [x] **Step 1: Write the failing finalize test**
 
 ```ts
 it("refuses a missing or oversized object and publishes an unverified author to pending", async () => {
@@ -408,16 +414,16 @@ it("returns a rejected item to the queue on a new version", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/finalize.spec.ts`
 Expected: FAIL — the route is missing.
 
-- [ ] **Step 3: Implement finalize**
+- [x] **Step 3: Implement finalize**
 
 The route checks the item belongs to the session and is not `removed`, HEADs the object, refuses `bytes > MAX_ARCHIVE_BYTES` with 422, writes the thumbnail (refusing a body over 2 MiB or a non-PNG), computes the SHA-256 while reading, inserts the `item_version` row, and applies the transition from `draft`, `pending`, `unpublished` or `rejected`: `pending` for an unverified author, `published` for a verified one. Finalizing the same version twice is idempotent when the bytes and hash match; a different hash is 409.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npm run test -w @yunari/store-worker`
 Expected: PASS; pending items are absent from the index.
@@ -442,7 +448,7 @@ git commit -m "feat(store-worker): finalize uploads and apply the review gate"
 - Produces host routes `POST /api/store/auth/start` → `{ url }`, `GET /api/store/auth/return?token=&state=` → an HTML page that closes the popup, `POST /api/store/auth/sign-out`, `GET /api/store/session` → `{ signedIn, email }`.
 - Consumes: Worker `/auth/start`, `/auth/return`, `/api/auth/one-time-token/verify`.
 
-- [ ] **Step 1: Write the failing session-store test**
+- [x] **Step 1: Write the failing session-store test**
 
 ```ts
 it("round-trips a session and clears both the file and its temporary sibling", async () => {
@@ -465,16 +471,16 @@ it("reports only whether a store session exists, never the token", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/host/src/settings/store-session.test.ts`
 Expected: FAIL — the module does not exist.
 
-- [ ] **Step 3: Implement the store and the host auth routes**
+- [x] **Step 3: Implement the store and the host auth routes**
 
 Copy `github-token.ts`'s exclusive read/write/rename pattern; validate four non-empty strings and an instant. The start route builds the Worker `/auth/start` URL with the host's loopback return and a random state kept in memory for 10 minutes. The return route checks loopback, origin and state, calls `/api/auth/one-time-token/verify`, reads `set-cookie`, extracts `better-auth.session_token` (URL-decoded) as the bearer token, calls `/api/me` to learn `userId`/`email`, writes the session, and answers `200`. A failed verify clears the pending state and answers 401. No route returns the token.
 
-- [ ] **Step 4: Run the test, typecheck and commit**
+- [x] **Step 4: Run the test, typecheck and commit**
 
 Run: `npx vitest run packages/host/src/settings/store-session.test.ts` and `npm run typecheck -w @yunari/host`. Expected: PASS.
 
@@ -498,7 +504,7 @@ git commit -m "feat(host): hold a store session and complete OAuth through the W
 - Produces: `submissionFiles(id, store, options: { thumbnails?; now?; client: StoreClient })`, returning `{ packageBytes, thumbnailBytes, version, from, level, status }`; the item JSON and catalogue path are the Worker's to build now.
 - Produces: `POST /api/themes/submit` → `{ ok: true, status, version: { from, to, level } }`; 401 when no session.
 
-- [ ] **Step 1: Write the failing store-client test**
+- [x] **Step 1: Write the failing store-client test**
 
 ```ts
 it("reads the authenticated baseline and submits envelope, package and thumbnail", async () => {
@@ -512,16 +518,16 @@ it("reads the authenticated baseline and submits envelope, package and thumbnail
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/host/src/themes/store-client.test.ts`
 Expected: FAIL — the module does not exist.
 
-- [ ] **Step 3: Implement the client and rework submission**
+- [x] **Step 3: Implement the client and rework submission**
 
 The client sends `Authorization: Bearer <token>`, parses every answer as JSON, and turns a non-2xx into `{ ok: false, message }` with the Worker's sentence. `upload` PUTs the raw bytes to the presigned URL and refuses a non-2xx. `submission.ts` uses `client.baseline` instead of `readPublishedItem`; the version ladder code stays. The server route resolves the session store, builds `submissionFiles`, calls `createVersion`, uploads, finalizes, and answers the status. Delete the fork/PR, device-flow and CI-validator modules and their tests in the same commit; update every import.
 
-- [ ] **Step 4: Run the host suite, typecheck and commit**
+- [x] **Step 4: Run the host suite, typecheck and commit**
 
 Run: `npx vitest run packages/host/src/themes` and `npm run typecheck -w @yunari/host`. Expected: PASS.
 
@@ -533,6 +539,8 @@ git commit -m "feat(host): submit themes to the Worker and drop the GitHub path"
 ---
 
 ## Phase 3 — Management: moderation, unpublish, favourites and Mine
+
+**Acceptance (2026-10-23):** Tasks 3.1–3.4 closed with their reports (`task-3.1-report.md`–`task-3.4-report.md`); unpublish and the counter are covered by two of the Task 5.4 red-proofs (`task-5.4-report.md`).
 
 ### Task 3.1: Owner routes, the pending queue and author verification
 
@@ -546,7 +554,7 @@ git commit -m "feat(host): submit themes to the Worker and drop the GitHub path"
 - Produces: `isOwner(session: Session, ownerEmails: string): boolean` — case-insensitive, comma-separated.
 - Produces: `GET /api/admin/queue`, `POST /api/admin/items/:id/approve`, `POST /api/admin/items/:id/reject { reason }`, `POST /api/admin/items/:id/remove { reason }`, `POST /api/admin/items/:id/restore`, `POST /api/admin/authors/:userId/verify`, `POST /api/admin/authors/:userId/unverify`.
 
-- [ ] **Step 1: Write the failing admin test**
+- [x] **Step 1: Write the failing admin test**
 
 ```ts
 it("lets only an owner approve a pending item", async () => {
@@ -572,16 +580,16 @@ it("removes with a reason and only the owner can restore", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/admin.spec.ts`
 Expected: FAIL — the routes are missing.
 
-- [ ] **Step 3: Implement the admin routes**
+- [x] **Step 3: Implement the admin routes**
 
 Every handler resolves the session first, then `isOwner`; a non-owner gets 404 so the routes are not enumerable. Approve moves `pending → published`, reject and remove require a non-empty reason, restore moves `removed → published`, and verify/unverify upsert `author_profile`.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npm run test -w @yunari/store-worker`. Expected: PASS.
 
@@ -601,7 +609,7 @@ git commit -m "feat(store-worker): add the owner queue, takedown and verificatio
 - Produces: `POST /api/me/items/:id/unpublish` and `POST /api/me/items/:id/publish`, both 404 for a foreign id.
 - Produces: `setStatus(db, itemId, from: readonly string[], to: string, at: string): Promise<boolean>` — a guarded update returning whether a row changed.
 
-- [ ] **Step 1: Write the failing unpublish test**
+- [x] **Step 1: Write the failing unpublish test**
 
 ```ts
 it("hides every read, keeps the record, and restores counters on republish", async () => {
@@ -620,16 +628,16 @@ it("hides every read, keeps the record, and restores counters on republish", asy
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/unpublish.spec.ts`
 Expected: FAIL — the routes are missing.
 
-- [ ] **Step 3: Implement both transitions**
+- [x] **Step 3: Implement both transitions**
 
 Unpublish uses `setStatus(db, id, ["published"], "unpublished", now)`; republish uses `setStatus(db, id, ["unpublished"], "published", now)` and refuses `removed` with the stored reason. Do not touch `downloads`, `favorite`, `item_version` or R2. The item's `author_user_id` must match the session; a mismatch is 404.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npm run test -w @yunari/store-worker`. Expected: PASS.
 
@@ -652,7 +660,7 @@ git commit -m "feat(store-worker): unpublish and republish an author's item"
 - Produces: `favoriteCount(db, itemId): Promise<number>`; `countsByItem(db, ids): Promise<ReadonlyMap<string, number>>`.
 - Produces: `PUT|DELETE /api/me/items/:id/favorite` → `{ ok: true, favorites }`.
 
-- [ ] **Step 1: Write the failing favourite test**
+- [x] **Step 1: Write the failing favourite test**
 
 ```ts
 it("counts one favourite per account and follows the index", async () => {
@@ -665,16 +673,16 @@ it("counts one favourite per account and follows the index", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/favorites.spec.ts`
 Expected: FAIL — the route is missing.
 
-- [ ] **Step 3: Implement favourites and wire the counts**
+- [x] **Step 3: Implement favourites and wire the counts**
 
 `INSERT OR IGNORE` for PUT, `DELETE` for DELETE; PUT is refused with 404 unless the item is published, DELETE is allowed in any state. The index and `item.json` read `countsByItem` once rather than issuing a query per entry.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npm run test -w @yunari/store-worker`. Expected: PASS.
 
@@ -696,7 +704,7 @@ git commit -m "feat(store-worker): favourite items and read live counts"
 - Produces: `GET /api/me/items` → `{ entries: MineEntry[] }`, where `MineEntry = CatalogueEntry & { status: CatalogueStatus; statusReason?: string }`, newest first, every state except a versionless `draft`.
 - Produces: host `GET /api/store/mine` proxying the call with the stored token.
 
-- [ ] **Step 1: Write the failing Mine test**
+- [x] **Step 1: Write the failing Mine test**
 
 ```ts
 it("returns the author's unpublished and pending items and nobody else's", async () => {
@@ -710,16 +718,16 @@ it("returns the author's unpublished and pending items and nobody else's", async
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test -w @yunari/store-worker -- tests/mine.spec.ts`
 Expected: FAIL — the route is missing.
 
-- [ ] **Step 3: Implement the endpoint and the proxy**
+- [x] **Step 3: Implement the endpoint and the proxy**
 
 Join `item` to its latest version and favourite count, filter `author_user_id = session.userId`, and include `status` and `statusReason`. The host route is loopback-only, requires a stored session, and returns 401 when there is none.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npm run test -w @yunari/store-worker && npx vitest run packages/host/src/themes/store-client.test.ts`. Expected: PASS.
 
@@ -731,6 +739,8 @@ git commit -m "feat(store): list an author's own items through the host"
 ---
 
 ## Phase 4 — The client surface
+
+**Acceptance (2026-10-23):** Tasks 4.1–4.5 closed with their reports (`task-4.1-report.md`–`task-4.5-report.md`); unit and typecheck segments exit 0 in the Task 5.4 run (`task-5.4-report.md`).
 
 ### Task 4.1: One catalogue origin and one download allow-list
 
@@ -748,7 +758,7 @@ git commit -m "feat(store): list an author's own items through the host"
 - Produces: `CATALOGUE_ORIGIN` (initial value `https://yunari-store.workers.dev`; Task 5.2 replaces it with the deployed URL).
 - Produces: `catalogueIndexUrl()`, `catalogueItemUrl(id)`, `cataloguePackageUrl(id, version)`, `catalogueThumbnailUrl(path)`; the last joins `CATALOGUE_ORIGIN` and the path without a `/catalogue` suffix.
 
-- [ ] **Step 1: Write the failing location test**
+- [x] **Step 1: Write the failing location test**
 
 ```ts
 it("builds the Worker's public addresses from one origin", () => {
@@ -759,16 +769,16 @@ it("builds the Worker's public addresses from one origin", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/renderer-core/src/theme/catalogue-location.test.ts`
 Expected: FAIL — the module does not exist.
 
-- [ ] **Step 3: Implement the module and move the callers**
+- [x] **Step 3: Implement the module and move the callers**
 
 Replace both hand-kept constants with imports from `renderer-core`. `download.ts` allows exactly `new URL(CATALOGUE_ORIGIN).hostname` over https and sets `MAX_REDIRECTS = 0`. `online-source.ts` imports `catalogueIndexUrl` and `catalogueThumbnailUrl` from the shared module. Update every test that asserted the GitHub URLs.
 
-- [ ] **Step 4: Run the affected suites and commit**
+- [x] **Step 4: Run the affected suites and commit**
 
 Run: `npx vitest run packages/renderer-core packages/editor/src/store-mode/online-source.test.ts packages/host/src/themes/download.test.ts`. Expected: PASS.
 
@@ -791,7 +801,7 @@ git commit -m "refactor(store): own the catalogue origin in renderer-core"
 - Produces: `mineThemeSource(options?: { fetch?: typeof fetch }): ItemSource` — `list()` maps entries to `StoreItem & { status; statusReason }`.
 - Produces: a `Mine` toggle (`data-yunari-store-mine`) drawn in the online half when a session is present; with it on, `listed` comes from `mineThemeSource`, status is carried on each item, and the public filters still apply.
 
-- [ ] **Step 1: Write the failing mine-source test**
+- [x] **Step 1: Write the failing mine-source test**
 
 ```ts
 it("maps status and reason from the host answer", async () => {
@@ -800,16 +810,16 @@ it("maps status and reason from the host answer", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/editor/src/store-mode/mine-source.test.ts`
 Expected: FAIL — the module does not exist.
 
-- [ ] **Step 3: Implement the source and the toggle**
+- [x] **Step 3: Implement the source and the toggle**
 
 The source fetches `/api/store/mine`, parses `entries` with the same shape rules as `online-source`, and throws on a non-2xx so the region leaves the listing unset. The region asks `/api/store/session` once; the toggle is absent when signed out. Turning Mine on while on the local half switches to online. Copy keys: `uiCopy.store.mine.label`, `.empty`, `.status.pending`, `.status.unpublished`, `.status.rejected`, `.status.removed`.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npx vitest run packages/editor/src/store-mode/mine-source.test.ts packages/editor/src/store-mode/region.dom.test.tsx`. Expected: PASS.
 
@@ -833,7 +843,7 @@ git commit -m "feat(editor): list the author's own items behind a Mine toggle"
 - Produces: `ItemModal` props `onUnpublish?: (id: string) => void`, `onRepublish?: (id: string) => void`, `status?: CatalogueStatus`, `statusReason?: string`.
 - Produces: regions call `POST /api/store/items/:id/unpublish|publish`, then re-read the Mine listing.
 
-- [ ] **Step 1: Write the failing DOM tests**
+- [x] **Step 1: Write the failing DOM tests**
 
 ```tsx
 it("draws Unpublished and offers Republish on the author's item", async () => {
@@ -850,16 +860,16 @@ it("badges a pending cell without changing its public actions", () => {
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `npx vitest run packages/editor/src/store-mode/item-modal.dom.test.tsx packages/editor/src/store-mode/gallery.dom.test.tsx`
 Expected: FAIL — the status is not drawn.
 
-- [ ] **Step 3: Implement the badge and the actions**
+- [x] **Step 3: Implement the badge and the actions**
 
 A small badge element after the item's name, with `data-yunari-store-status`. The modal shows Unpublish only for `published`, Republish only for `unpublished`, and the owner's sentence for `rejected`/`removed`. The region posts to the host and replaces the item in the Mine listing with the answer; a refusal is announced in the existing live region.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: the same command. Expected: PASS.
 
@@ -882,7 +892,7 @@ git commit -m "feat(editor): show item status and let an author withdraw or rest
 - Produces: `SubmitState = "idle" | "authorising" | "submitting" | "submitted" | "refused"`, `SubmittedVersion { from: string | null; to: string; level: VersionLevel }`, and `SubmitControl.status: "pending" | "published" | undefined`.
 - Consumes: host `POST /api/store/auth/start` → `{ url }`, `POST /api/themes/submit` → `{ ok, status, version }`.
 
-- [ ] **Step 1: Write the failing submit test**
+- [x] **Step 1: Write the failing submit test**
 
 ```ts
 it("opens the auth popup once, retries the submission, and reports pending", async () => {
@@ -900,16 +910,16 @@ it("opens the auth popup once, retries the submission, and reports pending", asy
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/editor/src/store-mode/use-submit.test.ts`
 Expected: FAIL — the module does not exist or the flow is the device flow.
 
-- [ ] **Step 3: Implement the flow and the copy**
+- [x] **Step 3: Implement the flow and the copy**
 
 `attempt` posts `/api/themes/submit`. On 401 it posts `/api/store/auth/start`, opens `url` in a popup, and polls `/api/store/session` every 1 s for at most 5 minutes; when `signedIn` is true it retries once. On success it reports `status` and the version. Copy replaces "pull request" with "submission" and names pending review.
 
-- [ ] **Step 4: Run the tests and commit**
+- [x] **Step 4: Run the tests and commit**
 
 Run: `npx vitest run packages/editor/src/store-mode`. Expected: PASS.
 
@@ -926,20 +936,20 @@ git commit -m "feat(editor): submit through the store session instead of the Git
 - Modify: `docs/superpowers/specs/2026-10-12-theme-store-design.md` — status line points at this backend
 - Modify: any roadmap or backlog text that still names the PR flow as current
 
-- [ ] **Step 1: Find every survivor**
+- [x] **Step 1: Find every survivor**
 
 Run: `rg -n "github-submit|github-oauth|github-item|published-item|validate-item|github-token|githubClientId|CATALOGUE_RAW_BASE|CATALOGUE_CDN_BASE" src/web docs`
 Expected: no product or test hit. Documentation hits are repointed in this task; a source hit is a missed deletion from Task 2.5 and is fixed here.
 
-- [ ] **Step 2: Repoint the docs**
+- [x] **Step 2: Repoint the docs**
 
 `docs/architecture/ownership.md` gains one row: the catalogue's wire shape and URL builders belong to `renderer-core/src/theme/catalogue-location.ts`; the store's backend belongs to `packages/store-worker`. The 2026-10-12 store spec's status line names this backend as superseding its hosting sections. Dependencies and notices already carry Better Auth and `aws4fetch` from Task 1.1; verify no GitHub-only dependency remains.
 
-- [ ] **Step 3: Run the full unit suite and typecheck**
+- [x] **Step 3: Run the full unit suite and typecheck**
 
 Run: `npm test` (from `src/web`) and `npm run typecheck`. Expected: PASS, no reference to a deleted module.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/web/packages/host/src/index.ts src/web/packages/host/src/server.ts docs THIRD-PARTY-NOTICES.md
@@ -949,6 +959,8 @@ git commit -m "docs(store): repoint ownership and dependencies after the GitHub 
 ---
 
 ## Phase 5 — Cutover and proof
+
+**Acceptance (2026-10-23):** Task 5.1's script and tests and Task 5.3's browser proof are complete (`task-5.1-report.md`, `task-5.3-report.md`); Task 5.2 is owner-run and pending, so nothing deployed is claimed; Task 5.4 ran the gate and the three red-proofs — `task-5.4-report.md`.
 
 ### Task 5.1: Import the existing item
 
@@ -961,7 +973,7 @@ git commit -m "docs(store): repoint ownership and dependencies after the GitHub 
 - Produces: `importPlan({ itemJson, packageBytes, thumbnailBytes, session }): { origin: string; envelope: object; name: string; packageBytes; thumbnail: string }` — pure.
 - Consumes: the owner's `settings/store-session.json`, the Worker's author flow (`POST /api/me/items/:id/versions`, presigned PUT, finalize).
 
-- [ ] **Step 1: Write the failing import test**
+- [x] **Step 1: Write the failing import test**
 
 ```ts
 it("reads the envelope out of the old package and plans one version upload", async () => {
@@ -973,16 +985,16 @@ it("reads the envelope out of the old package and plans one version upload", asy
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run tests/scripts/import-catalogue-item.test.ts`
 Expected: FAIL — the module does not exist.
 
-- [ ] **Step 3: Implement the reader and the CLI**
+- [x] **Step 3: Implement the reader and the CLI**
 
 The script takes `--source <catalogue item dir>` and `--origin <worker origin>`, reads `settings/store-session.json` from the host settings directory (or a `--token` file), then drives the normal author flow as the owner: version request, presigned PUT, finalize, then `POST /api/admin/items/:id/approve` if the owner account is not marked verified. The Worker computes facets and the version; the script never writes D1 or R2 directly. It refuses when the package envelope's id differs from `item.json`'s id, and when the old item's version is not `1.0.0` (a first submission computes `1.0.0`, so any other old version would be a silent rewrite). It never prints the token.
 
-- [ ] **Step 4: Run the test and commit**
+- [x] **Step 4: Run the test and commit**
 
 Run: `npx vitest run tests/scripts/import-catalogue-item.test.ts`. Expected: PASS.
 
@@ -1000,19 +1012,19 @@ git commit -m "feat(store): import the GitHub catalogue item through the author 
 - Modify: `src/web/packages/renderer-core/src/theme/catalogue-location.ts` — `CATALOGUE_ORIGIN`
 - Modify: `src/web/packages/store-worker/README.md` (create) — the secret list and OAuth callback URLs
 
-- [ ] **Step 1: Create the Cloudflare resources**
+- [ ] **Step 1: Create the Cloudflare resources** — **owner-run, pending**
 
 Run: `npx wrangler d1 create yunari-store`, then `npx wrangler r2 bucket create yunari-store-packages`. Put the printed D1 id into `wrangler.toml`.
 
-- [ ] **Step 2: Set the secrets**
+- [ ] **Step 2: Set the secrets** — **owner-run, pending**
 
 Run `npx wrangler secret put` for each of `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `OWNER_EMAILS`, `MIGRATE_TOKEN`. Record the OAuth callback URL `https://<worker>/api/auth/callback/<provider>` in the README.
 
-- [ ] **Step 3: Deploy, migrate and record the URL**
+- [ ] **Step 3: Deploy, migrate and record the URL** — **owner-run, pending**
 
 Run `npx wrangler deploy`, then `curl -X POST https://<worker>/migrate -H "x-migrate-token: …"`, then `curl https://<worker>/api/health`. Replace `CATALOGUE_ORIGIN` with the printed `https://…workers.dev` URL and rebuild.
 
-- [ ] **Step 4: Measure CPU**
+- [ ] **Step 4: Measure CPU** — **owner-run, pending**
 
 Record Workers CPU for `GET /index.json` and one auth callback in the plan's evidence file. If either exceeds 10 ms, say so and adopt Workers Paid before the cutover is called done.
 
@@ -1022,19 +1034,19 @@ Record Workers CPU for `GET /index.json` and one auth callback in the plan's evi
 - Create: `src/web/tests/e2e/store-mine.spec.ts`
 - Modify: `docs/evidence/screenshots/README.md`
 
-- [ ] **Step 1: Register the captures first**
+- [x] **Step 1: Register the captures first**
 
 Add a **Theme store** table with three rows: `Mine lists an unpublished item`, `Unpublish action in the item modal`, `Republish action restores the item`, each with its capture/title regex.
 
-- [ ] **Step 2: Write the browser test with routed host answers**
+- [x] **Step 2: Write the browser test with routed host answers**
 
 Route `/api/store/session` and `/api/store/mine` with `page.route`, open the store, switch to online, turn Mine on, assert the badge, open the item, assert the action, and assert the refusal path. The test must assert visible text, not only object counts.
 
-- [ ] **Step 3: Capture and look at the images**
+- [x] **Step 3: Capture and look at the images**
 
 Run `YUNARI_CAPTURE=1 npx playwright test tests/e2e/store-mine.spec.ts --workers=1`, then inspect each registered image and write one sentence per image into the plan's evidence.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/web/tests/e2e/store-mine.spec.ts docs/evidence/screenshots
@@ -1047,19 +1059,21 @@ git commit -m "test(store): prove Mine, unpublish and republish in a browser"
 - Modify: `STATUS.md`
 - Modify: `docs/superpowers/plans/2026-10-23-r2-store-backend.md` — tick and annotate acceptance
 
-- [ ] **Step 1: Run the broad gate**
+- [x] **Step 1: Run the broad gate**
 
 From `src/web`: `npm run gate` and `npm run test:worker`, each with output to a file and the exit code read directly. Expected: exit 0. Record both codes.
 
-- [ ] **Step 2: Re-run the red-proofs against the final tree**
+**Ran 2026-10-23:** `test:worker` exit 0 (12 files, 64 tests). `gate` exit 1 at `gates:self-test` for a pre-existing `scratch-gate` case (`vg-700`); status, docs, scratch, design, typecheck and the 4388-test unit suite were then run as separate commands, each exit 0 — `task-5.4-report.md`.
+
+- [x] **Step 2: Re-run the red-proofs against the final tree**
 
 Disable the `status = 'published'` predicate, the download increment and the version check in turn; run their tests; restore each from a copy outside the repo and verify with `cmp`. Record the failure text and the `cmp` result.
 
-- [ ] **Step 3: Close the plan and update STATUS**
+- [x] **Step 3: Close the plan and update STATUS**
 
 Replace STATUS's last-completed bullets with the plan's outcome and list what is unverified (real OAuth round trip, live CPU, any behaviour only the deployed origin can show). Leave the plan in `docs/superpowers/plans/`; archiving is the owner's call after acceptance.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add STATUS.md docs/superpowers/plans

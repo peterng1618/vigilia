@@ -11,6 +11,11 @@ import {
 } from "@yunari/renderer-core";
 import type { ChartRefreshRate } from "@yunari/scene-fabric";
 import { type AssetRouteOptions, handleAssetRoutes } from "./assets/routes.js";
+import {
+  createPendingStates,
+  handleCatalogueRoutes,
+} from "./catalogue/routes.js";
+import { handleSubmitRoute } from "./catalogue/submit.js";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
@@ -68,19 +73,12 @@ import {
   normalizePatch,
 } from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
-import type { GithubTokenStore } from "./settings/github-token.js";
 import type { HostRecord } from "./settings/host-record.js";
 import { listMonitors, type Monitor } from "./settings/monitors.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
+import type { StoreSessionStore } from "./settings/store-session.js";
 import type { ThemeOriginsStore } from "./settings/theme-origins.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
-import { submissionFiles } from "./themes/github-item.js";
-import {
-  fetchLogin,
-  pollDeviceToken,
-  requestDeviceCode,
-} from "./themes/github-oauth.js";
-import { submitToCatalogue } from "./themes/github-submit.js";
 import { importThemePackage } from "./themes/import.js";
 import {
   type InstallRequest,
@@ -118,12 +116,6 @@ const SESSION_HEADER = "x-yunari-session";
  *  simply wrong. A caller that could tell them apart could search the space. */
 const NO_PAIRING_CODE =
   "That pairing code is not the one this host is showing.";
-
-/** The one answer both routes that act as the author's GitHub account give when
- *  this host has no OAuth app: registering one is the author's move, not a
- *  retry. */
-const NO_GITHUB_CLIENT_ID =
-  "This host has no GitHub OAuth client id; register an OAuth app and set YUNARI_GITHUB_CLIENT_ID.";
 
 /** What a theme read answers: the stored record, or undefined for a theme the
  *  store will not serve. */
@@ -187,13 +179,12 @@ export interface HostServerOptions {
   /** The fetcher the install route uses. Omitted uses the global; supplied so a
    *  route test can install without a network. */
   readonly fetch?: typeof fetch;
-  /** The OAuth app the device flow signs in through. Omitted falls back to
-   *  `YUNARI_GITHUB_CLIENT_ID`; without either, the start route answers that
-   *  registration is missing rather than pretending a sign-in can start. */
-  readonly githubClientId?: string;
-  /** Where the signed-in GitHub identity is kept. Omitted when the host keeps
-   *  none; the routes then say so rather than signing in to nowhere. */
-  readonly githubToken?: GithubTokenStore;
+  /** The Worker's origin, as the store session routes reach it. Omitted falls
+   *  back to `YUNARI_STORE_ORIGIN`; without either, those routes say the host
+   *  has no store rather than inventing an address. */
+  readonly storeOrigin?: string;
+  /** The store session this host holds. Omitted when it keeps none. */
+  readonly storeSession?: StoreSessionStore;
   /** Which theme this host displays. Omitted when the host keeps no choice. */
   readonly activeTheme?: ActiveThemeStore;
   /** The consumer's display preferences. Omit when the host stores none. */
@@ -315,7 +306,7 @@ export const MAX_THEME_UPLOAD_BYTES = 96 * 1024 * 1024;
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
 /** Recognizes loopback forms Node may report. */
-function isLoopbackRemote(address: string | undefined): boolean {
+export function isLoopbackRemote(address: string | undefined): boolean {
   if (address === undefined) {
     return false;
   }
@@ -326,7 +317,7 @@ function isLoopbackRemote(address: string | undefined): boolean {
 }
 
 /** The hostname an authority (`host:port`, `[::1]:port`) names, or nothing. */
-function hostnameOf(authority: string): string | undefined {
+export function hostnameOf(authority: string): string | undefined {
   try {
     return new URL(`http://${authority}`).hostname.toLowerCase();
   } catch {
@@ -335,7 +326,7 @@ function hostnameOf(authority: string): string | undefined {
 }
 
 /** A name that can only mean this machine. */
-function isLoopbackName(name: string | undefined): boolean {
+export function isLoopbackName(name: string | undefined): boolean {
   if (name === undefined) return false;
   return (
     name === "localhost" || name === "[::1]" || /^127(\.\d{1,3}){3}$/.test(name)
@@ -358,7 +349,7 @@ function isLoopbackName(name: string | undefined): boolean {
  * poll, sign-out and submit — calls this, because a request to `localhost` that
  * the page did not mean to make is that page acting as this machine.
  */
-function isForeignOrigin(request: http.IncomingMessage): boolean {
+export function isForeignOrigin(request: http.IncomingMessage): boolean {
   const host = request.headers.host;
   if (host === undefined || !isLoopbackName(hostnameOf(host))) return true;
 
@@ -539,7 +530,7 @@ function parseAspect(value: unknown): NormalizeAspect | undefined | null {
 }
 
 /** Bounded JSON body for admin writes; a runaway body must not be buffered. */
-async function readBody(
+export async function readBody(
   request: http.IncomingMessage,
   limit = 64 * 1024,
 ): Promise<string> {
@@ -688,6 +679,21 @@ function sendText(
 ): void {
   response.writeHead(status, { "content-type": "text/plain; charset=utf-8" });
   response.end(body);
+}
+
+/** A route module's answer, written as the node response this server speaks. */
+async function writeWebResponse(
+  response: http.ServerResponse,
+  answered: Response,
+): Promise<void> {
+  response.writeHead(answered.status, {
+    // Every route that answers this way keeps its own cache rule, and the two
+    // it can say are the two the host ever sets.
+    "content-type":
+      answered.headers.get("content-type") ?? "text/plain; charset=utf-8",
+    "cache-control": answered.headers.get("cache-control") ?? "no-store",
+  });
+  response.end(Buffer.from(await answered.arrayBuffer()));
 }
 
 /**
@@ -885,12 +891,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const published = options.published ?? createPublishedStore();
   const caCertificate = options.caCertificate;
   const hostRecord = options.host;
-  const githubClientId =
-    options.githubClientId ?? process.env.YUNARI_GITHUB_CLIENT_ID;
-  const githubToken = options.githubToken;
-  /** The single device flow this host is waiting on. The browser sends nothing
-   *  that could name another, so there is one value rather than a map. */
-  let pendingDevice: string | undefined;
+  const storeOrigin = options.storeOrigin ?? process.env.YUNARI_STORE_ORIGIN;
+  const storeSession = options.storeSession;
+  /** The store sign-in states this server minted, so another instance in the
+   *  same process cannot redeem them. */
+  const storeSignInStates = createPendingStates();
 
   /**
    * The move a PUT asked for, run once that PUT's answer is on the wire. Its
@@ -1172,6 +1177,20 @@ export function createHostServer(options: HostServerOptions): HostServer {
         "/pair.html",
         "The pairing page is missing from this installation.",
       );
+      return;
+    }
+
+    // The store session: signing in, coming back, reading the state and
+    // signing out. In a module of its own, because this file is already past
+    // the size a reader can hold.
+    const answered = await handleCatalogueRoutes(request, url, {
+      origin: storeOrigin,
+      sessionStore: storeSession,
+      fetch: options.fetch ?? fetch,
+      states: storeSignInStates,
+    });
+    if (answered !== undefined) {
+      await writeWebResponse(response, answered);
       return;
     }
 
@@ -2639,231 +2658,19 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
-    // The device-flow sign-in. The browser starts it, polls it and signs out;
-    // it never sees the access token, which is written straight to the settings
-    // directory. Same guards as the install route, in the same order: these
-    // routes act as the author's GitHub account.
-    if (
-      url.pathname === "/api/github/device" ||
-      url.pathname === "/api/github/device/poll" ||
-      url.pathname === "/api/github/token"
-    ) {
-      const method = url.pathname === "/api/github/token" ? "DELETE" : "POST";
-      if (request.method !== method) {
-        sendText(response, 405, `Only ${method} is supported.`);
-        return;
-      }
-      if (!isLoopbackRemote(request.socket.remoteAddress)) {
-        sendText(response, 403, "GitHub sign-in is local to this PC only.");
-        return;
-      }
-      if (isForeignOrigin(request)) {
-        sendText(response, 403, "That request is from another origin.");
-        return;
-      }
-      if (githubClientId === undefined || githubClientId.trim() === "") {
-        sendText(response, 503, NO_GITHUB_CLIENT_ID);
-        return;
-      }
-      if (githubToken === undefined) {
-        sendText(response, 503, "This host keeps no GitHub token.");
-        return;
-      }
-
-      if (url.pathname === "/api/github/device") {
-        const code = await requestDeviceCode(
-          githubClientId,
-          fetcher === undefined ? undefined : { fetch: fetcher },
-        );
-        if ("error" in code) {
-          sendText(response, 502, code.error);
-          return;
-        }
-        // The device code stays here: it is the half of the flow that redeems
-        // the token, and only the user code is the browser's to show.
-        pendingDevice = code.deviceCode;
-        sendJson(response, 200, {
-          userCode: code.userCode,
-          verificationUri: code.verificationUri,
-          expiresIn: code.expiresIn,
-          interval: code.interval,
-        });
-        return;
-      }
-
-      if (url.pathname === "/api/github/device/poll") {
-        if (pendingDevice === undefined) {
-          sendText(response, 409, "No GitHub sign-in is in progress.");
-          return;
-        }
-        const outcome = await pollDeviceToken(
-          githubClientId,
-          pendingDevice,
-          fetcher === undefined ? undefined : { fetch: fetcher },
-        );
-        if ("error" in outcome) {
-          sendText(response, 502, outcome.error);
-          return;
-        }
-        if (outcome.state === "pending" || outcome.state === "slow_down") {
-          sendJson(response, 200, { state: outcome.state });
-          return;
-        }
-        // The flow is over in every other case, and a code that already
-        // answered is not one the browser gets to poll again.
-        pendingDevice = undefined;
-        if (outcome.state !== "ok") {
-          sendJson(response, 200, { state: outcome.state });
-          return;
-        }
-
-        const account = await fetchLogin(
-          outcome.accessToken,
-          fetcher === undefined ? undefined : { fetch: fetcher },
-        );
-        if ("error" in account) {
-          // A token whose account could not be read is one this host cannot
-          // name, so it is not written. The message carries no token.
-          sendText(response, 502, account.error);
-          return;
-        }
-        await githubToken.write({
-          accessToken: outcome.accessToken,
-          scope: outcome.scope,
-          login: account.login,
-          obtainedAt: new Date(now()).toISOString(),
-        });
-        sendJson(response, 200, { state: "ok", login: account.login });
-        return;
-      }
-
-      await githubToken.clear();
-      sendJson(response, 200, { ok: true });
-      return;
-    }
-
-    // The submission: the host reads a library theme, builds the files the
-    // catalogue commits, and opens the pull request as the author's own
-    // account. It acts as that account, so it carries the sign-in routes'
-    // guards — loopback, origin, Host — in their order.
-    if (url.pathname === "/api/themes/submit") {
-      if (request.method !== "POST") {
-        sendText(response, 405, "Only POST is supported.");
-        return;
-      }
-      if (!isLoopbackRemote(request.socket.remoteAddress)) {
-        sendText(response, 403, "Theme submission is local to this PC only.");
-        return;
-      }
-      if (isForeignOrigin(request)) {
-        sendText(response, 403, "That request is from another origin.");
-        return;
-      }
-      if (githubClientId === undefined || githubClientId.trim() === "") {
-        sendText(response, 503, NO_GITHUB_CLIENT_ID);
-        return;
-      }
-      if (githubToken === undefined) {
-        sendText(response, 503, "This host keeps no GitHub token.");
-        return;
-      }
-
-      let raw: string;
-      try {
-        raw = await readBody(request);
-      } catch {
-        sendText(response, 413, "That submission request is too large.");
-        return;
-      }
-
-      let id: string | undefined;
-      try {
-        const parsed: unknown = JSON.parse(raw);
-        const value =
-          typeof parsed === "object" &&
-          parsed !== null &&
-          !Array.isArray(parsed)
-            ? (parsed as Record<string, unknown>)["id"]
-            : undefined;
-        if (typeof value === "string" && value !== "") id = value;
-      } catch {
-        sendText(response, 400, "That submission request is not JSON.");
-        return;
-      }
-      if (id === undefined) {
-        sendText(
-          response,
-          400,
-          "A submission needs the id of a library theme.",
-        );
-        return;
-      }
-
-      // A theme that is not there is a 404 before the identity is read, so a
-      // sign-in prompt is never the answer to a mistaken id. A theme that
-      // exists but cannot be served reads as absent, as it does everywhere
-      // except the open route (ADR-0043).
-      if ((await readThemeOrAbsent(id)) === undefined) {
-        sendText(
-          response,
-          404,
-          `This PC's library holds no theme with id "${id}".`,
-        );
-        return;
-      }
-
-      // The identity is read after the guards and the theme, and before any
-      // package is built: no identity means no author to submit as.
-      const identity = await githubToken.read();
-      if (identity === undefined) {
-        sendText(response, 401, "Sign in to GitHub before submitting a theme.");
-        return;
-      }
-
-      const files = await submissionFiles(id, themeStore, {
-        ...(thumbnails === undefined ? {} : { thumbnails }),
-        ...(fetcher === undefined ? {} : { fetch: fetcher }),
-      });
-      if (!files.ok) {
-        sendJson(response, 422, {
-          ok: false,
-          stage: "package",
-          message: files.message,
-        });
-        return;
-      }
-
-      // The token reaches `submitToCatalogue` and nowhere else: both answers
-      // below carry a stage and a message, never the identity.
-      const submitted = await submitToCatalogue(
-        {
-          login: identity.login,
-          accessToken: identity.accessToken,
-          files: files.files,
-        },
-        fetcher === undefined ? undefined : { fetch: fetcher },
-      );
-      if (!submitted.ok) {
-        // A refusal from GitHub's side is a 502; the stage says which step.
-        sendJson(
-          response,
-          submitted.stage === "identity" ? 401 : 502,
-          submitted,
-        );
-        return;
-      }
-      // **The author is told what was published**, not only where: the ladder's
-      // two versions and its level come from the same files that were committed.
-      // A first release has no `from`, and the wire says `null` rather than
-      // omitting the key.
-      sendJson(response, 200, {
-        ...submitted,
-        version: {
-          from: files.files.from ?? null,
-          to: files.files.version,
-          level: files.files.level,
-        },
-      });
+    // The submission: one library theme id, submitted through the Worker as
+    // the signed-in author. The handler is a module of its own for the reason
+    // the store sign-in routes are.
+    const submitted = await handleSubmitRoute(request, url, {
+      origin: storeOrigin,
+      sessionStore: storeSession,
+      themeStore,
+      thumbnails,
+      fetch: fetcher ?? fetch,
+      now: () => new Date(now()),
+    });
+    if (submitted !== undefined) {
+      await writeWebResponse(response, submitted);
       return;
     }
 

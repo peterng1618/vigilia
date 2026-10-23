@@ -1,0 +1,667 @@
+import type {
+  CatalogueStatus,
+  FabricThemeEnvelope,
+  MineEntry,
+} from "@yunari/renderer-core";
+import {
+  DASHBOARD_THEME_KIND,
+  facetRecordOf,
+  validateFabricThemeEnvelope,
+} from "@yunari/renderer-core";
+import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
+import { type Session, sessionOf } from "../auth/session.js";
+import { entryOf } from "../catalogue/entry.js";
+import {
+  countsByItem,
+  favoriteCount,
+  toggleFavorite,
+} from "../db/favorites.js";
+import {
+  insertVersion,
+  itemById,
+  latestVersion,
+  markFinalized,
+  presignEventOf,
+  setStatus,
+  versionOf,
+} from "../db/items.js";
+import { authorQuotaExceeded, presignAllowed } from "../db/quota.js";
+import type { ItemRow } from "../db/types.js";
+import type { Env } from "../env.js";
+import { packageKey, thumbnailKey } from "../storage/keys.js";
+import { inspectObject } from "../storage/objects.js";
+import { presignPut } from "../storage/presign.js";
+import { planVersion } from "../version/plan.js";
+
+const ITEMS_PREFIX = "/api/me/items/";
+/** The spec's upload window; the object is signed, never buffered, by us. */
+const UPLOAD_EXPIRY_SECONDS = 900;
+/** The thumbnail is rewritten on every version, so it is kept small. */
+const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/**
+ * The author's own half of the store. Returns `undefined` for a path this
+ * module does not own, leaving the Worker's default 404 in place.
+ *
+ * A version request never names an R2 key: the key is derived from the
+ * envelope's id and the version the Worker computed from the stored baseline.
+ */
+export async function handleMe(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response | undefined> {
+  // The listing itself, beside the item routes that all carry a trailing id.
+  if (url.pathname === "/api/me/items" && request.method === "GET")
+    return mine(request, env, url);
+
+  if (!url.pathname.startsWith(ITEMS_PREFIX)) return undefined;
+  const parts = url.pathname.slice(ITEMS_PREFIX.length).split("/");
+  const itemId = parts[0];
+  if (itemId === undefined || itemId.length === 0) return undefined;
+
+  // `:id/versions/:version/finalize`, beside the version request that signed it.
+  const version = parts[2];
+  if (
+    parts.length === 4 &&
+    parts[1] === "versions" &&
+    parts[3] === "finalize" &&
+    version !== undefined &&
+    version.length > 0 &&
+    request.method === "POST"
+  )
+    return finalizeVersion(request, env, itemId, version);
+
+  if (parts.length !== 2) return undefined;
+  const action = parts[1];
+  if (action === undefined) return undefined;
+
+  if (action === "baseline" && request.method === "GET")
+    return baseline(request, env, itemId);
+  if (action === "versions" && request.method === "POST")
+    return requestVersion(request, env, itemId);
+  if (action === "unpublish" && request.method === "POST")
+    return unpublish(request, env, itemId);
+  if (action === "publish" && request.method === "POST")
+    return publish(request, env, itemId);
+  if (
+    action === "favorite" &&
+    (request.method === "PUT" || request.method === "DELETE")
+  )
+    return favorite(request, env, itemId);
+  return undefined;
+}
+
+/**
+ * The author's own rows, in every state a finalize has reached — a `draft`
+ * with no version is a presign leftover and is not an item yet. Newest first,
+ * with the id as the tiebreak so two requests never disagree about the order.
+ */
+async function mine(request: Request, env: Env, url: URL): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const items = await env.DB.prepare(
+    `SELECT * FROM item WHERE author_user_id = ?
+       AND EXISTS (SELECT 1 FROM item_version v WHERE v.item_id = item.id)
+     ORDER BY updated_at DESC, id ASC`,
+  )
+    .bind(session.userId)
+    .all<ItemRow>();
+
+  // One count query for the whole listing, as the public index does.
+  const counts = await countsByItem(
+    env.DB,
+    items.results.map((item) => item.id),
+  );
+
+  const entries: MineEntry[] = [];
+  for (const item of items.results) {
+    // The same latest-version selection `publishedListings` and the public
+    // item read use, so one item is shown at one version everywhere. One read
+    // per item; the 20-item quota bounds this — batch it if the limit rises.
+    const version = await latestVersion(env.DB, item.id);
+    if (version === undefined) continue;
+    entries.push({
+      ...entryOf(
+        item,
+        version,
+        counts.get(item.id) ?? 0,
+        `${url.origin}/catalogue/${item.id}/${version.version}.zip`,
+        `catalogue/${item.id}/thumbnail.png`,
+      ),
+      status: item.status,
+      ...(item.status_reason === null
+        ? {}
+        : { statusReason: item.status_reason }),
+    });
+  }
+
+  return Response.json({ entries });
+}
+
+/**
+ * Any signed-in account's toggle, not only the author's. The answer is the
+ * item's total after the write, which is what the public listing will show.
+ */
+async function favorite(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const result = await toggleFavorite(
+    env.DB,
+    session.userId,
+    itemId,
+    request.method === "PUT",
+  );
+  if (result === "not-found") return notFound();
+
+  return Response.json({
+    ok: true,
+    favorites: await favoriteCount(env.DB, itemId),
+  });
+}
+
+/**
+ * Withdraws the item from every public read. The record, its versions, its
+ * counters, its favourites and its objects all stay: only the status moves.
+ */
+async function unpublish(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const item = await ownedItem(env, session, itemId);
+  if (item === undefined) return notFound();
+
+  const now = new Date().toISOString();
+  if (!(await setStatus(env.DB, itemId, ["published"], "unpublished", now)))
+    return conflict(await currentStatus(env, itemId, item), "published");
+
+  return Response.json({ ok: true, status: "unpublished" });
+}
+
+/**
+ * The author's own way back. `removed` is the owner's verdict and is refused
+ * with the reason; every other state is not a republish, so it is a 409.
+ */
+async function publish(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const item = await ownedItem(env, session, itemId);
+  if (item === undefined) return notFound();
+  if (item.status === "removed") {
+    return new Response(
+      item.status_reason ?? "This item was removed from the store.",
+      { status: 403 },
+    );
+  }
+  if (item.status !== "unpublished")
+    return conflict(item.status, "unpublished");
+
+  const now = new Date().toISOString();
+  if (!(await setStatus(env.DB, itemId, ["unpublished"], "published", now)))
+    return conflict(await currentStatus(env, itemId, item), "unpublished");
+
+  return Response.json({ ok: true, status: "published" });
+}
+
+/** A guarded write that changed no row raced another actor; name what won. */
+async function currentStatus(
+  env: Env,
+  itemId: string,
+  read: ItemRow,
+): Promise<string> {
+  return (await itemById(env.DB, itemId))?.status ?? read.status;
+}
+
+/** `{ version, createdAt, envelope, status }` for any state, or 404. */
+async function baseline(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const item = await ownedItem(env, session, itemId);
+  if (item === undefined) return notFound();
+  const version = await latestVersion(env.DB, itemId);
+  if (version === undefined) return notFound();
+
+  return Response.json({
+    version: version.version,
+    createdAt: version.created_at,
+    envelope: parseEnvelope(version),
+    status: item.status,
+  });
+}
+
+/** `{ version, status, uploadUrl }`: the validated version, signed PUT. */
+async function requestVersion(
+  request: Request,
+  env: Env,
+  itemId: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const body = await readBody(request);
+  if (body === undefined)
+    return badRequest("A JSON body with an envelope and a name is required.");
+
+  const validated = validateFabricThemeEnvelope(body["envelope"]);
+  if (!validated.ok)
+    return badRequest(validated.issues.map((issue) => issue.message).join(" "));
+  const envelope = validated.envelope;
+
+  // The path is not authority: a mismatch would let a client sign one item's
+  // key while naming another item in the request.
+  if (envelope.id !== itemId) {
+    return badRequest(
+      `The path names item "${itemId}" but the envelope's id is "${envelope.id}".`,
+    );
+  }
+
+  const item = await itemById(env.DB, envelope.id);
+  if (item !== undefined && item.author_user_id !== session.userId)
+    return notFound();
+  if (item?.status === "removed") {
+    return new Response(
+      item.status_reason ?? "This item was removed from the store.",
+      { status: 409 },
+    );
+  }
+
+  const name = body["name"];
+  let newItemName: string | undefined;
+  if (item === undefined) {
+    if (!isNonEmptyString(name))
+      return badRequest("A name is required for a new item.");
+    newItemName = name;
+  }
+
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const plan = planVersion({
+    previous: await previousEnvelope(env, envelope.id),
+    candidate: envelope,
+    now: nowIso,
+  });
+  if (!plan.ok) return badRequest(plan.message);
+
+  // Cheapest refusals first: nothing below this line may run for a red request,
+  // and the presign count is only spent once every other check has passed.
+  const exceeded = await authorQuotaExceeded(
+    env.DB,
+    session.userId,
+    MAX_ARCHIVE_BYTES,
+    item === undefined,
+  );
+  if (exceeded === "items")
+    return tooMany("An account may own at most 20 items.");
+  if (exceeded === "bytes")
+    return tooMany("An author's stored packages may total at most 1 GiB.");
+  if (!(await presignAllowed(env.DB, session.userId, now)))
+    return tooMany("Too many upload requests; try again in an hour.");
+
+  // Signing comes before any write: a signing failure must burn no event row
+  // and leave no item behind.
+  const uploadUrl = await presignPut({
+    accountId: env.R2_ACCOUNT_ID,
+    accessKeyId: env.R2_ACCESS_KEY_ID,
+    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+    bucket: env.R2_BUCKET_NAME,
+    key: packageKey(envelope.id, plan.version),
+    expiresSeconds: UPLOAD_EXPIRY_SECONDS,
+  });
+
+  // A parallel first submission may win the insert; that loser is ignored
+  // rather than failing on the PRIMARY KEY, then reads the row it shares. An
+  // item another account created in the race is not ours to write.
+  let stored = item;
+  if (newItemName !== undefined) {
+    await createDraft(env, envelope, session.userId, newItemName, nowIso);
+    stored = await itemById(env.DB, envelope.id);
+    if (stored === undefined || stored.author_user_id !== session.userId)
+      return notFound();
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO presign_event (user_id, at, item_id, version, envelope_json)
+     VALUES (?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      session.userId,
+      nowIso,
+      envelope.id,
+      plan.version,
+      JSON.stringify(envelope),
+    )
+    .run();
+
+  // A rejected item's new version goes back in the owner's queue whatever the
+  // author's state (status machine: `rejected -> pending`); otherwise a
+  // verified author publishes and an unverified one queues.
+  const status =
+    stored?.status === "rejected"
+      ? "pending"
+      : (await isVerified(env.DB, session.userId))
+        ? "published"
+        : "pending";
+
+  return Response.json({ version: plan.version, status, uploadUrl });
+}
+
+/**
+ * The uploaded object becomes a version only here: the envelope is the one the
+ * version request validated, the bytes and hash are read from R2, and the
+ * status transition is applied last. A finalize of the same bytes is a no-op so
+ * a retried request cannot double-write.
+ */
+async function finalizeVersion(
+  request: Request,
+  env: Env,
+  itemId: string,
+  version: string,
+): Promise<Response> {
+  const session = await sessionOf(request, env);
+  if (session === undefined) return unauthorized();
+
+  const item = await ownedItem(env, session, itemId);
+  if (item === undefined) return notFound();
+  if (item.status === "removed") {
+    return new Response(
+      item.status_reason ?? "This item was removed from the store.",
+      { status: 409 },
+    );
+  }
+
+  const presign = await presignEventOf(env.DB, session.userId, itemId, version);
+  if (presign === undefined)
+    return new Response(`No upload was requested for version "${version}".`, {
+      status: 409,
+    });
+
+  const body = await readBody(request);
+  if (body === undefined)
+    return badRequest("A JSON body with a thumbnail is required.");
+  const thumbnail = decodeThumbnail(body["thumbnail"]);
+  if (!thumbnail.ok) return unprocessable(thumbnail.message);
+
+  const key = packageKey(itemId, version);
+  // The size is refused from HEAD, before the body is read or stored.
+  const head = await env.BUCKET.head(key);
+  if (head === null) return notFound();
+  if (head.size > MAX_ARCHIVE_BYTES)
+    return unprocessable(
+      `The uploaded package exceeds the ${MAX_ARCHIVE_BYTES / (1024 * 1024)} MiB limit.`,
+    );
+
+  const inspected = await inspectObject(env.BUCKET, key);
+  if (inspected === undefined) return notFound();
+
+  const now = new Date().toISOString();
+  const existing = await versionOf(env.DB, itemId, version);
+  if (existing !== undefined) {
+    if (
+      existing.sha256 !== inspected.sha256 ||
+      existing.bytes !== inspected.bytes
+    )
+      return differentBytes(version);
+
+    // A retry whose first attempt was interrupted between the two writes has
+    // not moved the item since the version row landed, so it re-applies the
+    // transition. A replay after any later transition must not: `unpublished`,
+    // `rejected` and a demotion are the author's or the owner's, and the
+    // presigned address outlives the request that minted it.
+    //
+    // The version row and the status write in one finalize share one instant,
+    // which is why this is a strict `<`: an equal instant may be a write that
+    // landed, and treating it as one refuses a replay instead of undoing a
+    // later state. The limit is the same millisecond — a transition that lands
+    // within the version's own millisecond is indistinguishable here.
+    if (item.updated_at < existing.created_at)
+      return await settle(env, session, item, version, now);
+    return Response.json({ ok: true, status: item.status, version });
+  }
+
+  await env.BUCKET.put(thumbnailKey(itemId), thumbnail.bytes, {
+    httpMetadata: { contentType: "image/png" },
+  });
+  const wrote = await insertVersion(env.DB, {
+    item_id: itemId,
+    version,
+    envelope_json: presign.envelope_json,
+    facets_json: JSON.stringify(facetRecordOf(parseEnvelope(presign))),
+    package_key: key,
+    thumbnail_key: thumbnailKey(itemId),
+    bytes: inspected.bytes,
+    sha256: inspected.sha256,
+    created_at: now,
+  });
+  // A parallel finalize of the same version won the insert. The comparison the
+  // serial path made above is the same one, so both requests give one answer.
+  if (!wrote) {
+    const won = await versionOf(env.DB, itemId, version);
+    if (
+      won === undefined ||
+      won.sha256 !== inspected.sha256 ||
+      won.bytes !== inspected.bytes
+    )
+      return differentBytes(version);
+  }
+
+  return await settle(env, session, item, version, now);
+}
+
+/**
+ * Applies the finalize's status transition and answers the settled version.
+ * The guarded write answers `false` when a takedown raced the route's read; it
+ * is the owner's verdict, so the version row stays and the answer is a conflict.
+ */
+async function settle(
+  env: Env,
+  session: Session,
+  item: ItemRow,
+  version: string,
+  now: string,
+): Promise<Response> {
+  const status = nextStatus(
+    item.status,
+    await isVerified(env.DB, session.userId),
+  );
+  if (!(await markFinalized(env.DB, item.id, status, now)))
+    return await takenDown(env, item.id);
+  return Response.json({ ok: true, status, version });
+}
+
+/** The one refusal a second finalize of one version with other bytes gets. */
+export function differentBytes(version: string): Response {
+  return new Response(
+    `Version "${version}" already exists with different bytes.`,
+    { status: 409 },
+  );
+}
+
+/** The reason a guarded finalize write changed no row: the item was removed. */
+export async function takenDown(env: Env, itemId: string): Promise<Response> {
+  const item = await itemById(env.DB, itemId);
+  return new Response(
+    item?.status_reason ?? "This item is no longer available.",
+    {
+      status: 409,
+    },
+  );
+}
+
+/**
+ * `rejected -> pending` outranks the verified author's publish rule: the owner
+ * re-approves a resubmission. Every other state publishes for a verified author
+ * and queues for an unverified one, `published` included.
+ */
+function nextStatus(
+  current: CatalogueStatus,
+  verified: boolean,
+): CatalogueStatus {
+  if (current === "rejected") return "pending";
+  return verified ? "published" : "pending";
+}
+
+type Thumbnail =
+  | { readonly ok: true; readonly bytes: Uint8Array }
+  | { readonly ok: false; readonly message: string };
+
+function decodeThumbnail(value: unknown): Thumbnail {
+  if (typeof value !== "string" || value.length === 0)
+    return { ok: false, message: "A base64 PNG thumbnail is required." };
+
+  let binary: string;
+  try {
+    binary = atob(value);
+  } catch {
+    return { ok: false, message: "The thumbnail is not valid base64." };
+  }
+  if (binary.length > MAX_THUMBNAIL_BYTES)
+    return {
+      ok: false,
+      message: "The thumbnail exceeds the 2 MiB limit.",
+    };
+
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  if (
+    bytes.length < PNG_SIGNATURE.length ||
+    PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)
+  )
+    return { ok: false, message: "The thumbnail is not a PNG." };
+  return { ok: true, bytes };
+}
+
+/** A foreign item is indistinguishable from a missing one. */
+async function ownedItem(
+  env: Env,
+  session: Session,
+  itemId: string,
+): Promise<ItemRow | undefined> {
+  const item = await itemById(env.DB, itemId);
+  if (item === undefined || item.author_user_id !== session.userId)
+    return undefined;
+  return item;
+}
+
+/** The latest stored version in any state is the ladder's baseline. */
+async function previousEnvelope(
+  env: Env,
+  itemId: string,
+): Promise<
+  | { readonly version: string; readonly envelope: FabricThemeEnvelope }
+  | undefined
+> {
+  const row = await latestVersion(env.DB, itemId);
+  return row === undefined
+    ? undefined
+    : { version: row.version, envelope: parseEnvelope(row) };
+}
+
+/** Written by this Worker from a validated envelope, so the parse is trusted. */
+function parseEnvelope(row: {
+  readonly envelope_json: string;
+}): FabricThemeEnvelope {
+  return JSON.parse(row.envelope_json) as FabricThemeEnvelope;
+}
+
+/**
+ * Draft is invisible to the public routes until a finalize applies a status.
+ * `OR IGNORE` because two parallel first submissions of one id both reach here;
+ * the caller re-reads the row and checks its owner instead of trusting the
+ * insert.
+ */
+async function createDraft(
+  env: Env,
+  envelope: FabricThemeEnvelope,
+  userId: string,
+  name: string,
+  now: string,
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO item (id, kind, author_user_id, name, status,
+       status_reason, created_at, updated_at, published_at, unpublished_at,
+       removed_at, downloads, remix_of_id)
+     VALUES (?, ?, ?, ?, 'draft', NULL, ?, ?, NULL, NULL, NULL, 0, ?)`,
+  )
+    .bind(
+      envelope.id,
+      DASHBOARD_THEME_KIND,
+      userId,
+      name,
+      now,
+      now,
+      envelope.metadata?.remixOf?.catalogueId ?? null,
+    )
+    .run();
+}
+
+async function isVerified(db: D1Database, userId: string): Promise<boolean> {
+  const row = await db
+    .prepare("SELECT verified FROM author_profile WHERE user_id = ?")
+    .bind(userId)
+    .first<{ verified: number }>();
+  return row?.verified === 1;
+}
+
+async function readBody(
+  request: Request,
+): Promise<Record<string, unknown> | undefined> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return undefined;
+  }
+  return typeof body === "object" && body !== null && !Array.isArray(body)
+    ? (body as Record<string, unknown>)
+    : undefined;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function unauthorized(): Response {
+  return new Response("Unauthorized", { status: 401 });
+}
+
+function notFound(): Response {
+  return new Response("Not found", { status: 404 });
+}
+
+function badRequest(message: string): Response {
+  return new Response(message, { status: 400 });
+}
+
+function tooMany(message: string): Response {
+  return new Response(message, { status: 429 });
+}
+
+function conflict(status: string, needs: string): Response {
+  return new Response(`Item is ${status}; this action needs ${needs}.`, {
+    status: 409,
+  });
+}
+
+function unprocessable(message: string): Response {
+  return new Response(message, { status: 422 });
+}

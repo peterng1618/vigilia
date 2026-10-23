@@ -1,12 +1,13 @@
+import { CATALOGUE_ORIGIN } from "@yunari/renderer-core";
 import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 
 /**
  * Fetches one catalogue package. The address is data from a remote document,
- * so this is where the trust boundary is held: https only, four hosts, one
- * redirect that may not leave them, and the reader's own cap enforced while the
- * body streams. The bytes then go to the owners that already exist
- * (`importThemePackage`, `ThemeStore`, `ThemeOriginsStore`); this module writes
- * nothing. See docs/decisions/0089.
+ * so this is where the trust boundary is held: https only, the store's own
+ * host, no redirect, and the reader's own cap enforced while the body streams.
+ * The bytes then go to the owners that already exist (`importThemePackage`,
+ * `ThemeStore`, `ThemeOriginsStore`); this module writes nothing. See
+ * docs/decisions/0089.
  */
 
 export interface DownloadOptions {
@@ -26,15 +27,9 @@ export type DownloadResult =
       readonly stage: "address" | "download";
     };
 
-/** The hosts the hosting decision's two options can legitimately produce: a
- *  release asset (both its redirect target and the older object host) and a
- *  file in the catalogue repository. */
-const ALLOWED_HOSTS = new Set([
-  "github.com",
-  "objects.githubusercontent.com",
-  "release-assets.githubusercontent.com",
-  "raw.githubusercontent.com",
-]);
+/** The one host the store serves packages from, derived from the same origin
+ *  every URL builder reads. */
+const ALLOWED_HOST = new URL(CATALOGUE_ORIGIN).hostname.toLowerCase();
 
 /**
  * Two minutes: the reader's 64 MiB cap at a slow line is a legitimate package,
@@ -43,9 +38,8 @@ const ALLOWED_HOSTS = new Set([
  */
 export const DEFAULT_TIMEOUT_MS = 120_000;
 
-/** A release asset is exactly one hop (`github.com` → the asset host), so a
- *  second is a redirect this module did not ask for. */
-const MAX_REDIRECTS = 1;
+/** The Worker serves a package directly, so any redirect is a hop this module
+ *  did not ask for and refuses below. */
 
 export async function downloadPackage(
   url: string,
@@ -83,7 +77,6 @@ export async function downloadPackage(
     target,
     options?.fetch ?? fetch,
     controller.signal,
-    MAX_REDIRECTS,
     (opened) => {
       reader = opened;
     },
@@ -112,27 +105,15 @@ async function read(
   target: URL,
   fetcher: typeof fetch,
   signal: AbortSignal,
-  redirectsLeft: number,
   opened: (reader: ReadableStreamDefaultReader<Uint8Array>) => void,
 ): Promise<DownloadResult> {
   const response = await fetcher(target.href, { redirect: "manual", signal });
 
-  if (response.status >= 300 && response.status < 400) {
-    if (redirectsLeft <= 0)
-      return refuseAndClose(
-        response,
-        "The catalogue redirected too many times.",
-      );
-    const next = redirectTarget(response, target);
-    if (next === undefined)
-      return refuseAndClose(
-        response,
-        "The download left the catalogue's hosts.",
-      );
-    // A redirect's own body is not the package; release it before the hop.
-    await response.body?.cancel().catch(() => undefined);
-    return read(next, fetcher, signal, redirectsLeft - 1, opened);
-  }
+  if (response.status >= 300 && response.status < 400)
+    return refuseAndClose(
+      response,
+      "The catalogue redirected a package the store serves directly.",
+    );
 
   if (!response.ok)
     return refuseAndClose(
@@ -184,23 +165,12 @@ function parseUrl(raw: string): URL | undefined {
   }
 }
 
-/** The hostname is compared after parsing, so `github.com.evil.example` and a
- *  userinfo prefix both fail. */
+/** The hostname is compared after parsing, so `yunari-store.workers.dev.evil.example`
+ *  and a userinfo prefix both fail. */
 function isCatalogueHost(url: URL): boolean {
   return (
-    url.protocol === "https:" && ALLOWED_HOSTS.has(url.hostname.toLowerCase())
+    url.protocol === "https:" && url.hostname.toLowerCase() === ALLOWED_HOST
   );
-}
-
-function redirectTarget(response: Response, current: URL): URL | undefined {
-  const location = response.headers.get("location");
-  if (location === null) return undefined;
-  try {
-    const next = new URL(location, current);
-    return isCatalogueHost(next) ? next : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function refuseDownload(message: string): DownloadResult {

@@ -854,3 +854,74 @@ it("reports a press on Install and Update, and draws no control for an installed
     "an installed item drew an install control it has no action for",
   ).toBeNull();
 });
+
+/**
+ * **A Mine row carries its state as a word after its name**, and the word is
+ * the signal rather than a colour (§5). `pending` is drawn here; `published`
+ * draws none, because on the public surface being listed *is* the state.
+ *
+ * The band is read in the same case: a state is a fact about the author's own
+ * row, not a fifth reading in the facts band, so the install decision is drawn
+ * exactly as it is for any other online item.
+ */
+it("badges a Mine cell's state after its name without changing its actions", async () => {
+  const container = await mount(
+    <Gallery
+      items={[item({ catalogue: catalogue(), status: "pending" })]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+      install={NO_INSTALL}
+    />,
+  );
+
+  const badge = must(
+    container.querySelector<HTMLElement>("[data-yunari-store-status]"),
+    "status badge",
+  );
+  expect(
+    badge.getAttribute("data-yunari-store-status"),
+    "the badge does not name the state it draws",
+  ).toBe("pending");
+  expect(
+    badge.textContent,
+    "the badge does not carry the copy's own word",
+  ).toBe(uiCopy.store.status.pending);
+  expect(
+    must(
+      container.querySelector<HTMLElement>("[data-yunari-store-cell-name]"),
+      "cell name",
+    ).nextElementSibling,
+    "the badge is not the element after the name",
+  ).toBe(badge);
+
+  const install = must(
+    container.querySelector<HTMLButtonElement>(
+      "[data-yunari-store-cell-install]",
+    ),
+    "install control",
+  );
+  expect(
+    install.textContent,
+    "the status changed the band's public action",
+  ).toBe(uiCopy.store.cell.installStates.install);
+});
+
+/**
+ * **A published Mine row draws no badge**: the public listing is the badge, and
+ * repeating it beside the author's own name would say the same fact twice.
+ */
+it("draws no badge for a published item", async () => {
+  const container = await mount(
+    <Gallery
+      items={[item({ catalogue: catalogue(), status: "published" })]}
+      onAction={() => undefined}
+      onOpenItem={() => undefined}
+      install={NO_INSTALL}
+    />,
+  );
+
+  expect(
+    container.querySelector("[data-yunari-store-status]"),
+    "a published item drew a state badge",
+  ).toBeNull();
+});

@@ -1,13 +1,11 @@
 import {
   type CatalogueEntry,
   type CatalogueRefusal,
+  catalogueIndexUrl,
+  catalogueThumbnailUrl,
   DASHBOARD_THEME_KIND,
   parseCatalogueIndex,
 } from "@yunari/renderer-core";
-import {
-  CATALOGUE_INDEX_URL,
-  catalogueThumbnailUrl,
-} from "./catalogue-location.js";
 import type { ItemSource, StoreItem } from "./local-source.js";
 
 /**
@@ -15,14 +13,14 @@ import type { ItemSource, StoreItem } from "./local-source.js";
  *
  * **One read, and the browser's cache is the whole mechanism** (`docs/decisions/0088`):
  * no `cache:` option, no `ETag`, no TTL, no retry and no timeout, because the
- * origin's `max-age=300` is the freshness contract and the platform owns the
+ * origin's `max-age=60` is the freshness contract and the platform owns the
  * rest. A failed read throws rather than answering an empty catalogue; the
  * region's own rule leaves the listing unset instead of drawing that as "none".
  */
 export function onlineThemeSource(
   options: { readonly url?: string; readonly fetch?: typeof fetch } = {},
 ): ItemSource {
-  const url = options.url ?? CATALOGUE_INDEX_URL;
+  const url = options.url ?? catalogueIndexUrl();
   let refused: readonly CatalogueRefusal[] = [];
 
   return {
@@ -39,7 +37,7 @@ export function onlineThemeSource(
         DASHBOARD_THEME_KIND,
       ]);
       refused = parsed.refused;
-      return parsed.entries.map(itemOf);
+      return parsed.entries.map(catalogueItemOf);
     },
     refused(): readonly CatalogueRefusal[] {
       return refused;
@@ -47,7 +45,9 @@ export function onlineThemeSource(
   };
 }
 
-function itemOf(entry: CatalogueEntry): StoreItem {
+/** One parsed catalogue entry as the item the gallery draws. Shared with the
+ *  author's own listing, which is the same entry plus the state it carries. */
+export function catalogueItemOf(entry: CatalogueEntry): StoreItem {
   return {
     id: entry.id,
     kind: entry.kind,

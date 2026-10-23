@@ -296,7 +296,7 @@ recorded as a residual risk, not solved with a second unzip service.
 | Route | Answer |
 |---|---|
 | `GET /index.json` | `{ generatedAt, entries }`; published items only; `Cache-Control: max-age=60`, `ETag` |
-| `GET /catalogue/:id/item.json` | the `CatalogueItemFile` plus live `downloads`/`favorites`; 404 unless published |
+| `GET /catalogue/:id/item.json` | the `CatalogueItemFile`'s fields plus `id`, with live `downloads`/`favorites`; 404 unless published |
 | `GET /catalogue/:id/thumbnail.png` | the stored PNG; 404 unless published |
 | `GET /catalogue/:id/:version.zip` | streams the package, increments downloads; 404 unless published; `no-store` |
 
@@ -307,7 +307,7 @@ fetches the index and draws thumbnails from the loopback origin.
 
 | Route | Purpose |
 |---|---|
-| `GET /api/me` | account id, display name, `verified` |
+| `GET /api/me` | the session's `{ userId, email }` |
 | `GET /api/me/items` | every own item in every state, newest first, with `status` and `statusReason` |
 | `GET /api/me/items/:id/baseline` | the latest stored version, its envelope and status, for any state |
 | `POST /api/me/items/:id/versions` | validate the envelope, compute the version, return a presigned PUT |

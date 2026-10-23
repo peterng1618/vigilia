@@ -10,6 +10,7 @@ import { CELL_ACTION_REASONS } from "./cell-actions.js";
 import type { InstallControl } from "./install-item.js";
 import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
+import { StoreStatusBadge } from "./status-badge.js";
 import type { SubmitControl } from "./use-submit.js";
 
 /**
@@ -298,6 +299,9 @@ function Caption(props: {
         >
           {item.name}
         </span>
+        {/* The state's word after the name: a Mine row's own fact, absent on
+            the public listing (`status-badge.tsx`). */}
+        <StoreStatusBadge status={item.status} />
         <span
           data-yunari-store-item-author=""
           className="flex-none font-mono text-xs text-muted"
@@ -449,11 +453,11 @@ function InstallFooter(props: {
  * the store, beside the four actions that keep it on this PC.
  *
  * **The flow can be longer than a press**, so the control states what a person
- * has to do next: the one-time code and the link while the host is authorising,
- * the pull request once it is opened, and the host's own refusal otherwise. The
- * control disables itself only while a press is in flight and after a
- * submission landed; a refusal re-enables it, because acting on the reason is
- * the point of stating it.
+ * has to do next: finish signing in while the host's window is open, the status
+ * and version once it lands, and the host's own refusal otherwise. The control
+ * disables itself only while a press is in flight and after a submission
+ * landed; a refusal re-enables it, because acting on the reason is the point of
+ * stating it.
  */
 function SubmitFooter(props: {
   readonly item: StoreItem;
@@ -462,15 +466,13 @@ function SubmitFooter(props: {
   const { item, submit } = props;
   // **Only this item's own answer is drawn**, on the same rule the install
   // footer follows: the flow lives on the region and outlives the modal, so a
-  // state kept without an id would show theme A's link, refusal or device code
-  // on theme B, and disable B's control with A's success.
+  // state kept without an id would show theme A's status or refusal on theme B,
+  // and disable B's control with A's success.
   const mine = submit.itemId === item.id;
   const state = mine ? submit.state : "idle";
-  const userCode = mine ? submit.userCode : undefined;
-  const verificationUri = mine ? submit.verificationUri : undefined;
-  const url = mine ? submit.url : undefined;
   const version = mine ? submit.version : undefined;
   const refusal = mine ? submit.refusal : undefined;
+  const status = mine ? submit.status : undefined;
   // **A flow on another item disables this one too.** The region holds one
   // flow at a time, and a press here would meet that guard and do nothing; the
   // control says so rather than looking pressable.
@@ -488,53 +490,33 @@ function SubmitFooter(props: {
         onClick={() => submit.onSubmit(item)}
         className={FOOTER_BUTTON}
       >
-        {busy ? uiCopy.store.submit.busy : uiCopy.store.submit.label}
+        {state === "authorising"
+          ? uiCopy.store.submit.authorising
+          : busy
+            ? uiCopy.store.submit.busy
+            : uiCopy.store.submit.label}
       </button>
-      {/* The code is data, so the sentence that names it is the copy group's
-          function rather than a composed sentence here. The link is the control
-          the sentence tells the author to use, and it opens a new tab so the
-          editor is not replaced mid-flow. */}
-      {state === "authorising" &&
-      userCode !== undefined &&
-      verificationUri !== undefined ? (
-        <span
-          data-yunari-store-item-submit-code=""
-          className="max-w-[40ch] text-xs text-muted"
-        >
-          {uiCopy.store.submit.authorising(userCode)}{" "}
-          <a
-            data-yunari-store-item-submit-open=""
-            href={verificationUri}
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            {uiCopy.store.submit.open}
-          </a>
-        </span>
-      ) : null}
-      {submitted && url !== undefined ? (
+      {submitted && status !== undefined ? (
         <span className="flex max-w-[40ch] flex-col gap-[var(--space-4)] text-xs text-muted">
-          <span>
-            {uiCopy.store.submit.submitted}{" "}
-            <a
-              data-yunari-store-item-submit-url=""
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
+          <span>{uiCopy.store.submit.submitted(status)}</span>
+          {/* **The version and the state it landed in**: the level is the
+              host's answer to what changed, and the status word is the store's
+              answer to what happens next. */}
+          <span className="flex flex-wrap items-center gap-[var(--space-4)]">
+            {version === undefined ? null : (
+              <span data-yunari-store-item-submit-version="">
+                {uiCopy.store.submit.version(version)}
+              </span>
+            )}
+            <span
+              data-yunari-store-item-submit-status={status}
+              className="font-medium"
             >
-              {url}
-            </a>
-          </span>
-          {/* **The version it published, under the link**: the level is the
-              host's answer to what changed, and this surface states it rather
-              than deriving a second ladder. */}
-          {version === undefined ? null : (
-            <span data-yunari-store-item-submit-version="">
-              {uiCopy.store.submit.version(version)}
+              {status === "pending"
+                ? uiCopy.store.status.pending
+                : uiCopy.store.status.published}
             </span>
-          )}
+          </span>
         </span>
       ) : null}
       {state === "refused" && refusal !== undefined ? (
@@ -564,7 +546,7 @@ export function ItemModal(props: {
    *  it causes is the listing's fact rather than any surface's. */
   readonly install: InstallControl;
   /** The library half's submission, owned by the region for the same reason:
-   *  the device flow outlives the press that started it. */
+   *  the sign-in outlives the press that started it. */
   readonly submit: SubmitControl;
   /** Opens another item's modal — the region's own open state, which is what
    *  moves the surface from a remix to the parent it credits. */
@@ -573,6 +555,11 @@ export function ItemModal(props: {
    *  one. A resolved `StoreItem`, never an id: no string out of a document
    *  becomes a link target. */
   readonly remixParent?: StoreItem;
+  /** The author's own commands on the store row, drawn only for the state that
+   *  allows each (`status-badge.tsx`). The region posts and re-reads the
+   *  author's listing; this surface only reports the press. */
+  readonly onUnpublish?: (id: string) => void;
+  readonly onRepublish?: (id: string) => void;
 }): React.JSX.Element {
   const { item, onClose, onAction, install, submit, onOpenItem, remixParent } =
     props;
@@ -580,6 +567,32 @@ export function ItemModal(props: {
   // The one owner of the decision (`install-state.ts`): this surface draws what
   // it answers and never compares a version itself.
   const installState = installStateOf(item);
+  // The one command a state allows, only where the region wired it. `pending`,
+  // `rejected` and `removed` offer neither: what moves them is the owner.
+  const authorAction =
+    item.status === "published" && props.onUnpublish !== undefined
+      ? ("unpublish" as const)
+      : item.status === "unpublished" && props.onRepublish !== undefined
+        ? ("republish" as const)
+        : undefined;
+  const authorPress =
+    authorAction === "unpublish"
+      ? props.onUnpublish
+      : authorAction === "republish"
+        ? props.onRepublish
+        : undefined;
+  // What the state means: the owner's reason where the store gave one, and —
+  // for a removed row — that it cannot come back, **whether or not a reason
+  // exists**: the Worker omits the reason when it has none, and permanence is
+  // the state's own fact rather than the reason's.
+  const statusNote =
+    item.status === "rejected"
+      ? item.statusReason
+      : item.status === "removed"
+        ? item.statusReason === undefined
+          ? uiCopy.store.status.removedPermanent
+          : `${item.statusReason} ${uiCopy.store.status.removedPermanent}`
+        : undefined;
 
   return (
     <DialogPrimitive.Root
@@ -669,8 +682,40 @@ export function ItemModal(props: {
             </span>
           )}
 
+          {/* **What the state means, where the badge is only a word.** The
+              sentence sits above the footer because it is not a press. */}
+          {item.status === "pending" ? (
+            <span
+              data-yunari-store-item-status-note=""
+              className="block px-[var(--space-24)] pb-[var(--space-16)] text-xs text-muted"
+            >
+              {uiCopy.store.status.pendingReview}
+            </span>
+          ) : null}
+          {statusNote === undefined ? null : (
+            <span
+              data-yunari-store-item-status-note=""
+              className="block px-[var(--space-24)] pb-[var(--space-16)] text-xs text-warn"
+            >
+              {statusNote}
+            </span>
+          )}
+
           <span className="flex items-center gap-[var(--space-8)] border-t border-edge px-[var(--space-24)] py-[var(--space-16)]">
             <span className="flex-1" />
+            {/* The author's own command on the store row: the region posts and
+                re-reads, so this surface reports the press only. */}
+            {authorAction === undefined ? null : (
+              <button
+                type="button"
+                id={`yunari-store-item-${authorAction}`}
+                data-yunari-store-item-status-action={authorAction}
+                onClick={() => authorPress?.(item.id)}
+                className={FOOTER_BUTTON}
+              >
+                {uiCopy.store.actions[authorAction]}
+              </button>
+            )}
             {/* **A library item's four are drawn and the two a build does not
                 run are disabled** (R164), with their reason in the tree beside
                 them: a disabled control is one the pointer cannot ask, so a

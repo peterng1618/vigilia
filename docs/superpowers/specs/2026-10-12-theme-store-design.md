@@ -1,6 +1,6 @@
 # A theme store for Yunari
 
-- **Status:** revised 2026-10-21 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **the pre-planning probes are answered**, and two open questions (3, freshness, and 8, the facet's buckets and tolerance) are settled by measurement rather than left as drafts — see § "Measured 2026-10-21" and § "Open questions"; **ACCEPTED 2026-10-21**, so B–G may be planned; open questions 1, 2 and 8 were decided the same day, and the four still open (4, 5, 6 and 7) are rows rather than gates
+- **Status:** revised 2026-10-21 — **phase A has landed** (`2026-10-18-theme-store.md`, closed 2026-10-20); **the pre-planning probes are answered**, and two open questions (3, freshness, and 8, the facet's buckets and tolerance) are settled by measurement rather than left as drafts — see § "Measured 2026-10-21" and § "Open questions"; **ACCEPTED 2026-10-21**, so B–G may be planned; open questions 1, 2 and 8 were decided the same day, and the four still open (4, 5, 6 and 7) are rows rather than gates; **the catalogue's hosting is superseded by [`2026-10-22-r2-store-backend-design.md`](2026-10-22-r2-store-backend-design.md)** — one Worker, D1 and private R2 — so the catalogue repo, the app-opened PR, the `index.json` Action, `validate-item`, jsDelivr and the GitHub raw/release routes below are historical, not current
 - **Date:** 2026-10-12, **revised 2026-10-16** after the `hydralauncher/hydra-themes`
   study, **revised again 2026-10-17** after the rulings in the next section
 - **Scope:** two subjects that are one shell. **The storefront**, specified
@@ -903,8 +903,8 @@ Four rules that keep the normalizer honest:
    input before anything is revived — a property check, not a byte derivation.
    These caps are the **store boundary**, not an import-time gate: a locally
    imported or saved theme, and the display publish route, may hold a video the
-   store would refuse. The three store doors (validate-item, install,
-   submission) are where it is refused.
+   store would refuse. The two store doors (the Worker's submit validation,
+   install) are where it is refused.
 3. **Idempotent pass-through.** A file already inside the envelope is copied
    byte-for-byte. Otherwise every resubmission degrades the loop.
 4. **The author previews the normalized asset, not the master.** Write it as an
