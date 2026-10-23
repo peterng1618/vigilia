@@ -378,6 +378,9 @@ describe("SelectionColumn", () => {
       "[data-yunari-background-offset-x]",
     )!;
     expect(offsetX.value).toBe("25");
+    // The number is scaled, so the well says into what (0096): a bare "25"
+    // reads as a pixel offset.
+    expect(offsetX.parentElement?.textContent).toContain("%");
 
     // The pair's own divide: a percentage typed here has to reach the model as
     // the fraction the field stores.

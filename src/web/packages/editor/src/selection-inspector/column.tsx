@@ -106,6 +106,8 @@ function fieldControl(
             label: half.label,
             value: shownNumber(half.percent, half.value),
             data: half.data,
+            // The number is already the percentage; the suffix is what says so.
+            ...(half.percent === true ? { unit: "%" } : {}),
             ...(half.integer === undefined ? {} : { integer: half.integer }),
             onCommit: (value: number) =>
               edits.commit(
@@ -125,7 +127,10 @@ function fieldControl(
           onCommit={(value) => commit(committedNumber(field.percent, value))}
           {...(field.min === undefined ? {} : { min: field.min })}
           {...(field.max === undefined ? {} : { max: field.max })}
-          {...(field.unit === undefined ? {} : { unit: field.unit })}
+          {...((field.unit ?? (field.percent === true ? "%" : undefined)) ===
+          undefined
+            ? {}
+            : { unit: field.unit ?? "%" })}
           {...(field.integer === undefined ? {} : { integer: field.integer })}
           {...refused}
         />
