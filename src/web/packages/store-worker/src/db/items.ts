@@ -108,15 +108,20 @@ export async function presignEventOf(
   );
 }
 
-/** A version row is written once, at finalize. */
+/**
+ * A version row is written once, at finalize. `OR IGNORE` because two
+ * overlapping finalizes of one version both reach here; the row that won is
+ * compared by the caller rather than a second insert failing on the key.
+ * Answers whether this call wrote the row.
+ */
 export async function insertVersion(
   db: D1Database,
   row: VersionRow,
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const result = await db
     .prepare(
-      `INSERT INTO item_version (item_id, version, envelope_json, facets_json,
-         package_key, thumbnail_key, bytes, sha256, created_at)
+      `INSERT OR IGNORE INTO item_version (item_id, version, envelope_json,
+         facets_json, package_key, thumbnail_key, bytes, sha256, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
@@ -131,6 +136,7 @@ export async function insertVersion(
       row.created_at,
     )
     .run();
+  return result.meta.changes > 0;
 }
 
 /**
@@ -138,14 +144,18 @@ export async function insertVersion(
  * `published`, so a new version on a still-published item keeps it; the
  * pre-update `status` is what makes that distinction. A rejection reason never
  * outlives `rejected`. Counters, favourites and older versions are untouched.
+ *
+ * `removed` is the owner's verdict and is refused rather than overwritten: a
+ * takedown that lands between the caller's read and this write would otherwise
+ * become public again. The answer says whether the write landed.
  */
 export async function markFinalized(
   db: D1Database,
   itemId: string,
   status: CatalogueStatus,
   now: string,
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const result = await db
     .prepare(
       `UPDATE item SET status = ?, updated_at = ?,
          published_at = CASE
@@ -154,10 +164,11 @@ export async function markFinalized(
          END,
          status_reason = CASE WHEN status = 'rejected' THEN NULL
            ELSE status_reason END
-       WHERE id = ?`,
+       WHERE id = ? AND status <> 'removed'`,
     )
     .bind(status, now, status, now, itemId)
     .run();
+  return result.meta.changes > 0;
 }
 
 /**

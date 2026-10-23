@@ -2,6 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { type FabricThemeEnvelope, facetRecordOf } from "@yunari/renderer-core";
 import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 import { beforeAll, describe, expect, it } from "vitest";
+import { insertVersion, markFinalized } from "../src/db/items";
 import { packageKey, thumbnailKey } from "../src/storage/keys";
 import {
   BASE,
@@ -173,6 +174,92 @@ describe("finalize", () => {
       new TextEncoder().encode("different bytes"),
     );
     expect((await finalize(headers, version)).status).toBe(409);
+  });
+
+  it("finishes a finalize interrupted between its version row and its status", async () => {
+    const headers = await sessionHeaders();
+    await reset();
+    await verifyAuthor(1);
+    const { version } = await requestVersion(headers);
+    await putPackage(packageKey(ITEM_ID, version), PACKAGE_BYTES);
+
+    // The crash the retry has to survive: the version row landed, and the item
+    // is still the draft the version request created.
+    const presign = await env.DB.prepare(
+      `SELECT envelope_json FROM presign_event
+       WHERE user_id = ? AND item_id = ? AND version = ?
+       ORDER BY id DESC LIMIT 1`,
+    )
+      .bind(USER_ID, ITEM_ID, version)
+      .first<{ envelope_json: string }>();
+    await env.DB.prepare(
+      `INSERT INTO item_version (item_id, version, envelope_json, facets_json,
+         package_key, thumbnail_key, bytes, sha256, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        ITEM_ID,
+        version,
+        presign?.envelope_json ?? "{}",
+        JSON.stringify(
+          facetRecordOf(candidate(ITEM_ID) as unknown as FabricThemeEnvelope),
+        ),
+        packageKey(ITEM_ID, version),
+        thumbnailKey(ITEM_ID),
+        PACKAGE_BYTES.byteLength,
+        await sha256Hex(PACKAGE_BYTES),
+        "2026-10-01T00:00:00.000Z",
+      )
+      .run();
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("draft");
+
+    const response = await finalize(headers, version);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: true,
+      status: "published",
+      version,
+    });
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("published");
+  });
+
+  it("refuses a status write for an item the owner removed meanwhile", async () => {
+    await reset();
+    await seedItem(ITEM_ID, USER_ID, {
+      status: "removed",
+      statusReason: "Owner took it down.",
+    });
+
+    // The state the route's own read never sees: the takedown lands between the
+    // read and the write. The guarded UPDATE is the whole defence.
+    expect(
+      await markFinalized(
+        env.DB,
+        ITEM_ID,
+        "published",
+        new Date().toISOString(),
+      ),
+    ).toBe(false);
+    expect(await statusOf(env.DB, ITEM_ID)).toBe("removed");
+  });
+
+  it("lets a second version insert converge instead of failing on the key", async () => {
+    await reset();
+    const row = {
+      item_id: ITEM_ID,
+      version: "1.0.0",
+      envelope_json: "{}",
+      facets_json: "{}",
+      package_key: packageKey(ITEM_ID, "1.0.0"),
+      thumbnail_key: thumbnailKey(ITEM_ID),
+      bytes: PACKAGE_BYTES.byteLength,
+      sha256: await sha256Hex(PACKAGE_BYTES),
+      created_at: "2026-10-01T00:00:00.000Z",
+    };
+
+    expect(await insertVersion(env.DB, row)).toBe(true);
+    expect(await insertVersion(env.DB, row)).toBe(false);
+    expect(await versionsOf(env.DB, ITEM_ID)).toEqual(["1.0.0"]);
   });
 
   it("advances published_at when a new version returns an unpublished item", async () => {

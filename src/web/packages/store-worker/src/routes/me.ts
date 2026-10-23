@@ -414,24 +414,27 @@ async function finalizeVersion(
   const inspected = await inspectObject(env.BUCKET, key);
   if (inspected === undefined) return notFound();
 
+  const now = new Date().toISOString();
   const existing = await versionOf(env.DB, itemId, version);
   if (existing !== undefined) {
     if (
       existing.sha256 === inspected.sha256 &&
       existing.bytes === inspected.bytes
     )
-      return Response.json({ ok: true, status: item.status, version });
+      // A retry whose first attempt was interrupted between the two writes: the
+      // version row landed but the status did not. Re-applying the transition is
+      // what makes that retry converge instead of leaving the item a draft.
+      return await settle(env, session, item, version, now);
     return new Response(
       `Version "${version}" already exists with different bytes.`,
       { status: 409 },
     );
   }
 
-  const now = new Date().toISOString();
   await env.BUCKET.put(thumbnailKey(itemId), thumbnail.bytes, {
     httpMetadata: { contentType: "image/png" },
   });
-  await insertVersion(env.DB, {
+  const wrote = await insertVersion(env.DB, {
     item_id: itemId,
     version,
     envelope_json: presign.envelope_json,
@@ -442,14 +445,54 @@ async function finalizeVersion(
     sha256: inspected.sha256,
     created_at: now,
   });
+  // A parallel finalize of the same version won the insert. The comparison the
+  // serial path made above is the same one, so both requests give one answer.
+  if (!wrote) {
+    const won = await versionOf(env.DB, itemId, version);
+    if (
+      won === undefined ||
+      won.sha256 !== inspected.sha256 ||
+      won.bytes !== inspected.bytes
+    )
+      return new Response(
+        `Version "${version}" already exists with different bytes.`,
+        { status: 409 },
+      );
+  }
 
+  return await settle(env, session, item, version, now);
+}
+
+/**
+ * Applies the finalize's status transition and answers the settled version.
+ * The guarded write answers `false` when a takedown raced the route's read; it
+ * is the owner's verdict, so the version row stays and the answer is a conflict.
+ */
+async function settle(
+  env: Env,
+  session: Session,
+  item: ItemRow,
+  version: string,
+  now: string,
+): Promise<Response> {
   const status = nextStatus(
     item.status,
     await isVerified(env.DB, session.userId),
   );
-  await markFinalized(env.DB, itemId, status, now);
-
+  if (!(await markFinalized(env.DB, item.id, status, now)))
+    return await takenDown(env, item.id);
   return Response.json({ ok: true, status, version });
+}
+
+/** The reason a guarded finalize write changed no row: the item was removed. */
+async function takenDown(env: Env, itemId: string): Promise<Response> {
+  const item = await itemById(env.DB, itemId);
+  return new Response(
+    item?.status_reason ?? "This item is no longer available.",
+    {
+      status: 409,
+    },
+  );
 }
 
 /**
