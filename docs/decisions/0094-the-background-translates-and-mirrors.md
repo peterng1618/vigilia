@@ -125,13 +125,15 @@ source's mirrored side.
   factor always. Before the source has an intrinsic size it returns the box and
   **ignores the offsets**, so the load window has no strip either; the first
   `load`/`loadedmetadata` re-places with them.
-- **The pan is bounded by the cover overhang.** Cover alone does not make a
-  translation safe — a rect that merely covers slides off its box exactly like
-  any other — so the pan is clamped to the rect's own overhang on each axis: the
-  media's edge stops on the box's edge. An axis whose cover rect is exactly the
-  box has no overhang, so its offset does not move anything. The authored value
-  is still validated as `-1..1` and stored unchanged; the bound is rendering,
-  not validation.
+- **The pan is bounded by the placed rect's overhang.** Cover alone does not
+  make a translation safe — a rect that merely covers slides off its box exactly
+  like any other — so the pan is clamped to the rect's own overhang on each
+  axis: the media's edge stops on the box's edge. The authored value is still
+  validated as `-1..1` and stored unchanged; the bound is rendering, not
+  validation. **0095 supersedes the rest of this paragraph**: a source whose
+  cover rect is exactly the box used to have no overhang and an inert offset, so
+  an offset now zooms the picture until the pan it asks for fits. The clamp
+  itself is unchanged.
 - **Flip.** `flipX`/`flipY` are a paint-time mirror about the placed rect's
   centre: the DOM child composes `scaleX(-1)`/`scaleY(-1)` into its `transform`
   (it carries none today, so nothing is overwritten), and the glass sampler

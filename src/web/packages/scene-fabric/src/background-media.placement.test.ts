@@ -18,25 +18,47 @@ describe("placement", () => {
     ).toEqual({ left: 0, top: -50, width: 200, height: 200 });
   });
 
-  it("offset pans by a fraction of the box, within the cover overhang", () => {
-    // A square in a 200×100 box covers at 200×200: half a box of overhang
-    // top and bottom, and none left or right.
+  it("zooms into the pan the offset asks for", () => {
+    // A 25% pan of a 200-wide box needs a 50-wide overhang, so the cover rect
+    // grows from 200 to 300 across; the vertical floor (1.5×) is smaller.
     expect(
       placement({ box: BOX, source: SOURCE, offsetX: 0.25, offsetY: 0.25 }),
-    ).toEqual({ left: 0, top: -25, width: 200, height: 200 });
+    ).toEqual({ left: 0, top: -75, width: 300, height: 300 });
   });
 
-  it("stops the pan where the placed rect's edge meets the box", () => {
-    // ±100% is the whole box, which is more than the half-box overhang; the
-    // rect stops at the edge rather than sliding off it.
-    for (const offsetY of [0.5, 1]) {
-      expect(
-        placement({ box: BOX, source: SOURCE, offsetX: 0, offsetY }),
-      ).toMatchObject({ top: 0 });
-      expect(
-        placement({ box: BOX, source: SOURCE, offsetX: 0, offsetY: -offsetY }),
-      ).toMatchObject({ top: -100 });
-    }
+  it("reaches a full box of pan at 100%, stopping at the edge", () => {
+    // ±100% is the whole box; the rect grows to 3× so the pan fits, and the
+    // edge lands exactly on the box's.
+    expect(
+      placement({ box: BOX, source: SOURCE, offsetX: 0, offsetY: 1 }),
+    ).toMatchObject({ top: 0 });
+    expect(
+      placement({ box: BOX, source: SOURCE, offsetX: 0, offsetY: -1 }),
+    ).toMatchObject({ top: -200 });
+  });
+
+  it("pans a picture whose aspect already matches the box", () => {
+    // The starter backdrop's shape: cover alone leaves no overhang, so the
+    // offset is the only thing that enlarges the rect. 10% of the box needs
+    // 1.2×, and the pan moves by exactly 10% instead of clamping to zero.
+    const same = { width: 400, height: 200 };
+    const resting = placement({
+      box: BOX,
+      source: same,
+      offsetX: 0,
+      offsetY: 0,
+    });
+    const panned = placement({
+      box: BOX,
+      source: same,
+      offsetX: 0.1,
+      offsetY: 0,
+    });
+    expect(resting).toEqual({ left: 0, top: 0, width: 200, height: 100 });
+    // The rect grew by the 1.2× the pan needs, so the picture is visibly
+    // zoomed and its crop is 20 px right of centre.
+    expect(panned).toEqual({ left: 0, top: -10, width: 240, height: 120 });
+    expect(panned.width).toBeGreaterThan(resting.width);
   });
 
   it("falls back to the box before the source has a size, offsets ignored", () => {

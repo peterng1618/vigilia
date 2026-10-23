@@ -414,8 +414,9 @@ describe("background media as a glass backdrop", () => {
     withIntrinsic(host, 100, 100);
 
     const { calls, ctx } = recordingContext();
-    // 200×100 box, 100×100 source: cover is 200×200, and the quarter-box
-    // vertical offset pans it 25px within the half-box overhang.
+    // 200×100 box, 100×100 source: cover is 200×200, and the quarter-box offsets
+    // ask for a 50 px horizontal pan, which needs the 1.5× rect (300×300) 0095
+    // describes; the 25 px vertical pan then sits inside the extra overhang.
     const painted = handle
       .backdrop()
       ?.paint(
@@ -424,7 +425,7 @@ describe("background media as a glass backdrop", () => {
         { left: 0, top: 0, width: 200, height: 100 },
       );
     expect(painted).toBe(true);
-    expect(calls[0]?.slice(-4)).toEqual([0, -25, 200, 200]);
+    expect(calls[0]?.slice(-4)).toEqual([0, -75, 300, 300]);
     handle.destroy();
   });
 

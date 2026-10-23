@@ -113,14 +113,22 @@ function readGeometry(page: Page): Promise<Geometry> {
 
 /** The cover placement oracle, written from the contract rather than imported: a
  *  test that called the renderer's own `placement()` could agree with it while
- *  both were wrong. The pan is bounded by the rect's own overhang, which is what
+ *  both were wrong. An offset zooms the picture until the pan it asks for fits
+ *  (0095), and the pan is then bounded by the rect's own overhang, which is what
  *  stops an offset from uncovering the box. */
 function coveredPlacement(
   box: { readonly width: number; readonly height: number },
   source: { readonly width: number; readonly height: number },
   media: { readonly offsetX: number; readonly offsetY: number },
 ): Rect {
-  const factor = Math.max(box.width / source.width, box.height / source.height);
+  const panFloor = (span: number, sourceSpan: number, offset: number): number =>
+    (span * (1 + 2 * Math.abs(offset))) / sourceSpan;
+  const factor = Math.max(
+    box.width / source.width,
+    box.height / source.height,
+    panFloor(box.width, source.width, media.offsetX),
+    panFloor(box.height, source.height, media.offsetY),
+  );
   const width = source.width * factor;
   const height = source.height * factor;
   const bounded = (pan: number, overhang: number): number =>
@@ -407,9 +415,9 @@ test.describe("the background media layer on the player", () => {
   });
 
   test("an offset at its maximum stops at the box edge", async ({ page }) => {
-    // The fixture's offset is `1` against an overhang smaller than the pan it
-    // asks for. Without the clamp the media would sit 190 units low and the
-    // board's top strip would be the paint; with it, both edges are ink.
+    // The fixture's offset is `1`, so the picture zooms until a full box of pan
+    // fits and the pan then stops exactly on the box edge. Without the clamp the
+    // top strip would be the paint; with it, both edges are ink.
     await page.goto(`${HOST}/?theme=${HOST_BACKGROUND_EDGE_THEME_ID}`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
     await settle(page);

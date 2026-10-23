@@ -58,13 +58,18 @@ const size = (value: number): number =>
 /**
  * The one media placement. The source always `cover`s the box — the larger axis
  * scale, so the rect is never smaller than the box on either axis — and the
- * offsets pan within the overhang the cover rect leaves. The result may extend
+ * offsets pan within the overhang the placed rect leaves. The result may extend
  * outside the box; the box is the caller's clip.
  *
- * The pan is bounded by that overhang, so an offset at ±100% stops when the
- * rect's edge reaches the box's: a translation of a rect that merely covers
- * would otherwise uncover colour inside the box. An axis whose cover rect is
- * exactly the box has no overhang, so its offset does not move anything.
+ * **An offset implies the zoom it needs** (0095). A pan of `|o|·box` needs an
+ * overhang of `|o|·box`, so that axis needs a rect of `box·(1 + 2|o|)`; the
+ * factor is the largest of the cover factor and those per-axis floors. Without
+ * it a picture whose aspect matches the box covers it exactly, leaves no
+ * overhang, and every offset clamps to zero — the starter backdrop's case.
+ * One factor for both axes, so the picture never distorts.
+ *
+ * The pan stays bounded by the overhang, so an offset can never uncover colour
+ * inside the box: the rect has at least the overhang the offset asks for.
  */
 export function placement(input: PlacementInput): MediaBox {
   const boxWidth = size(input.box.width);
@@ -79,11 +84,16 @@ export function placement(input: PlacementInput): MediaBox {
     return { left: 0, top: 0, width: boxWidth, height: boxHeight };
   }
 
-  const factor = Math.max(boxWidth / sourceWidth, boxHeight / sourceHeight);
-  const width = size(sourceWidth * factor);
-  const height = size(sourceHeight * factor);
   const offsetX = Number.isFinite(input.offsetX) ? input.offsetX : 0;
   const offsetY = Number.isFinite(input.offsetY) ? input.offsetY : 0;
+  const factor = Math.max(
+    boxWidth / sourceWidth,
+    boxHeight / sourceHeight,
+    panFloor(boxWidth, sourceWidth, offsetX),
+    panFloor(boxHeight, sourceHeight, offsetY),
+  );
+  const width = size(sourceWidth * factor);
+  const height = size(sourceHeight * factor);
   const panX = bounded(boxWidth * offsetX, (width - boxWidth) / 2);
   const panY = bounded(boxHeight * offsetY, (height - boxHeight) / 2);
   return {
@@ -92,6 +102,12 @@ export function placement(input: PlacementInput): MediaBox {
     width,
     height,
   };
+}
+
+/** The factor that leaves `|offset|·box` of overhang on one axis, so the pan the
+ *  offset asks for is reachable instead of clamping to nothing. */
+function panFloor(box: number, source: number, offset: number): number {
+  return source <= 0 ? 0 : (box * (1 + 2 * Math.abs(offset))) / source;
 }
 
 /** A requested pan, stopped where the placed rect's own edge meets the box's. */

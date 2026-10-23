@@ -97,10 +97,12 @@ Evaluated in this order:
    box.height / source.height)`. There is no other fit. The rect is therefore
    never smaller than the box on either axis, and one axis is exactly the box.
 3. The base rect is centred in the box.
-4. **Offset** asks to pan the centre by a fraction of the box's own dimensions,
-   and the pan is bounded by the rect's own overhang on that axis: the media's
-   edge stops on the box's edge. An axis whose cover rect is exactly the box has
-   no overhang, so its offset does not move anything.
+4. **Offset** asks to pan the centre by a fraction of the box's own dimensions.
+   It implies the zoom that pan needs (decision 0095): a pan of `|o|·box` needs
+   `|o|·box` of overhang, so the scale is the greater of the cover factor and
+   `box·(1 + 2|o|) / source` on each axis, one factor for both so the picture
+   never distorts. The pan is bounded by the resulting overhang: the media's
+   edge stops on the box's edge, so an offset can never expose colour.
 5. **Flip** mirrors the drawn source about the placed rect's centre. It is a
    paint-time transform: the rect, and therefore the no-gap guarantee, is
    unchanged.
@@ -263,7 +265,7 @@ Focused proof during implementation; the broad gate at the plan boundary.
 
 | Layer | Proof |
 |---|---|
-| Placement | A table over sources × offsets: cover is centred, an offset pans within the overhang, and a sweep of boxes, sources and offsets at ±1 never leaves a gap inside the box. The load-window fallback ignores offsets. Pure, no DOM. |
+| Placement | A table over sources × offsets: cover is centred, an offset zooms to the pan it asks for (0095), and a sweep of boxes, sources and offsets at ±1 never leaves a gap inside the box. The load-window fallback ignores offsets. Pure, no DOM. |
 | Handle lifecycle | DOM test: an offset- or flip-only `setBackground` keeps the same `<video>` node; an `assetId` change replaces it. |
 | Flip | DOM test: the child carries `scaleX(-1)`/`scaleY(-1)` composed with the other axis, and the rect is unchanged; sampler test: the same mirror around `drawImage`. |
 | Validator | Accepts flips and offsets; refuses `offsetX: 2`, a non-boolean flip, and the removed `fit`/`scale` as unknown keys. |
@@ -306,8 +308,9 @@ plan were characterisations of an existing path, not red-first).
 - No shrink, stretch or `contain`: the media is always `cover`. The colour is
   the letterbox fill around the artboard under `bounds: "theme"`, and the
   no-media fill otherwise; it cannot show inside the media's box.
-- No scale control and no free pan. Offsets are bounded by the cover rect's own
-  overhang, so an axis whose rect is exactly the box does not move.
+- No scale control and no free pan. An offset zooms the picture only as far as
+  the pan it asks for needs, and no further; the pan is bounded by the resulting
+  overhang.
 - Flips are paint-time only: they mirror the drawn source and never change the
   placed rect, the persisted geometry or the clip.
 - No multi-selection with scene layers, no rename, visibility, lock, drag or
@@ -328,10 +331,10 @@ plan were characterisations of an existing path, not red-first).
 4. **Video restart** — guarded by `setBackground`'s asset comparison.
 5. **Display-bounds offsets** — media may extend outside the display box; the
    display is the clip. Unit tests cover negative and oversized rects.
-6. **A pan that looks inert** — an axis with no overhang cannot move, so an
-   author who offsets a source whose ratio matches the box sees nothing. That is
-   the mathematical consequence of always covering; the inspector still stores
-   the value.
+6. **Implicit zoom** — an offset enlarges the picture (up to 3× at ±100%), so
+   repositioning an exactly fitting source crops it. The rect is centred when
+   the offset is zero, so the default is unchanged; the zoom is pinned by the
+   placement tests and named in decision 0095.
 7. **Stored documents and the catalogue** — any document carrying `fit` or
    `scale` is now refused, and the live catalogue's smoke theme predates even
    that shape; it must be reseeded by the owner. This is an external follow-up,
