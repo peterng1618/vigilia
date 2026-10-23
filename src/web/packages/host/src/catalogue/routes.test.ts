@@ -1,9 +1,13 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
+import os from "node:os";
+import path from "node:path";
 import type { MineEntry } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
-import type {
-  StoreSession,
-  StoreSessionStore,
+import {
+  createStoreSessionStore,
+  type StoreSession,
+  type StoreSessionStore,
 } from "../settings/store-session.js";
 import {
   type CatalogueRouteDeps,
@@ -223,6 +227,39 @@ describe("the store author proxies", () => {
 
     expect(response?.status).toBe(401);
     expect(workerApi.calls).toEqual([]);
+  });
+
+  it("forgets the stored session when the Worker answers 401", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "yunari-store-401-"));
+    try {
+      const store = createStoreSessionStore(dir);
+      await store.write(held);
+      const refused = worker(
+        () => new Response("Session expired", { status: 401 }),
+      );
+
+      const response = await call("/api/store/mine", {
+        fetch: refused.fetch,
+        session: store,
+      });
+      expect(response?.status).toBe(401);
+      expect(JSON.parse((await response?.text()) ?? "null")).toMatchObject({
+        ok: false,
+      });
+
+      // The stored token is spent, so the file is gone and the settings page
+      // it feeds now says signed out.
+      await expect(
+        readFile(path.join(dir, "store-session.json"), "utf8"),
+      ).rejects.toThrow();
+      const state = await call("/api/store/session", {
+        fetch: refused.fetch,
+        session: store,
+      });
+      expect(await state?.json()).toEqual({ signedIn: false });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("keeps the Worker's status for a refusal and answers 502 when unreachable", async () => {

@@ -83,6 +83,26 @@ describe("store session", () => {
     await expect(readFile(sessionFile(dir), "utf8")).rejects.toThrow();
   });
 
+  it("deletes the superseded GitHub token on a successful write", async () => {
+    const legacy = path.join(dir, "github-token.json");
+    await writeFile(legacy, JSON.stringify({ token: "gho_old" }), "utf8");
+
+    await store.write(session());
+
+    await expect(readFile(legacy, "utf8")).rejects.toThrow();
+  });
+
+  it("keeps the superseded GitHub token when the session write is refused", async () => {
+    const legacy = path.join(dir, "github-token.json");
+    await writeFile(legacy, JSON.stringify({ token: "gho_old" }), "utf8");
+
+    await expect(store.write({ ...session(), token: "" })).rejects.toThrow(
+      "Invalid",
+    );
+
+    expect(await readFile(legacy, "utf8")).toContain("gho_old");
+  });
+
   it("answers a read issued during a write with the completed session", async () => {
     const writing = store.write(session("session-token"));
     const reading = store.read();

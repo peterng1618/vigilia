@@ -38,9 +38,8 @@ const ALLOWED_HOST = new URL(CATALOGUE_ORIGIN).hostname.toLowerCase();
  */
 export const DEFAULT_TIMEOUT_MS = 120_000;
 
-/** The Worker serves a package directly, so even one hop is a redirect this
- *  module did not ask for. */
-const MAX_REDIRECTS = 0;
+/** The Worker serves a package directly, so any redirect is a hop this module
+ *  did not ask for and refuses below. */
 
 export async function downloadPackage(
   url: string,
@@ -78,7 +77,6 @@ export async function downloadPackage(
     target,
     options?.fetch ?? fetch,
     controller.signal,
-    MAX_REDIRECTS,
     (opened) => {
       reader = opened;
     },
@@ -107,27 +105,15 @@ async function read(
   target: URL,
   fetcher: typeof fetch,
   signal: AbortSignal,
-  redirectsLeft: number,
   opened: (reader: ReadableStreamDefaultReader<Uint8Array>) => void,
 ): Promise<DownloadResult> {
   const response = await fetcher(target.href, { redirect: "manual", signal });
 
-  if (response.status >= 300 && response.status < 400) {
-    if (redirectsLeft <= 0)
-      return refuseAndClose(
-        response,
-        "The catalogue redirected a package the store serves directly.",
-      );
-    const next = redirectTarget(response, target);
-    if (next === undefined)
-      return refuseAndClose(
-        response,
-        "The download left the catalogue's hosts.",
-      );
-    // A redirect's own body is not the package; release it before the hop.
-    await response.body?.cancel().catch(() => undefined);
-    return read(next, fetcher, signal, redirectsLeft - 1, opened);
-  }
+  if (response.status >= 300 && response.status < 400)
+    return refuseAndClose(
+      response,
+      "The catalogue redirected a package the store serves directly.",
+    );
 
   if (!response.ok)
     return refuseAndClose(
@@ -185,17 +171,6 @@ function isCatalogueHost(url: URL): boolean {
   return (
     url.protocol === "https:" && url.hostname.toLowerCase() === ALLOWED_HOST
   );
-}
-
-function redirectTarget(response: Response, current: URL): URL | undefined {
-  const location = response.headers.get("location");
-  if (location === null) return undefined;
-  try {
-    const next = new URL(location, current);
-    return isCatalogueHost(next) ? next : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function refuseDownload(message: string): DownloadResult {

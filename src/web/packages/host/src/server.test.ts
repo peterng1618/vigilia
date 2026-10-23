@@ -2210,6 +2210,38 @@ describe("Host theme routes", () => {
       expect(calls, "an unsigned submission reached the store").toEqual([]);
     });
 
+    it("forgets the stored session when the Worker answers 401", async () => {
+      await signedIn();
+      const expired = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () => new Response("Session expired", { status: 401 }),
+      });
+
+      try {
+        const res = await request(
+          expired.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(401);
+        expect(res.json()).toEqual({
+          ok: false,
+          message: "Session expired",
+        });
+        // The token is spent: the next press asks for a sign-in.
+        expect(await session.read()).toBeUndefined();
+      } finally {
+        await expired.close();
+      }
+    });
+
     it("refuses a non-loopback POST", async () => {
       await signedIn();
 

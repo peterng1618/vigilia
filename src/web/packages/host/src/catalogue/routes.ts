@@ -358,13 +358,29 @@ function signedOut(): Response {
   });
 }
 
-/** The Worker's refusal keeps its status; an unreachable store is a 502. */
-function storeRefusal(error: unknown): Response {
-  if (!(error instanceof StoreClientError)) throw error;
-  return json(error.status === 0 ? 502 : error.status, {
-    ok: false,
-    message: error.message,
-  });
+/**
+ * One proxied author call. The Worker's refusal keeps its status, an unreachable
+ * store is a 502, and a 401 is the one answer that outlives this request: it
+ * says the token the host holds is spent, so the host forgets it and the surface
+ * asks the author to sign in again.
+ */
+async function proxy(
+  store: StoreSessionStore,
+  work: () => Promise<unknown>,
+): Promise<Response> {
+  try {
+    return json(200, await work());
+  } catch (error) {
+    if (!(error instanceof StoreClientError)) throw error;
+    if (error.status === 401) {
+      await store.clear();
+      return signedOut();
+    }
+    return json(error.status === 0 ? 502 : error.status, {
+      ok: false,
+      message: error.message,
+    });
+  }
 }
 
 /** `GET /api/store/mine`: the author's own rows, in the Worker's own order. */
@@ -376,11 +392,7 @@ async function mine(
   const client = await clientFor(origin, store, doFetch);
   if (client === undefined) return signedOut();
 
-  try {
-    return json(200, await client.mine());
-  } catch (error) {
-    return storeRefusal(error);
-  }
+  return proxy(store, () => client.mine());
 }
 
 /**
@@ -402,16 +414,9 @@ async function authorTransition(
   const client = await clientFor(origin, store, doFetch);
   if (client === undefined) return signedOut();
 
-  try {
-    return json(
-      200,
-      action === "unpublish"
-        ? await client.unpublish(id)
-        : await client.publish(id),
-    );
-  } catch (error) {
-    return storeRefusal(error);
-  }
+  return proxy(store, () =>
+    action === "unpublish" ? client.unpublish(id) : client.publish(id),
+  );
 }
 
 export async function handleCatalogueRoutes(

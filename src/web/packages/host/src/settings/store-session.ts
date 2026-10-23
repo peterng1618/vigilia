@@ -34,6 +34,9 @@ export interface StoreSessionStore {
 }
 
 const FILE = "store-session.json";
+/** The superseded GitHub device-flow token; deleted the first time a store
+ *  session is written, since nothing reads it any more. */
+const LEGACY_GITHUB_TOKEN = "github-token.json";
 const MODE = 0o600;
 
 /**
@@ -96,6 +99,10 @@ export function createStoreSessionStore(directory: string): StoreSessionStore {
       mode: MODE,
     });
     await rename(temporary, file);
+    // The old device-flow token has no migration: a successful store sign-in is
+    // the moment its plaintext `public_repo` grant stops being needed. A missing
+    // file is the ordinary case, so its absence is not an error.
+    await rm(path.join(directory, LEGACY_GITHUB_TOKEN), { force: true });
   };
 
   let running: Promise<unknown> = Promise.resolve();

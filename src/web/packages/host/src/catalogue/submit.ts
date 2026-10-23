@@ -57,9 +57,14 @@ function text(status: number, body: string): Response {
 
 /** The status a thrown store refusal deserves: the session's own refusal is a
  *  sign-in problem, a 4xx is the author's submission being refused, and
- *  everything else is the store being unreachable. */
-function refusal(error: unknown): Response {
+ *  everything else is the store being unreachable. A 401 also spends the stored
+ *  session, so the next press asks for a sign-in rather than repeating it. */
+async function refusal(
+  error: unknown,
+  store: StoreSessionStore | undefined,
+): Promise<Response> {
   if (error instanceof StoreClientError) {
+    if (error.status === 401) await store?.clear();
     const status =
       error.status === 401 || error.status === 403
         ? 401
@@ -136,7 +141,7 @@ export async function handleSubmitRoute(
       client,
     });
   } catch (error) {
-    return refusal(error);
+    return refusal(error, deps.sessionStore);
   }
   if (!plan.ok) {
     return json(400, { ok: false, message: plan.message });
@@ -159,6 +164,6 @@ export async function handleSubmitRoute(
       },
     });
   } catch (error) {
-    return refusal(error);
+    return refusal(error, deps.sessionStore);
   }
 }
