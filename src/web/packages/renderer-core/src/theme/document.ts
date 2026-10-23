@@ -184,7 +184,8 @@ export interface BackgroundMedia {
   /** The box the layer is clipped to: the artboard rect or the display rect. */
   readonly bounds: BackgroundMediaBounds;
   /** Moves the centre by a fraction of the box's own dimensions; absent means 0.
-   *  The media is always `cover`, so translation can never expose the box. */
+   *  Placement bounds the pan to the cover rect's overhang, so it cannot expose
+   *  the box. */
   readonly offsetX?: number;
   readonly offsetY?: number;
   /** A paint-time mirror about the placed rect's centre; absent means false. */

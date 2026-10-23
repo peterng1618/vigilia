@@ -26,12 +26,17 @@ const ARTBOARD = { width: 640, height: 200 } as const;
 /** The authored media offset, verbatim from the fixture. The horizontal offset
  *  is inert because the cover rect has no horizontal overhang to pan within. */
 const MEDIA = { offsetX: 0, offsetY: 0.25 } as const;
-/** The glass panel's authored box, so the pixel reads can aim inside it. */
-const PANEL = { left: 40, top: 40, width: 120, height: 120 } as const;
-/** The panel's authored fill, `rgba(255, 255, 255, 0.10)`: the glass is
- *  translucent, so what a panel pixel shows is the blur of what is behind it
- *  with this much white over it. */
-const PANEL_WHITE_ALPHA = 0.1;
+/** The layer fixture's glass panel, so the pixel reads can aim inside it. */
+const LAYER_PANEL = { left: 420, top: 20, width: 120, height: 120 } as const;
+/** The flip fixture's panel, over the board's left half — the striped half
+ *  under the flip. */
+const FLIP_PANEL = { left: 40, top: 40, width: 120, height: 120 } as const;
+/** The panels' authored fill, `rgba(0, 0, 0, 0.35)`: the glass is translucent,
+ *  so a panel pixel is the blur of what is behind it with this much black over
+ *  it. A dark tint on the bright media is deliberately far from the media's own
+ *  ink, so a read that misses the panel (or a sampler that never ran) cannot
+ *  pass the panel assertion by being close enough. */
+const PANEL_BLACK_ALPHA = 0.35;
 
 interface Rect {
   readonly left: number;
@@ -215,7 +220,7 @@ function channelDistance(a: Pixel, b: Pixel): number {
  *  panel's own fill is the whole composite for this fixture. */
 function panelOver(base: Pixel): Pixel {
   const mix = (channel: number): number =>
-    Math.round(channel * (1 - PANEL_WHITE_ALPHA) + 255 * PANEL_WHITE_ALPHA);
+    Math.round(channel * (1 - PANEL_BLACK_ALPHA));
   return { r: mix(base.r), g: mix(base.g), b: mix(base.b) };
 }
 
@@ -310,16 +315,19 @@ test.describe("the background media layer on the player", () => {
     // 4. The pixels. Points are viewport coordinates derived from the measured
     //    rects; the expected colours are the fixture's own paint and ink.
     const point = artboardMap(geometry);
+    // 68 units off the panel's left edge: still inside it, and on an ink
+    // stripe's centre rather than its edge, so a sharp read is one tone and a
+    // blurred one is their mean.
     const panelCentre = point(
-      PANEL.left + PANEL.width / 2,
-      PANEL.top + PANEL.height / 2,
+      LAYER_PANEL.left + 68,
+      LAYER_PANEL.top + LAYER_PANEL.height / 2,
     );
     const points = [
-      // Inside the board, below the panel: the media covers the whole box, so
-      // this is its ink and never the paint.
-      point(100, PANEL.top + PANEL.height + 30),
-      // Inside the media and below the glass panel.
-      point(480, PANEL.top + PANEL.height + 30),
+      // Inside the board, below the panel, on an ink stripe's centre: the media
+      // covers the whole box, so this is its ink and never the paint.
+      point(8, LAYER_PANEL.top + LAYER_PANEL.height + 30),
+      // Likewise on the far side of the panel.
+      point(584, LAYER_PANEL.top + LAYER_PANEL.height + 30),
       // Just above the layer, inside the overhanging child: the clip's own
       // claim. Ten board units out keeps the read inside the host's own paint.
       point(480, -10),
@@ -362,26 +370,43 @@ test.describe("the background media layer on the player", () => {
       "below the layer, the clipped child paints nothing",
     );
 
-    // 5. Inside the glass panel. A panel pixel is the backdrop the glass
-    //    sampler read, blurred and tinted; the same pixel over the bare paint is
-    //    what the sampler would produce if the layer and the sampler had drifted
-    //    apart.
+    // 5. Inside the glass panel. The media under it is 16-unit ink/bar stripes
+    //    on a 32-unit period against a 16-unit blur, so a running sampler
+    //    averages them to their mean; a sampler that never ran leaves the sharp
+    //    DOM media visible through the translucent panel (one tone), and a read
+    //    that missed the panel shows a tone outright.
     const panelMedia = panelOver(BACKGROUND_LAYER_INK);
     const panelPaint = panelOver(BACKGROUND_LAYER_PAINT);
+    const panelBlurred = panelOver({
+      r: Math.round((BACKGROUND_LAYER_INK.r + BACKGROUND_LAYER_PAINT.r) / 2),
+      g: Math.round((BACKGROUND_LAYER_INK.g + BACKGROUND_LAYER_PAINT.g) / 2),
+      b: Math.round((BACKGROUND_LAYER_INK.b + BACKGROUND_LAYER_PAINT.b) / 2),
+    });
     expect(
-      channelDistance(panelMedia, panelPaint),
-      "the two possible panel readings are far enough apart to tell apart",
-    ).toBeGreaterThan(120);
+      channelDistance(panelMedia, panelBlurred),
+      "a tone and the blur's mean are far enough apart to tell apart",
+    ).toBeGreaterThan(40);
+    expect(
+      channelDistance(panelPaint, panelBlurred),
+      "the other tone and the blur's mean are far enough apart to tell apart",
+    ).toBeGreaterThan(40);
     const panel = pixels[4];
     expect(panel, "the panel's pixel was read").toBeDefined();
+    console.log(
+      `glass panel read ${JSON.stringify(panel)}; expected ${JSON.stringify(panelBlurred)}; sharp ink ${JSON.stringify(panelMedia)}; sharp bar ${JSON.stringify(panelPaint)}`,
+    );
+    expect(
+      channelDistance(panel!, panelBlurred),
+      `the sampler blurred the stripes: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelBlurred)}`,
+    ).toBeLessThanOrEqual(15);
     expect(
       channelDistance(panel!, panelMedia),
-      `inside the glass, the media shows through the panel: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelMedia)}`,
-    ).toBeLessThanOrEqual(30);
+      "the panel did not show the sharp media through a transparent canvas",
+    ).toBeGreaterThan(40);
     expect(
       channelDistance(panel!, panelPaint),
-      "inside the glass, the panel does not sample the bare paint",
-    ).toBeGreaterThan(60);
+      "the panel did not show the other sharp tone",
+    ).toBeGreaterThan(40);
   });
 
   test("an offset at its maximum stops at the box edge", async ({ page }) => {
@@ -441,40 +466,62 @@ test.describe("the background media layer on the player", () => {
       contentType: "image/png",
     });
     const pixels = await samplePixels(page, screenshot.toString("base64"), [
-      // Below the panel, in the board's left half: the source's right half.
-      point(80, 185),
-      // The board's right half: the source's left half.
-      point(560, 185),
-      // The panel over the left half, drawn by the canvas sampler.
-      point(PANEL.left + PANEL.width / 2, PANEL.top + PANEL.height / 2),
+      // Below the panel, on a stripe centre in the board's left half: under the
+      // flip that half shows the source's striped right half.
+      point(8, 185),
+      // The board's right half: under the flip, the source's flat bar half.
+      point(600, 185),
+      // The panel over the board's left half, drawn by the canvas sampler. 65
+      // units in is an ink stripe's centre under the flip.
+      point(FLIP_PANEL.left + 65, FLIP_PANEL.top + FLIP_PANEL.height / 2),
     ]);
 
     expectPixel(
       pixels[0],
-      BACKGROUND_LAYER_PAINT,
-      "the flipped source's dark half is on the left",
+      BACKGROUND_LAYER_INK,
+      "the flipped source's striped half is on the left",
     );
     expectPixel(
       pixels[1],
-      BACKGROUND_LAYER_INK,
-      "the flipped source's ink half is on the right",
+      BACKGROUND_LAYER_PAINT,
+      "the flipped source's flat bar half is on the right",
     );
 
-    const panelFlipped = panelOver(BACKGROUND_LAYER_PAINT);
-    const panelUnflipped = panelOver(BACKGROUND_LAYER_INK);
+    // Three readings the panel can produce, all far apart: the blur's mean when
+    // the sampler mirrors the stripes; the bar's tint when the sampler ignores
+    // the flip and draws the source's other half; the sharp ink's tint when no
+    // sampler ran at all and the DOM media shows through the canvas.
+    const panelFlipped = panelOver({
+      r: Math.round((BACKGROUND_LAYER_INK.r + BACKGROUND_LAYER_PAINT.r) / 2),
+      g: Math.round((BACKGROUND_LAYER_INK.g + BACKGROUND_LAYER_PAINT.g) / 2),
+      b: Math.round((BACKGROUND_LAYER_INK.b + BACKGROUND_LAYER_PAINT.b) / 2),
+    });
+    const panelUnflipped = panelOver(BACKGROUND_LAYER_PAINT);
+    const panelNoSampler = panelOver(BACKGROUND_LAYER_INK);
     expect(
       channelDistance(panelFlipped, panelUnflipped),
-      "the two possible panel readings are far enough apart to tell apart",
-    ).toBeGreaterThan(120);
+      "the two tones are far enough apart to tell apart",
+    ).toBeGreaterThan(40);
+    expect(
+      channelDistance(panelFlipped, panelNoSampler),
+      "the mean and the sharp tone are far enough apart to tell apart",
+    ).toBeGreaterThan(40);
     const panel = pixels[2];
     expect(panel, "the panel's pixel was read").toBeDefined();
+    console.log(
+      `flip panel read ${JSON.stringify(panel)}; mirrored blur ${JSON.stringify(panelFlipped)}; flip ignored ${JSON.stringify(panelUnflipped)}; no sampler ${JSON.stringify(panelNoSampler)}`,
+    );
     expect(
       channelDistance(panel!, panelFlipped),
-      `the sampler mirrors what the DOM shows: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelFlipped)}`,
-    ).toBeLessThanOrEqual(30);
+      `the sampler mirrored the stripes under the panel: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelFlipped)}`,
+    ).toBeLessThanOrEqual(15);
     expect(
       channelDistance(panel!, panelUnflipped),
       "the sampler did not draw the unmirrored source",
-    ).toBeGreaterThan(60);
+    ).toBeGreaterThan(40);
+    expect(
+      channelDistance(panel!, panelNoSampler),
+      "the panel did not show the sharp media through a transparent canvas",
+    ).toBeGreaterThan(40);
   });
 });

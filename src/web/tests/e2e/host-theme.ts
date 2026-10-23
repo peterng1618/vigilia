@@ -381,10 +381,30 @@ const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width
 </svg>
 `;
 
-/** The background layer's own source: 12 × 24 of one ink, so a pixel inside the
- *  placed rect has one answer and any other colour there is a wrong crop. */
-const backdrop = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 24" width="12" height="24">
-  <rect width="12" height="24" fill="#e8ecf3" />
+/** Vertical bars of the bar colour, `width` wide on a `pitch`, behind the ink
+ *  a source paints first. */
+const stripeBars = (
+  from: number,
+  count: number,
+  pitch: number,
+  width: number,
+  height: number,
+): string =>
+  Array.from(
+    { length: count },
+    (_, index) =>
+      `<rect x="${from + index * pitch}" y="0" width="${width}" height="${height}" fill="#101318" />`,
+  ).join("");
+
+/** The background layer's own source: 120 × 240 of ink crossed by 3-unit bar
+ *  stripes on a 6-unit pitch. At cover's ×5.33 that is a 32-board-unit period
+ *  against the glass's 16-unit blur, so a panel sample averages to the two
+ *  tones' mean while a sharp read is one of them — which is what lets a pixel
+ *  tell a running sampler from a transparent canvas. The 1:2 ratio is the old
+ *  source's, so every placement number still holds. */
+const backdrop = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 240" width="120" height="240">
+  <rect width="120" height="240" fill="#e8ecf3" />
+  ${stripeBars(3, 20, 6, 3, 240)}
 </svg>
 `;
 
@@ -395,11 +415,14 @@ const edgeSource = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 110
 </svg>
 `;
 
-/** The mirror fixture's source: ink on the left half, the bar colour on the
- *  right, so a horizontal flip is a colour a pixel can tell. */
-const flipward = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 24" width="12" height="24">
-  <rect width="6" height="24" fill="#e8ecf3" />
-  <rect x="6" width="6" height="24" fill="#101318" />
+/** The mirror fixture's source, at the board's own scale: the left half is the
+ *  bar colour and the right half alternates 16-unit ink/bar stripes. Mirroring
+ *  moves the striped half to the left, which a sharp read can tell, and the
+ *  stripes blur to their mean under the glass's 16-unit blur. */
+const flipward = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" width="640" height="200">
+  <rect width="640" height="200" fill="#101318" />
+  <rect x="320" width="320" height="200" fill="#e8ecf3" />
+  ${stripeBars(320, 10, 32, 16, 200)}
 </svg>
 `;
 
@@ -450,7 +473,7 @@ const mediaEnvelope = {
  * quarter-box vertical offset inside a 640 × 200 board, under a glass panel
  * that sits wholly inside the media.
  *
- * Worked out rather than eyeballed: the source is 12 × 24, so `cover` makes it
+ * Worked out rather than eyeballed: the source is 120 × 240, so `cover` makes it
  * 640 × 1280, the `0.25` offset pans it 50 units down from centre, and the
  * result is x 0…640, y −490…790 — over the board's top and bottom, with the
  * panel inside it.
@@ -482,7 +505,7 @@ const backgroundLayerEnvelope = {
       bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
       panel: {
         name: "Panel",
-        value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.10)" },
+        value: { kind: "solid" as const, color: "rgba(0, 0, 0, 0.35)" },
       },
       edge: {
         name: "Edge",
@@ -505,7 +528,9 @@ const backgroundLayerEnvelope = {
       {
         // Wholly inside the media (x 0…640, y −490…790). The glass then samples
         // the placed bitmap through the backdrop, and the media's own ink is
-        // still visible below the panel where the pixel read looks.
+        // still visible below the panel where the pixel read looks. A dark tint
+        // on the bright media is what makes a panel read distinguishable from
+        // the bare media behind it.
         type: "Rect" as const,
         version: "7.4.0" as const,
         originX: "left" as const,
@@ -516,7 +541,7 @@ const backgroundLayerEnvelope = {
         height: 120,
         rx: 16,
         ry: 16,
-        fill: "rgba(255, 255, 255, 0.10)",
+        fill: "rgba(0, 0, 0, 0.35)",
         stroke: "rgba(255, 255, 255, 0.35)",
         strokeWidth: 2,
         id: "media-panel",
@@ -576,13 +601,17 @@ const backgroundEdgeEnvelope = {
 };
 
 /**
- * The mirror fixture: a source whose left half is ink and right half the bar
- * colour, flipped horizontally, with a glass panel over the board's left.
+ * The mirror fixture: a source whose left half is the bar colour and right half
+ * is ink crossed by 16-unit stripes, flipped horizontally, with a glass panel
+ * over the board's left.
  *
- * Worked out rather than eyeballed: cover makes the 12 × 24 source 640 × 1280,
- * so the board's left half shows the source's right half (bar) under `flipX`
- * and its ink half without it. The panel's sample is the same question asked of
- * the canvas.
+ * Worked out rather than eyeballed: the source is the board's own 640 × 200, so
+ * cover is the identity. Under `flipX` the board's left half shows the striped
+ * right half and its right half the flat bar colour; without the flip those two
+ * swap. The panel's own dark tint over the blurred stripes is the mean of the
+ * two tones — far from either tone's tint, so a sampler that never ran (which
+ * leaves the sharp DOM media visible through the panel) reads a different
+ * colour.
  */
 const backgroundFlipEnvelope = {
   schemaVersion: 2 as const,
@@ -611,7 +640,7 @@ const backgroundFlipEnvelope = {
       bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
       panel: {
         name: "Panel",
-        value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.10)" },
+        value: { kind: "solid" as const, color: "rgba(0, 0, 0, 0.35)" },
       },
       edge: {
         name: "Edge",
@@ -633,7 +662,8 @@ const backgroundFlipEnvelope = {
     objects: [
       {
         // Over the board's left half, which the flip paints with the source's
-        // right (bar) half: a sampler that ignored the mirror would show ink.
+        // striped right half: the blur averages the stripes, and the panel's
+        // tint is the mean's, not either tone's.
         type: "Rect" as const,
         version: "7.4.0" as const,
         originX: "left" as const,
@@ -644,7 +674,7 @@ const backgroundFlipEnvelope = {
         height: 120,
         rx: 16,
         ry: 16,
-        fill: "rgba(255, 255, 255, 0.10)",
+        fill: "rgba(0, 0, 0, 0.35)",
         stroke: "rgba(255, 255, 255, 0.35)",
         strokeWidth: 2,
         id: "flip-panel",

@@ -13,7 +13,7 @@ const OTHER = {
 const TWO = { id: "two", kind: "svg", path: "assets/two.svg" } as const;
 
 describe("background media", () => {
-  it("mounts fitted image media below the Fabric canvas and disposes its source", () => {
+  it("mounts image media below the Fabric canvas and disposes its source", () => {
     const host = document.createElement("div");
     const canvas = document.createElement("canvas");
     host.append(canvas);
@@ -429,37 +429,45 @@ describe("background media as a glass backdrop", () => {
   });
 
   it("mirrors what the DOM layer mirrors, about the placed rect's centre", () => {
-    const host = document.createElement("div");
-    const handle = mountBackgroundMedia({
-      host,
-      background: {
-        media: { assetId: "hero", bounds: "theme", flipX: true },
-      },
-      artboard: { width: 200, height: 100 },
-      assets: [HERO],
-      resolveAsset: () => ({ url: "blob:hero" }),
-    });
-    withIntrinsic(host, 100, 100);
+    // Both axes, because the DOM child composes them independently and a
+    // sampler that inverted only one would still agree on the other.
+    for (const [axis, op] of [
+      ["flipX", "scale:-1,1"],
+      ["flipY", "scale:1,-1"],
+    ] as const) {
+      const host = document.createElement("div");
+      const handle = mountBackgroundMedia({
+        host,
+        background: {
+          media: { assetId: "hero", bounds: "theme", [axis]: true },
+        },
+        artboard: { width: 200, height: 100 },
+        assets: [HERO],
+        resolveAsset: () => ({ url: "blob:hero" }),
+      });
+      withIntrinsic(host, 100, 100);
 
-    const { calls, ops, ctx } = recordingContext();
-    handle
-      .backdrop()
-      ?.paint(
-        ctx,
-        { left: 0, top: 0, width: 200, height: 100 },
-        { left: 0, top: 0, width: 200, height: 100 },
-      );
-    // The placed rect is 0,-50,200,200, so its centre is (100, 50); drawing at
-    // the half-size about that centre is the same mirror `scaleX(-1)` paints.
-    expect(ops).toEqual([
-      "save",
-      "translate:100,50",
-      "scale:-1,1",
-      "drawImage",
-      "restore",
-    ]);
-    expect(calls[0]?.slice(-4)).toEqual([-100, -100, 200, 200]);
-    handle.destroy();
+      const { calls, ops, ctx } = recordingContext();
+      handle
+        .backdrop()
+        ?.paint(
+          ctx,
+          { left: 0, top: 0, width: 200, height: 100 },
+          { left: 0, top: 0, width: 200, height: 100 },
+        );
+      // The placed rect is 0,-50,200,200, so its centre is (100, 50); drawing
+      // at the half-size about that centre is the same mirror the DOM child
+      // carries.
+      expect(ops, axis).toEqual([
+        "save",
+        "translate:100,50",
+        op,
+        "drawImage",
+        "restore",
+      ]);
+      expect(calls[0]?.slice(-4), axis).toEqual([-100, -100, 200, 200]);
+      handle.destroy();
+    }
   });
 
   it("draws the whole source at every device scale, not a window of it", () => {
@@ -684,8 +692,9 @@ describe("background media as a glass backdrop", () => {
   });
 
   it("keeps following frames when a transform update re-places the same video", () => {
-    // A scale or fit change is a placement change, not a reload: the video must
-    // keep playing, so the frame subscription must survive it too.
+    // An offset or flip change is a placement or paint change, not a reload:
+    // the video must keep playing, so the frame subscription must survive it
+    // too.
     const scheduled: (() => void)[] = [];
     const proto = HTMLVideoElement.prototype as unknown as {
       requestVideoFrameCallback: (cb: () => void) => number;

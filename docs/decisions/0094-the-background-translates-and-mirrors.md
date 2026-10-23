@@ -1,4 +1,4 @@
-# 0094 — The background translates and mirrors; it never shrink, stretch or fill
+# 0094 — The background translates and mirrors; it never shrinks, stretches or fills
 
 - **Date:** 2026-10-23
 - **Status:** accepted
@@ -15,9 +15,12 @@ inspector offered the controls that produced it.
 
 The owner's ruling after the final review is that the media is **always
 `cover`** and the author's geometry is **translation only**, plus two paint-time
-mirrors. `cover`'s rect is at least the box on both axes, so a translation can
-never expose an edge; removing the shrink and stretch controls makes the gap
-unreachable rather than discouraged.
+mirrors. Removing the shrink and stretch controls makes the gap unreachable
+rather than discouraged. Cover is not by itself enough: a covering rect slides
+off its box under a large enough translation exactly like any other. What makes
+the edge unreachable is the **bounded pan** — `placement()` stops the media's
+edge on the box's edge, so an offset at ±100% can never expose the colour
+inside the box.
 
 This note supersedes 0093's media fields. It does **not** supersede 0093's
 decision — the envelope section, the virtual row, the one placement owner and
