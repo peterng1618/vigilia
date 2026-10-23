@@ -1082,7 +1082,7 @@ describe("opening a theme over a document that has unsaved changes", () => {
       scene: {},
       snapshot: vi.fn(() => envelope),
       setArtboard: vi.fn(),
-      refreshBackgroundMedia: vi.fn(),
+      setBackground: vi.fn(),
       setBackgroundMedia: vi.fn(),
     });
 
@@ -1113,7 +1113,7 @@ describe("opening a theme over a document that has unsaved changes", () => {
     libraryChoiceMock.mockClear();
   });
 
-  it("imports a finder result through the session's own asset path", async () => {
+  it("imports a finder image as the background layer's media", async () => {
     assetClientMock.assetBytes.mockResolvedValue({
       bytes: new TextEncoder().encode(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>',
@@ -1138,9 +1138,16 @@ describe("opening a theme over a document that has unsaved changes", () => {
     expect(outcome?.ok === true ? "imported" : outcome?.message).toBe(
       "imported",
     );
-    // The declaration is new, so the pane's list must be told; otherwise it
-    // shows the set from before the import until another asset action.
-    expect(setAssets).toHaveBeenCalled();
+    // An image becomes the background layer's picture, in the box the media
+    // already filled. (The Document pane kept this list when main wrote the
+    // case; the Add pane's list owns it now.)
+    expect(
+      (
+        shells.last as { setBackground: ReturnType<typeof vi.fn> }
+      ).setBackground,
+    ).toHaveBeenCalledWith({
+      media: expect.objectContaining({ bounds: "theme" }),
+    });
     extensions.destroy();
   });
 
