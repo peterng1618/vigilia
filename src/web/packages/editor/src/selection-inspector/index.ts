@@ -92,6 +92,10 @@ export interface SelectionInspector {
   setGlobals(next: FabricGlobals | undefined): void;
   /** The document's language changed, so a formatted preview may have too. */
   setLocale(next: string | undefined): void;
+  /** Unmounts the three trees and detaches the column. A host that replaces the
+   *  inspector needs this: a portal is removed against the container it was
+   *  opened in, and a detached container makes that removal throw. */
+  destroy(): void;
 }
 
 interface SelectionInspectorOptions {
@@ -978,6 +982,12 @@ export function createSelectionInspector(
     setLocale(next) {
       locale = next;
       render();
+    },
+    destroy() {
+      column.destroy();
+      lead.destroy();
+      sectionColumn.destroy();
+      root.remove();
     },
   };
 }
