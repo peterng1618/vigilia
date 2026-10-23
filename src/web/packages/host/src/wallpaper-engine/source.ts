@@ -1,0 +1,191 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { contentTypeFor } from "../serve/static-path.js";
+import { readSceneFacts, type SceneFacts } from "./classify.js";
+import { type LibraryItem, scanLibrary } from "./library.js";
+import { locateInstall } from "./locate.js";
+import { resolvePayload } from "./resolve.js";
+import { type StoredItem, toStoredItem } from "./wire.js";
+
+/**
+ * The whole host surface behind one object the server takes as an option
+ * (§5.2). The browser names an item by its `workshopId`; every path lives here.
+ */
+
+export type UnavailableReason =
+  | "not-installed"
+  | "unsupported-platform"
+  | "no-library";
+
+export interface WallpaperEngineListing {
+  readonly available: true;
+  readonly install: string;
+  readonly items: readonly StoredItem[];
+  readonly skipped: number;
+}
+
+export type WallpaperEngineAnswer =
+  | WallpaperEngineListing
+  | { readonly available: false; readonly reason: UnavailableReason };
+
+export interface WallpaperEngineSource {
+  readonly listing: () => Promise<WallpaperEngineAnswer>;
+  readonly bytesOf: (
+    workshopId: string,
+    part: "preview" | "asset",
+  ) => Promise<
+    { readonly bytes: Uint8Array; readonly contentType: string } | undefined
+  >;
+}
+
+async function readOrUndefined(file: string): Promise<Uint8Array | undefined> {
+  try {
+    return await fs.readFile(file);
+  } catch {
+    return undefined;
+  }
+}
+
+async function isFile(file: string): Promise<boolean> {
+  try {
+    return (await fs.stat(file)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/** True when `target` is `directory` or below it, on the same drive. */
+function insideOf(directory: string, target: string): boolean {
+  const relative = path.relative(directory, target);
+  return (
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+export function createWallpaperEngineSource(
+  options: {
+    readonly locate?: typeof locateInstall;
+    readonly classify?: typeof readSceneFacts;
+  } = {},
+): WallpaperEngineSource {
+  const locate = options.locate ?? locateInstall;
+  const classify = options.classify ?? readSceneFacts;
+  // The real locator answers `undefined` on every non-Windows platform, which
+  // is a different answer from "not installed". An injected locator is a
+  // fixture, so the platform it runs on says nothing about the library.
+  const supported =
+    options.locate !== undefined || process.platform === "win32";
+
+  /** The most recent scan, so a byte request is answered by id, never a path. */
+  let scanned: ReadonlyMap<string, LibraryItem> | undefined;
+  /** Scene packages read while classifying, so the asset route reads each once. */
+  let sceneBytes = new Map<string, Uint8Array>();
+
+  async function listing(): Promise<WallpaperEngineAnswer> {
+    if (!supported) {
+      return { available: false, reason: "unsupported-platform" };
+    }
+
+    // Located per listing, not once per process: a Steam library can appear
+    // while the editor is open.
+    const install = await locate(process.env, process.platform);
+    if (install === undefined) {
+      return { available: false, reason: "not-installed" };
+    }
+    if (install.libraries.length === 0) {
+      return { available: false, reason: "no-library" };
+    }
+
+    const scan = await scanLibrary(install);
+    const items: StoredItem[] = [];
+    const byId = new Map<string, LibraryItem>();
+    const packages = new Map<string, Uint8Array>();
+    let skipped = scan.skipped;
+
+    for (const item of scan.items) {
+      const payload = await resolvePayload(item);
+      // A listed item with nothing behind it is refused the same way an
+      // unreadable directory is, and counted rather than silently dropped.
+      if (payload === undefined) {
+        skipped += 1;
+        continue;
+      }
+
+      let facts: SceneFacts | undefined;
+      if (payload.kind === "scene") {
+        const bytes = await readOrUndefined(payload.path);
+        if (bytes !== undefined) {
+          packages.set(item.workshopId, bytes);
+          facts = classify(bytes);
+        }
+      }
+
+      items.push(toStoredItem(item, payload, facts));
+      byId.set(item.workshopId, item);
+    }
+
+    sceneBytes = packages;
+    scanned = byId;
+
+    return { available: true, install: install.root, items, skipped };
+  }
+
+  async function itemOf(workshopId: string): Promise<LibraryItem | undefined> {
+    const found = scanned?.get(workshopId);
+    if (found !== undefined) {
+      return found;
+    }
+    // A byte request that arrives before the list, or from a page kept across a
+    // host restart, scans once rather than trusting anything the caller named.
+    await listing();
+    return scanned?.get(workshopId);
+  }
+
+  async function bytesOf(
+    workshopId: string,
+    part: "preview" | "asset",
+  ): Promise<
+    { readonly bytes: Uint8Array; readonly contentType: string } | undefined
+  > {
+    const item = await itemOf(workshopId);
+    if (item === undefined) {
+      return undefined;
+    }
+
+    if (part === "preview") {
+      // `project.json` is third-party content, so the preview is a file inside
+      // this item's own directory or it is not served at all.
+      const preview = item.preview;
+      if (
+        preview === undefined ||
+        !insideOf(item.directory, preview) ||
+        !(await isFile(preview))
+      ) {
+        return undefined;
+      }
+
+      const bytes = await readOrUndefined(preview);
+      return bytes === undefined
+        ? undefined
+        : { bytes, contentType: contentTypeFor(preview) };
+    }
+
+    const payload = await resolvePayload(item);
+    if (payload === undefined || payload.kind === "web") {
+      return undefined;
+    }
+
+    const cached = sceneBytes.get(item.workshopId);
+    const bytes = cached ?? (await readOrUndefined(payload.path));
+    const contentType =
+      payload.kind === "scene"
+        ? contentTypeFor(payload.path)
+        : payload.contentType;
+
+    return bytes === undefined ? undefined : { bytes, contentType };
+  }
+
+  return { listing, bytesOf };
+}

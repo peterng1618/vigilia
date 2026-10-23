@@ -106,6 +106,7 @@ import {
   encodeThemeContent,
 } from "./themes/wire.js";
 import { SseConnection } from "./transport/sse.js";
+import type { WallpaperEngineSource } from "./wallpaper-engine/source.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
 
@@ -201,6 +202,9 @@ export interface HostServerOptions {
   /** The asset finder's sources. Omitted when this host serves none; the
    *  routes then say so rather than falling through to the static 404. */
   readonly assets?: AssetRouteOptions;
+  /** The Wallpaper Engine library on this PC. Omitted when this host serves
+   *  none, and the listing then says it is not installed. */
+  readonly wallpaperEngine?: WallpaperEngineSource;
   /** Called after a display change so providers read readings the new way. */
   readonly onDisplayChange?: (settings: DisplaySettings) => void;
   /** Devices a consumer may choose between. Omitted when none are known. */
@@ -883,6 +887,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const credentials = options.credentials;
   const knownCredentials = options.knownCredentials ?? KNOWN_CREDENTIALS;
   const assets = options.assets;
+  const wallpaperEngine = options.wallpaperEngine;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const fetcher = options.fetch;
@@ -2153,6 +2158,54 @@ export function createHostServer(options: HostServerOptions): HostServer {
         }),
         templates: SHIPPED_TEMPLATES,
       });
+      return;
+    }
+
+    // The Wallpaper Engine library this PC holds, and one item's bytes. The
+    // browser names an item by its `workshopId`; every path stays in the host
+    // (docs/decisions/0097).
+    if (url.pathname === "/api/wallpaper-engine") {
+      if (request.method !== "GET") {
+        sendText(response, 405, "Only GET is supported.");
+        return;
+      }
+
+      sendJson(
+        response,
+        200,
+        wallpaperEngine === undefined
+          ? { available: false, reason: "not-installed" }
+          : await wallpaperEngine.listing(),
+      );
+      return;
+    }
+
+    const wallpaperEngineMatch = url.pathname.match(
+      /^\/api\/wallpaper-engine\/item\/([^/]+)\/(preview|asset)$/,
+    );
+    if (wallpaperEngineMatch) {
+      if (request.method !== "GET") {
+        sendText(response, 405, "Only GET is supported.");
+        return;
+      }
+
+      const workshopId = decodeURIComponent(wallpaperEngineMatch[1] ?? "");
+      const part = wallpaperEngineMatch[2] === "preview" ? "preview" : "asset";
+      const bytes =
+        wallpaperEngine === undefined
+          ? undefined
+          : await wallpaperEngine.bytesOf(workshopId, part);
+
+      if (bytes === undefined) {
+        sendText(response, 404, "No such wallpaper.");
+        return;
+      }
+
+      response.writeHead(200, {
+        "content-type": bytes.contentType,
+        "cache-control": "no-store",
+      });
+      response.end(bytes.bytes);
       return;
     }
 

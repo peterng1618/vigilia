@@ -62,6 +62,7 @@ import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
 import { encodeThemeContent } from "./themes/wire.js";
 import { createSecureOrigin } from "./tls/authority.js";
+import type { WallpaperEngineSource } from "./wallpaper-engine/source.js";
 
 /** The library is a folder, so a save is the document and its bytes (ADR-0017),
  *  plus what the client says the save is based on. */
@@ -7572,6 +7573,145 @@ describe("The host's secure origin", () => {
       const answer = await request(hosted.server, "GET", CA_CERTIFICATE_PATH);
       expect(answer.status).toBe(404);
       expect(answer.text()).toContain("no certificate");
+    } finally {
+      await hosted.close();
+    }
+  });
+});
+
+describe("Host Wallpaper Engine routes", () => {
+  let tmpDir: string;
+
+  const listingAnswer = {
+    available: true as const,
+    install: "C:\Games\Steam\steamapps\common\wallpaper_engine",
+    skipped: 2,
+    items: [
+      {
+        workshopId: "201",
+        title: "Still Scene",
+        kind: "scene" as const,
+        previewUrl: "/api/wallpaper-engine/item/201/preview",
+        filesize: 10,
+        tags: [],
+        properties: undefined,
+        stillAtRest: true,
+        hasText: true,
+      },
+    ],
+  };
+
+  const encoder = new TextEncoder();
+
+  function fakeSource(): WallpaperEngineSource {
+    return {
+      listing: () => Promise.resolve(listingAnswer),
+      bytesOf: (workshopId, part) => {
+        if (workshopId !== "201") {
+          return Promise.resolve(undefined);
+        }
+        return Promise.resolve(
+          part === "preview"
+            ? { bytes: encoder.encode("jpeg"), contentType: "image/jpeg" }
+            : { bytes: encoder.encode("mp4"), contentType: "video/mp4" },
+        );
+      },
+    };
+  }
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-host-we-test-"));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  function host(source?: WallpaperEngineSource) {
+    return createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      themeStore: createThemeStore(tmpDir),
+      ...(source === undefined ? {} : { wallpaperEngine: source }),
+    });
+  }
+
+  it("answers the injected listing verbatim", async () => {
+    const hosted = host(fakeSource());
+
+    try {
+      const answer = await request(
+        hosted.server,
+        "GET",
+        "/api/wallpaper-engine",
+      );
+      expect(answer.status).toBe(200);
+      expect(answer.json()).toEqual(listingAnswer);
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("serves preview and payload bytes, and 404 for an unknown id", async () => {
+    const hosted = host(fakeSource());
+
+    try {
+      const preview = await request(
+        hosted.server,
+        "GET",
+        "/api/wallpaper-engine/item/201/preview",
+      );
+      expect(preview.status).toBe(200);
+      expect(preview.headers["content-type"]).toBe("image/jpeg");
+      expect(preview.headers["cache-control"]).toBe("no-store");
+      expect(preview.body.toString()).toBe("jpeg");
+
+      const asset = await request(
+        hosted.server,
+        "GET",
+        "/api/wallpaper-engine/item/201/asset",
+      );
+      expect(asset.status).toBe(200);
+      expect(asset.headers["content-type"]).toBe("video/mp4");
+      expect(asset.body.toString()).toBe("mp4");
+
+      expect(
+        (
+          await request(
+            hosted.server,
+            "GET",
+            "/api/wallpaper-engine/item/999/asset",
+          )
+        ).status,
+      ).toBe(404);
+      expect(
+        (
+          await request(
+            hosted.server,
+            "GET",
+            "/api/wallpaper-engine/item/999/preview",
+          )
+        ).status,
+      ).toBe(404);
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("answers not-installed when the host has no source", async () => {
+    const hosted = host();
+
+    try {
+      const answer = await request(
+        hosted.server,
+        "GET",
+        "/api/wallpaper-engine",
+      );
+      expect(answer.status).toBe(200);
+      expect(answer.json()).toEqual({
+        available: false,
+        reason: "not-installed",
+      });
     } finally {
       await hosted.close();
     }
