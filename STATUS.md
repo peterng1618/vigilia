@@ -16,9 +16,10 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 
 ## Last completed change
 
-- **The scene container is read by a bounds-checked table walk** (`host/src/wallpaper-engine/pkg.ts`): `PKGV0001`/`0020`/`0024`/`0025`, member offsets relative to the table's end, and `undefined` rather than a partial table.
-- **The still test walks the parsed scene for motion** (`classify.ts`): particle, animation layers or an `animation` key anywhere — including inside a referenced model member — is animation; text is reported as its own fact.
-- **The reader is pinned to hand-built buffers**: header and magic refusals, truncation, table overrun, empty and duplicate names, five scene shapes, and a model member that is absent or unparsable leaving the scene unclassified.
+- **The install is located and its libraries listed** (`wallpaper-engine/locate.ts`): the `YUNARI_WALLPAPER_ENGINE` hook, `reg query … SteamPath`, then the two Program Files roots; a library counts only when `steamapps/workshop/content/431960` exists, and off Windows the answer is `undefined` before anything is read.
+- **The scan lists wallpapers and never presets** (`library.ts`): `project.json` type lowercased, a `preset` with no type and an unreadable descriptor skipped and counted, `bin/workshopcache.json` joined by `workshopid` with attribution absent when there is no row.
+- **An item resolves by §4's order** (`resolve.ts`): an image extension before any type check, then video/web/scene, and a payload absent from disk is no outcome at all.
+- **`StoredItem` omits what was not measured** (`wire.ts`): attribution only when present, `stillAtRest`/`hasText` only when classified, and the preview at the item's own route.
 
 ## Next
 
