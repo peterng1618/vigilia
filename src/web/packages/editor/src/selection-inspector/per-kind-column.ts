@@ -441,16 +441,43 @@ function positionBody(
   return { fields, extras };
 }
 
-/** How it presents: rotation, and opacity. */
+/** One paint-time mirror. Fabric owns the property, so the row reads and the
+    writer writes the same name; a group member flips alone. */
+function flipField(image: FabricImage, axis: "flipX" | "flipY"): FieldView {
+  return axis === "flipX"
+    ? {
+        id: "flipX",
+        control: "toggle",
+        label: uiCopy.inspectorFields.flipX,
+        checked: image.flipX,
+        data: { "data-yunari-flip-x": "" },
+      }
+    : {
+        id: "flipY",
+        control: "toggle",
+        label: uiCopy.inspectorFields.flipY,
+        checked: image.flipY,
+        data: { "data-yunari-flip-y": "" },
+      };
+}
+
+/** How it presents: rotation, opacity, and — for a picture — its two mirrors. */
 function layerBody(
   target: FabricObject,
   context: ColumnContext,
   locked: boolean,
 ): SectionParts {
   if (locked) return { fields: [] };
-  return {
-    fields: [rotationField(context, target), opacityField(target)],
-  };
+  const fields: FieldView[] = [
+    rotationField(context, target),
+    opacityField(target),
+  ];
+  // A raster image and an SVG icon are both a `FabricImage`, so one gate covers
+  // the whole image kind; text, shape, chart and group have nothing to mirror.
+  if (target instanceof FabricImage) {
+    fields.push(flipField(target, "flipX"), flipField(target, "flipY"));
+  }
+  return { fields };
 }
 
 /** What ink: the panel's material, the frosted-glass treatment, and a chart's

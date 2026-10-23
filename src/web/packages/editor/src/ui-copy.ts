@@ -282,6 +282,9 @@ export const uiCopy = {
       glassRefusals[kind] ??
       `${kind} is not a shape frosted glass can be applied to.`,
     opacity: "Opacity %",
+    /** A picture layer's two paint-time mirrors. */
+    flipX: "Flip horizontally",
+    flipY: "Flip vertically",
     paint: "Paint",
     notSet: "not set",
     unresolved: "no longer resolves",

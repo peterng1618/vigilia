@@ -215,9 +215,9 @@ function channelDistance(a: Pixel, b: Pixel): number {
   );
 }
 
-/** What the translucent panel shows when a flat colour is behind it. The
- *  backdrop is blurred, and the blur of one flat source is that source, so the
- *  panel's own fill is the whole composite for this fixture. */
+/** What the translucent panel shows when the fixture's two stripes are behind
+ *  it. The backdrop is blurred, and the blur of stripes is their mean, so the
+ *  panel's own fill over that mean is the whole composite. */
 function panelOver(base: Pixel): Pixel {
   const mix = (channel: number): number =>
     Math.round(channel * (1 - PANEL_BLACK_ALPHA));
@@ -392,9 +392,6 @@ test.describe("the background media layer on the player", () => {
     ).toBeGreaterThan(40);
     const panel = pixels[4];
     expect(panel, "the panel's pixel was read").toBeDefined();
-    console.log(
-      `glass panel read ${JSON.stringify(panel)}; expected ${JSON.stringify(panelBlurred)}; sharp ink ${JSON.stringify(panelMedia)}; sharp bar ${JSON.stringify(panelPaint)}`,
-    );
     expect(
       channelDistance(panel!, panelBlurred),
       `the sampler blurred the stripes: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelBlurred)}`,
@@ -508,9 +505,6 @@ test.describe("the background media layer on the player", () => {
     ).toBeGreaterThan(40);
     const panel = pixels[2];
     expect(panel, "the panel's pixel was read").toBeDefined();
-    console.log(
-      `flip panel read ${JSON.stringify(panel)}; mirrored blur ${JSON.stringify(panelFlipped)}; flip ignored ${JSON.stringify(panelUnflipped)}; no sampler ${JSON.stringify(panelNoSampler)}`,
-    );
     expect(
       channelDistance(panel!, panelFlipped),
       `the sampler mirrored the stripes under the panel: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelFlipped)}`,

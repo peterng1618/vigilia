@@ -1276,6 +1276,46 @@ describe("the column's sections", () => {
     expect(inSection("position", "[data-yunari-bleeds]")).toBeNull();
   });
 
+  it("offers an image both flips under Layer, one press each", async () => {
+    const image = new FabricImage("", {
+      left: 0,
+      top: 0,
+      width: 40,
+      height: 40,
+    });
+    const { host, history } = setup(image);
+    const flip = (axis: "x" | "y"): HTMLElement | null =>
+      host.querySelector<HTMLElement>(
+        `[data-yunari-section="layer"] [data-yunari-flip-${axis}]`,
+      );
+
+    expect(flip("x")?.getAttribute("aria-checked")).toBe("false");
+    expect(flip("y")?.getAttribute("aria-checked")).toBe("false");
+
+    await click(flip("x")!);
+    expect(image.flipX).toBe(true);
+    await click(flip("y")!);
+    expect(image.flipY).toBe(true);
+    await click(flip("x")!);
+    expect(image.flipX).toBe(false);
+    // Three presses, three entries: a flip is one write through the same
+    // commit funnel every other object field uses, so one undo step each.
+    expect(history.saveState).toHaveBeenCalledTimes(3);
+  });
+
+  it("offers flips to an image and to no other kind", () => {
+    expect(
+      setup(
+        new Rect({ left: 0, top: 0, width: 40, height: 20 }),
+      ).host.querySelector("[data-yunari-flip-x]"),
+    ).toBeNull();
+    expect(
+      setup(
+        new FabricImage("", { left: 0, top: 0, width: 40, height: 40 }),
+      ).host.querySelector("[data-yunari-flip-x]"),
+    ).not.toBeNull();
+  });
+
   it("is a plan a test can read as data, before anything renders", () => {
     const editor = {
       canvas: canvasWith(rect),

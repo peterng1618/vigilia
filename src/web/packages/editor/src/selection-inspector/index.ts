@@ -463,6 +463,21 @@ export function createSelectionInspector(
   };
 
   /**
+   * A flip is Fabric's own property on the object, so it is written where every
+   * other object field is. A group member is its own object, so it mirrors alone.
+   */
+  const writeFlip = (
+    object: FabricObject,
+    axis: "flipX" | "flipY",
+    value: string | number | boolean,
+  ): boolean => {
+    if (typeof value !== "boolean") return false;
+    object.set(axis, value);
+    object.setCoords();
+    return true;
+  };
+
+  /**
    * One field, written by the owner that owns it: the funnel a slider's preview
    * and its release share, so the two cannot take different routes to the
    * document (`vg-254`).
@@ -483,6 +498,8 @@ export function createSelectionInspector(
       return true;
     }
     if (fieldId === "opacity") return writeOpacity(object, value);
+    if (fieldId === "flipX" || fieldId === "flipY")
+      return writeFlip(object, fieldId, value);
     if (GEOMETRY_KEYS.has(fieldId)) {
       write(object, fieldId as GeometryKey, value as number);
       return true;

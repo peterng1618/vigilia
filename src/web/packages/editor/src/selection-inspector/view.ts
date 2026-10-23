@@ -474,6 +474,10 @@ const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
   ["panel-shadow-offset", "integer"],
   ["glass-enabled", "boolean"],
   ["glass-blur", "integer"],
+  // A picture's paint-time mirrors. Fabric owns the property; the boundary only
+  // holds its type, so a switch cannot smuggle a number into it.
+  ["flipX", "boolean"],
+  ["flipY", "boolean"],
 ]);
 
 /** Why an edit was refused; `undefined` means it may reach the write funnel. */
