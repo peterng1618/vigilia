@@ -1,7 +1,7 @@
 # Wallpaper Engine as a source of Yunari background media — design
 
 - **Date:** 2026-10-21
-- **Status:** proposed
+- **Status:** implemented 2026-10-23 (plan archived; decision `0097`)
 - **Author:** investigation on Wallpaper Engine 2.8.42, build `2026-06-29 14:36:02`
 - **Related:** [`2026-10-12-theme-store-design.md`](2026-10-12-theme-store-design.md)
   (media normalizer, ffmpeg decision), `renderer-core`'s `BackgroundMedia`,
