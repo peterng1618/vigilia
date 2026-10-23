@@ -63,6 +63,9 @@ export interface NewObjectAssets {
   /** The envelope-side references no object carries — the artboard's background
    *  media and a type preset's face. */
   readonly isReferenced: (assetId: string) => boolean;
+  /** Opens the finder. The modal is the shell's, so the session hands this port
+   *  down rather than the panel inventing a second entry path. */
+  readonly onFindAssets?: () => void;
 }
 
 /** One object an author can insert, named as the control that inserts it. */
@@ -351,6 +354,9 @@ export function createNewObjectPanel(
               editor,
               changed: assets.changed,
               isReferenced: assets.isReferenced,
+              ...(assets.onFindAssets === undefined
+                ? {}
+                : { onFindAssets: assets.onFindAssets }),
             }),
       ),
     );

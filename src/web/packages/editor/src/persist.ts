@@ -1,5 +1,9 @@
 import type { FabricThemeEnvelope } from "@yunari/renderer-core";
-import { readThemePackage, writeThemePackage } from "@yunari/theme-package";
+import {
+  readThemePackage,
+  type ThemeCredits,
+  writeThemePackage,
+} from "@yunari/theme-package";
 
 type PackageParseResult =
   | {
@@ -8,6 +12,8 @@ type PackageParseResult =
       readonly assets: Readonly<Record<string, Uint8Array>>;
       /** Absent when the package carried no usable picture. */
       readonly thumbnail?: Uint8Array;
+      /** The package's attribution member, when it carried one. */
+      readonly credits?: ThemeCredits;
     }
   | { readonly ok: false; readonly message: string };
 
@@ -25,6 +31,7 @@ export function parseThemePackage(bytes: Uint8Array): PackageParseResult {
     envelope: result.envelope,
     assets: result.assets,
     ...(result.thumbnail === undefined ? {} : { thumbnail: result.thumbnail }),
+    ...(result.credits === undefined ? {} : { credits: result.credits }),
   };
 }
 
@@ -32,11 +39,13 @@ export function serializeThemePackage(
   envelope: FabricThemeEnvelope,
   assets: Readonly<Record<string, Uint8Array>> = {},
   thumbnail?: Uint8Array,
+  credits?: ThemeCredits,
 ): PackageSerializeResult {
   return writeThemePackage({
     envelope,
     assets,
     ...(thumbnail === undefined ? {} : { thumbnail }),
+    ...(credits === undefined ? {} : { credits }),
   });
 }
 

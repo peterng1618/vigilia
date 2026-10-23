@@ -28,6 +28,7 @@
     "test:rebuild": "playwright test --config playwright.rebuild.config.ts --workers=1",
     "test:display": "playwright test --config playwright.display.config.ts --workers=1",
     "fonts:generate": "node scripts/generate-font-trios.mjs",
+    "icons:generate": "node ../../scripts/generate-lucide-icons.mjs && node ../../scripts/generate-lineicons.mjs",
     "size": "npm run size -w @yunari/player",
     "status:check": "node ../../scripts/check-status.mjs",
     "docs:check": "node ../../scripts/check-doc-references.mjs",
@@ -50,6 +51,7 @@
     "canvas": "3.2.3",
     "jsdom": "26.1.0",
     "jsqr": "^1.4.0",
+    "lineicons": "1.3.2",
     "typescript": "7.0.2",
     "vite": "8.3.0",
     "vitest": "5.0.0"

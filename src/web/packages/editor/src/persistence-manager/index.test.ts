@@ -131,6 +131,39 @@ describe("PersistenceManager", () => {
     expect(manager.isDirty(changedEnvelope, {})).toBe(false);
   });
 
+  it("ships the credits member beside the theme", async () => {
+    let downloaded: Uint8Array | undefined;
+    const manager = new PersistenceManager(
+      baseline,
+      {},
+      {
+        downloader: (_name, bytes) => {
+          downloaded = bytes;
+        },
+      },
+    );
+    const credits = {
+      format: "yunari-theme-credits" as const,
+      version: 1 as const,
+      entries: [
+        {
+          kind: "icon",
+          title: "house",
+          license: "ISC",
+          changes: "Imported unchanged",
+          source: { url: "https://lucide.dev/icons/house" },
+        },
+      ],
+    };
+
+    await manager.save(baseline, {}, undefined, credits);
+
+    const read = readThemePackage(downloaded!);
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.credits).toEqual(credits);
+  });
+
   it("ships the picture in the downloaded package, and does not track it", async () => {
     let downloaded: { name: string; bytes: Uint8Array } | undefined;
     const manager = new PersistenceManager(

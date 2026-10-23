@@ -26,6 +26,7 @@ where its section is one.
 | react-dom 19.3.0 | MIT | editor shell chrome |
 | @base-ui/react 1.8.0 | MIT | editor shell primitives |
 | lucide-react 1.48.0 | ISC AND MIT (Feather-derived subset) | editor action-bar icons |
+| Lineicons 1.3.2 | MIT | development-only: generates the asset finder's Lineicons manifest; no runtime import |
 | systeminformation 5.33.13 | MIT | host hardware metrics (no dependencies of its own) |
 | node-forge 1.4.0 | BSD-3-Clause (of `BSD-3-Clause OR GPL-2.0`) | host: encodes and signs the local CA and leaf that give a display a secure origin (no dependencies of its own) |
 | qr 0.7.2 | MIT OR Apache-2.0 | QR symbol for the display link (no dependencies of its own) |

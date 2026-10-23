@@ -120,6 +120,7 @@ interface Harness {
   readonly saveState: Mock;
   readonly error: Mock;
   readonly changed: Mock;
+  readonly onFindAssets: Mock;
 }
 
 /** The file section over a real `AssetManager`, on an editor stub that answers
@@ -150,6 +151,7 @@ async function mount(
   const saveState = vi.fn();
   const error = vi.fn();
   const changed = vi.fn();
+  const onFindAssets = vi.fn();
   const editor = {
     canvas: {
       getObjects: () => objects,
@@ -170,6 +172,7 @@ async function mount(
         editor={editor}
         changed={changed}
         isReferenced={isReferenced}
+        onFindAssets={onFindAssets}
       />,
     );
   });
@@ -184,6 +187,7 @@ async function mount(
     saveState,
     error,
     changed,
+    onFindAssets,
   };
 }
 
@@ -361,6 +365,19 @@ const removeControl = (host: HTMLElement): HTMLButtonElement =>
   host.querySelector<HTMLButtonElement>("[data-yunari-asset-remove]")!;
 
 describe("the Add pane's file section", () => {
+  it("opens the finder from its own control", async () => {
+    const { host, onFindAssets } = await mount();
+
+    const control = host.querySelector<HTMLButtonElement>(
+      "[data-yunari-find-assets]",
+    );
+    if (control === null) throw new Error("no Find assets control.");
+    expect(control.textContent).toContain(uiCopy.file.findAssets);
+
+    await click(control);
+    expect(onFindAssets).toHaveBeenCalledTimes(1);
+  });
+
   it("places an image or an SVG, and declares a video or a font without placing it", async () => {
     const { host, manager, placeImage } = await mount();
 

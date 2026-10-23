@@ -10,6 +10,7 @@ import {
   validateFabricThemeEnvelope,
 } from "@yunari/renderer-core";
 import type { ChartRefreshRate } from "@yunari/scene-fabric";
+import { type AssetRouteOptions, handleAssetRoutes } from "./assets/routes.js";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
@@ -36,6 +37,12 @@ import {
   type PairingCodeStore,
 } from "./session/pairing-code.js";
 import type { ActiveThemeStore } from "./settings/active-theme.js";
+import { type CredentialStore, hintOf } from "./settings/credentials.js";
+import {
+  type CredentialRow,
+  KNOWN_CREDENTIALS,
+  type KnownCredential,
+} from "./settings/credentials-registry.js";
 import {
   type AssignableGroup,
   type DeviceSettingsStore,
@@ -194,6 +201,15 @@ export interface HostServerOptions {
   /** Which curated font trios this author favours. Omit when the host stores
    *  none — the route then reports that rather than serving an empty list. */
   readonly fontFavorites?: FontFavoritesStore;
+  /** Provider credentials. Omit when the host stores none — the routes then
+   *  say so rather than accepting a key that is dropped. */
+  readonly credentials?: CredentialStore;
+  /** The credential ids this host knows. Omitted uses the shipped table, which
+   *  is empty in v1; supplied so a route test can hold a cookie fixture. */
+  readonly knownCredentials?: readonly KnownCredential[];
+  /** The asset finder's sources. Omitted when this host serves none; the
+   *  routes then say so rather than falling through to the static 404. */
+  readonly assets?: AssetRouteOptions;
   /** Called after a display change so providers read readings the new way. */
   readonly onDisplayChange?: (settings: DisplaySettings) => void;
   /** Devices a consumer may choose between. Omitted when none are known. */
@@ -858,6 +874,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const devices = options.devices;
   const display = options.display;
   const fontFavorites = options.fontFavorites;
+  const credentials = options.credentials;
+  const knownCredentials = options.knownCredentials ?? KNOWN_CREDENTIALS;
+  const assets = options.assets;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const fetcher = options.fetch;
@@ -1794,6 +1813,156 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       sendText(response, 405, "Only GET and PUT are supported.");
+      return;
+    }
+
+    // Provider credentials. The value is write-only from the browser: the read
+    // answers `set` and a four-character hint, never the value, and every method
+    // stays on this PC because this file is the one secret the host holds.
+    if (
+      url.pathname === "/api/credentials" ||
+      url.pathname.startsWith("/api/credentials/")
+    ) {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Credentials are available on this PC only.");
+        return;
+      }
+
+      if (isForeignOrigin(request)) {
+        sendText(
+          response,
+          403,
+          "Credentials are not available to another page.",
+        );
+        return;
+      }
+
+      if (credentials === undefined) {
+        sendText(response, 503, "Credentials are not enabled on this host.");
+        return;
+      }
+
+      if (url.pathname === "/api/credentials") {
+        if (request.method !== "GET") {
+          sendText(response, 405, "Only GET is supported.");
+          return;
+        }
+
+        const rows: CredentialRow[] = [];
+        for (const known of knownCredentials) {
+          const value = await credentials.valueOf(known.id);
+          rows.push({
+            id: known.id,
+            label: known.label,
+            set: value !== undefined,
+            hint: value === undefined ? "" : hintOf(value),
+            verify: known.verify !== undefined,
+            helpText: known.help?.text ?? null,
+            helpUrl: known.help?.url ?? null,
+          });
+        }
+
+        sendJson(response, 200, rows);
+        return;
+      }
+
+      const parts = url.pathname.slice("/api/credentials/".length).split("/");
+      const known = knownCredentials.find((entry) => entry.id === parts[0]);
+
+      if (known === undefined) {
+        sendText(response, 400, "That credential is not one this host knows.");
+        return;
+      }
+
+      if (parts.length === 2 && parts[1] === "verify") {
+        if (request.method !== "POST") {
+          sendText(response, 405, "Only POST is supported.");
+          return;
+        }
+
+        if (known.verify === undefined) {
+          sendText(
+            response,
+            400,
+            `The ${known.label} credential has no check.`,
+          );
+          return;
+        }
+
+        const value = await credentials.valueOf(known.id);
+        if (value === undefined) {
+          sendJson(response, 200, {
+            ok: false,
+            message: `${known.label} is not set.`,
+          });
+          return;
+        }
+
+        sendJson(response, 200, await known.verify(value, fetcher ?? fetch));
+        return;
+      }
+
+      if (parts.length !== 1) {
+        sendText(response, 404, "No such credential route.");
+        return;
+      }
+
+      if (request.method === "PUT") {
+        if (known.kind === "cookie") {
+          sendText(
+            response,
+            400,
+            "Only bearer credentials are supported (R10).",
+          );
+          return;
+        }
+
+        let value: unknown;
+        try {
+          value = (JSON.parse(await readBody(request)) as { value?: unknown })
+            .value;
+        } catch {
+          sendText(response, 400, "That request body is not JSON.");
+          return;
+        }
+
+        if (typeof value !== "string" || value === "") {
+          sendText(response, 400, "A credential value is required.");
+          return;
+        }
+
+        await credentials.write(known.id, value, new Date(now()));
+        sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      if (request.method === "DELETE") {
+        await credentials.clear(known.id);
+        sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      sendText(response, 405, "Only PUT and DELETE are supported.");
+      return;
+    }
+
+    // The asset finder's three routes. Mounted whenever the path names one, so
+    // a host that serves no source answers 503 rather than the static 404.
+    if (
+      url.pathname === "/api/assets/sources" ||
+      url.pathname === "/api/assets/search" ||
+      url.pathname === "/api/assets/bytes"
+    ) {
+      await handleAssetRoutes({
+        request,
+        response,
+        url,
+        loopback: isLoopbackRemote(request.socket.remoteAddress),
+        foreignOrigin: isForeignOrigin(request),
+        assets,
+        fetch: fetcher ?? fetch,
+        readBody,
+      });
       return;
     }
 

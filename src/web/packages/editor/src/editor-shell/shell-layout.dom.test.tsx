@@ -1350,6 +1350,7 @@ it("teaches a File row exactly the chord whose id runs the call that row runs", 
   const keyed = new Map<string, ProductShortcutId | undefined>([
     [uiCopy.file.newDocument, "file.new"],
     [uiCopy.file.newFromStarter, undefined],
+    [uiCopy.file.findAssets, "file.findAssets"],
     [uiCopy.file.importPackage, "file.open"],
     [uiCopy.file.savePackage, "file.save"],
     [uiCopy.file.releasePackage, undefined],
@@ -1370,6 +1371,34 @@ it("teaches a File row exactly the chord whose id runs the call that row runs", 
       id === undefined ? undefined : shortcutLabel(id),
     );
   }
+
+  layout.destroy();
+});
+
+/** The finder's own entry: a File row above *Import package*, because both add
+ *  something and the finder is the one that fetches (entry drawing). */
+it("opens the finder from the File menu, above Import package", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  await act(async () => menubarEntry(root, uiCopy.menus.file).click());
+  await Promise.resolve();
+
+  const rows = menuItems();
+  const finderRow = rows.find((row) =>
+    (row.textContent ?? "").startsWith(uiCopy.file.findAssets),
+  );
+  const importRow = rows.find((row) =>
+    (row.textContent ?? "").startsWith(uiCopy.file.importPackage),
+  );
+  if (finderRow === undefined) throw new Error("No Find assets row.");
+  if (importRow === undefined) throw new Error("No Import package row.");
+  expect(rows.indexOf(finderRow)).toBeLessThan(rows.indexOf(importRow));
+
+  await act(async () => finderRow.click());
+  // The finder is portalled to `body`, so the root subtree cannot answer it.
+  expect(
+    document.querySelector('[role="dialog"][aria-label="Assets"]'),
+  ).not.toBeNull();
 
   layout.destroy();
 });

@@ -39,12 +39,15 @@ export function Dialog({
   onOpenChange,
   label,
   closeLabel,
+  className,
   children,
 }: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly label: string;
   readonly closeLabel?: string;
+  /** An extra class on the popup, for a dialog that sizes itself. */
+  readonly className?: string;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   return (
@@ -59,7 +62,11 @@ export function Dialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="editor-shell-dialog-overlay" />
         <DialogPrimitive.Popup
-          className="editor-shell-dialog"
+          className={
+            className === undefined
+              ? "editor-shell-dialog"
+              : `editor-shell-dialog ${className}`
+          }
           aria-label={label}
         >
           {children}

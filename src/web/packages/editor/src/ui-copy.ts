@@ -10,6 +10,7 @@ import {
   type ChartFamily,
   type ColourMode,
   DASHBOARD_THEME_KIND,
+  type ListingCategory,
   type Orientation,
   type SemanticFamily,
 } from "@yunari/renderer-core";
@@ -135,8 +136,24 @@ export const uiCopy = {
     title: "Settings",
     appearance: "Appearance",
     keyboard: "Keyboard",
+    connections: "Connections",
     about: "About",
     close: "Close",
+    /** The Connections tab: the one place a provider key is entered, because
+     *  every remote source reads from here rather than growing its own field. */
+    connectionsHeading: "Asset sources",
+    connectionsIntro:
+      "Keys stay on this machine. Stored values are never shown again, only the last four characters.",
+    connectionsEmpty: "No source needs a key yet.",
+    connectionsSaved: (hint: string): string => `Saved ····${hint}`,
+    connectionsNotSet: "Not set",
+    connectionsPlaceholder: "Access key",
+    connectionsSave: "Save",
+    connectionsClear: "Clear",
+    connectionsVerify: "Verify",
+    connectionsWhereToGetKey: "Where to get a key",
+    connectionsFooter:
+      "Keys are stored in a local settings file and sent only to the source that owns them.",
     /** §7's About tab: what the editor is, and the facts this build can read.
      *  The provenance is one sentence naming the product; the three fact labels
      *  say which fact each row is, and the release fact's *label* is the
@@ -529,6 +546,9 @@ export const uiCopy = {
   },
   file: {
     newDocument: "New theme",
+    /** The finder's one entry in this menu. It sits above *Import package*
+     *  because both add something and the finder is the one that fetches. */
+    findAssets: "Find assets…",
     /** The reference composition, offered as what it is: a template the
      *  product ships. `New` is the author's own blank document; this is the one
      *  they can open a copy of. */
@@ -908,6 +928,45 @@ export const uiCopy = {
   themeImport: {
     landed: (id: string): string => `Imported ${id} to the library`,
     refused: (reason: string): string => `Could not import: ${reason}`,
+  },
+  /** The asset finder. A tab is a category, never a provider (R9), and the
+   *  footer names the kind's own action rather than a bare "Import" (R5). */
+  assets: {
+    title: "Assets",
+    category: {
+      font: "Fonts",
+      icon: "Icons",
+      image: "Images",
+      video: "Videos",
+      local: "Wallpaper Engine",
+    } satisfies Record<ListingCategory, string>,
+    action: {
+      font: "Apply to preset",
+      icon: "Place on canvas",
+      image: "Set as background",
+      video: "Set as background",
+      local: "Open in Wallpaper Engine",
+    } satisfies Record<ListingCategory, string>,
+    searchPlaceholder: "Search assets…",
+    results: (count: number, sources: number): string =>
+      `${count} ${count === 1 ? "result" : "results"} · ${sources} ${sources === 1 ? "source" : "sources"}`,
+    noResults: "No results. Try another word.",
+    clearQuery: "Clear query",
+    noSource: "No source serves this category.",
+    sourceFailed: (label: string, message: string): string =>
+      `${label} failed: ${message}`,
+    needsCredential: (label: string): string =>
+      `${label} needs a key this host does not have.`,
+    connectionsAction: "Open Connections",
+    openFontPicker: "Browse the font catalogue",
+    remoteHostNotice: (hosts: string): string =>
+      `Search terms go to ${hosts}. Nothing else leaves this computer.`,
+    loadMore: "Load more",
+    unknownAssetFile: "That asset is not a file type the editor can import.",
+    hostUnavailable: "The host is not connected.",
+    bytesUnavailable: "The host did not send that asset.",
+    creditsFull:
+      "This theme already carries the last attribution it can hold, so the import would leave it unsavable.",
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */
