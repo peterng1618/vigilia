@@ -15,7 +15,9 @@ export interface LibraryItem {
   readonly workshopId: string;
   readonly directory: string;
   readonly title: string;
-  /** Absolute path of `project.file`. */
+  /** Absolute path of the item's payload: `project.file`, except that a scene
+   *  carrying `scene.pkg` is that package — today's descriptors name
+   *  `scene.json`, which is not on disk (R3). */
   readonly payload: string;
   readonly type: "scene" | "video" | "web";
   readonly preview: string | undefined;
@@ -37,6 +39,8 @@ export interface LibraryScan {
 type UnknownRecord = Record<string, unknown>;
 
 export type ItemType = LibraryItem["type"];
+
+const SCENE_PACKAGE = "scene.pkg";
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -64,6 +68,14 @@ async function sizeOf(file: string): Promise<number> {
     return (await fs.stat(file)).size;
   } catch {
     return 0;
+  }
+}
+
+async function isFile(target: string): Promise<boolean> {
+  try {
+    return (await fs.stat(target)).isFile();
+  } catch {
+    return false;
   }
 }
 
@@ -141,7 +153,13 @@ async function readItem(
     return undefined;
   }
 
-  const payload = path.resolve(directory, file);
+  // Today's descriptors name `scene.json`, which is not on disk; the package
+  // beside it is the payload (R3: the disk is the truth). The name is fixed and
+  // inside the item's own directory, so containment is unchanged.
+  const named = path.resolve(directory, file);
+  const packagePath = path.join(directory, SCENE_PACKAGE);
+  const payload =
+    type === "scene" && (await isFile(packagePath)) ? packagePath : named;
   const row = cache.get(workshopId);
   const preview = stringOf(project.preview);
   const tags = Array.isArray(row?.tags)

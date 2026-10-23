@@ -64,8 +64,9 @@ describe("scanning the workshop library", () => {
   async function fixture(): Promise<void> {
     await writeItem("101", {
       "project.json": JSON.stringify({
+        // Today's subscribed descriptors name this file, which is not on disk.
         type: "scene",
-        file: "scene.pkg",
+        file: "scene.json",
         title: "Disk Scene",
         preview: "preview.jpg",
         properties: { brightness: { type: "color", value: "#fff" } },
@@ -170,5 +171,36 @@ describe("scanning the workshop library", () => {
       authorSteamId: undefined,
       workshopUrl: undefined,
     });
+  });
+
+  it("makes a scene's package its payload, and keeps the named file otherwise", async () => {
+    // The real shape: the descriptor names `scene.json`, the package is beside it.
+    await writeItem("107", {
+      "project.json": JSON.stringify({ type: "scene", file: "scene.json" }),
+      "scene.pkg": "PKGV0001",
+    });
+    // No package: the unclassified scene is still listed against its named file.
+    await writeItem("108", {
+      "project.json": JSON.stringify({ type: "scene", file: "scene.json" }),
+    });
+    // The descriptor names something else entirely; the package still wins.
+    await writeItem("109", {
+      "project.json": JSON.stringify({ type: "scene", file: "custom.json" }),
+      "scene.pkg": "PKGV0001",
+      "custom.json": "{}",
+    });
+
+    const scan = await scanLibrary(install);
+    const byId = new Map(scan.items.map((item) => [item.workshopId, item]));
+
+    expect(byId.get("107")?.payload).toBe(
+      path.join(library, "107", "scene.pkg"),
+    );
+    expect(byId.get("108")?.payload).toBe(
+      path.join(library, "108", "scene.json"),
+    );
+    expect(byId.get("109")?.payload).toBe(
+      path.join(library, "109", "scene.pkg"),
+    );
   });
 });

@@ -16,9 +16,9 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 
 ## Last completed change
 
-- **The credits path is verified, not rebuilt**: `theme-package` writes and reads `credits.json`, the editor document carries the collection, and both Wallpaper Engine imports write one entry (`kind: "wallpaper"`, the cache's `steamId`, the workshop URL, `license: "unknown"`, the change sentence).
-- **The credits display is not built because its named surface does not exist**: the store modal draws a listing, not a package's contents; filed `vg-708` rather than inventing a details surface.
-- **Proof**: `npx vitest run` over the theme-package credits, persist and editor client cases — exit 0, 45 tests.
+- **A subscribed scene's payload is its `scene.pkg`** (`wallpaper-engine/library.ts`): today's descriptors name `scene.json`, which is not on disk, so `resolvePayload` dropped all 227 real scenes; a scene with no package keeps its named file and stays unclassified.
+- **Measured on this machine**: scenes resolved `0 → 226` (227 scene directories, 226 packaged), dropped items `228 → 2` — one video and one scene whose named payload is absent.
+- **Red proof**: with the selection disabled `library.test.ts` fails 2 of 4; restored, 8 files / 61 tests pass, `tsc` and `biome check packages/host/src` exit 0.
 
 ## Next
 
