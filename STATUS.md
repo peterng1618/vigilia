@@ -19,7 +19,7 @@ Close the **R2 store backend** plan ([`2026-10-23-r2-store-backend.md`](docs/sup
 ## Last completed change
 
 - **`scratch-gate` self-test fixed (`vg-700`)**: the `/tmp` case tested no policy, since `C:\tmp` and `os.tmpdir()` are both sanctioned; it now asserts `/var/tmp/full.json`, outside every store on both platforms.
-- **The full gate is green end to end**: `npm run gate` exits 0 (log `C:\tmp\gate-vg700.log`) through typecheck, the unit suite and `test:worker`.
+- **The full gate is green end to end**: `npm run gate` exited 0 when run directly; log `C:\tmp\gate-vg700.log` records each segment through typecheck, the unit suite and `test:worker`.
 - **No product code changed**: `scripts/scratch-gate.mjs` and this status only; the refusal message and policy are untouched.
 
 ## Next
