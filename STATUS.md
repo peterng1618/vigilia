@@ -12,18 +12,17 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 - **The Wallpaper Engine import plan is active**; the owner named it, and tasks run one at a time from Task 1.
 - **The R2 store backend stays merged**; its owner-run Task 5.2 deploy and live proof remain pending and are not part of this plan.
 - **Task 5.1's import is unrun**: the smoke item `6041df49-9c61-4d51-a184-716890560bdb` exists only in the old catalogue; the script is ready.
-- **Open register findings:** `vg-699` stale `vite preview` reuse on a shared port, `vg-701` biome never reads `.mjs`, `vg-695` a pre-existing `server.test.ts` flake.
+- **Open register findings:** `vg-699` stale `vite preview` reuse on a shared port, `vg-701` biome never reads `.mjs`, `vg-695` a pre-existing `server.test.ts` flake, `vg-708` a theme's credits are written but never drawn.
 
 ## Last completed change
 
-- **A scene row opens its export sheet** (`wallpaper-engine/export-sheet.tsx`): `exportSettingsOf` offers PNG only for a scene the listing classed still and MP4 30 fps/5 s/1 s otherwise; the text step appears only at `hasText === true`.
-- **The sheet unpacks once per press** (`client.ts` `startProject`): the project name is printed on success, a refusal shows its reason without retrying, and `launched: false` says the project is ready instead of launching again.
-- **The watcher offers the newest matching export** (`findExports`, `fetchExport`): it polls from the sheet's `Date.now()`, nothing imports itself, and polling stops on unmount or a successful import.
-- **Both Wallpaper Engine imports share one transaction** (`editor-session.ts` `importWallpaperFile`): credit check, `manager.import`, `addCredit`, background media keeping `bounds`, then refresh; an exported file's credit names Wallpaper Engine's export.
+- **The credits path is verified, not rebuilt**: `theme-package` writes and reads `credits.json`, the editor document carries the collection, and both Wallpaper Engine imports write one entry (`kind: "wallpaper"`, the cache's `steamId`, the workshop URL, `license: "unknown"`, the change sentence).
+- **The credits display is not built because its named surface does not exist**: the store modal draws a listing, not a package's contents; filed `vg-708` rather than inventing a details surface.
+- **Proof**: `npx vitest run` over the theme-package credits, persist and editor client cases — exit 0, 45 tests.
 
 ## Next
 
-1. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
+1. Task 9: the browser boundary spec, three registered captures, the three red proofs, and the real-install run.
 2. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
 
 ## Blockers / unverified
