@@ -1,7 +1,7 @@
 # The background layer — design
 
 - **Date:** 2026-10-23
-- **Status:** draft
+- **Status:** implemented. Plan: [`2026-10-23-background-layer.md`](../plans/archive/2026-10-23-background-layer.md).
 - **Related:** [`2026-10-22-theme-versioning-design.md`](2026-10-22-theme-versioning-design.md),
   [`docs/architecture/ownership.md`](../../architecture/ownership.md),
   `schema/theme-document.schema.json`.
@@ -275,6 +275,13 @@ is trusted.
 - A document carrying the old `artboard.background`/`backgroundMedia` keys is
   refused with an unknown-key issue.
 - The Document pane no longer offers the background colour, media or fit.
+
+**Observed:** the editor DOM cases drive the row, selection and column; the
+player's `background-layer.spec.ts` reads the placed transform from measured
+rects and samples the rendered pixels, including one inside the glass panel's
+own rect, so the sampler's answer is checked against the media behind it.
+`host-player.spec.ts` covers the real host. Every case was checked red before
+its fix.
 
 ## Non-goals and recorded limitations
 

@@ -24,8 +24,12 @@ const HOST = `http://127.0.0.1:${HOST_PORT}`;
 const ARTBOARD = { width: 640, height: 200 } as const;
 /** The authored media transform, verbatim from the fixture. */
 const MEDIA = { scale: 1.4, offsetX: 0.25, offsetY: 0 } as const;
-/** The glass panel's authored box, so the pixel read can avoid it. */
+/** The glass panel's authored box, so the pixel reads can aim inside it. */
 const PANEL = { left: 420, top: 20, width: 120, height: 120 } as const;
+/** The panel's authored fill, `rgba(255, 255, 255, 0.10)`: the glass is
+ *  translucent, so what a panel pixel shows is the blur of what is behind it
+ *  with this much white over it. */
+const PANEL_WHITE_ALPHA = 0.1;
 
 interface Rect {
   readonly left: number;
@@ -187,6 +191,24 @@ const expectPixel = (
   ).toBeLessThanOrEqual(12);
 };
 
+/** The largest per-channel difference between two sampled colours. */
+function channelDistance(a: Pixel, b: Pixel): number {
+  return Math.max(
+    Math.abs(a.r - b.r),
+    Math.abs(a.g - b.g),
+    Math.abs(a.b - b.b),
+  );
+}
+
+/** What the translucent panel shows when a flat colour is behind it. The
+ *  backdrop is blurred, and the blur of one flat source is that source, so the
+ *  panel's own fill is the whole composite for this fixture. */
+function panelOver(base: Pixel): Pixel {
+  const mix = (channel: number): number =>
+    Math.round(channel * (1 - PANEL_WHITE_ALPHA) + 255 * PANEL_WHITE_ALPHA);
+  return { r: mix(base.r), g: mix(base.g), b: mix(base.b) };
+}
+
 test.describe("the background media layer on the player", () => {
   test("places the media by its authored transform and clips it to the board", async ({
     page,
@@ -289,6 +311,10 @@ test.describe("the background media layer on the player", () => {
             geometry.media.height) /
           2,
       },
+      // Inside the glass panel's own rect, which sits wholly inside the media
+      // strip: the panel is what Task 7's backdrop sampler reads, so this probes
+      // the sampler's answer rather than the DOM layer's.
+      artboardPoint(500, 80),
     ];
 
     const screenshot = await page.locator("#artboard").screenshot();
@@ -322,5 +348,26 @@ test.describe("the background media layer on the player", () => {
       BACKGROUND_LAYER_PAINT,
       "below the layer, the clipped child paints nothing",
     );
+
+    // 5. Inside the glass panel, which the fixture places wholly inside the
+    //    media. A panel pixel is the backdrop the glass sampler read, blurred
+    //    and tinted; the same pixel over the bare paint is what the sampler
+    //    would produce if the layer and the sampler had drifted apart.
+    const panelMedia = panelOver(BACKGROUND_LAYER_INK);
+    const panelPaint = panelOver(BACKGROUND_LAYER_PAINT);
+    expect(
+      channelDistance(panelMedia, panelPaint),
+      "the two possible panel readings are far enough apart to tell apart",
+    ).toBeGreaterThan(120);
+    const panel = pixels[4];
+    expect(panel, "the panel's pixel was read").toBeDefined();
+    expect(
+      channelDistance(panel!, panelMedia),
+      `inside the glass, the media shows through the panel: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelMedia)}`,
+    ).toBeLessThanOrEqual(30);
+    expect(
+      channelDistance(panel!, panelPaint),
+      "inside the glass, the panel does not sample the bare paint",
+    ).toBeGreaterThan(60);
   });
 });

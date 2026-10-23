@@ -1353,10 +1353,12 @@ it("disables the Edit commands for a background selection, which has no object",
   menubarEntry(root, uiCopy.menus.edit).click();
   await Promise.resolve();
 
-  // Every Edit row reaches a Fabric manager. A background has no object for
-  // any of them, so the menu says so rather than dispatching a silent no-op.
+  // The four object-scoped rows reach a Fabric manager, and a background has no
+  // object for any of them, so the menu says so rather than dispatching a
+  // silent no-op. Undo and redo act on the document and keep working — their
+  // chords already did, so greying them was the menu disagreeing with itself.
   expect(menuItems().map((item) => item.getAttribute("aria-disabled"))).toEqual(
-    menuItems().map(() => "true"),
+    [null, null, "true", "true", "true", "true"],
   );
 
   layout.destroy();

@@ -295,6 +295,30 @@ describe("the selection inspector", () => {
       expect(editor.errorManager.warn).toHaveBeenCalled();
     });
 
+    it("refuses a background edit when no write port is mounted, without moving the revision", async () => {
+      // A build with no document setter cannot write, so the field reports a
+      // refusal rather than a success that changed nothing. The revision is part
+      // of every row's key, so a bump would remount the control: the same node
+      // still standing is what says the failed write did not move it.
+      const built = setup(undefined, {
+        backgroundSelected: () => true,
+        background: () => ({ media: { assetId: "loop", bounds: "theme" } }),
+        assets: () => [],
+      });
+      const offset = built.host.querySelector<HTMLInputElement>(
+        "[data-yunari-background-offset-x]",
+      )!;
+      expect(offset.value).toBe("0");
+
+      await edit(offset, "50");
+
+      expect(built.editor.errorManager.warn).toHaveBeenCalled();
+      expect(
+        built.host.querySelector("[data-yunari-background-offset-x]"),
+        "the refusal did not bump the revision",
+      ).toBe(offset);
+    });
+
     it("commits an offset inside -1..1", async () => {
       // The refusal above is only half a rule: a switch that refused every
       // offset would satisfy it, so a valid move is asserted beside it. The

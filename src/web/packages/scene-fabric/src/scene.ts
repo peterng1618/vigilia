@@ -115,7 +115,6 @@ export function mountFabricScene(
     ...withoutHostAndPlan(options),
   });
   let currentArtboard = options.artboard;
-  let currentBackground = options.background;
   let disposed = false;
   // **Each reaches the other through a closure, and neither can be passed by
   // value.** The handle is built first with a `backdrop` that reads this, and
@@ -147,7 +146,7 @@ export function mountFabricScene(
   if (options.resolveAsset !== undefined && currentArtboard !== undefined) {
     media = mountBackgroundMedia({
       host,
-      background: currentBackground,
+      background: options.background,
       artboard: currentArtboard,
       assets: options.assets,
       resolveAsset: options.resolveAsset,
@@ -268,7 +267,6 @@ export function mountFabricScene(
 
     updateBackground(background: Background | undefined): void {
       if (disposed) return;
-      currentBackground = background;
       // Same asset re-places the mounted element; a different one remounts,
       // because a remount is what restarts a video (Task 5's handle).
       media?.setBackground(background);

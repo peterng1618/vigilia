@@ -617,6 +617,7 @@ describe("the background layer", () => {
       host.querySelector("[data-yunari-background-media] video"),
       "a board-size change is not a reason to restart the video",
     ).toBe(before);
+    themeDocument.destroy();
     shell.destroy();
   });
 });

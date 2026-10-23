@@ -328,17 +328,25 @@ describe("the background layer", () => {
     ).toContain("unknown-field");
   });
 
+  it("refuses media with no bounds", () => {
+    // `bounds` decides which box the layer is placed in, so a media with no
+    // bounds has no placement; the enum check is what refuses it.
+    expect(codes(withBackground({ media: { assetId: "clip" } }))).toContain(
+      "invalid-enum",
+    );
+  });
+
   it("refuses the old artboard keys", () => {
-    expect(
-      codes({
-        ...baseEnvelope(),
-        artboard: {
-          width: 10,
-          height: 10,
-          background: { ref: "palette.ink" },
-        },
-      }),
-    ).toContain("unknown-field");
+    // Both removed keys are refused by name: `background` was the colour and
+    // `backgroundMedia` its media, and `schemaVersion` stays 2 precisely
+    // because an old document is rejected here rather than silently read with
+    // its background dropped.
+    for (const artboard of [
+      { width: 10, height: 10, background: { ref: "palette.ink" } },
+      { width: 10, height: 10, backgroundMedia: { assetId: "clip" } },
+    ]) {
+      expect(codes({ ...baseEnvelope(), artboard })).toContain("unknown-field");
+    }
   });
 
   it("requires the media to resolve to an image, SVG or video", () => {

@@ -5,24 +5,23 @@ Branch: `peterng1618/background-media-becomes-a-layer`
 
 ## Current objective
 
-The background is a layer: [`spec`](docs/superpowers/specs/2026-10-23-background-layer-design.md), [`plan`](docs/superpowers/plans/2026-10-23-background-layer.md). Its plan is complete; the R2 store plan is queued behind it.
+The background is a layer: [`spec`](docs/superpowers/specs/2026-10-23-background-layer-design.md), [`plan`](docs/superpowers/plans/archive/2026-10-23-background-layer.md). Its plan is implemented and archived; the R2 store plan is next and queued.
 
 ## Active work
 
-- **Active plan:** `docs/superpowers/plans/2026-10-23-background-layer.md`
-- **Phases 1–2 complete**: decision 0093, the top-level `background` envelope with its validator and consumer sweep, then the placement function and the media handle.
-- **Phase 3 complete**: scene/editor/player wiring, the backdrop paint, and glass sampling the placed rect.
-- **Phase 4 complete**: the virtual bottom row, its selection, and the Edit-menu and readout gates.
-- **Phase 5 complete**: the inspector's background column, the Document-pane removal, and this close-out.
+- **No plan is in flight**: the background-layer plan is archived, and the next plan is claimed when work starts.
+- **Background layer landed**: the top-level `background` envelope section, one placement function, the DOM media handle, glass sampling, the bottom row and the inspector column.
+- **Evidence closed**: the player's glass-panel pixel probe and the 14 edited browser specs ran at `--workers=1`.
 
 ## Last completed change
 
-- **The background-layer plan is closed**: ownership, architecture and DESIGN now name `selection-inspector/background-column.ts` for authoring and `scene-fabric/src/background-media.ts` for the DOM media; no behaviour changed.
-- **Verification**: `npm run gate` exits 0 (306 files, 4425 tests) after `0d08fd0` fixed the drive-dependent `scratch-gate` self-test that made the earlier run exit 1; the background and player browser suites pass at `--workers=1`.
+- **Final review fixes**: Undo/Redo no longer greyed for a background selection, the dead `currentBackground` field is gone, and the kind mark reads `KIND_GLYPHS.background`.
+- **New unit cases**: the removed `artboard.background`/`backgroundMedia` keys, media with no `bounds`, the no-port background write, and the `setArtboard` teardown.
+- **Close-out**: the spec is `implemented`, its plan is archived, and three review findings are register rows.
 
 ## Next
 
-1. Execute the R2 store backend plan ([`2026-10-22-r2-store-backend-design.md`](docs/superpowers/specs/2026-10-22-r2-store-backend-design.md)), which is queued.
+1. Execute the R2 store backend plan ([`2026-10-22-r2-store-backend.md`](docs/superpowers/plans/2026-10-23-r2-store-backend.md)).
 2. Then `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`.
 
 ## Blockers / unverified
@@ -30,3 +29,4 @@ The background is a layer: [`spec`](docs/superpowers/specs/2026-10-23-background
 - **The live catalogue's smoke theme carries the old shape** and must be reseeded after the new format lands; this is an owner action.
 - **Version 2 now identifies two shapes**: a stored or catalogued document with `artboard.background` is refused by the unknown-key check.
 - **Background and artboard edits are not undoable**: Fabric history serialises the scene only. Recorded, not a regression.
+- **Three browser specs are red or order-dependent, and none is this branch's behaviour**: `host-media`'s frame-repaint case (the host's local display answers 1 fps), `publish-header`'s 390 px containment (0.27 px overflow), and `publish-loop`'s clear-on-close (passes alone, fails after its first test).

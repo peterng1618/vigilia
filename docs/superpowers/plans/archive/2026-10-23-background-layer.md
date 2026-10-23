@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript npm workspaces, React 19, Fabric 7.4, Vitest, Playwright, Biome.
 
-**Spec:** [`docs/superpowers/specs/2026-10-23-background-layer-design.md`](../../superpowers/specs/2026-10-23-background-layer-design.md)
+**Spec:** [`docs/superpowers/specs/2026-10-23-background-layer-design.md`](../../specs/2026-10-23-background-layer-design.md)
 
 ## Global Constraints
 

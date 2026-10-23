@@ -1,5 +1,4 @@
 import {
-  BACKGROUND_GLYPH,
   CHART_BAR_GLYPH,
   CHART_GAUGE_GLYPH,
   CHART_LINE_GLYPH,
@@ -97,7 +96,7 @@ function treatment(mark: LayerMark): React.JSX.Element {
     case "group":
       return markGlyph(mark.kind, STACK_GLYPH);
     case "background":
-      return markGlyph(mark.kind, BACKGROUND_GLYPH);
+      return markGlyph(mark.kind, KIND_GLYPHS.background);
   }
 }
 
