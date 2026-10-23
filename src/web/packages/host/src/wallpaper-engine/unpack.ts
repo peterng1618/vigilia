@@ -21,7 +21,7 @@ export type UnpackResult =
       readonly reason: "no-install" | "unreadable" | "refused";
     };
 
-/** `project()` adds whether the editor start was handed to the OS. */
+/** `project()` adds whether the editor process actually spawned. */
 export type ProjectResult =
   | {
       readonly ok: true;
@@ -45,27 +45,37 @@ export interface ExportFile {
  *  before a path exists. */
 const DIRECTORY_NAME = /^[A-Za-z0-9]+$/;
 
+/** A Windows drive prefix, which `path.isAbsolute` misses for `C:name`. */
+const DRIVE = /^[A-Za-z]:/;
+
 /** The member the editor opens, and the one whose presence makes the rewritten
  *  descriptor honest. */
 const SCENE_MEMBER = "scene.json";
 
 /**
- * Where a member may be written, or `undefined` for a name that is not one file
- * directly inside the project. A member name is third-party data: it is refused
- * rather than sanitised, so a package with a separator, an absolute path or an
- * escaping name answers `unreadable` and leaves nothing behind.
+ * Where a member may be written, or `undefined` for a name that is not a safe
+ * relative path. A member name is third-party data: real packages nest members
+ * under `/` (`materials/sky.tex`) and never use `\`, so nesting is allowed and
+ * reuse is refused rather than sanitised — an absolute path, a drive letter, a
+ * backslash, or an empty/`.`/`..` segment answers `unreadable` and leaves
+ * nothing behind.
  */
 function memberTarget(directory: string, name: string): string | undefined {
+  const segments = name.split("/");
+
   if (
     name === "" ||
-    name === ".." ||
+    name.includes("\\") ||
+    DRIVE.test(name) ||
     path.isAbsolute(name) ||
-    path.basename(name) !== name
+    segments.some(
+      (segment) => segment === "" || segment === "." || segment === "..",
+    )
   ) {
     return undefined;
   }
 
-  const target = path.resolve(directory, name);
+  const target = path.resolve(directory, ...segments);
   return insideOf(directory, target) ? target : undefined;
 }
 
@@ -109,6 +119,9 @@ async function writeProject(
     if (bytes === undefined) {
       throw new Error(`missing member: ${name}`);
     }
+    // Inside the directory this run created, so a nested member's parents are
+    // this run's to make; `recursive` never escapes it.
+    await fs.mkdir(path.dirname(target), { recursive: true });
     await fs.writeFile(target, bytes);
   }
 
@@ -161,25 +174,37 @@ export async function unpackScene(
 }
 
 /**
- * Starts the editor on an unpacked project and returns at once. `true` means
- * the OS accepted the spawn; it is not a claim the editor came up. No stdin, no
- * polling, no arguments after the launch (R1).
+ * Starts the editor on an unpacked project and settles when the process has
+ * spawned (`true`) or failed to (`false`). It never waits for the editor to
+ * run, sends it nothing and polls nothing (R1). No stdin, and no arguments
+ * after the launch.
  */
 export function launchEditor(
   install: WallpaperEngineInstall,
   projectDirectory: string,
-): boolean {
-  try {
-    const child = spawn(install.editor, ["-project", projectDirectory], {
-      detached: true,
-      stdio: "ignore",
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    let child: ReturnType<typeof spawn>;
+
+    try {
+      child = spawn(install.editor, ["-project", projectDirectory], {
+        detached: true,
+        stdio: "ignore",
+      });
+    } catch {
+      // A synchronous throw (an invalid command) never spawned anything.
+      resolve(false);
+      return;
+    }
+
+    child.once("spawn", () => {
+      child.unref();
+      resolve(true);
     });
-    // A spawn failure arrives asynchronously; nobody is waiting for it, and an
-    // unhandled `error` event would take the host down instead.
-    child.on("error", () => undefined);
-    child.unref();
-    return true;
-  } catch {
-    return false;
-  }
+    // `ENOENT` arrives here rather than throwing, and an unhandled `error`
+    // event would take the host down — so it is the answer, not a crash.
+    child.once("error", () => {
+      resolve(false);
+    });
+  });
 }

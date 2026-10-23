@@ -55,7 +55,7 @@ function buildPackage(
 const members = [
   ["scene.json", JSON.stringify({ objects: [{ text: "12:00" }] })],
   ["background.tex", "tex-bytes"],
-  ["sky.tex", "a-different-member"],
+  ["materials/sky.tex", "nested-member-bytes"],
 ] as const;
 
 const descriptor = {
@@ -180,7 +180,7 @@ describe("unpacking a scene theme", () => {
     await writeFixture(
       buildPackage([
         ["background.tex", "tex-bytes"],
-        ["sky.tex", "a-different-member"],
+        ["materials/sky.tex", "nested-member-bytes"],
       ]),
     );
 
@@ -193,40 +193,37 @@ describe("unpacking a scene theme", () => {
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 
-  it("refuses a member name that leaves the target directory", async () => {
-    await writeFixture(
-      buildPackage([
-        ["scene.json", "{}"],
-        ["../escape.txt", "escaped"],
-      ]),
-    );
+  it("refuses every member name that is not a safe relative path", async () => {
+    // A segment list rather than a separator rule: real packages nest members
+    // (`materials/sky.tex`), so only traversal, drive letters and backslashes
+    // are refused — never nesting itself.
+    for (const name of [
+      "../escape.txt",
+      "materials/../escape.txt",
+      "materials//empty.tex",
+      "materials/./dot.tex",
+      "C:/absolute.tex",
+      "back\\slash.tex",
+      "/rooted.tex",
+    ]) {
+      await writeFixture(
+        buildPackage([
+          ["scene.json", "{}"],
+          [name, "escaped"],
+        ]),
+      );
 
-    expect(await unpackScene(install, item)).toEqual({
-      ok: false,
-      reason: "unreadable",
-    });
-    await expect(
-      fs.stat(path.join(install.myProjects, "201")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
+      expect(await unpackScene(install, item), name).toEqual({
+        ok: false,
+        reason: "unreadable",
+      });
+      await expect(
+        fs.stat(path.join(install.myProjects, "201")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+    }
+
     await expect(
       fs.stat(path.join(install.myProjects, "escape.txt")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
-  });
-
-  it("refuses a member name carrying a path separator", async () => {
-    await writeFixture(
-      buildPackage([
-        ["scene.json", "{}"],
-        ["nested/sky.tex", "nested"],
-      ]),
-    );
-
-    expect(await unpackScene(install, item)).toEqual({
-      ok: false,
-      reason: "unreadable",
-    });
-    await expect(
-      fs.stat(path.join(install.myProjects, "201")),
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -241,7 +238,7 @@ describe("unpacking a scene theme", () => {
   });
 
   it("unpacks and launches through the source, once per call", async () => {
-    const launch = vi.fn(() => true);
+    const launch = vi.fn(async () => true);
     const source = createWallpaperEngineSource({
       locate: async () => install,
       launch,
@@ -272,7 +269,7 @@ describe("unpacking a scene theme", () => {
   });
 
   it("refuses an id the library does not hold, and launches nothing", async () => {
-    const launch = vi.fn(() => true);
+    const launch = vi.fn(async () => true);
     const source = createWallpaperEngineSource({
       locate: async () => install,
       launch,
@@ -288,7 +285,7 @@ describe("unpacking a scene theme", () => {
   it("answers no-install when there is no install", async () => {
     const source = createWallpaperEngineSource({
       locate: async () => undefined,
-      launch: () => true,
+      launch: async () => true,
     });
 
     expect(await source.project("201")).toEqual({
@@ -299,18 +296,40 @@ describe("unpacking a scene theme", () => {
 });
 
 describe("launching the editor", () => {
-  it("answers false for a spawn that throws synchronously", () => {
-    const install: WallpaperEngineInstall = {
+  function installWith(editor: string): WallpaperEngineInstall {
+    return {
       root: "C:\\wallpaper_engine",
       libraries: [],
       myProjects: "C:\\wallpaper_engine\\projects\\myprojects",
-      editor: "",
+      editor,
     };
+  }
 
+  it("answers false for a spawn that throws synchronously", async () => {
     // An empty command is the one spawn failure Node raises synchronously, so
     // it is the case the wrapper has to keep out of the request.
-    expect(
-      launchEditor(install, "C:\\wallpaper_engine\\projects\\myprojects\\201"),
-    ).toBe(false);
+    await expect(
+      launchEditor(
+        installWith(""),
+        "C:\\wallpaper_engine\\projects\\myprojects\\201",
+      ),
+    ).resolves.toBe(false);
+  });
+
+  it("answers false for a binary that does not exist", async () => {
+    // The `error` event, not a synchronous throw: `launched` is only true when
+    // the process actually spawned.
+    const missing = path.join(
+      os.tmpdir(),
+      "yunari-no-such-editor",
+      "wallpaperui.exe",
+    );
+
+    await expect(
+      launchEditor(
+        installWith(missing),
+        "C:\\wallpaper_engine\\projects\\myprojects\\201",
+      ),
+    ).resolves.toBe(false);
   });
 });

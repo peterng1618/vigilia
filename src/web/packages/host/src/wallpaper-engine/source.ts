@@ -262,7 +262,7 @@ export function createWallpaperEngineSource(
     }
 
     const directory = path.join(install.myProjects, unpacked.name);
-    return { ...unpacked, launched: launch(install, directory) };
+    return { ...unpacked, launched: await launch(install, directory) };
   }
 
   /** The three directories the export step watches (§8, step 5), and only

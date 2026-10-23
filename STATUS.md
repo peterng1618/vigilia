@@ -17,8 +17,8 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 ## Last completed change
 
 - **A scene unpacks into the editor's own project** (`wallpaper-engine/unpack.ts`): `mkdir` without `recursive` is the existence test, every member is written byte-identically, and the item's descriptor is rewritten to `file: "scene.json"`.
-- **Refusals leave nothing behind** (`unpack.ts`): a truncated package, a missing `scene.json` member or an absolute/separator/escaping member name answers `unreadable` and removes only the directory this run made; a non-alphanumeric target is `refused` before anything exists.
-- **The launch is detached and non-blocking** (`unpack.ts`, `source.ts`): `project()` unpacks, then `launchEditor` spawns `-project <dir>`, reports `launched`, and never waits, writes or polls.
+- **Refusals leave nothing behind** (`unpack.ts`): a truncated package, a missing `scene.json` member or a member name that is absolute, drive-prefixed, backslashed or carries an empty/`.`/`..` segment answers `unreadable` and removes only the directory this run made; nested `materials/…` members are written under their own parents, and a non-alphanumeric target is `refused` before anything exists.
+- **The launch is detached and settles at spawn** (`unpack.ts`, `source.ts`): `project()` unpacks, then awaits `launchEditor`, which answers whether the child actually spawned (`spawn`/`error` event) and never waits for the editor, writes or polls.
 - **The export scope and its routes** (`source.ts`, `server.ts`): `exportsSince` lists recent `.png`/`.mp4` files from `projects/temp`, `myprojects` and the Videos folder, newest first; `exportBytes` refuses any name that is not a bare `.png`/`.mp4`; `GET /exports` requires an integer `since` and `POST …/project` answers 405 to a GET.
 
 ## Next
