@@ -77,14 +77,18 @@ export function readSceneFacts(bytes: Uint8Array): SceneFacts | undefined {
       hasText = true;
     }
 
-    // A model's own member can carry keyframes the scene tree does not. A
-    // member this cannot read is not evidence either way: do not guess.
+    // A model's own member can carry keyframes the scene tree does not, and a
+    // failure is never guessed away: a referenced model that cannot be read
+    // means the scene cannot be classified, so it is never assumed still.
     const model = object[MODEL_KEY];
-    if (!moves && typeof model === "string") {
+    if (typeof model === "string") {
       const modelBytes = memberBytes(pkg, model);
       const parsed =
         modelBytes === undefined ? undefined : parseJson(modelBytes);
-      if (parsed !== undefined && hasKeyAnywhere(parsed, ANIMATION_KEY)) {
+      if (parsed === undefined) {
+        return undefined;
+      }
+      if (hasKeyAnywhere(parsed, ANIMATION_KEY)) {
         moves = true;
       }
     }

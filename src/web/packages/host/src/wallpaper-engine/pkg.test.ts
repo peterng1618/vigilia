@@ -97,6 +97,20 @@ describe("scene package container", () => {
     expect(readScenePackage(bytes)).toBeUndefined();
   });
 
+  it("refuses a magic that is not PKGV", () => {
+    const bytes = buildPackage([["scene.json", SCENE_JSON]]);
+    bytes.set(encoder.encode("XKGV0001"), 4);
+
+    expect(readScenePackage(bytes)).toBeUndefined();
+  });
+
+  it("refuses a zero magic length", () => {
+    const bytes = buildPackage([["scene.json", SCENE_JSON]]);
+    new DataView(bytes.buffer).setUint32(0, 0, true);
+
+    expect(readScenePackage(bytes)).toBeUndefined();
+  });
+
   it("refuses a name that repeats an earlier one", () => {
     const bytes = buildPackage([
       ["scene.json", SCENE_JSON],

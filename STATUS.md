@@ -18,7 +18,7 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 
 - **The scene container is read by a bounds-checked table walk** (`host/src/wallpaper-engine/pkg.ts`): `PKGV0001`/`0020`/`0024`/`0025`, member offsets relative to the table's end, and `undefined` rather than a partial table.
 - **The still test walks the parsed scene for motion** (`classify.ts`): particle, animation layers or an `animation` key anywhere — including inside a referenced model member — is animation; text is reported as its own fact.
-- **Fifteen unit cases pin the reader to hand-built buffers**: header, table, member bytes, truncated header, table overrun, empty and duplicate names, five scene shapes and the model cases.
+- **The reader is pinned to hand-built buffers**: header and magic refusals, truncation, table overrun, empty and duplicate names, five scene shapes, and a model member that is absent or unparsable leaving the scene unclassified.
 
 ## Next
 

@@ -148,11 +148,20 @@ describe("still-at-rest test", () => {
     expect(readSceneFacts(bytes)).toEqual({ atRest: true, hasText: false });
   });
 
-  it("does not guess about a model member it cannot read", () => {
+  it("refuses to classify a scene whose model member is absent", () => {
     const bytes = buildPackage([
       ["scene.json", scene([{ model: "models/x.json" }])],
     ]);
 
-    expect(readSceneFacts(bytes)).toEqual({ atRest: true, hasText: false });
+    expect(readSceneFacts(bytes)).toBeUndefined();
+  });
+
+  it("refuses to classify a scene whose model member does not parse", () => {
+    const bytes = buildPackage([
+      ["scene.json", scene([{ model: "models/x.json" }])],
+      ["models/x.json", "{ not json"],
+    ]);
+
+    expect(readSceneFacts(bytes)).toBeUndefined();
   });
 });
