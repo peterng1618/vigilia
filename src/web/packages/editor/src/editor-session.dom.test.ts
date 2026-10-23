@@ -1142,9 +1142,8 @@ describe("opening a theme over a document that has unsaved changes", () => {
     // already filled. (The Document pane kept this list when main wrote the
     // case; the Add pane's list owns it now.)
     expect(
-      (
-        shells.last as { setBackground: ReturnType<typeof vi.fn> }
-      ).setBackground,
+      (shells.last as { setBackground: ReturnType<typeof vi.fn> })
+        .setBackground,
     ).toHaveBeenCalledWith({
       media: expect.objectContaining({ bounds: "theme" }),
     });
