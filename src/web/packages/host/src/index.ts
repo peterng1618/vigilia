@@ -72,6 +72,11 @@ export {
   createHostServer,
   DEFAULT_SAMPLE_INTERVAL_MS,
 } from "./server.js";
+export {
+  createStoreSessionStore,
+  type StoreSession,
+  type StoreSessionStore,
+} from "./settings/store-session.js";
 export { createSecureOrigin, type SecureOrigin } from "./tls/authority.js";
 export { KeepLatestSlot } from "./transport/keep-latest.js";
 export { SseConnection } from "./transport/sse.js";

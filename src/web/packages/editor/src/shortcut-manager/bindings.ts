@@ -96,6 +96,8 @@ const RESERVED_KEYS: ReadonlySet<string> = new Set(["f5", "f11", "f12"]);
  *  `Ctrl+Shift+P` and Chromium leaves that chord free, so refusing it would
  *  reject a chord that works in the browser most authors open. */
 const SHIFT_RESERVED_LETTERS: ReadonlySet<string> = new Set([
+  // Chromium's tab search.
+  "a",
   "n",
   "r",
   "t",

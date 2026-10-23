@@ -176,6 +176,9 @@ interface SelectionInspectorOptions {
   readonly assets?: () => readonly AssetReference[];
   /** Writes a whole background through the document, which owns the envelope. */
   readonly onBackgroundChange?: (next: Background | undefined) => void;
+  /** Opens the finder on Fonts, where the catalogue now lives. Absent in a
+   *  panel built without the shell's finder. */
+  readonly onOpenFontPicker?: () => void;
 }
 
 /** The geometry keys the funnel writes directly; every other id is a shape's
@@ -929,6 +932,7 @@ export function createSelectionInspector(
       chartEdits(),
       cropEdits,
       fontEdits,
+      options.onOpenFontPicker,
     );
   };
 

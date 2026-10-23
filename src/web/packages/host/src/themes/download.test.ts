@@ -1,11 +1,10 @@
+import { cataloguePackageUrl } from "@yunari/renderer-core";
 import { MAX_ARCHIVE_BYTES } from "@yunari/theme-package";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TIMEOUT_MS, downloadPackage } from "./download.js";
 
-/** A release asset on an allowed host, and the hop GitHub actually answers. */
-const ASSET =
-  "https://github.com/peterng1618/yunari-store/releases/download/v1/aurora.zip";
-const ASSET_HOST = "https://release-assets.githubusercontent.com/aurora.zip";
+/** A package on the store's own host. */
+const ASSET = cataloguePackageUrl("yunari/aurora", "1.0.0");
 
 type Handler = (
   url: string,
@@ -81,10 +80,9 @@ describe("downloadPackage", () => {
   it("refuses a URL that is not https", async () => {
     const { fetch, seen } = injectedFetch(() => new Response("no"));
 
-    const result = await downloadPackage(
-      "http://github.com/peterng1618/yunari-store/aurora.zip",
-      { fetch },
-    );
+    const result = await downloadPackage(ASSET.replace("https:", "http:"), {
+      fetch,
+    });
 
     expect(result).toEqual({
       ok: false,
@@ -107,52 +105,36 @@ describe("downloadPackage", () => {
     expect(seen).toEqual([]);
   });
 
-  it("refuses a redirect off an allowed host", async () => {
+  it("refuses a package URL from the old GitHub host", async () => {
+    // The store serves its own packages now; a reviewed GitHub URL is no
+    // longer an address the catalogue can produce.
+    const { fetch, seen } = injectedFetch(() => new Response("no"));
+
+    const result = await downloadPackage(
+      "https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/aurora/aurora.zip",
+      { fetch },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.message).toMatch(/catalogue/i);
+    expect(seen).toEqual([]);
+  });
+
+  it("refuses a redirect, even to the store's own host", async () => {
     const { fetch, seen } = injectedFetch(
       () =>
         new Response(null, {
           status: 302,
-          headers: { location: "https://example.com/x.zip" },
+          headers: { location: ASSET },
         }),
     );
 
     const result = await downloadPackage(ASSET, { fetch });
 
     expect(result.ok).toBe(false);
-    // The off-list host is never asked for the bytes, which is the whole point
-    // of holding the redirect rather than letting `follow` take it.
+    expect(result.ok ? "" : result.message).toMatch(/redirect/i);
+    // The redirect is never followed, so the origin is asked exactly once.
     expect(seen).toEqual([ASSET]);
-  });
-
-  it("follows a redirect between allowed hosts", async () => {
-    const { fetch, seen } = injectedFetch((url) =>
-      url === ASSET
-        ? new Response(null, {
-            status: 302,
-            headers: { location: ASSET_HOST },
-          })
-        : new Response("package"),
-    );
-
-    const result = await downloadPackage(ASSET, { fetch });
-
-    expect(result).toEqual({ ok: true, bytes: bytesOf("package") });
-    expect(seen).toEqual([ASSET, ASSET_HOST]);
-  });
-
-  it("refuses a second redirect, even between allowed hosts", async () => {
-    const { fetch, seen } = injectedFetch(
-      () =>
-        new Response(null, {
-          status: 302,
-          headers: { location: ASSET_HOST },
-        }),
-    );
-
-    const result = await downloadPackage(ASSET, { fetch });
-
-    expect(result.ok).toBe(false);
-    expect(seen).toEqual([ASSET, ASSET_HOST]);
   });
 
   it("refuses a body larger than the reader accepts, from its Content-Length", async () => {

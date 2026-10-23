@@ -2,6 +2,14 @@ import { RadioGroup } from "@base-ui/react/radio-group";
 import { Tabs } from "@base-ui/react/tabs";
 import { SUPPORTED_SCHEMA_VERSION } from "@yunari/renderer-core";
 import { useEffect, useRef, useState } from "react";
+import {
+  type CredentialResult,
+  type CredentialRow,
+  clearCredential,
+  listCredentials,
+  saveCredential,
+  verifyCredential,
+} from "../asset-finder/credentials-client.js";
 import { ControlChoiceRow } from "../components/ui/control-choice-row.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
 import { Dialog } from "../components/ui/dialog.js";
@@ -9,6 +17,7 @@ import type { ShortcutOverrides } from "../shortcut-manager/bindings.js";
 import type { ProductShortcutId } from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import {
+  CONNECTIONS_GLYPH,
   Glyph,
   INFO_GLYPH,
   KEYBOARD_GLYPH,
@@ -27,14 +36,15 @@ import {
 import { SETTINGS_TRIGGER_ID } from "./rail.js";
 import { SettingsKeyboard } from "./settings-keyboard.js";
 
-/** §7's three tabs, in the order the spec's table names them. One owner of
- *  "which tabs there are": the column and the panels both read it, so a fourth
- *  tab cannot appear with a body and no word, or the reverse. */
-type SettingsTab = "appearance" | "keyboard" | "about";
+/** The settings tabs, in the order the column draws them. One owner of "which
+ *  tabs there are": the column and the panels both read it, so a tab cannot
+ *  appear with a body and no word, or the reverse. */
+export type SettingsTab = "appearance" | "keyboard" | "connections" | "about";
 
 const SETTINGS_TABS: readonly SettingsTab[] = [
   "appearance",
   "keyboard",
+  "connections",
   "about",
 ];
 
@@ -47,6 +57,7 @@ const SETTINGS_TABS: readonly SettingsTab[] = [
 const SETTINGS_TAB_GLYPHS: Readonly<Record<SettingsTab, LucideIcon>> = {
   appearance: PALETTE_GLYPH,
   keyboard: KEYBOARD_GLYPH,
+  connections: CONNECTIONS_GLYPH,
   about: INFO_GLYPH,
 };
 
@@ -262,6 +273,149 @@ function AboutTab({
   );
 }
 
+/** The Connections tab: every provider key this host knows, and the one place
+ *  a key is entered.
+ *
+ *  A stored value is never rendered again — the row shows the host's hint, and
+ *  the input only ever carries what this tab is about to send. Save's answer is
+ *  the host's; the row is refreshed from the host rather than from the draft, so
+ *  a refused write cannot leave the page saying a key was stored. */
+function ConnectionsTab(): React.JSX.Element {
+  const [rows, setRows] = useState<readonly CredentialRow[]>([]);
+  const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
+  const [messages, setMessages] = useState<Readonly<Record<string, string>>>(
+    {},
+  );
+  const [busy, setBusy] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let live = true;
+    void listCredentials().then((next) => {
+      if (live) setRows(next);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const run = async (
+    id: string,
+    work: () => Promise<CredentialResult>,
+  ): Promise<void> => {
+    setBusy(id);
+    const result = await work();
+    setMessages((current) => {
+      const next = { ...current };
+      if (result.ok) delete next[id];
+      else next[id] = result.message;
+      return next;
+    });
+    setRows(await listCredentials());
+    setBusy(undefined);
+  };
+
+  const save = (id: string): void => {
+    void run(id, async () => {
+      const result = await saveCredential(id, drafts[id] ?? "");
+      if (result.ok) setDrafts((current) => ({ ...current, [id]: "" }));
+      return result;
+    });
+  };
+
+  return (
+    <div
+      className="flex flex-col gap-[var(--space-8)]"
+      data-yunari-connections=""
+    >
+      <h3>{uiCopy.settings.connectionsHeading}</h3>
+      <p className="text-sm text-muted">{uiCopy.settings.connectionsIntro}</p>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted">{uiCopy.settings.connectionsEmpty}</p>
+      ) : (
+        rows.map((row) => (
+          <div
+            key={row.id}
+            className="flex flex-col gap-[var(--space-8)] rounded-[var(--radius-lg)] border border-edge bg-[var(--panel-2)] p-[var(--space-10)]"
+            data-yunari-credential-row={row.id}
+          >
+            <div className="flex items-center gap-[var(--space-8)]">
+              <span className="flex-1 font-medium">{row.label}</span>
+              <span className="text-sm text-muted">
+                {row.set
+                  ? uiCopy.settings.connectionsSaved(row.hint)
+                  : uiCopy.settings.connectionsNotSet}
+              </span>
+            </div>
+            <div className="flex items-center gap-[var(--space-8)]">
+              <input
+                type="password"
+                aria-label={`${row.label} ${uiCopy.settings.connectionsPlaceholder}`}
+                placeholder={uiCopy.settings.connectionsPlaceholder}
+                value={drafts[row.id] ?? ""}
+                onChange={(event) =>
+                  setDrafts((current) => ({
+                    ...current,
+                    [row.id]: event.target.value,
+                  }))
+                }
+                data-yunari-credential-input={row.id}
+                className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-edge bg-[var(--bg)] px-[var(--space-8)] py-[var(--space-6)] font-mono text-sm"
+              />
+              <button
+                type="button"
+                disabled={busy === row.id || (drafts[row.id] ?? "") === ""}
+                onClick={() => save(row.id)}
+                data-yunari-credential-save={row.id}
+                className="rounded-[var(--radius-sm)] border border-edge px-[var(--space-10)] py-[var(--space-4)] text-sm"
+              >
+                {uiCopy.settings.connectionsSave}
+              </button>
+              <button
+                type="button"
+                disabled={!row.set || busy === row.id}
+                onClick={() => void run(row.id, () => clearCredential(row.id))}
+                data-yunari-credential-clear={row.id}
+                className="rounded-[var(--radius-sm)] border border-edge px-[var(--space-10)] py-[var(--space-4)] text-sm"
+              >
+                {uiCopy.settings.connectionsClear}
+              </button>
+              <button
+                type="button"
+                disabled={!row.set || !row.verify || busy === row.id}
+                onClick={() => void run(row.id, () => verifyCredential(row.id))}
+                data-yunari-credential-verify={row.id}
+                className="rounded-[var(--radius-sm)] border border-edge px-[var(--space-10)] py-[var(--space-4)] text-sm"
+              >
+                {uiCopy.settings.connectionsVerify}
+              </button>
+            </div>
+            {row.helpText === null || row.helpUrl === null ? null : (
+              <p
+                className="text-sm text-muted"
+                data-yunari-credential-help={row.id}
+              >
+                {row.helpText}{" "}
+                <a
+                  href={row.helpUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {uiCopy.settings.connectionsWhereToGetKey}
+                </a>
+              </p>
+            )}
+            {messages[row.id] === undefined ? null : (
+              <p className="text-sm">{messages[row.id]}</p>
+            )}
+          </div>
+        ))
+      )}
+      <p className="text-sm text-muted">{uiCopy.settings.connectionsFooter}</p>
+    </div>
+  );
+}
+
 /** The settings modal the rail's gear opens.
  *
  *  Base UI's `Dialog` is modal by default, so focus is trapped and the page
@@ -298,6 +452,8 @@ export function Settings(props: {
    *  `undefined` where the document carries none. The About tab renders it and
    *  invents nothing in its place. */
   readonly releaseVersion: string | undefined;
+  /** The tab a caller opens the modal on; the last chosen tab otherwise. */
+  readonly initialTab?: SettingsTab | undefined;
 }): React.JSX.Element {
   const {
     open,
@@ -310,16 +466,21 @@ export function Settings(props: {
     overrides,
     onOverrides,
     releaseVersion,
+    initialTab,
   } = props;
   /** The row whose capture is listening. Held here rather than in the tab so
    *  closing the modal clears it from one place — the `open` effect below — and
    *  no armed row can outlive the surface it belongs to. */
   const [armed, setArmed] = useState<ProductShortcutId | undefined>(undefined);
+  /** The open tab. Held here because a caller (the finder's needs-key state)
+   *  opens the modal on Connections, and the tab must follow that ask. */
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? "appearance");
   // Whether the modal has been open at all, so closing the *initial* closed
   // state does not fire a focus restore on mount.
   const wasOpen = useRef(false);
   useEffect(() => {
     if (open) {
+      if (initialTab !== undefined) setTab(initialTab);
       wasOpen.current = true;
       return;
     }
@@ -327,7 +488,7 @@ export function Settings(props: {
     if (!wasOpen.current) return;
     wasOpen.current = false;
     document.getElementById(SETTINGS_TRIGGER_ID)?.focus();
-  }, [open]);
+  }, [open, initialTab]);
 
   /** Whether a capture is armed is the row's state, and it never stands between
    *  the author and the way out.
@@ -360,7 +521,8 @@ export function Settings(props: {
           orientation and treatment change; `orientation` is what points the
           arrow keys up and down the three rows rather than across. */}
       <Tabs.Root
-        defaultValue="appearance"
+        value={tab}
+        onValueChange={(value) => setTab(value as SettingsTab)}
         orientation="vertical"
         className="editor-shell-settings"
       >
@@ -400,6 +562,7 @@ export function Settings(props: {
                 onOverrides={onOverrides}
               />
             ) : null}
+            {tab === "connections" ? <ConnectionsTab /> : null}
             {tab === "about" ? (
               <AboutTab releaseVersion={releaseVersion} />
             ) : null}

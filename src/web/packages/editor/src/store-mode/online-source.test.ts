@@ -1,9 +1,10 @@
-import { DASHBOARD_THEME_KIND } from "@yunari/renderer-core";
-import { describe, expect, it, vi } from "vitest";
 import {
-  CATALOGUE_CDN_BASE,
-  CATALOGUE_INDEX_URL,
-} from "./catalogue-location.js";
+  catalogueIndexUrl,
+  cataloguePackageUrl,
+  catalogueThumbnailUrl,
+  DASHBOARD_THEME_KIND,
+} from "@yunari/renderer-core";
+import { describe, expect, it, vi } from "vitest";
 import { onlineThemeSource } from "./online-source.js";
 
 /**
@@ -35,9 +36,8 @@ const ENTRY = {
   updatedAt: "2026-10-14T00:00:00.000Z",
   downloads: 42,
   favorites: 7,
-  packageUrl:
-    "https://github.com/peterng1618/yunari-store/releases/download/office-wall-1.3.0.zip",
-  thumbnail: "office-wall/thumbnail.png",
+  packageUrl: cataloguePackageUrl("yunari/office-wall", "1.3.0"),
+  thumbnail: "catalogue/yunari/office-wall/thumbnail.png",
   facets: FACETS,
 };
 
@@ -63,7 +63,7 @@ describe("the catalogue's source", () => {
 
     // One plain read of the address, with no `cache:` option: the browser's own
     // HTTP cache is the whole freshness mechanism (`docs/decisions/0088`).
-    expect(fetcher).toHaveBeenCalledWith(CATALOGUE_INDEX_URL);
+    expect(fetcher).toHaveBeenCalledWith(catalogueIndexUrl());
     const [item] = items;
     if (item === undefined) throw new Error("the source listed nothing");
     expect(item.id).toBe(ENTRY.id);
@@ -73,7 +73,7 @@ describe("the catalogue's source", () => {
     expect(item.version).toBe(ENTRY.version);
     expect(item.updatedAt).toBe(ENTRY.updatedAt);
     expect(item.thumbnailUrl).toBe(
-      `${CATALOGUE_CDN_BASE}/office-wall/thumbnail.png`,
+      catalogueThumbnailUrl("catalogue/yunari/office-wall/thumbnail.png"),
     );
     expect(item.origin).toBeUndefined();
     expect(item.facets).toEqual(FACETS);

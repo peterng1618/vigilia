@@ -1,4 +1,5 @@
 import type { FabricThemeEnvelope } from "@yunari/renderer-core";
+import type { ThemeCredits } from "@yunari/theme-package";
 import { createElement } from "react";
 import { openModal } from "../components/ui/modal-host.js";
 import { fileNameFor, serializeThemePackage } from "../persist.js";
@@ -67,8 +68,9 @@ export class PersistenceManager {
     theme: FabricThemeEnvelope,
     assets: Readonly<Record<string, Uint8Array>> = {},
     thumbnail?: Uint8Array,
+    credits?: ThemeCredits,
   ): Promise<void> {
-    const result = serializeThemePackage(theme, assets, thumbnail);
+    const result = serializeThemePackage(theme, assets, thumbnail, credits);
     if (!result.ok) {
       throw new Error(result.message);
     }

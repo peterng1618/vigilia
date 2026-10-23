@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // Workers runtime, and no DOM at runtime. The DOM lib is here only because
+    // renderer-core is consumed as source: its barrel names `HTMLElement` and
+    // `document`, which TypeScript must resolve even though workerd has neither.
+    // The declarations do coexist with workers-types under `skipLibCheck`.
+    "lib": ["ES2022", "DOM"],
+    "types": [
+      "@cloudflare/workers-types",
+      "@cloudflare/vitest-pool-workers/types"
+    ]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

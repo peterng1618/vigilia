@@ -158,9 +158,14 @@ export const EDIT_MENU_ROWS: readonly {
 export function ShellMenuBar({
   store,
   getView,
+  onFindAssets,
 }: {
   readonly store: SelectionStore;
   readonly getView: () => EditorViewControls | undefined;
+  /** Opens the asset finder. Its modal is the shell's, and the row sits above
+   *  *Import package* because both add something and the finder is the one that
+   *  fetches (the entry drawing). */
+  readonly onFindAssets: () => void;
 }): React.JSX.Element {
   const selection = useSelection(store);
   // Subscribed, so a rebind redraws every chord these rows print rather than
@@ -223,6 +228,7 @@ export function ShellMenuBar({
           "file.new",
         )}
         {item(uiCopy.file.newFromStarter, () => void session?.newFromStarter())}
+        {item(uiCopy.file.findAssets, onFindAssets, false, "file.findAssets")}
         {/* `file.open` → the package picker, and nothing of the document's. */}
         {item(
           uiCopy.file.importPackage,

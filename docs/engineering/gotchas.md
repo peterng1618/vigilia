@@ -63,18 +63,17 @@ Non-obvious failure modes worth checking before repeating expensive investigatio
 - Video does not belong inside the Fabric scene when it forces full-scene frame
   repaint; keep it on a separate aligned background layer.
 
-## Store submission (GitHub OAuth)
+## Store sign-in and catalogue
 
-- Signing in uses GitHub's **device flow**, which needs a registered OAuth App
-  with **Device Flow enabled** — an account-holder action, not an agent's.
-- The app's client id is read from `YUNARI_GITHUB_CLIENT_ID`. With it unset,
-  `POST /api/github/device` answers `503` naming registration rather than
-  failing obscurely; nothing else in the store is affected.
-- Requested scope is `public_repo` only: the flow forks a public repo and opens
-  a pull request on it.
-- The token is stored at `github-token.json` in the settings directory, mode
-  `0600` (POSIX). It never reaches the browser; `DELETE /api/github/token`
-  clears it.
+- A sign-in can only return to a loopback address, so a host opened at a LAN
+  address or a custom hostname cannot sign in. Open it at `localhost`, `127.x`
+  or `[::1]`: the host normalises any of those to `127.0.0.1:<port>` for the
+  Worker, so the return always lands on `127.0.0.1`.
+- The catalogue origin lives once, in `CATALOGUE_ORIGIN`
+  (`renderer-core/src/theme/catalogue-location.ts`); the host's download
+  allow-list reads the same constant. Until the Worker is deployed, every
+  catalogue read fails against that address rather than falling back to a
+  local directory.
 
 ## Toolchain
 

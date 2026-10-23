@@ -13,6 +13,7 @@ import path from "node:path";
 import { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import {
+  cataloguePackageUrl,
   createAssetResolver,
   DASHBOARD_THEME_KIND,
   decodeBatch,
@@ -38,6 +39,8 @@ import {
 import { newToken } from "./session/pairing.js";
 import { createPairingCodeStore } from "./session/pairing-code.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
+import { createCredentialStore } from "./settings/credentials.js";
+import type { KnownCredential } from "./settings/credentials-registry.js";
 import {
   ASSIGNABLE_GROUPS,
   createDeviceSettingsStore,
@@ -50,15 +53,11 @@ import {
   LOCAL_DISPLAY_ID,
 } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
-import { createGithubTokenStore } from "./settings/github-token.js";
 import type { HostRecord } from "./settings/host-record.js";
 import type { Monitor } from "./settings/monitors.js";
+import { createStoreSessionStore } from "./settings/store-session.js";
 import { createThemeOriginsStore } from "./settings/theme-origins.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
-import {
-  CATALOGUE_RAW_BASE,
-  cataloguePackageUrl,
-} from "./themes/catalogue-source.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
 import { encodeThemeContent } from "./themes/wire.js";
@@ -1230,8 +1229,7 @@ describe("Host theme routes", () => {
   });
 
   describe("The install route", () => {
-    const PACKAGE_URL =
-      "https://raw.githubusercontent.com/peterng1618/yunari-store/main/catalogue/aurora/aurora.zip";
+    const PACKAGE_URL = cataloguePackageUrl("aurora", "1.2.0");
     let library: string;
     let settings: string;
     let installing: ReturnType<typeof createHostServer>;
@@ -1583,227 +1581,444 @@ describe("Host theme routes", () => {
     });
   });
 
-  describe("The GitHub identity routes", () => {
-    const CLIENT_ID = "client-from-the-registry";
-    const DEVICE_ENDPOINT = "https://github.com/login/device/code";
-    const TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token";
-    const USER_ENDPOINT = "https://api.github.com/user";
-    const SECRET = "ghs_the-access-token";
+  describe("The store session routes", () => {
+    const ORIGIN = "https://store.example";
+    // A slash is URL-encoded on the wire, so every case that redeems this token
+    // also exercises the decode.
+    const SESSION_TOKEN = "session/token.value";
+    const EMAIL = "author@example.com";
 
-    let library: string;
     let settings: string;
-    let signing: ReturnType<typeof createHostServer>;
-    let token: ReturnType<typeof createGithubTokenStore>;
+    let store: ReturnType<typeof createStoreSessionStore>;
+    let hosting: ReturnType<typeof createHostServer>;
     let calls: { url: string; method: string; authorization: string | null }[];
-    let tokenAnswer: () => Record<string, unknown>;
+    /** What the Worker's one-time-token exchange answers. Replaced per case. */
+    let verify: () => Response;
+    /** What the Worker's `/api/me` answers. Replaced per case. */
+    let me: (authorization: string | null) => Response;
 
-    function json(body: unknown): Response {
+    function json(body: unknown, headers?: Record<string, string>): Response {
       return new Response(JSON.stringify(body), {
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...headers },
       });
     }
 
-    beforeEach(async () => {
-      library = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-github-ui-"));
-      settings = await fs.mkdtemp(
-        path.join(os.tmpdir(), "yunari-github-settings-ui-"),
-      );
-      token = createGithubTokenStore(settings);
-      calls = [];
-      tokenAnswer = () => ({ error: "authorization_pending" });
-      signing = createHostServer({
+    function host(options?: {
+      readonly storeOrigin?: string | undefined;
+      readonly storeSession?: boolean;
+    }): ReturnType<typeof createHostServer> {
+      return createHostServer({
         registry: new ProviderRegistry([]),
-        bundles: { player: library, editor: library },
-        themeStore: createThemeStore(library),
-        githubToken: token,
-        githubClientId: CLIENT_ID,
-        // No network: the flow is driven by this answer, and every call is
-        // recorded so a case can show what the host sent and what it did not.
+        bundles: { player: settings, editor: settings },
+        themeStore: createThemeStore(settings),
+        ...(options?.storeOrigin === undefined
+          ? {}
+          : { storeOrigin: options.storeOrigin }),
+        ...(options?.storeSession === false ? {} : { storeSession: store }),
+        // No network: every Worker call is recorded, so a case can show what
+        // the host sent and what it did not.
         fetch: async (input, init) => {
           const url = String(input);
-          calls.push({
-            url,
-            method: init?.method ?? "GET",
-            authorization: new Headers(init?.headers).get("authorization"),
-          });
-          if (url === DEVICE_ENDPOINT) {
-            return json({
-              device_code: "the-device-code",
-              user_code: "ABCD-1234",
-              verification_uri: "https://github.com/login/device",
-              expires_in: 900,
-              interval: 5,
-            });
-          }
-          if (url === TOKEN_ENDPOINT) return json(tokenAnswer());
-          if (url === USER_ENDPOINT) return json({ login: "aurora-author" });
+          const authorization =
+            new Headers(init?.headers).get("authorization") ?? null;
+          calls.push({ url, method: init?.method ?? "GET", authorization });
+          if (url === `${ORIGIN}/api/auth/one-time-token/verify`)
+            return verify();
+          if (url === `${ORIGIN}/api/me`) return me(authorization);
           return new Response("unknown", { status: 404 });
         },
       });
+    }
+
+    /** Signs in through the two routes a browser drives, and answers the
+     *  state the start route minted. */
+    async function signIn(): Promise<string> {
+      const res = await request(
+        hosting.server,
+        "POST",
+        "/api/store/auth/start",
+      );
+      const url = new URL((res.json() as { url: string }).url);
+      return url.searchParams.get("state") ?? "";
+    }
+
+    beforeEach(async () => {
+      settings = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-store-ui-"));
+      store = createStoreSessionStore(settings);
+      calls = [];
+      verify = () =>
+        json({}, { "set-auth-token": encodeURIComponent(SESSION_TOKEN) });
+      me = (authorization) =>
+        authorization === `Bearer ${SESSION_TOKEN}`
+          ? json({ userId: "user-1", email: EMAIL })
+          : new Response("Unauthorized", { status: 401 });
+      hosting = host({ storeOrigin: ORIGIN });
     });
 
     afterEach(async () => {
-      await signing.close();
-      await fs.rm(library, { recursive: true, force: true });
+      await hosting.close();
       await fs.rm(settings, { recursive: true, force: true });
     });
 
-    it("starts a sign-in and answers only the code the author types", async () => {
-      const res = await request(signing.server, "POST", "/api/github/device");
+    it("reports only whether a store session exists, never the token", async () => {
+      const answer = await request(hosting.server, "GET", "/api/store/session");
+
+      expect(answer.json()).toEqual({ signedIn: false });
+      expect(answer.text()).not.toContain("token");
+    });
+
+    it("starts the sign-in at the Worker with this host's loopback origin", async () => {
+      const res = await request(
+        hosting.server,
+        "POST",
+        "/api/store/auth/start",
+      );
 
       expect(res.status).toBe(200);
-      expect(res.json()).toEqual({
-        userCode: "ABCD-1234",
-        verificationUri: "https://github.com/login/device",
-        expiresIn: 900,
-        interval: 5,
-      });
-      // The device code is what redeems the token. It stays in host memory.
-      expect(res.text()).not.toContain("the-device-code");
+      const url = new URL((res.json() as { url: string }).url);
+      expect(url.origin).toBe(ORIGIN);
+      expect(url.pathname).toBe("/auth/start");
+      expect(url.searchParams.get("provider")).toBe("github");
+      expect(url.searchParams.get("host")).toBe("http://127.0.0.1:5173");
+      expect(url.searchParams.get("state")).not.toBe("");
     });
 
-    it("polls pending, then ok with the login, and stores the identity", async () => {
-      await request(signing.server, "POST", "/api/github/device");
-
-      const pending = await request(
-        signing.server,
+    it("normalises an IPv6 loopback host to the address the Worker accepts", async () => {
+      const res = await request(
+        hosting.server,
         "POST",
-        "/api/github/device/poll",
+        "/api/store/auth/start",
+        undefined,
+        { headers: { host: "[::1]:5173" } },
       );
-      expect(pending.status).toBe(200);
-      expect(pending.json()).toEqual({ state: "pending" });
 
-      tokenAnswer = () => ({ access_token: SECRET, scope: "public_repo" });
-
-      const done = await request(
-        signing.server,
-        "POST",
-        "/api/github/device/poll",
-      );
-      expect(done.status).toBe(200);
-      expect(done.json()).toEqual({ state: "ok", login: "aurora-author" });
-      // The browser learns who signed in, and nothing else.
-      expect(done.text()).not.toContain(SECRET);
-
-      const userCall = calls.find((call) => call.url === USER_ENDPOINT);
-      expect(userCall?.authorization).toBe(`Bearer ${SECRET}`);
-
-      expect(await token.read()).toMatchObject({
-        accessToken: SECRET,
-        scope: "public_repo",
-        login: "aurora-author",
-      });
+      expect(res.status).toBe(200);
+      const url = new URL((res.json() as { url: string }).url);
+      expect(url.searchParams.get("host")).toBe("http://127.0.0.1:5173");
     });
 
-    it("does not answer a second poll once the flow has finished", async () => {
-      await request(signing.server, "POST", "/api/github/device");
-      tokenAnswer = () => ({ access_token: SECRET, scope: "public_repo" });
-      await request(signing.server, "POST", "/api/github/device/poll");
+    it("exchanges the one-time token for a stored session and closes the page", async () => {
+      const state = await signIn();
 
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toContain("text/html");
+      expect(res.text()).toContain("close this window");
+      // The session token and the account are the host's to keep, not the
+      // page's to show.
+      expect(res.text()).not.toContain(SESSION_TOKEN);
+      expect(res.text()).not.toContain(EMAIL);
+
+      expect(await store.read()).toMatchObject({
+        token: SESSION_TOKEN,
+        userId: "user-1",
+        email: EMAIL,
+      });
       expect(
-        (await request(signing.server, "POST", "/api/github/device/poll"))
-          .status,
-      ).toBe(409);
+        calls.find((call) => call.url === `${ORIGIN}/api/me`)?.authorization,
+      ).toBe(`Bearer ${SESSION_TOKEN}`);
+
+      const after = await request(hosting.server, "GET", "/api/store/session");
+      expect(after.json()).toEqual({ signedIn: true, email: EMAIL });
     });
 
-    it("signs out by deleting the stored token", async () => {
-      await token.write({
-        accessToken: SECRET,
-        scope: "public_repo",
-        login: "aurora-author",
-        obtainedAt: new Date().toISOString(),
-      });
+    it("reads the session token from the cookie when no header carries it", async () => {
+      verify = () =>
+        new Response("{}", {
+          headers: {
+            "set-cookie": `better-auth.session_token=${encodeURIComponent(
+              SESSION_TOKEN,
+            )}; Path=/; HttpOnly`,
+          },
+        });
+      const state = await signIn();
 
-      const res = await request(signing.server, "DELETE", "/api/github/token");
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(await store.read()).toMatchObject({ token: SESSION_TOKEN });
+    });
+
+    it("accepts the `__Secure-` cookie name the Worker uses over https", async () => {
+      verify = () =>
+        new Response("{}", {
+          headers: {
+            "set-cookie": `__Secure-better-auth.session_token=${encodeURIComponent(
+              SESSION_TOKEN,
+            )}; Path=/; HttpOnly; Secure`,
+          },
+        });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(await store.read()).toMatchObject({ token: SESSION_TOKEN });
+    });
+
+    it("refuses a state it has already spent", async () => {
+      const state = await signIn();
+      const first = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+      expect(first.status).toBe(200);
+      await store.clear();
+
+      const second = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(second.status).toBe(400);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("refuses a return the sign-in was not started for", async () => {
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+        undefined,
+        {
+          headers: { host: "localhost:5173", origin: "http://localhost:5173" },
+        },
+      );
+
+      expect(res.status).toBe(400);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("does not redeem a state another host instance started", async () => {
+      const state = await signIn();
+      const other = host({ storeOrigin: ORIGIN });
+
+      try {
+        const res = await request(
+          other.server,
+          "GET",
+          `/api/store/auth/return?token=one-time&state=${state}`,
+        );
+
+        expect(res.status).toBe(400);
+        expect(await store.read()).toBeUndefined();
+      } finally {
+        await other.close();
+      }
+    });
+
+    it("refuses a state older than ten minutes, without calling the Worker", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(new Date("2026-10-23T10:00:00.000Z"));
+        const state = await signIn();
+
+        vi.setSystemTime(new Date("2026-10-23T10:11:00.000Z"));
+        calls = [];
+        const res = await request(
+          hosting.server,
+          "GET",
+          `/api/store/auth/return?token=one-time&state=${state}`,
+        );
+
+        expect(res.status).toBe(400);
+        expect(calls).toHaveLength(0);
+        expect(await store.read()).toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("keeps 64 started sign-ins and drops the oldest", async () => {
+      const states: string[] = [];
+      for (let index = 0; index < 65; index += 1) states.push(await signIn());
+      const [oldestState] = states;
+      const newestState = states[64];
+
+      const oldest = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${oldestState}`,
+      );
+      expect(oldest.status).toBe(400);
+      expect(calls).toHaveLength(0);
+
+      const newest = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${newestState}`,
+      );
+      expect(newest.status).toBe(200);
+    });
+
+    it("answers 401 and keeps nothing when the Worker refuses the token", async () => {
+      verify = () => new Response("no", { status: 401 });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("answers 401 when the exchange carries no session token", async () => {
+      verify = () => json({});
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("answers 401 and keeps nothing when the Worker's /api/me refuses the session", async () => {
+      me = () => new Response("Unauthorized", { status: 401 });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("answers 401 and keeps nothing when /api/me names no account", async () => {
+      me = () => json({ userId: "user-1" });
+      const state = await signIn();
+
+      const res = await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+
+      expect(res.status).toBe(401);
+      expect(await store.read()).toBeUndefined();
+    });
+
+    it("signs out by clearing the stored session", async () => {
+      const state = await signIn();
+      await request(
+        hosting.server,
+        "GET",
+        `/api/store/auth/return?token=one-time&state=${state}`,
+      );
+      expect(await store.read()).toBeDefined();
+
+      const res = await request(
+        hosting.server,
+        "POST",
+        "/api/store/auth/sign-out",
+      );
 
       expect(res.status).toBe(200);
       expect(res.json()).toEqual({ ok: true });
-      expect(await token.read()).toBeUndefined();
+      expect(await store.read()).toBeUndefined();
     });
 
-    it("refuses every route from another origin", async () => {
+    it("refuses every store route from another origin", async () => {
       const routes = [
-        ["POST", "/api/github/device"],
-        ["POST", "/api/github/device/poll"],
-        ["DELETE", "/api/github/token"],
+        ["GET", "/api/store/session"],
+        ["POST", "/api/store/auth/start"],
+        ["GET", "/api/store/auth/return?token=t&state=s"],
+        ["POST", "/api/store/auth/sign-out"],
       ] as const;
 
       for (const [method, urlPath] of routes) {
-        const res = await request(signing.server, method, urlPath, undefined, {
-          headers: {
-            origin: "https://evil.example",
-            host: "127.0.0.1:5173",
-          },
+        const res = await request(hosting.server, method, urlPath, undefined, {
+          headers: { origin: "https://evil.example", host: "127.0.0.1:5173" },
         });
         expect(res.status, `${method} ${urlPath}`).toBe(403);
       }
     });
 
-    it("refuses a name that only resolves to this machine", async () => {
-      const res = await request(
-        signing.server,
-        "POST",
-        "/api/github/device",
-        undefined,
-        {
-          headers: {
-            origin: "http://evil.example:5173",
-            host: "evil.example:5173",
-          },
-        },
-      );
-
-      expect(res.status).toBe(403);
-    });
-
-    it("refuses every route from off loopback", async () => {
+    it("refuses every store route from off loopback", async () => {
       const routes = [
-        ["POST", "/api/github/device"],
-        ["POST", "/api/github/device/poll"],
-        ["DELETE", "/api/github/token"],
+        ["GET", "/api/store/session"],
+        ["POST", "/api/store/auth/start"],
+        ["GET", "/api/store/auth/return?token=t&state=s"],
+        ["POST", "/api/store/auth/sign-out"],
       ] as const;
 
       for (const [method, urlPath] of routes) {
-        const res = await request(signing.server, method, urlPath, undefined, {
+        const res = await request(hosting.server, method, urlPath, undefined, {
           remoteAddress: "10.0.0.2",
         });
         expect(res.status, `${method} ${urlPath}`).toBe(403);
       }
     });
 
-    it("answers 503 naming registration when no client id is configured", async () => {
-      const saved = process.env.YUNARI_GITHUB_CLIENT_ID;
-      delete process.env.YUNARI_GITHUB_CLIENT_ID;
-      const unregistered = createHostServer({
-        registry: new ProviderRegistry([]),
-        bundles: { player: library, editor: library },
-        themeStore: createThemeStore(library),
-        githubToken: token,
+    it("answers 503 when the host has no store address or session store", async () => {
+      const unconfigured = host({
+        storeOrigin: undefined,
+        storeSession: false,
       });
 
       try {
-        const res = await request(
-          unregistered.server,
-          "POST",
-          "/api/github/device",
-        );
-        expect(res.status).toBe(503);
-        expect(res.text().toLowerCase()).toContain("register");
+        expect(
+          (await request(unconfigured.server, "POST", "/api/store/auth/start"))
+            .status,
+        ).toBe(503);
+        expect(
+          (await request(unconfigured.server, "GET", "/api/store/session"))
+            .status,
+        ).toBe(503);
       } finally {
-        await unregistered.close();
-        if (saved !== undefined) process.env.YUNARI_GITHUB_CLIENT_ID = saved;
+        await unconfigured.close();
+      }
+    });
+
+    it("rejects the wrong method on each route", async () => {
+      const routes = [
+        ["GET", "/api/store/auth/start"],
+        ["POST", "/api/store/auth/return?token=t&state=s"],
+        ["GET", "/api/store/auth/sign-out"],
+        ["POST", "/api/store/session"],
+      ] as const;
+
+      for (const [method, urlPath] of routes) {
+        const res = await request(hosting.server, method, urlPath);
+        expect(res.status, `${method} ${urlPath}`).toBe(405);
       }
     });
   });
 
   describe("The submit route", () => {
-    const CLIENT_ID = "client-from-the-registry";
-    const PR_URL = "https://github.com/peterng1618/yunari-store/pull/7";
-    const SECRET = "ghs_the-access-token";
+    const ORIGIN = "https://store.example";
+    // A slash is URL-encoded on the wire, so the token path is exercised too.
+    const SESSION_TOKEN = "session/token.value";
     // New documents get UUID ids; these fixtures mirror that.
     const THEME_ID = "3f2a1c9e-8b7d-4c6a-9e0f-1a2b3c4d5e6f";
     const BARE_ID = "0a1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d";
-    const FORK_PATH = "https://api.github.com/repos/aurora-author/yunari-store";
+    const UPLOAD_URL = `https://r2.example/packages/${THEME_ID}/1.0.0.zip`;
     // The store's own check: a picture is any file that starts with a PNG's
     // eight magic bytes, and a submission refuses a theme without one.
     const PNG = new Uint8Array([
@@ -1813,18 +2028,13 @@ describe("Host theme routes", () => {
     let library: string;
     let settings: string;
     let submitting: ReturnType<typeof createHostServer>;
-    let token: ReturnType<typeof createGithubTokenStore>;
+    let session: ReturnType<typeof createStoreSessionStore>;
     let calls: { url: string; method: string; authorization: string | null }[];
-    /** What the catalogue already publishes, when a case is about a bump; absent
-     *  is the first-publication catalogue every other case runs against. */
-    let published:
-      | {
-          readonly itemUrl: string;
-          readonly packageUrl: string;
-          readonly item: string;
-          readonly bytes: Uint8Array<ArrayBuffer>;
-        }
-      | undefined;
+    /** The Worker's baseline answer; absent is a first publication. */
+    let storedBaseline: FabricThemeEnvelope | undefined;
+    let storedVersion: string;
+    let plan: { version: string; status: string; uploadUrl: string };
+    let finalStatus: string;
 
     function json(body: unknown, status = 200): Response {
       return new Response(JSON.stringify(body), {
@@ -1838,9 +2048,12 @@ describe("Host theme routes", () => {
       settings = await fs.mkdtemp(
         path.join(os.tmpdir(), "yunari-submit-settings-ui-"),
       );
-      token = createGithubTokenStore(settings);
+      session = createStoreSessionStore(settings);
       calls = [];
-      published = undefined;
+      storedBaseline = undefined;
+      storedVersion = "1.0.0";
+      plan = { version: "1.0.0", status: "pending", uploadUrl: UPLOAD_URL };
+      finalStatus = "pending";
 
       const store = createThemeStore(library);
       await store.write(THEME_ID, createValidPackage(THEME_ID, "Aurora"));
@@ -1853,10 +2066,10 @@ describe("Host theme routes", () => {
         bundles: { player: library, editor: library },
         themeStore: store,
         thumbnails: createThumbnailStore(library),
-        githubToken: token,
-        githubClientId: CLIENT_ID,
-        // No network: the submission is driven by this answer, and every call is
-        // recorded so a case can show what the host sent and what it did not.
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        // No network: the Worker's four calls are answered in order, and every
+        // call is recorded so a case can show what the host sent.
         fetch: async (input, init) => {
           const url = String(input);
           const method = init?.method ?? "GET";
@@ -1865,30 +2078,32 @@ describe("Host theme routes", () => {
             method,
             authorization: new Headers(init?.headers).get("authorization"),
           });
-          // The catalogue's own published files: only a case about a bump
-          // serves them, and every other case meets the 404 a first
-          // publication reads as ordinary.
-          if (published !== undefined && url === published.itemUrl) {
-            return new Response(published.item, {
-              status: 200,
-              headers: { "content-type": "application/json" },
+
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/baseline`) {
+            if (storedBaseline === undefined) {
+              return new Response("Not found", { status: 404 });
+            }
+            return json({
+              version: storedVersion,
+              createdAt: "2026-10-01T00:00:00.000Z",
+              envelope: storedBaseline,
+              status: "published",
             });
           }
-          if (published !== undefined && url === published.packageUrl) {
-            return new Response(published.bytes, { status: 200 });
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/versions`) {
+            return json(plan);
           }
-          if (url.endsWith("/forks")) return json({}, 201);
-          if (url.endsWith("/pulls")) return json({ html_url: PR_URL }, 201);
-          if (url.endsWith("/git/ref/heads/main")) {
-            return json({ object: { sha: "head-sha" } });
+          if (url === UPLOAD_URL) return new Response(null, { status: 200 });
+          if (
+            url ===
+            `${ORIGIN}/api/me/items/${THEME_ID}/versions/${plan.version}/finalize`
+          ) {
+            return json({
+              ok: true,
+              status: finalStatus,
+              version: plan.version,
+            });
           }
-          if (url.endsWith("/git/refs")) return json({}, 201);
-          if (url.includes("/contents/")) {
-            return method === "GET"
-              ? new Response(null, { status: 404 })
-              : json({}, 201);
-          }
-          if (url === FORK_PATH) return json({ full_name: "aurora-author/x" });
           return new Response("unknown", { status: 404 });
         },
       });
@@ -1905,15 +2120,15 @@ describe("Host theme routes", () => {
     }
 
     async function signedIn(): Promise<void> {
-      await token.write({
-        accessToken: SECRET,
-        scope: "public_repo",
-        login: "aurora-author",
+      await session.write({
+        token: SESSION_TOKEN,
+        userId: "user-1",
+        email: "author@example.com",
         obtainedAt: "2026-10-22T00:00:00.000Z",
       });
     }
 
-    it("opens a pull request for a library theme and answers its URL", async () => {
+    it("submits the package to the Worker and answers its status", async () => {
       await signedIn();
 
       const res = await request(
@@ -1928,63 +2143,43 @@ describe("Host theme routes", () => {
       // `null`, because an absent key would be a different answer.
       expect(res.json()).toEqual({
         ok: true,
-        url: PR_URL,
+        status: "pending",
         version: { from: null, to: "1.0.0", level: "initial" },
       });
-      // The token only ever travels in the header, and only to GitHub's API:
-      // the catalogue read that computes the version is unauthenticated.
-      const api = "https://api.github.com";
-      expect(
-        calls
-          .filter((call) => call.url.startsWith(api))
-          .every((call) => call.authorization === `Bearer ${SECRET}`),
-      ).toBe(true);
-      expect(
-        calls
-          .filter((call) => !call.url.startsWith(api))
-          .every((call) => call.authorization === null),
-      ).toBe(true);
-      expect(res.text()).not.toContain(SECRET);
+
+      // The four calls, in the order the store's own protocol requires: the
+      // baseline, the version request, the presigned PUT, the finalize.
+      expect(calls.map((call) => [call.method, call.url])).toEqual([
+        ["GET", `${ORIGIN}/api/me/items/${THEME_ID}/baseline`],
+        ["POST", `${ORIGIN}/api/me/items/${THEME_ID}/versions`],
+        ["PUT", UPLOAD_URL],
+        ["POST", `${ORIGIN}/api/me/items/${THEME_ID}/versions/1.0.0/finalize`],
+      ]);
+      // The session token travels on every authenticated call and on no other:
+      // the presigned PUT is the one call that must not carry it.
+      expect(calls.map((call) => call.authorization)).toEqual([
+        `Bearer ${SESSION_TOKEN}`,
+        `Bearer ${SESSION_TOKEN}`,
+        null,
+        `Bearer ${SESSION_TOKEN}`,
+      ]);
+      expect(res.text()).not.toContain(SESSION_TOKEN);
     });
 
-    it("answers the version a bumping submission published", async () => {
+    it("answers the status and version the Worker computed for a bump", async () => {
       await signedIn();
-      // The store already holds `1.4.0`, tagged where this library's copy is
-      // not: a tag leaving the set is a minor change, so the ladder answers
-      // `1.5.0` and the route carries that to the author.
-      const publishedEnvelope: FabricThemeEnvelope = {
-        schemaVersion: 2,
-        fabricVersion: "7.4.0",
-        id: THEME_ID,
-        artboard: { width: 1920, height: 1080 },
+      // The store already holds `1.4.0` with a tag this library's copy lacks: a
+      // tag leaving the set is a minor change, so the ladder answers `1.5.0`.
+      storedVersion = "1.4.0";
+      storedBaseline = {
+        ...createValidPackage(THEME_ID, "Aurora").envelope,
         metadata: {
-          name: "Aurora",
-          themeLanguage: "en",
+          ...createValidPackage(THEME_ID, "Aurora").envelope.metadata,
           tags: ["warm"],
         },
-        scene: { version: "7.4.0", objects: [] },
       };
-      const written = writeThemePackage({
-        envelope: publishedEnvelope,
-        assets: {},
-      });
-      if (!written.ok) throw new Error(written.message);
-      published = {
-        itemUrl: `${CATALOGUE_RAW_BASE}/catalogue/${THEME_ID}/item.json`,
-        packageUrl: cataloguePackageUrl(THEME_ID),
-        item: JSON.stringify({
-          kind: DASHBOARD_THEME_KIND,
-          name: "Aurora",
-          version: "1.4.0",
-          createdAt: "2026-10-01T00:00:00.000Z",
-          updatedAt: "2026-10-01T00:00:00.000Z",
-          downloads: 7,
-          favorites: 3,
-          packageUrl: cataloguePackageUrl(THEME_ID),
-          thumbnail: `catalogue/${THEME_ID}/thumbnail.png`,
-        }),
-        bytes: new Uint8Array(written.bytes),
-      };
+      plan = { version: "1.5.0", status: "published", uploadUrl: UPLOAD_URL };
+      finalStatus = "published";
 
       const res = await request(
         submitting.server,
@@ -1996,12 +2191,12 @@ describe("Host theme routes", () => {
       expect(res.status).toBe(200);
       expect(res.json()).toEqual({
         ok: true,
-        url: PR_URL,
+        status: "published",
         version: { from: "1.4.0", to: "1.5.0", level: "minor" },
       });
     });
 
-    it("answers 401 asking the author to sign in when no identity is stored", async () => {
+    it("answers 401 asking the author to sign in when no session is held", async () => {
       const res = await request(
         submitting.server,
         "POST",
@@ -2010,8 +2205,80 @@ describe("Host theme routes", () => {
       );
 
       expect(res.status).toBe(401);
-      expect(res.text().toLowerCase()).toContain("sign in");
-      expect(calls, "an unsigned submission reached GitHub").toEqual([]);
+      expect(res.json()).toEqual({
+        ok: false,
+        message: "Sign in to the store before submitting.",
+      });
+      expect(calls, "an unsigned submission reached the store").toEqual([]);
+    });
+
+    it("forgets the stored session when the Worker answers 401", async () => {
+      await signedIn();
+      const expired = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () => new Response("Session expired", { status: 401 }),
+      });
+
+      try {
+        const res = await request(
+          expired.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(401);
+        expect(res.json()).toEqual({
+          ok: false,
+          message: "Session expired",
+        });
+        // The token is spent: the next press asks for a sign-in.
+        expect(await session.read()).toBeUndefined();
+      } finally {
+        await expired.close();
+      }
+    });
+
+    it("keeps the session when the presigned PUT answers 401", async () => {
+      await signedIn();
+      const expiredSignature = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async (input) => {
+          const url = String(input);
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/baseline`)
+            return new Response("Not found", { status: 404 });
+          if (url === `${ORIGIN}/api/me/items/${THEME_ID}/versions`)
+            return json(plan);
+          if (url === UPLOAD_URL)
+            return new Response("Signature expired", { status: 401 });
+          return new Response("unknown", { status: 404 });
+        },
+      });
+
+      try {
+        const res = await request(
+          expiredSignature.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(401);
+        // R2's refusal is not the session's: the author is still signed in.
+        expect(await session.read()).toBeDefined();
+      } finally {
+        await expiredSignature.close();
+      }
     });
 
     it("refuses a non-loopback POST", async () => {
@@ -2071,7 +2338,7 @@ describe("Host theme routes", () => {
       expect(calls).toEqual([]);
     });
 
-    it("names the package stage that refused a theme with no picture", async () => {
+    it("answers 400 with the local refusal for a theme with no picture", async () => {
       await signedIn();
 
       const res = await request(
@@ -2081,39 +2348,129 @@ describe("Host theme routes", () => {
         submitBody(BARE_ID),
       );
 
-      expect(res.status).toBe(422);
+      expect(res.status).toBe(400);
       expect(res.json()).toEqual({
         ok: false,
-        stage: "package",
         message: expect.stringContaining("picture"),
       });
-      expect(calls, "a theme with no picture reached GitHub").toEqual([]);
+      expect(calls, "a theme with no picture reached the store").toEqual([]);
     });
 
-    it("answers 503 naming registration when no client id is configured", async () => {
+    it("answers 400 with the Worker's own sentence when it refuses", async () => {
       await signedIn();
-      const saved = process.env.YUNARI_GITHUB_CLIENT_ID;
-      delete process.env.YUNARI_GITHUB_CLIENT_ID;
-      const unregistered = createHostServer({
+      const refusing = createHostServer({
         registry: new ProviderRegistry([]),
         bundles: { player: library, editor: library },
         themeStore: createThemeStore(library),
         thumbnails: createThumbnailStore(library),
-        githubToken: token,
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () =>
+          new Response("This theme has not changed.", {
+            status: 400,
+          }),
       });
 
       try {
         const res = await request(
-          unregistered.server,
+          refusing.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(400);
+        expect(res.json()).toEqual({
+          ok: false,
+          message: "This theme has not changed.",
+        });
+      } finally {
+        await refusing.close();
+      }
+    });
+
+    it("answers 401 when the Worker refuses the stored session", async () => {
+      await signedIn();
+      const stale = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () => new Response("Unauthorized", { status: 401 }),
+      });
+
+      try {
+        const res = await request(
+          stale.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(401);
+        expect(res.json()).toEqual({ ok: false, message: "Unauthorized" });
+      } finally {
+        await stale.close();
+      }
+    });
+
+    it("answers 502 when the store cannot be reached", async () => {
+      await signedIn();
+      const unreachable = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeOrigin: ORIGIN,
+        storeSession: session,
+        fetch: async () => {
+          throw new Error("offline");
+        },
+      });
+
+      try {
+        const res = await request(
+          unreachable.server,
+          "POST",
+          "/api/themes/submit",
+          submitBody(),
+        );
+
+        expect(res.status).toBe(502);
+        expect(res.json()).toEqual({
+          ok: false,
+          message: "The store could not be reached.",
+        });
+      } finally {
+        await unreachable.close();
+      }
+    });
+
+    it("answers 503 when the host has no store address", async () => {
+      await signedIn();
+      const saved = process.env.YUNARI_STORE_ORIGIN;
+      delete process.env.YUNARI_STORE_ORIGIN;
+      const unaddressed = createHostServer({
+        registry: new ProviderRegistry([]),
+        bundles: { player: library, editor: library },
+        themeStore: createThemeStore(library),
+        thumbnails: createThumbnailStore(library),
+        storeSession: session,
+      });
+
+      try {
+        const res = await request(
+          unaddressed.server,
           "POST",
           "/api/themes/submit",
           submitBody(),
         );
         expect(res.status).toBe(503);
-        expect(res.text().toLowerCase()).toContain("register");
       } finally {
-        await unregistered.close();
-        if (saved !== undefined) process.env.YUNARI_GITHUB_CLIENT_ID = saved;
+        await unaddressed.close();
+        if (saved !== undefined) process.env.YUNARI_STORE_ORIGIN = saved;
       }
     });
   });
@@ -4627,6 +4984,375 @@ describe("Font favourite routes", () => {
       expect(res.text()).toContain("not enabled");
     } finally {
       await bare.close();
+    }
+  });
+});
+
+describe("Credential routes", () => {
+  const bearer: KnownCredential = {
+    id: "demo",
+    label: "Demo source",
+    kind: "bearer",
+  };
+  const cookie: KnownCredential = {
+    id: "session",
+    label: "Session source",
+    kind: "cookie",
+  };
+
+  let tmpDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const start = (
+    known: readonly KnownCredential[] = [bearer, cookie],
+    extra: Partial<HostServerOptions> = {},
+  ): ReturnType<typeof createHostServer> =>
+    createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      credentials: createCredentialStore(tmpDir),
+      knownCredentials: known,
+      ...extra,
+    });
+
+  const rows = async () =>
+    (await request(hosted.server, "GET", "/api/credentials")).json();
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-credentials-"));
+    hosted = start();
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("answers set and hint, and no value, for every known credential", async () => {
+    const res = await request(hosted.server, "GET", "/api/credentials");
+
+    expect(res.status).toBe(200);
+    expect(res.json()).toEqual([
+      {
+        id: "demo",
+        label: "Demo source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+    ]);
+    expect(res.text()).not.toMatch(/"value"/);
+  });
+
+  it("refuses a request another page made, and stores nothing", async () => {
+    const put = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "sk-live-9f2c" }),
+      {
+        headers: { origin: "https://evil.example", host: "127.0.0.1:5173" },
+      },
+    );
+
+    expect(put.status).toBe(403);
+    expect(put.text()).toBe("Credentials are not available to another page.");
+    const read = await rows();
+    expect(read).toEqual([
+      expect.objectContaining({ id: "demo", set: false }),
+      expect.objectContaining({ id: "session", set: false }),
+    ]);
+  });
+
+  it("carries the guide a credential names, and nulls when it names none", async () => {
+    hosted = start([
+      {
+        ...bearer,
+        help: {
+          text: "Create an app and copy its access key.",
+          url: "https://example.test/keys",
+        },
+      },
+      cookie,
+    ]);
+
+    const [guided, plain] = (await rows()) as unknown as {
+      helpText: string | null;
+      helpUrl: string | null;
+    }[];
+
+    expect(guided).toMatchObject({
+      helpText: "Create an app and copy its access key.",
+      helpUrl: "https://example.test/keys",
+    });
+    expect(plain).toMatchObject({ helpText: null, helpUrl: null });
+  });
+
+  it("stores a value and answers only its four-character hint", async () => {
+    const put = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "sk-live-9f2c" }),
+    );
+
+    expect(put.status).toBe(200);
+    expect(put.json()).toEqual({ ok: true });
+
+    const read = await request(hosted.server, "GET", "/api/credentials");
+    expect(read.json()).toEqual([
+      {
+        id: "demo",
+        label: "Demo source",
+        set: true,
+        hint: "9f2c",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+    ]);
+    // The whole point of the route: the value it stored never comes back.
+    expect(read.text()).not.toContain("sk-live-9f2c");
+    expect(read.text()).not.toMatch(/"value"/);
+  });
+
+  it("clears a stored value", async () => {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "sk-live-9f2c" }),
+    );
+
+    const cleared = await request(
+      hosted.server,
+      "DELETE",
+      "/api/credentials/demo",
+    );
+
+    expect(cleared.status).toBe(200);
+    expect(await rows()).toEqual([
+      {
+        id: "demo",
+        label: "Demo source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+    ]);
+  });
+
+  it("refuses a credential id the table does not know", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/unknown",
+      json({ value: "value" }),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses a cookie credential, naming R10", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/session",
+      json({ value: "session-cookie" }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.text()).toContain("R10");
+  });
+
+  it("refuses an empty value", async () => {
+    const res = await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/demo",
+      json({ value: "" }),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses verify when the credential has no verifier", async () => {
+    const res = await request(
+      hosted.server,
+      "POST",
+      "/api/credentials/demo/verify",
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("verifies through the injected fetch with the stored value", async () => {
+    const calls: { value: string; fetchImpl: typeof fetch }[] = [];
+    const stubFetch = vi.fn() as unknown as typeof fetch;
+    const verifiable: KnownCredential = {
+      id: "verifiable",
+      label: "Verifiable source",
+      kind: "bearer",
+      verify: async (value, fetchImpl) => {
+        calls.push({ value, fetchImpl });
+        return { ok: true };
+      },
+    };
+    hosted = start([verifiable], { fetch: stubFetch });
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/credentials/verifiable",
+      json({ value: "sk-live-9f2c" }),
+    );
+
+    const res = await request(
+      hosted.server,
+      "POST",
+      "/api/credentials/verifiable/verify",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    expect(calls).toEqual([{ value: "sk-live-9f2c", fetchImpl: stubFetch }]);
+  });
+
+  it("keeps every credential route on this PC", async () => {
+    const lan = { remoteAddress: "192.168.1.50" };
+
+    expect(
+      (await request(hosted.server, "GET", "/api/credentials", undefined, lan))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PUT",
+          "/api/credentials/demo",
+          json({ value: "sk-live-9f2c" }),
+          lan,
+        )
+      ).status,
+    ).toBe(403);
+    // Refused, not stored.
+    expect(await rows()).toEqual([
+      {
+        id: "demo",
+        label: "Demo source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+      {
+        id: "session",
+        label: "Session source",
+        set: false,
+        hint: "",
+        verify: false,
+        helpText: null,
+        helpUrl: null,
+      },
+    ]);
+  });
+
+  it("reports a host that keeps no credential store", async () => {
+    const bare = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+    });
+    try {
+      const res = await request(bare.server, "GET", "/api/credentials");
+
+      expect(res.status).toBe(503);
+      expect(res.text()).toContain("not enabled");
+    } finally {
+      await bare.close();
+    }
+  });
+
+  it("supports only the methods each path names", async () => {
+    expect(
+      (await request(hosted.server, "POST", "/api/credentials")).status,
+    ).toBe(405);
+    expect(
+      (await request(hosted.server, "GET", "/api/credentials/demo")).status,
+    ).toBe(405);
+  });
+});
+
+describe("Asset finder routes", () => {
+  it("mounts the finder's sources route", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-assets-"));
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+      assets: {},
+    });
+    try {
+      const res = await request(hosted.server, "GET", "/api/assets/sources");
+
+      expect(res.status).toBe(200);
+      expect(
+        (
+          res.json() as {
+            sources: readonly Record<string, unknown>[];
+          }
+        ).sources,
+      ).toContainEqual(expect.objectContaining({ id: "lucide" }));
+    } finally {
+      await hosted.close();
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("says so when this host serves no sources", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-assets-"));
+    const bare = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: tmpDir, editor: tmpDir },
+    });
+    try {
+      const res = await request(bare.server, "GET", "/api/assets/sources");
+
+      expect(res.status).toBe(503);
+      expect(res.text()).toContain("not enabled");
+    } finally {
+      await bare.close();
+      await fs.rm(tmpDir, { recursive: true, force: true });
     }
   });
 });

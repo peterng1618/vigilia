@@ -5,9 +5,13 @@ import {
 } from "@yunari/renderer-core";
 import { sceneBoxesOf } from "@yunari/scene-fabric";
 import { ActiveSelection, type FabricObject } from "fabric/es";
+import { createElement } from "react";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
-import { AssetManager } from "./asset-manager/index.js";
+import { importFinderResult } from "./asset-finder/actions.js";
+import { assetBytes } from "./asset-finder/client.js";
+import { FontsBodyHost } from "./asset-finder/fonts-body.js";
+import { type AssetManager, mimeOf } from "./asset-manager/index.js";
 import {
   type CanvasNudge,
   createCanvasNudge,
@@ -40,10 +44,12 @@ import {
 } from "./palette-manager/index.js";
 import type { PresetSelection } from "./panes/tokens/preset-list.js";
 import type { RunDisplayMode } from "./run-placeholder.js";
+import { typePresetOf } from "./selection-inspector/appearance.js";
 import {
   createSelectionInspector,
   type SelectionInspector,
 } from "./selection-inspector/index.js";
+import { isTextObject } from "./selection-inspector/view.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import type { ThemeLibraryClient } from "./theme-library-client.js";
@@ -53,6 +59,7 @@ import {
   type TypePresetPanel,
   type TypePresets,
 } from "./type-preset-manager/index.js";
+import { uiCopy } from "./ui-copy.js";
 
 interface EditorPanelHosts {
   /** Text and chart creation, and the declared-asset library at its foot. */
@@ -109,6 +116,13 @@ interface EditorSessionOptions {
    *  existing construction sites — and every test that builds a session — keep
    *  compiling and simply do nothing. */
   readonly onShowShortcuts?: () => void;
+  /** The asset finder's modal lives in the shell, and its chord belongs to this
+   *  dispatcher, so the gesture leaves through the shell's own door. Optional,
+   *  like the two below, so a session built without chrome has no finder row. */
+  readonly onFindAssets?: () => void;
+  /** Opens the finder already on Fonts, which is where the catalogue browsed
+   *  from the selection inspector's face field now lives. */
+  readonly onFindFontPicker?: () => void;
   /** §7.1's `⌘⇧P`. The chord opens the publish surface and moves nothing: the
    *  host's switch is inside that surface, and reaching it is the author's
    *  second, deliberate press. Optional, like the one above, so a session built
@@ -362,6 +376,9 @@ export class EditorSession {
       ...(options.favoritesClient === undefined
         ? {}
         : { favoritesClient: options.favoritesClient }),
+      ...(options.onFindFontPicker === undefined
+        ? {}
+        : { onOpenFontPicker: options.onFindFontPicker }),
     });
     this.#selection.setLocale(this.#document.envelope.metadata?.themeLanguage);
     // Selecting the background row is a shell selection with no Fabric object:
@@ -403,6 +420,7 @@ export class EditorSession {
           this.#document.refreshBackgroundMedia();
         },
         isReferenced: (assetId) => this.#document.holdsAsset(assetId),
+        onFindAssets: () => options.onFindAssets?.(),
       },
     );
     this.#source = options.source;
@@ -447,6 +465,9 @@ export class EditorSession {
     });
     this.#shortcuts.register("file.new", () => {
       void this.#document.newDocument();
+    });
+    this.#shortcuts.register("file.findAssets", () => {
+      options.onFindAssets?.();
     });
     this.#shortcuts.register("edit.undo", () => {
       // First: a burst's entry is not recorded until it closes, so an undo
@@ -568,6 +589,92 @@ export class EditorSession {
       savePackage: () => this.#document.save(),
       releasePackage: () => this.#document.release(),
       openLibrary: () => this.#document.openLibrary(),
+      // The finder's Fonts body. The catalogue's data and the two writes are
+      // the session's already; the shell only has somewhere to put the body.
+      // A face applies to the preset the selected text is set in — the same
+      // reading the inspector's own field performed before the picker moved.
+      fontPickerBody: () =>
+        createElement(FontsBodyHost, {
+          ...(options.favoritesClient === undefined
+            ? {}
+            : { favoritesClient: options.favoritesClient }),
+          onApplyFace: (face) => {
+            const active = editor.canvas.getActiveObject();
+            const ref =
+              active !== undefined && isTextObject(active)
+                ? typePresetOf(active)
+                : undefined;
+            if (ref !== undefined) {
+              void this.applyPresetFace(ref.slice("typePresets.".length), face);
+            }
+          },
+          onApplyTrio: (trioId) => {
+            void this.applyFontTrio(trioId);
+          },
+        }),
+      // One finder row's action. The bytes come from the host, the manager
+      // keeps its caps and sanitising, and the credit is written before the
+      // asset's own consequence runs — an import that places nothing still
+      // carries its attribution.
+      importAsset: async (page, result) => {
+        const fetched = await assetBytes(page.source, result.id);
+        if (fetched === undefined)
+          return {
+            ok: false as const,
+            message: uiCopy.assets.bytesUnavailable(result.name),
+          };
+
+        const file = new File(
+          [fetched.bytes as unknown as BlobPart],
+          fetched.filename,
+          { type: mimeOf(fetched.filename) ?? "" },
+        );
+        const outcome = await importFinderResult({
+          page,
+          result,
+          bytes: fetched.bytes,
+          filename: fetched.filename,
+          manager: this.#assets,
+          document: this.#document,
+          place: (assetId) => {
+            if (result.kind === "image") {
+              const artboard = this.#document.envelope.artboard;
+              this.#document.setArtboard({
+                ...artboard,
+                backgroundMedia: {
+                  assetId,
+                  fit: artboard.backgroundMedia?.fit ?? "theme",
+                },
+              });
+              return;
+            }
+            // The icon's own row places it: `placeImage` takes the declaration
+            // this import just made, so the file is not imported twice.
+            const declared = this.#assets.declarations.find(
+              (entry) => entry.id === assetId,
+            );
+            if (declared !== undefined) {
+              void this.#assets
+                .placeImage(editor, file, declared)
+                .catch((error: unknown) =>
+                  options.onError?.(
+                    error instanceof Error ? error.message : String(error),
+                  ),
+                );
+            }
+          },
+        });
+        if (outcome.ok === true) {
+          // The Document pane lists declarations, and a finder import makes one
+          // just as the Add pane's own file does; without this the list is a
+          // save behind.
+          this.#artboard.setAssets(this.#assets.declarations);
+          this.#document.refreshBackgroundMedia();
+        }
+        return outcome.ok
+          ? { ok: true as const, imported: outcome.imported }
+          : { ok: false as const, message: outcome.message };
+      },
       openLibraryTheme: (id, onAccepted) =>
         this.#document.openLibraryTheme(id, onAccepted),
       saveLibrary: () => this.#document.saveLibrary(),

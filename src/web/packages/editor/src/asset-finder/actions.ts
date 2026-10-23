@@ -1,0 +1,78 @@
+import type { AssetPage, AssetResult } from "@yunari/renderer-core";
+import type { ThemeCreditsEntry } from "@yunari/theme-package";
+import {
+  type AssetManager,
+  type LocalAssetReference,
+  mimeOf,
+} from "../asset-manager/index.js";
+import type { EditorDocument } from "../editor-document.js";
+import { uiCopy } from "../ui-copy.js";
+
+export interface ImportedAsset {
+  readonly reference: LocalAssetReference;
+  readonly opened: boolean;
+}
+
+export type ImportOutcome =
+  | { readonly ok: true; readonly imported: ImportedAsset }
+  | { readonly ok: false; readonly message: string };
+
+/** The finder's action for one row: bytes in, declared asset and credit out.
+ *
+ * The asset manager keeps its caps and its SVG sanitising, unchanged; the
+ * credit is the source's own word for what it served, which is why `kind`
+ * travels on the result rather than being guessed from the filename.
+ */
+export async function importFinderResult(input: {
+  readonly page: AssetPage;
+  readonly result: AssetResult;
+  readonly bytes: Uint8Array;
+  readonly filename: string;
+  readonly manager: AssetManager;
+  readonly document: EditorDocument;
+  readonly place: (assetId: string) => void;
+}): Promise<ImportOutcome> {
+  const mime = mimeOf(input.filename);
+  if (mime === undefined)
+    return { ok: false, message: uiCopy.assets.unknownAssetFile };
+
+  // Checked before the bytes are declared: an over-cap entry would leave the
+  // document unable to save, and no surface can remove one.
+  const credit = creditOf(input.result);
+  if (!input.document.canAddCredit(credit))
+    return { ok: false, message: uiCopy.assets.creditsFull };
+
+  try {
+    const file = new File(
+      [input.bytes as unknown as BlobPart],
+      input.filename,
+      {
+        type: mime,
+      },
+    );
+    const reference = await input.manager.import(file);
+    input.document.addCredit(credit);
+    input.place(reference.id);
+    return { ok: true, imported: { reference, opened: true } };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/** The attribution an imported result carries (spec R7). An image's subtitle
+ *  is its photographer; an icon's is a style, which is not an author. */
+export function creditOf(result: AssetResult): ThemeCreditsEntry {
+  return {
+    kind: result.kind,
+    title: result.name,
+    ...(result.kind === "image" && result.subtitle !== undefined
+      ? { author: { name: result.subtitle } }
+      : {}),
+    license: result.licence,
+    changes: "Imported unchanged",
+    ...(result.sourceUrl === "" ? {} : { source: { url: result.sourceUrl } }),
+  };
+}

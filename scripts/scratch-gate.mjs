@@ -284,12 +284,10 @@ function selfTest() {
   command("npm run gate > C:\\tmp\\gate.log 2>&1", false);
   command("npx vitest run > /dev/null 2>&1", false);
   command("git diff > D:\\yunari-pass\\diff.txt", true);
-  // A leading slash resolves against the current drive, so `/tmp` is sanctioned
-  // on C: and refused elsewhere; assert the policy, not the drive.
-  const tmpIsSanctioned = SANCTIONED.some((root) =>
-    under(resolve("/tmp/full.json"), root),
-  );
-  command("npx vitest run --outputFile=/tmp/full.json", !tmpIsSanctioned);
+  // `/tmp` is sanctioned on both platforms (drive-root `C:\tmp` on Windows,
+  // `os.tmpdir()` on Unix), so it cannot prove a refusal. `/var/tmp` is nobody's
+  // store: `<drive>:\var\tmp` on Windows, `/var/tmp` on Unix.
+  command("npx vitest run --outputFile=/var/tmp/full.json", true);
   command("npm run build 2>&1 | tee C:\\tmp\\build.log", false);
 
   // Integrity: the store list is matched per segment, so an entry holding a

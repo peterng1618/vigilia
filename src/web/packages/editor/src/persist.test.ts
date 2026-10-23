@@ -127,6 +127,30 @@ describe("serializeThemePackage", () => {
     // A declared asset is one the renderer loads; a preview is not that.
     expect(parsed.envelope.assets ?? []).toEqual([]);
   });
+
+  it("carries the credits collection through the package", () => {
+    const credits = {
+      format: "yunari-theme-credits" as const,
+      version: 1 as const,
+      entries: [
+        {
+          kind: "icon",
+          title: "house",
+          license: "ISC",
+          changes: "Imported unchanged",
+          source: { url: "https://lucide.dev/icons/house" },
+        },
+      ],
+    };
+    const result = serializeThemePackage(validEnvelope, {}, undefined, credits);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const parsed = parseThemePackage(result.bytes);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.credits).toEqual(credits);
+  });
 });
 
 describe("fileNameFor", () => {

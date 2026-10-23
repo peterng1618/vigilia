@@ -1,7 +1,10 @@
 # The asset finder — sources, credentials, and one surface
 
 - **Date:** 2026-10-21
-- **Status:** proposed
+- **Status:** landed — except the Wallpaper Engine tab (§3's local source, §8's
+  absence row), which the [Wallpaper Engine plan](../plans/2026-10-21-wallpaper-engine-import.md)
+  now owns: it builds the host module and the tab's body, and this spec's tab entry
+  is drawn when that plan lands.
 - **Related:** [`2026-10-21-wallpaper-engine-import-design.md`](2026-10-21-wallpaper-engine-import-design.md)
   (the local source and `credits.json`), [`2026-10-12-theme-store-design.md`](2026-10-12-theme-store-design.md)
   (the media normalizer), `requirements.md` §132, `docs/superpowers/plans/2026-09-27-font-trio-catalog.md`.

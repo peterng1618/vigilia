@@ -1,8 +1,10 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
+import type { ListingCategory } from "@yunari/renderer-core";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { AssetFinder } from "../asset-finder/modal.js";
 import { CARD_LIBRARY } from "../card-library.js";
 import { hitTargetClasses } from "../components/ui/control-well.js";
 import {
@@ -43,12 +45,14 @@ import { PublishIndicator } from "./publish-indicator.js";
 import { Rail, type RailSlot } from "./rail.js";
 import { SaveState } from "./save-state.js";
 import type { EditorViewControls } from "./session-facade.js";
-import { Settings } from "./settings.js";
+import { Settings, type SettingsTab } from "./settings.js";
 import { ShellMenuBar } from "./shell-menu-bar.js";
 import {
+  FinderStore,
   PublishSurfaceStore,
   SelectionStore,
   SheetStore,
+  useFinder,
   useSelection,
   useSheet,
 } from "./shell-stores.js";
@@ -183,6 +187,10 @@ export interface ShellLayout {
   /** Opens §7's reference sheet. The session owns the `?` dispatcher and never
    *  sees React, so `editor-main` routes the gesture here. */
   showShortcuts(): void;
+  /** Opens the asset finder. The chord and the menu row reach the same store
+   *  the modal is bound to; a caller may name the category it opens on, which
+   *  is how the font field arrives at Fonts. */
+  showFinder(category?: ListingCategory): void;
   /** Opens the publish surface — the act the header's own control performs on a
    *  press. The session's `publish.surface` chord routes through here rather
    *  than through a second publish path, and it moves no host state: the switch
@@ -263,6 +271,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const store = new SelectionStore();
   const sheet = new SheetStore();
   const publishSurface = new PublishSurfaceStore();
+  const finder = new FinderStore();
   const hosting = new HostingStore();
   const getView = (): EditorViewControls | undefined => view;
 
@@ -281,6 +290,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      *  palette above: it is a shell surface, not document state, and it is
      *  never serialized. */
     const [settingsOpen, setSettingsOpen] = useState(false);
+    /** The tab a surface asked Settings to open on, cleared when it closes so
+     *  the next open is the author's own last choice. */
+    const [settingsTab, setSettingsTab] = useState<SettingsTab | undefined>(
+      undefined,
+    );
     /** The author's bindings, held here because the effective table lives
      *  outside React. Initialized from storage — the same read
      *  `createShellLayout` made for the live table — and moved from there by
@@ -312,6 +326,8 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       tokenCount,
     } = useSelection(store);
     const sheetOpen = useSheet(sheet);
+    const finderState = useFinder(finder);
+    const finderOpen = finderState.open;
     /** Re-frame on the panel toggle, once the viewport has the new width.
      *
      * A resize does not need this any more: the viewport derives whether the
@@ -424,7 +440,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               surface that cannot answer them. */}
           {mode === "editor" && (
             <>
-              <ShellMenuBar store={store} getView={getView} />
+              <ShellMenuBar
+                store={store}
+                getView={getView}
+                onFindAssets={() => finder.set(true)}
+              />
               <PublishControl
                 session={store.bridge?.session}
                 publish={publish}
@@ -451,7 +471,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             slot={slot}
             collapsed={collapsed}
             onChoose={choosePane}
-            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenSettings={() => {
+              setSettingsTab(undefined);
+              setSettingsOpen(true);
+            }}
           />
           <aside className="editor-shell-panel editor-glass" hidden={collapsed}>
             {/* Every pane wears the same chrome — a title bar, a body and a
@@ -581,9 +604,41 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {/* §7's settings modal. The gear's route is the rail's
                 `onOpenSettings`; the modal returns focus to the gear itself.
                 `storage` is the browser-local store the palette already uses. */}
+            {/* The one place the finder is mounted. Its chord and its two menu
+                entries all move this one store, the same way `?` moves the
+                sheet's. */}
+            <AssetFinder
+              open={finderOpen}
+              onOpenChange={(next) => finder.set(next)}
+              bodies={{
+                "font-picker": store.bridge?.session.fontPickerBody?.() ?? null,
+                "wallpaper-engine": null,
+              }}
+              {...(finderState.category === undefined
+                ? {}
+                : { initialCategory: finderState.category })}
+              onAction={async (page, result) => {
+                const session = store.bridge?.session;
+                if (session?.importAsset === undefined)
+                  return {
+                    ok: false,
+                    message: uiCopy.assets.hostUnavailable,
+                  };
+                return session.importAsset(page, result);
+              }}
+              onOpenConnections={() => {
+                finder.set(false);
+                setSettingsTab("connections");
+                setSettingsOpen(true);
+              }}
+            />
             <Settings
               open={settingsOpen}
-              onOpenChange={setSettingsOpen}
+              onOpenChange={(next) => {
+                setSettingsOpen(next);
+                if (!next) setSettingsTab(undefined);
+              }}
+              initialTab={settingsTab}
               storage={storage}
               palette={palette}
               following={following}
@@ -776,6 +831,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       // The gesture arrives from outside React, so the store writes and the
       // subscription re-renders; `flushSync` settles it before this returns.
       flushSync(() => sheet.set(true));
+    },
+    showFinder(category) {
+      flushSync(() => finder.set(true, category));
     },
     showPublishing() {
       // The gesture arrives from outside React and lands on the popover's own

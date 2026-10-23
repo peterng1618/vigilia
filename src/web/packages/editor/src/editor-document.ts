@@ -7,6 +7,11 @@ import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
 } from "@yunari/renderer-core";
+import {
+  MAX_CREDITS_ENTRIES,
+  type ThemeCredits,
+  type ThemeCreditsEntry,
+} from "@yunari/theme-package";
 import type { ArtboardPanel } from "./artboard-panel.js";
 import type { AssetManager } from "./asset-manager/index.js";
 import { insertCard } from "./card-library.js";
@@ -56,6 +61,9 @@ interface EditorDocumentSource {
   /** The picture the opened package carried, if it carried one. A save that
    *  cannot render one of its own keeps this rather than losing it. */
   readonly thumbnail?: Uint8Array;
+  /** The package's attribution member, when the document arrived from one:
+   *  the collection every later import is added to. */
+  readonly credits?: readonly ThemeCreditsEntry[];
   readonly libraryClient?: ThemeLibraryClient;
   /** The stored document this one was opened from, when it was opened from
    *  the library. Every save made from here is checked against it. */
@@ -104,6 +112,11 @@ interface EditorDocumentOptions {
   readonly consumers: EditorDocumentConsumers;
 }
 
+/** A credit's identity: the item, and where it came from. */
+function creditKey(entry: ThemeCreditsEntry): string {
+  return `${entry.source?.url ?? ""}\n${entry.title}`;
+}
+
 /**
  * The theme this editor is authoring: what it says now, every write that
  * changes it, and the file protocol that opens, saves and releases it.
@@ -119,6 +132,9 @@ export class EditorDocument {
   #envelope: FabricThemeEnvelopeInput;
   /** The picture this document arrived with, which a save falls back to. */
   #thumbnail: Uint8Array | undefined;
+  /** Every imported asset's attribution, written into the package's
+   *  `credits.json` at save. Seeded from the package this document opened. */
+  readonly #credits: ThemeCreditsEntry[];
   readonly #source: EditorDocumentSource;
   readonly #shell: EditorShell;
   readonly #assets: AssetManager;
@@ -142,6 +158,7 @@ export class EditorDocument {
     this.#shell = source.shell;
     this.#envelope = source.envelope;
     this.#thumbnail = source.thumbnail;
+    this.#credits = [...(source.credits ?? [])];
     this.#assets = source.assetManager;
     this.#onBindingsChange = source.onBindingsChange;
     this.#consumers = options.consumers;
@@ -199,6 +216,42 @@ export class EditorDocument {
     return this.#persistence.isDirty(this.snapshot(), this.#assets.assets);
   }
 
+  /** The attribution the saved package will carry, in arrival order. */
+  credits(): readonly ThemeCreditsEntry[] {
+    return [...this.#credits];
+  }
+
+  /** Whether one more credit can be held: the package writer refuses a list
+   *  past its cap, and nothing removes an entry, so the refusal happens before
+   *  the bytes are declared rather than at the next save. */
+  canAddCredit(entry: ThemeCreditsEntry): boolean {
+    return (
+      this.#credits.length < MAX_CREDITS_ENTRIES ||
+      this.#credits.some((current) => creditKey(current) === creditKey(entry))
+    );
+  }
+
+  /** One imported asset's attribution. The same source item twice is one
+   *  entry, not two: a re-import replaces the credit it already had. */
+  addCredit(entry: ThemeCreditsEntry): void {
+    const key = creditKey(entry);
+    const at = this.#credits.findIndex((current) => creditKey(current) === key);
+    if (at === -1) this.#credits.push(entry);
+    else this.#credits.splice(at, 1, entry);
+    this.announceChange();
+  }
+
+  /** The package member, or nothing when there is nothing to attribute. */
+  #creditsPackage(): ThemeCredits | undefined {
+    return this.#credits.length === 0
+      ? undefined
+      : {
+          format: "yunari-theme-credits",
+          version: 1,
+          entries: [...this.#credits],
+        };
+  }
+
   /** Told "look again", not told the answer: a path that announces without
    *  having changed anything costs a recompute rather than a wrong marker. */
   subscribeDocumentChange(listener: () => void): () => void {
@@ -218,6 +271,7 @@ export class EditorDocument {
         current,
         this.#assets.assets,
         await this.picture(),
+        this.#creditsPackage(),
       );
       this.announceChange();
       options.onSaved("Theme package saved");
@@ -284,7 +338,12 @@ export class EditorDocument {
 
       if (choice === "cancel") return false;
       if (choice === "save") {
-        await this.#persistence.save(current, this.#assets.assets);
+        await this.#persistence.save(
+          current,
+          this.#assets.assets,
+          undefined,
+          this.#creditsPackage(),
+        );
         this.#source.onSaved("Theme package saved");
       }
     }
@@ -303,6 +362,8 @@ export class EditorDocument {
       const beforeRelease = serializeThemePackage(
         this.snapshot(),
         this.#assets.assets,
+        undefined,
+        this.#creditsPackage(),
       );
       if (!beforeRelease.ok) throw new Error(beforeRelease.message);
       const version = bumpSemanticVersion(

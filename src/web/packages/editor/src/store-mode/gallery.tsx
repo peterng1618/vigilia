@@ -16,6 +16,7 @@ import { CELL_ACTION_REASONS } from "./cell-actions.js";
 import type { InstallControl } from "./install-item.js";
 import { type InstallState, installStateOf } from "./install-state.js";
 import type { CellAction, StoreItem } from "./local-source.js";
+import { StoreStatusBadge } from "./status-badge.js";
 
 /**
  * The gallery: the drawing's cell, and the grid of them.
@@ -151,11 +152,19 @@ function Cell(props: {
         className="flex w-full flex-col text-left"
       >
         <Picture item={item} />
-        <span
-          data-yunari-store-cell-name=""
-          className="truncate p-[var(--space-10)] pb-[var(--space-6)] text-sm text-text"
-        >
-          {item.name}
+        {/* The name's box is this wrapper so the state's word can sit after the
+            name without leaving the padded column: **the badge belongs to the
+            name's line**, not to the facts band, which is one occupant per half
+            and nothing about the author's store row. The padding is the
+            drawing's own arithmetic, kept on the wrapper. */}
+        <span className="flex items-center gap-[var(--space-6)] p-[var(--space-10)] pb-[var(--space-6)]">
+          <span
+            data-yunari-store-cell-name=""
+            className="truncate text-sm text-text"
+          >
+            {item.name}
+          </span>
+          <StoreStatusBadge status={item.status} />
         </span>
       </button>
       <span

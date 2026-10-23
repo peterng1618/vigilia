@@ -276,14 +276,26 @@ function Section(props: {
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
   readonly font: FontFaceEdits;
+  /** Opens the finder on Fonts; absent in a column built without one. */
+  readonly onOpenFontPicker?: () => void;
   readonly revision: number;
   readonly idPrefix: string;
   /** The section's place in the column: the first one sits under the subject
       block, whose own hairline is the boundary between them (`vg-466`). */
   readonly index: number;
 }): React.JSX.Element {
-  const { section, edits, runs, chart, crop, font, revision, idPrefix, index } =
-    props;
+  const {
+    section,
+    edits,
+    runs,
+    chart,
+    crop,
+    font,
+    onOpenFontPicker,
+    revision,
+    idPrefix,
+    index,
+  } = props;
 
   return (
     <InspectorSection
@@ -344,6 +356,9 @@ function Section(props: {
                 key={`${revision}:fontFace`}
                 view={extra.font}
                 edits={font}
+                {...(onOpenFontPicker === undefined
+                  ? {}
+                  : { onOpenFontPicker })}
               />
             );
           default:
@@ -361,8 +376,9 @@ export function SelectionColumn(props: {
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
   readonly font: FontFaceEdits;
+  readonly onOpenFontPicker?: () => void;
 }): React.JSX.Element {
-  const { view, edits, runs, chart, crop, font } = props;
+  const { view, edits, runs, chart, crop, font, onOpenFontPicker } = props;
   // A column is one selection's, and two columns can be mounted at once (the
   // accessibility audit mounts two). `${id}-header` is document-global, so the
   // aria pair is scoped to this instance or the second column's `aria-controls`
@@ -381,6 +397,7 @@ export function SelectionColumn(props: {
           chart={chart}
           crop={crop}
           font={font}
+          {...(onOpenFontPicker === undefined ? {} : { onOpenFontPicker })}
           revision={view.targetRevision}
           idPrefix={idPrefix}
         />
@@ -404,13 +421,14 @@ export function createSelectionColumnRoot(host: HTMLElement): {
     chart: ChartEdits,
     crop: CropEdits,
     font: FontFaceEdits,
+    onOpenFontPicker?: () => void,
   ) => void;
   readonly destroy: () => void;
 } {
   const root: Root = createRoot(host);
 
   return {
-    publish(view, edits, runs, chart, crop, font) {
+    publish(view, edits, runs, chart, crop, font, onOpenFontPicker) {
       flushSync(() => {
         root.render(
           <SelectionColumn
@@ -420,6 +438,7 @@ export function createSelectionColumnRoot(host: HTMLElement): {
             chart={chart}
             crop={crop}
             font={font}
+            {...(onOpenFontPicker === undefined ? {} : { onOpenFontPicker })}
           />,
         );
       });

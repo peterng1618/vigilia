@@ -8,6 +8,7 @@ import {
 } from "../../asset-manager/index.js";
 import { ControlSelect } from "../../components/ui/control-select.js";
 import type { EditorInteraction } from "../../editor-interaction.js";
+import { FIND_GLYPH, Glyph } from "../../editor-shell/icons.js";
 import { uiCopy } from "../../ui-copy.js";
 
 /**
@@ -47,6 +48,9 @@ interface FileSectionProps {
    *  media and a type preset's face. Optional, so the section is mountable
    *  where there is no envelope to ask. */
   readonly isReferenced?: (assetId: string) => boolean;
+  /** Opens the finder. Optional so a section mounted without a shell still
+   *  draws its control; the shell always passes it. */
+  readonly onFindAssets?: () => void;
 }
 
 export function FileSection({
@@ -54,6 +58,7 @@ export function FileSection({
   editor,
   changed,
   isReferenced,
+  onFindAssets,
 }: FileSectionProps): React.JSX.Element {
   const importInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
@@ -250,6 +255,18 @@ export function FileSection({
 
   return (
     <section>
+      {/* The entry drawing puts the finder above the library, at the drop
+          target's own weight: it is a way to add an asset, not a tool over the
+          ones already declared. */}
+      <button
+        type="button"
+        data-yunari-find-assets=""
+        onClick={() => onFindAssets?.()}
+        className="mb-[var(--space-8)] flex w-full items-center justify-center gap-[var(--space-6)] rounded-[var(--radius-md)] border border-accent px-[var(--space-10)] py-[var(--space-6)] text-sm text-accent"
+      >
+        <Glyph icon={FIND_GLYPH} size={13} />
+        {uiCopy.file.findAssets}
+      </button>
       {/* The Add pane's drawing gives this picker its own shape rather than a
           labelled field row: `shell.html:128-132` draws an `Asset` eyebrow over
           a trigger spanning the pane, the file name at `flex:1`. The heading is

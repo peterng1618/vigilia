@@ -178,29 +178,35 @@ it("tells an install's no-package, refusal, stale-listing and success cases apar
 
 /**
  * **The submission's sentences are pinned as literals**, for the same reason
- * the install's are: each names a different thing the author does next — press,
- * enter a code, read the pull request, or try again after a sign-in expired —
- * and keys-only assertions would stay green if two were rewritten into one.
+ * the install's are: each names a different thing the author does or reads next
+ * — press, finish signing in, wait for the owner, read a listed item, or try
+ * again after a sign-in never confirmed — and keys-only assertions would stay
+ * green if two were rewritten into one.
  */
 it("pins the submission's sentences as literals", () => {
   expect(uiCopy.store.submit.label).toBe("Submit to the store");
   expect(uiCopy.store.submit.busy).toBe("Submitting…");
-  expect(uiCopy.store.submit.authorising("ABCD-1234")).toBe(
-    "Enter ABCD-1234 at github.com to approve this submission.",
+  expect(uiCopy.store.submit.authorising).toBe("Waiting for you to sign in…");
+  expect(uiCopy.store.submit.submitted("pending")).toBe(
+    "Submitted. The owner reviews new authors' items before they are listed.",
   );
-  expect(uiCopy.store.submit.open).toBe("Open github.com to approve");
-  expect(uiCopy.store.submit.submitted).toBe("Pull request opened.");
+  expect(uiCopy.store.submit.submitted("published")).toBe(
+    "Submitted and listed.",
+  );
   expect(
     uiCopy.store.submit.announcement(
       "Living room",
-      uiCopy.store.submit.submitted,
+      uiCopy.store.submit.submitted("published"),
     ),
-  ).toBe("Living room: Pull request opened.");
-  expect(uiCopy.store.submit.expired).toBe(
-    "The GitHub sign-in expired. Submit again.",
+  ).toBe("Living room: Submitted and listed.");
+  expect(uiCopy.store.submit.noSignIn).toBe(
+    "The store did not confirm the sign-in; try submitting again.",
   );
-  expect(uiCopy.store.submit.denied).toBe(
-    "The GitHub sign-in was denied. Submit again.",
+  expect(uiCopy.store.submit.blocked).toBe(
+    "This browser blocked the sign-in window.",
+  );
+  expect(uiCopy.store.submit.unexpectedState("draft")).toBe(
+    "The store answered an unexpected state (draft); try submitting again.",
   );
   // **The version sentence is the same ladder the host computed**: the arrows
   // and the level word are what the author reads, and a first release names no

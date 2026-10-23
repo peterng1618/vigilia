@@ -1,8 +1,22 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Dialog } from "./dialog.js";
+
+const shellCss = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "editor-shell",
+    "editor-shell.css",
+  ),
+  "utf8",
+).replace(/^\s*@import[^;]*;\s*$/gm, "");
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -42,6 +56,42 @@ describe("Dialog", () => {
       );
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
+    await act(async () => container.unmount());
+    root.remove();
+  });
+
+  it("lets a caller add a size class, and the finder's class fills the window", async () => {
+    const root = document.createElement("div");
+    document.body.append(root);
+    const container = createRoot(root);
+    await act(async () => {
+      container.render(
+        <Dialog
+          open
+          onOpenChange={() => {}}
+          label="Asset finder"
+          className="editor-shell-dialog--finder"
+        >
+          <p>grid</p>
+        </Dialog>,
+      );
+    });
+
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog?.classList.contains("editor-shell-dialog")).toBe(true);
+    expect(dialog?.classList.contains("editor-shell-dialog--finder")).toBe(
+      true,
+    );
+
+    const block = /\.editor-shell-dialog--finder\s*\{([^}]*)\}/.exec(
+      shellCss,
+    )?.[1];
+    expect(block).toContain("width: min(1132px, calc(100vw - 48px))");
+    expect(block).toContain("height: min(852px, calc(100vh - 48px))");
+    // The popup itself does not scroll: its bounded body does, so the page
+    // behind never moves while the grid pages.
+    expect(block).toContain("overflow: hidden");
+
     await act(async () => container.unmount());
     root.remove();
   });

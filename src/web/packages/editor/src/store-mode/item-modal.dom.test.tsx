@@ -146,6 +146,10 @@ function modalFor(
   vocabulary: readonly string[] = [],
   install: InstallControl = NO_INSTALL,
   submit: SubmitControl = NO_SUBMIT,
+  author: {
+    readonly onUnpublish?: (id: string) => void;
+    readonly onRepublish?: (id: string) => void;
+  } = {},
 ): ReactElement {
   return (
     <ItemModal
@@ -155,6 +159,7 @@ function modalFor(
       onAction={() => {}}
       install={install}
       submit={submit}
+      {...author}
     />
   );
 }
@@ -174,11 +179,10 @@ const NO_SUBMIT: SubmitControl = {
   itemId: undefined,
   state: "idle",
   inFlight: false,
-  userCode: undefined,
-  verificationUri: undefined,
   url: undefined,
   refusal: undefined,
   version: undefined,
+  status: undefined,
 };
 
 /** Where a theme came from, as the host records it: the catalogue item and the
@@ -915,33 +919,35 @@ function row(node: Element): string {
 }
 
 /**
- * **A landed submission tells the author which version it published**, under
- * the pull request link: the level is the host's own answer to what changed, so
- * this surface states it rather than deriving a second ladder.
+ * **A landed submission tells the author which version it published, beside the
+ * state the store landed it in**: the level is the host's own answer to what
+ * changed, and the status word is the store's answer to what happens next, so
+ * this surface states both rather than deriving a second ladder or a second
+ * state machine.
  */
-it("states the version a submission published under the pull request link", async () => {
+it("states the version a submission published beside its status word", async () => {
   const item = fixtureItem(LANDSCAPE);
   await mount(
     modalFor(item, [], NO_INSTALL, {
       ...NO_SUBMIT,
       itemId: item.id,
       state: "submitted",
-      url: "https://github.com/peterng1618/yunari-store/pull/7",
+      status: "pending",
       version: { from: "1.4.0", to: "1.5.0", level: "minor" },
     }),
   );
 
-  const link = must(
-    document.body.querySelector<HTMLAnchorElement>(
-      "[data-yunari-store-item-submit-url]",
-    ),
-    "pull request link",
-  );
   const sentence = must(
     document.body.querySelector<HTMLElement>(
       "[data-yunari-store-item-submit-version]",
     ),
     "version sentence",
+  );
+  const badge = must(
+    document.body.querySelector<HTMLElement>(
+      "[data-yunari-store-item-submit-status]",
+    ),
+    "status word",
   );
   expect(
     sentence.textContent,
@@ -954,7 +960,266 @@ it("states the version a submission published under the pull request link", asyn
     }),
   );
   expect(
-    link.compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_FOLLOWING,
-    "the version sentence is not under the pull request link",
-  ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    badge.textContent,
+    "the footer does not state the state the store landed",
+  ).toBe(uiCopy.store.status.pending);
+  expect(
+    badge.compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_PRECEDING,
+    "the status word is not beside the version sentence",
+  ).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+});
+
+/** The modal's author command, read by the word a person presses rather than by
+ *  an id the markup happens to carry. */
+function authorButton(label: string): HTMLButtonElement | null {
+  return (
+    Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent?.trim() === label) ?? null
+  );
+}
+
+/** The state badge the caption draws after the name, or the absence. */
+function statusBadge(): HTMLElement | null {
+  return document.body.querySelector<HTMLElement>("[data-yunari-store-status]");
+}
+
+/**
+ * **A published Mine item offers one author command: Unpublish.** The word is
+ * the badge's counterpart — the surface states the state and the one act that
+ * changes it — and the press reports the item it belongs to rather than
+ * deciding anything here.
+ */
+it("offers Unpublish on a published item and reports the press", async () => {
+  const onUnpublish = vi.fn();
+  const onRepublish = vi.fn();
+  const item = onlineItem();
+  await mount(
+    modalFor({ ...item, status: "published" }, [], NO_INSTALL, NO_SUBMIT, {
+      onUnpublish,
+      onRepublish,
+    }),
+  );
+
+  expect(
+    statusBadge(),
+    "a published item drew a state badge the public listing already gives it",
+  ).toBeNull();
+  expect(
+    authorButton(uiCopy.store.actions.republish),
+    "a published item offers Republish",
+  ).toBeNull();
+
+  await act(async () =>
+    must(
+      authorButton(uiCopy.store.actions.unpublish),
+      "Unpublish control",
+    ).click(),
+  );
+  expect(
+    onUnpublish.mock.calls.map(([id]) => id),
+    "the press did not report the item it was drawn for",
+  ).toEqual([item.id]);
+  expect(
+    onRepublish,
+    "a published item reported Republish",
+  ).not.toHaveBeenCalled();
+});
+
+/**
+ * **An unpublished Mine item says so and offers Republish.** The badge is read
+ * as a word, not as a colour, and Unpublish is replaced rather than drawn
+ * beside it — an item cannot be withdrawn twice.
+ */
+it("badges an unpublished item and offers Republish instead of Unpublish", async () => {
+  const onUnpublish = vi.fn();
+  const onRepublish = vi.fn();
+  const item = onlineItem();
+  await mount(
+    modalFor({ ...item, status: "unpublished" }, [], NO_INSTALL, NO_SUBMIT, {
+      onUnpublish,
+      onRepublish,
+    }),
+  );
+
+  const badge = must(statusBadge(), "status badge");
+  expect(
+    badge.getAttribute("data-yunari-store-status"),
+    "the badge does not name the state it draws",
+  ).toBe("unpublished");
+  expect(
+    badge.textContent,
+    "the badge does not carry the copy's own word",
+  ).toBe(uiCopy.store.status.unpublished);
+  expect(
+    authorButton(uiCopy.store.actions.unpublish),
+    "an unpublished item still offers Unpublish",
+  ).toBeNull();
+
+  await act(async () =>
+    must(
+      authorButton(uiCopy.store.actions.republish),
+      "Republish control",
+    ).click(),
+  );
+  expect(
+    onRepublish.mock.calls.map(([id]) => id),
+    "the press did not report the item it was drawn for",
+  ).toEqual([item.id]);
+});
+
+/**
+ * **A pending item waits, and says what for.** Neither command is drawn —
+ * there is nothing the author can do until the owner has read it — and the
+ * sentence is the reason rather than a disabled control.
+ */
+it("draws no author command for a pending item but says what it waits for", async () => {
+  const item = onlineItem();
+  await mount(
+    modalFor({ ...item, status: "pending" }, [], NO_INSTALL, NO_SUBMIT, {
+      onUnpublish: () => {},
+      onRepublish: () => {},
+    }),
+  );
+
+  expect(
+    must(statusBadge(), "status badge").textContent,
+    "the badge does not carry the pending word",
+  ).toBe(uiCopy.store.status.pending);
+  expect(
+    authorButton(uiCopy.store.actions.unpublish),
+    "a pending item offers Unpublish",
+  ).toBeNull();
+  expect(
+    authorButton(uiCopy.store.actions.republish),
+    "a pending item offers Republish",
+  ).toBeNull();
+  expect(
+    document.body.textContent,
+    "a pending item does not say what it waits for",
+  ).toContain(uiCopy.store.status.pendingReview);
+});
+
+/**
+ * **A rejected item draws the owner's own sentence**, because the reason is the
+ * only thing the author can act on; neither command is offered.
+ */
+it("states the owner's reason on a rejected item", async () => {
+  const reason = "The thumbnail is a screenshot rather than the theme.";
+  const item = onlineItem();
+  await mount(
+    modalFor(
+      { ...item, status: "rejected", statusReason: reason },
+      [],
+      NO_INSTALL,
+      NO_SUBMIT,
+      { onUnpublish: () => {}, onRepublish: () => {} },
+    ),
+  );
+
+  expect(
+    must(statusBadge(), "status badge").textContent,
+    "the badge does not carry the rejected word",
+  ).toBe(uiCopy.store.status.rejected);
+  expect(
+    document.body.textContent,
+    "the owner's reason is not drawn",
+  ).toContain(reason);
+  expect(
+    authorButton(uiCopy.store.actions.unpublish),
+    "a rejected item offers Unpublish",
+  ).toBeNull();
+  expect(
+    authorButton(uiCopy.store.actions.republish),
+    "a rejected item offers Republish",
+  ).toBeNull();
+});
+
+/**
+ * **A removed item says the state is permanent.** The owner's reason is drawn
+ * as it is on a rejected row, and the surface adds the one fact the reason
+ * alone does not carry: there is no way back.
+ */
+it("adds that a removed item cannot be republished", async () => {
+  const reason = "Withdrawn at the owner's request.";
+  const item = onlineItem();
+  await mount(
+    modalFor(
+      { ...item, status: "removed", statusReason: reason },
+      [],
+      NO_INSTALL,
+      NO_SUBMIT,
+      { onUnpublish: () => {}, onRepublish: () => {} },
+    ),
+  );
+
+  expect(
+    must(statusBadge(), "status badge").textContent,
+    "the badge does not carry the removed word",
+  ).toBe(uiCopy.store.status.removed);
+  expect(
+    document.body.textContent,
+    "the owner's reason is not drawn",
+  ).toContain(reason);
+  expect(
+    document.body.textContent,
+    "a removed item does not say it cannot come back",
+  ).toContain(uiCopy.store.status.removedPermanent);
+  expect(
+    authorButton(uiCopy.store.actions.republish),
+    "a removed item offers Republish",
+  ).toBeNull();
+});
+
+/**
+ * **A public listing item is unchanged.** No status means this is not the
+ * author's own row: the badge and both commands are absent, and the footer is
+ * exactly the four library actions a public item always drew.
+ */
+it("draws no status at all for an item the listing gives no state", async () => {
+  await mount(
+    modalFor(fixtureItem(LANDSCAPE), [], NO_INSTALL, NO_SUBMIT, {
+      onUnpublish: () => {},
+      onRepublish: () => {},
+    }),
+  );
+
+  expect(statusBadge(), "an item with no state drew a badge").toBeNull();
+  expect(
+    authorButton(uiCopy.store.actions.unpublish),
+    "an item with no state offers Unpublish",
+  ).toBeNull();
+  expect(
+    authorButton(uiCopy.store.actions.republish),
+    "an item with no state offers Republish",
+  ).toBeNull();
+  expect(
+    document.body.querySelector('[data-yunari-store-item-action="open"]'),
+    "an item with no state lost its own four actions",
+  ).not.toBeNull();
+});
+
+/**
+ * **A removed row says it cannot come back even with no reason.** The Worker
+ * omits `statusReason` when it has none, and the permanent sentence is the
+ * state's own fact rather than the reason's — gating it on the reason leaves a
+ * badge and nothing else.
+ */
+it("states a removed item's permanence even when the store gave no reason", async () => {
+  const item = onlineItem();
+  await mount(
+    modalFor({ ...item, status: "removed" }, [], NO_INSTALL, NO_SUBMIT, {
+      onUnpublish: () => {},
+      onRepublish: () => {},
+    }),
+  );
+
+  expect(
+    must(statusBadge(), "status badge").textContent,
+    "the badge does not carry the removed word",
+  ).toBe(uiCopy.store.status.removed);
+  expect(
+    document.body.textContent,
+    "a removed item with no reason does not say it cannot come back",
+  ).toContain(uiCopy.store.status.removedPermanent);
 });

@@ -170,6 +170,7 @@ adapter does not own catalog, preview or adoption semantics.
 | **What a theme *is*, read off its envelope rather than authored into it** — the colour-mode vocabulary, the aspect buckets and their tolerance, and the sensor readings and style tags the store's five facets filter on; the one layer the host's listing and a catalogue Action can both import | `renderer-core/src/theme/facet-record.ts` |
 | **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `renderer-core/src/theme/` (`paletteTokenOptions`) |
 | **The catalogue index's wire shape** — what `index.json` carries, what a malformed entry refuses with, the authored `item.json` header the generator reads, and the one kind identifier the generator and the editor's client must agree on | `renderer-core/src/theme/catalogue-index.ts` |
+| **Where the store lives, and the URLs built from it** — the one catalogue origin and the index, item, package and thumbnail builders every client reads, so pointing the product at another store is one edit; the backend serving those paths | `renderer-core/src/theme/catalogue-location.ts`; `store-worker/src/` |
 | **The catalogue id's shape** — `isCatalogueId`/`CATALOGUE_ID_PATTERN`, and the copy the store's own `.github/workflows/auto-merge.yml` carries because a workflow cannot import it | `renderer-core/src/theme/catalogue-index.ts` |
 | The authored `yunariGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
 | Theme ZIP layout and bounds | `theme-package/src/` |
@@ -224,7 +225,7 @@ adapter does not own catalog, preview or adoption semantics.
 | A theme's own device answers | `host/src/settings/theme-settings.ts` |
 | Which catalogue item and version a theme was installed from, and whether it is still held | `host/src/settings/theme-origins.ts` |
 | **The catalogue's generated index** — reading a catalogue directory, refusing an item by its own field name, and writing `index.json` deterministically | `host/src/catalogue/` |
-| **The published bytes a submit bumps its version from** — reading the store's `item.json` and package before the ladder computes the next version | `host/src/themes/published-item.ts` |
+| **The published bytes a submit bumps its version from** — reading the theme's document and package against the authenticated store baseline before the ladder computes the next version | `host/src/themes/submission.ts` (`submissionFiles`) |
 | Which device slots a theme needs | `host/src/settings/required-devices.ts` |
 | Which host an app folder is — the id a display re-finds it by, and the name it shows | `host/src/settings/host-record.ts` |
 | Whether a host already holds an app folder | `host/src/settings/host-lock.ts` |

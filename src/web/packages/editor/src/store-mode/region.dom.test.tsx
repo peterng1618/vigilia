@@ -2419,14 +2419,15 @@ it("releases the control when the press rejects rather than answering", async ()
 });
 
 /**
- * The submission routes the editor's own surface reaches: each `submit` and
- * `poll` answer is drawn in turn, and the last one repeats, so a case can say
- * *the second submit* rather than counting whichever answer came back.
+ * The submission routes the editor's own surface reaches: each `submit` answer
+ * is drawn in turn, and the last one repeats, so a case can say *the second
+ * submit* rather than counting whichever answer came back. The sign-in start and
+ * the session probe answer once each unless a case says otherwise.
  */
 function submitHost(options: {
   readonly submit: readonly Response[];
-  readonly device?: Response;
-  readonly poll?: readonly Response[];
+  readonly start?: Response;
+  readonly session?: readonly Response[];
 }): {
   readonly fetch: typeof fetch;
   readonly calls: string[];
@@ -2434,7 +2435,7 @@ function submitHost(options: {
 } {
   const calls: string[] = [];
   const submits = [...options.submit];
-  const polls = [...(options.poll ?? [])];
+  const sessions = [...(options.session ?? [])];
   let polled = 0;
   const fetchStub = (async (input: RequestInfo | URL) => {
     const path = String(input);
@@ -2443,18 +2444,18 @@ function submitHost(options: {
       const answer = submits.length > 1 ? submits.shift() : submits[0];
       return answer?.clone() ?? new Response("", { status: 500 });
     }
-    if (path === "/api/github/device") {
+    if (path === "/api/store/auth/start") {
       return (
-        options.device?.clone() ??
-        new Response("No device flow.", { status: 503 })
+        options.start?.clone() ??
+        new Response(JSON.stringify({ url: SIGN_IN_URL }), { status: 200 })
       );
     }
-    if (path === "/api/github/device/poll") {
+    if (path === "/api/store/session") {
       polled += 1;
-      const answer = polls.length > 1 ? polls.shift() : polls[0];
+      const answer = sessions.length > 1 ? sessions.shift() : sessions[0];
       return (
         answer?.clone() ??
-        new Response(JSON.stringify({ state: "pending" }), { status: 200 })
+        new Response(JSON.stringify({ signedIn: false }), { status: 200 })
       );
     }
     return new Response("Not found", { status: 404 });
@@ -2462,20 +2463,14 @@ function submitHost(options: {
   return { fetch: fetchStub, calls, polls: () => polled };
 }
 
-/** The device flow's own answer: the code the author types and where. */
-function deviceAnswer(interval = 5): Response {
-  return new Response(
-    JSON.stringify({
-      userCode: "ABCD-1234",
-      verificationUri: "https://github.com/login/device",
-      expiresIn: 900,
-      interval,
-    }),
-    { status: 200 },
-  );
-}
+/** The host's sign-in address, as `POST /api/store/auth/start` answers it. */
+const SIGN_IN_URL = "https://store.test/auth/start?provider=github";
 
-const SUBMIT_PR_URL = "https://github.com/peterng1618/yunari-store/pull/7";
+/** The one popup the flow opens, so a case can watch it close once the host
+ *  holds the session. */
+function signInPopup(): { readonly closed: boolean; readonly close: unknown } {
+  return { closed: false, close: vi.fn() };
+}
 
 /** The modal's Submit control, or the failure that the library half draws none. */
 function submitControl(): HTMLButtonElement {
@@ -2517,88 +2512,88 @@ async function mountAndOpen(): Promise<void> {
 }
 
 /**
- * **A missing identity starts the device flow and nothing else.** The host
- * answers `401`; the surface asks for a code, shows it, and offers the link that
- * opens in a new tab — the browser never sees a token, so the code is all it is
- * given.
+ * **A missing identity opens the host's sign-in window and nothing else.** The
+ * host answers `401`; the surface asks the host for the address, opens that
+ * window, and says the author's part — finish signing in. The browser never sees
+ * a token, and no code is printed here because the host's own window holds the
+ * conversation.
  */
-it("shows the code and the verification link when the host asks for a sign-in", async () => {
-  vi.stubGlobal(
-    "fetch",
-    submitHost({
-      submit: [
-        new Response("Sign in to GitHub before submitting a theme.", {
-          status: 401,
-        }),
-      ],
-      device: deviceAnswer(),
-    }).fetch,
-  );
+it("opens the host's sign-in window and waits for the session", async () => {
+  vi.useFakeTimers();
+  const popup = signInPopup();
+  const open = vi.fn((..._args: unknown[]) => popup as never);
+  vi.stubGlobal("open", open);
+  const host = submitHost({
+    submit: [
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
+    ],
+  });
+  vi.stubGlobal("fetch", host.fetch);
   await mountAndOpen();
 
   await pressSubmit();
   await settle();
 
   expect(
-    must(
-      document.body.querySelector<HTMLElement>(
-        "[data-yunari-store-item-submit-code]",
-      ),
-      "the sign-in code",
-    ).textContent,
-    "the surface did not show the code the author types",
-  ).toContain("ABCD-1234");
-  const link = must(
-    document.body.querySelector<HTMLAnchorElement>(
-      "[data-yunari-store-item-submit-open]",
-    ),
-    "the verification link",
-  );
+    open.mock.calls.map((call) => call[0]),
+    "the surface did not open the address the host answered",
+  ).toEqual([SIGN_IN_URL]);
   expect(
-    link.getAttribute("href"),
-    "the verification link does not open GitHub's device page",
-  ).toBe("https://github.com/login/device");
-  expect(link.getAttribute("target"), "the link replaces the editor").toBe(
-    "_blank",
-  );
-  expect(link.getAttribute("rel"), "the link leaks no referrer").toBe(
-    "noreferrer",
-  );
+    host.calls,
+    "the surface did not ask the host to start a sign-in",
+  ).toContain("/api/store/auth/start");
+  expect(
+    document.body.querySelector("[data-yunari-store-item-submit-code]"),
+    "the surface printed a device code the host no longer sends",
+  ).toBeNull();
   expect(liveRegion(), "the authorising state reached no live region").toBe(
     uiCopy.store.submit.announcement(
       "Living room",
-      uiCopy.store.submit.authorising("ABCD-1234"),
+      uiCopy.store.submit.authorising,
     ),
   );
+  expect(
+    submitControl().textContent?.trim(),
+    "the control does not state the author's part while the window is open",
+  ).toBe(uiCopy.store.submit.authorising);
 });
 
 /**
- * **A poll that answers `ok` retries the submission once**, and the retry's
- * answer is the pull request: the control then states the link and cannot be
- * pressed again, the footer names the version the host published, and the
- * library is read again so the listing carries that version.
+ * **A poll that answers signed in retries the submission once**, and the retry's
+ * answer names the state and version: the control states them, closes the
+ * sign-in window, cannot be pressed again, and the library is read again so the
+ * listing carries that version.
  */
-it("retries the submission once the poll answers ok and shows the pull request", async () => {
+it("retries the submission once the session lands and shows the status word", async () => {
   vi.useFakeTimers();
+  const popup = signInPopup();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => popup as never),
+  );
   const host = submitHost({
     submit: [
-      new Response("Sign in to GitHub before submitting a theme.", {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
       new Response(
         JSON.stringify({
           ok: true,
-          url: SUBMIT_PR_URL,
+          status: "pending",
           version: { from: "1.4.0", to: "1.5.0", level: "minor" },
         }),
         { status: 200 },
       ),
     ],
-    device: deviceAnswer(1),
-    poll: [
-      new Response(JSON.stringify({ state: "ok", login: "aurora-author" }), {
-        status: 200,
-      }),
+    session: [
+      new Response(
+        JSON.stringify({ signedIn: true, email: "author@example.test" }),
+        { status: 200 },
+      ),
     ],
   });
   vi.stubGlobal("fetch", host.fetch);
@@ -2626,16 +2621,19 @@ it("retries the submission once the poll answers ok and shows the pull request",
   });
   await settle();
 
-  const link = must(
-    document.body.querySelector<HTMLAnchorElement>(
-      "[data-yunari-store-item-submit-url]",
-    ),
-    "the pull request link",
-  );
   expect(
-    link.getAttribute("href"),
-    "the surface does not link to the pull request the host opened",
-  ).toBe(SUBMIT_PR_URL);
+    popup.close,
+    "the sign-in window was left open after the host held the session",
+  ).toHaveBeenCalledTimes(1);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-yunari-store-item-submit-status]",
+      ),
+      "the status word",
+    ).textContent,
+    "the footer does not state the state the store landed",
+  ).toBe(uiCopy.store.status.pending);
   expect(
     must(
       document.body.querySelector<HTMLElement>(
@@ -2657,16 +2655,16 @@ it("retries the submission once the poll answers ok and shows the pull request",
   ).toBe(listedBefore + 1);
   expect(
     host.calls.filter((call) => call === "/api/themes/submit"),
-    "the poll's `ok` did not retry the submission exactly once",
+    "the session's landing did not retry the submission exactly once",
   ).toHaveLength(2);
   expect(
     submitControl().disabled,
-    "the control is still pressable after the pull request was opened",
+    "the control is still pressable after the submission landed",
   ).toBe(true);
   expect(liveRegion(), "the submitted state reached no live region").toBe(
     uiCopy.store.submit.announcement(
       "Living room",
-      uiCopy.store.submit.submitted,
+      uiCopy.store.submit.submitted("pending"),
     ),
   );
 });
@@ -2776,14 +2774,18 @@ it("keeps one theme's submission answer off another theme's surface", async () =
  * authorisation window, not only after A's flow has ended.
  */
 it("draws another theme's Submit busy while a submission is in flight", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => signInPopup() as never),
+  );
   const host = submitHost({
     submit: [
-      new Response("Sign in to GitHub before submitting a theme.", {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
     ],
-    // Long enough that A is still authorising when B is opened.
-    device: deviceAnswer(900),
   });
   vi.stubGlobal("fetch", host.fetch);
   await mountStore([
@@ -2803,9 +2805,9 @@ it("draws another theme's Submit busy while a submission is in flight", async ()
   await pressSubmit();
   await settle();
   expect(
-    document.body.querySelector("[data-yunari-store-item-submit-code]"),
+    host.calls,
     "A did not reach the authorising window the case is about",
-  ).not.toBeNull();
+  ).toContain("/api/store/auth/start");
 
   await closeItem();
   await pressCellSurface("office-wall");
@@ -2836,23 +2838,27 @@ it("draws another theme's Submit busy while a submission is in flight", async ()
 });
 
 /**
- * **An expired sign-in is a refusal the surface can name**, because the poll
- * answers a state and no sentence: the author is told to submit again, and the
- * control is their way to.
+ * **A sign-in the host never confirms is a refusal the surface can name**,
+ * because the poll answers without a sentence: after five minutes the author is
+ * told to submit again, and the control is their way to.
  */
-it("states an expired sign-in and lets the author submit again", async () => {
+it("states an unconfirmed sign-in and lets the author submit again", async () => {
   vi.useFakeTimers();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => signInPopup() as never),
+  );
   vi.stubGlobal(
     "fetch",
     submitHost({
       submit: [
-        new Response("Sign in to GitHub before submitting a theme.", {
-          status: 401,
-        }),
+        new Response(
+          JSON.stringify({ ok: false, message: "Sign in to the store." }),
+          { status: 401 },
+        ),
       ],
-      device: deviceAnswer(1),
-      poll: [
-        new Response(JSON.stringify({ state: "expired" }), { status: 200 }),
+      session: [
+        new Response(JSON.stringify({ signedIn: false }), { status: 200 }),
       ],
     }).fetch,
   );
@@ -2861,7 +2867,7 @@ it("states an expired sign-in and lets the author submit again", async () => {
   await pressSubmit();
   await settle();
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(300_000);
   });
   await settle();
 
@@ -2870,13 +2876,13 @@ it("states an expired sign-in and lets the author submit again", async () => {
       document.body.querySelector<HTMLElement>(
         "[data-yunari-store-item-submit-refusal]",
       ),
-      "the expired sign-in's sentence",
+      "the unconfirmed sign-in's sentence",
     ).textContent,
-    "an expired sign-in stated nothing",
-  ).toBe(uiCopy.store.submit.expired);
+    "an unconfirmed sign-in stated nothing",
+  ).toBe(uiCopy.store.submit.noSignIn);
   expect(
     submitControl().disabled,
-    "an expired sign-in left the control dead",
+    "an unconfirmed sign-in left the control dead",
   ).toBe(false);
   expect(
     submitControl().textContent?.trim(),
@@ -3017,16 +3023,23 @@ it("draws a library item's credit as text with no control", async () => {
 
 it("does not poll after the surface unmounts", async () => {
   vi.useFakeTimers();
+  vi.stubGlobal(
+    "open",
+    vi.fn(() => signInPopup() as never),
+  );
   const host = submitHost({
     submit: [
-      new Response("Sign in to GitHub before submitting a theme.", {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({ ok: false, message: "Sign in to the store." }),
+        { status: 401 },
+      ),
     ],
-    device: deviceAnswer(1),
   });
   vi.stubGlobal("fetch", host.fetch);
   await mountAndOpen();
+  // The region's own mount reads the session; this case is about the polls the
+  // flow would add on top of it.
+  const sessionsBefore = host.polls();
 
   await pressSubmit();
   await settle();
@@ -3035,5 +3048,534 @@ it("does not poll after the surface unmounts", async () => {
     await vi.advanceTimersByTimeAsync(5_000);
   });
 
-  expect(host.polls(), "a poll fired after the surface unmounted").toBe(0);
+  expect(
+    host.polls() - sessionsBefore,
+    "a poll fired after the surface unmounted",
+  ).toBe(0);
+});
+
+/** The author's own item, as `/api/store/mine` answers it: a catalogue entry
+ *  plus the state the public listing has no room for. */
+const MINE_ID = "5d41402a-bc4b-4c8a-9d0e-2f1a3b4c5d6e";
+
+function mineEntry(
+  status: string,
+  facts: { readonly name?: string } = {},
+): Record<string, unknown> {
+  return {
+    ...catalogueEntry(MINE_ID, "1.0.0", "dashboard-theme", {
+      name: facts.name ?? "Withdrawn theme",
+    }),
+    status,
+  };
+}
+
+/** A host answering the store's session probe and the author's own listing, and
+ *  recording every path it was asked for.
+ *
+ *  `entries` may be a function, because a re-read after a command must answer
+ *  the listing the host would now hold rather than the one it answered first.
+ *  `transitions` is the queue of answers to the author's own commands, and
+ *  `onTransition` is how a case moves that listing on when one is served. */
+function mineHost(options: {
+  readonly signedIn?: boolean;
+  readonly entries?: readonly unknown[] | (() => readonly unknown[]);
+  readonly sessionStatus?: number;
+  /** The author's own listing's answer, so a case can make the re-read after a
+   *  command fail without failing the first read. */
+  readonly mineStatus?: number | (() => number);
+  readonly transitions?: readonly Response[];
+  readonly onTransition?: (path: string) => void;
+}): { readonly fetch: typeof fetch; readonly calls: string[] } {
+  const calls: string[] = [];
+  const answers = [...(options.transitions ?? [])];
+  const fetchStub = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input);
+    calls.push(path);
+    if (path === "/api/store/session") {
+      if (options.sessionStatus !== undefined) {
+        return new Response("", { status: options.sessionStatus });
+      }
+      return new Response(
+        JSON.stringify(
+          options.signedIn === false
+            ? { signedIn: false }
+            : { signedIn: true, email: "author@example.com" },
+        ),
+        { status: 200 },
+      );
+    }
+    if (path === "/api/store/mine") {
+      const status =
+        typeof options.mineStatus === "function"
+          ? options.mineStatus()
+          : (options.mineStatus ?? 200);
+      if (status !== 200) return new Response("", { status });
+      const entries =
+        typeof options.entries === "function"
+          ? options.entries()
+          : (options.entries ?? []);
+      return new Response(JSON.stringify({ entries }), { status: 200 });
+    }
+    if (path.startsWith("/api/store/items/") && init?.method === "POST") {
+      options.onTransition?.(path);
+      return answers.shift() ?? new Response("", { status: 404 });
+    }
+    return new Response("Not found", { status: 404 });
+  }) as unknown as typeof fetch;
+  return { fetch: fetchStub, calls };
+}
+
+/** The Mine toggle, or the absence this file reports in its own words. */
+function mineToggle(): HTMLButtonElement | null {
+  return document.body.querySelector<HTMLButtonElement>(
+    "[data-yunari-store-mine]",
+  );
+}
+
+/**
+ * **The toggle is the session's, not the store's.** A host holding no session
+ * answers `{ signedIn: false }`, and the region draws no Mine control for it:
+ * a toggle that lists nothing would be a promise the host cannot keep.
+ */
+it("draws no Mine toggle when the host holds no session", async () => {
+  vi.stubGlobal("fetch", mineHost({ signedIn: false }).fetch);
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+  ]);
+  await settle();
+
+  expect(
+    mineToggle(),
+    "a host with no session still draws a Mine toggle",
+  ).toBeNull();
+});
+
+/**
+ * **A held session draws the toggle, named from the copy.** The control is
+ * read by the word beside it, which is the same word the copy owns.
+ */
+it("offers a Mine toggle when a session is held", async () => {
+  const host = mineHost({});
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+
+  const toggle = must(mineToggle(), "Mine toggle");
+  expect(
+    toggle.textContent?.trim(),
+    "the Mine toggle does not carry the copy's own word",
+  ).toBe(uiCopy.store.mine.label);
+  expect(
+    toggle.getAttribute("aria-pressed"),
+    "the Mine toggle does not open unpressed",
+  ).toBe("false");
+  // The probe is one read per mount, never a poll: a second request would be a
+  // session watched rather than an answer taken once.
+  expect(
+    host.calls.filter((path) => path === "/api/store/session"),
+    "the region probed the session more than once",
+  ).toHaveLength(1);
+});
+
+/**
+ * **Mine lists the author's own rows from the online half, and the public
+ * filters still narrow them.** Turning it on from the local half moves the
+ * region to the online half, because that is the half the source belongs to.
+ */
+it("lists the author's own items when Mine is turned on", async () => {
+  const host = mineHost({ entries: [mineEntry("unpublished")] });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([
+    fixtureEntry({
+      id: "living-room",
+      name: "Living room",
+      ground: DARK_GROUND,
+    }),
+  ]);
+  await settle();
+
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+
+  expect(
+    halves(headerRow(document.body)).map((segment) =>
+      segment.getAttribute("aria-pressed"),
+    ),
+    "turning Mine on did not move the region to the online half",
+  ).toEqual(["false", "true"]);
+  expect(
+    cells().map((cell) => cell.getAttribute("data-yunari-store-cell")),
+    "Mine did not list the author's own rows",
+  ).toEqual([MINE_ID]);
+  expect(
+    document.body.querySelector(`[data-yunari-store-cell="${MINE_ID}"]`)
+      ?.textContent,
+    "the Mine row does not draw the item's own name",
+  ).toContain("Withdrawn theme");
+
+  // The public filters are the listing's, not the source's: a query that
+  // matches no Mine row draws the filter's own sentence.
+  await type("nothing matches this");
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-empty]"),
+      "empty state after a query over Mine",
+    ).textContent,
+    "a filter that matched no Mine row does not say so",
+  ).toContain(uiCopy.store.empty.filter);
+});
+
+/**
+ * **A Mine row the library already holds is joined like a catalogue row.** The
+ * author's own listing is read from the host, but what this PC installed is the
+ * library's fact — without the join every Mine row offers Install, and pressing
+ * it overwrites the author's local copy with no undo.
+ */
+it("joins Mine rows against the library so an installed copy is not offered again", async () => {
+  const host = mineHost({ entries: [mineEntry("published")] });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([
+    fixtureWithOrigin(
+      {
+        id: "mine-copy",
+        name: "Withdrawn theme",
+        version: "1.1.0",
+        ground: DARK_GROUND,
+      },
+      MINE_ID,
+      "1.0.0",
+    ),
+  ]);
+  await settle();
+
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+
+  const slot = must(
+    document.body.querySelector<HTMLElement>(
+      `[data-yunari-store-cell="${MINE_ID}"] [data-yunari-store-cell-install]`,
+    ),
+    `${MINE_ID}'s install slot`,
+  );
+  expect(
+    slot.getAttribute("data-yunari-store-cell-install"),
+    "an installed Mine row still offers Install",
+  ).toBe("installed");
+  expect(
+    slot.tagName,
+    "an installed Mine row draws a pressable control instead of the mark",
+  ).toBe("SPAN");
+  expect(
+    document.body.querySelector(
+      `[data-yunari-store-cell="${MINE_ID}"] button[data-yunari-store-cell-install]`,
+    ),
+    "an installed Mine row still offers the install action",
+  ).toBeNull();
+});
+
+/**
+ * **A row dropped for a state this build cannot read is not an empty listing.**
+ * The host sent the author a row, so the surface says it could not read it
+ * rather than telling them they have submitted nothing.
+ */
+it("says a Mine row was unreadable rather than claiming no submissions", async () => {
+  const host = mineHost({
+    entries: [{ ...mineEntry("published"), status: "shadow-banned" }],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+
+  expect(
+    document.body.querySelector("[data-yunari-store-empty]"),
+    "an unreadable row was drawn as the no-submissions sentence",
+  ).toBeNull();
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-refusal]"),
+      "refusal line",
+    ).textContent,
+    "the unreadable Mine row is not stated",
+  ).toBe(uiCopy.store.catalogueRefused("dashboard-theme", 1));
+});
+
+/** The live region every store sentence is spoken through. */
+function announcement(): string {
+  return (
+    must(
+      document.body.querySelector<HTMLElement>(
+        "[data-yunari-store-install-announcement]",
+      ),
+      "live region",
+    ).textContent ?? ""
+  );
+}
+
+/** One author command inside the open item's modal, or the absence. */
+function statusAction(
+  action: "unpublish" | "republish",
+): HTMLButtonElement | null {
+  return document.body.querySelector<HTMLButtonElement>(
+    `[data-yunari-store-item-status-action="${action}"]`,
+  );
+}
+
+/**
+ * **Withdrawing re-reads the listing, and the listing is the state drawn.** The
+ * host's answer says what it thinks the state is; this surface does not write
+ * it, so the row and the open modal both redraw from the author's own rows and
+ * a host that answered something else cannot leave a stale word on screen.
+ */
+it("withdraws an item, re-reads the listing and draws its new state", async () => {
+  let state = "published";
+  const host = mineHost({
+    entries: () => [mineEntry(state)],
+    transitions: [
+      new Response(JSON.stringify({ ok: true, status: "unpublished" }), {
+        status: 200,
+      }),
+    ],
+    onTransition: () => {
+      state = "unpublished";
+    },
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  expect(
+    document.body.querySelector("[data-yunari-store-status]"),
+    "a published Mine row drew a badge the public listing already gives it",
+  ).toBeNull();
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    host.calls.filter(
+      (path) => path === `/api/store/items/${MINE_ID}/unpublish`,
+    ),
+    "the press did not post the author's own command",
+  ).toHaveLength(1);
+  expect(
+    host.calls.filter((path) => path === "/api/store/mine"),
+    "the successful change did not re-read the author's own rows",
+  ).toHaveLength(2);
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-status]"),
+      "status badge",
+    ).textContent,
+    "the re-read state is not what the modal draws",
+  ).toBe(uiCopy.store.status.unpublished);
+  expect(
+    statusAction("republish"),
+    "the redrawn modal does not offer the command its new state allows",
+  ).not.toBeNull();
+  expect(announcement(), "a successful change was announced as a refusal").toBe(
+    "",
+  );
+});
+
+/**
+ * **A refused command changes nothing and is spoken.** The sentence is the
+ * Worker's own — this surface knows which item it pressed for, not why the
+ * store said no — and the row keeps the state the listing gave it.
+ */
+it("announces the store's refusal and leaves the item as it was", async () => {
+  const sentence = "Only the author may withdraw this item.";
+  const host = mineHost({
+    entries: [mineEntry("published")],
+    transitions: [
+      new Response(JSON.stringify({ ok: false, message: sentence }), {
+        status: 403,
+      }),
+    ],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    announcement(),
+    "the store's refusal is not what the live region says",
+  ).toBe(sentence);
+  expect(
+    host.calls.filter((path) => path === "/api/store/mine"),
+    "a refused change re-read the listing it did not alter",
+  ).toHaveLength(1);
+  expect(
+    statusAction("unpublish"),
+    "a refused change moved the item's state",
+  ).not.toBeNull();
+});
+
+/**
+ * **The most recent command is what the region speaks.** An install's sentence
+ * outlives the press that made it, so an older success must not sit in front of
+ * a fresh refusal — a screen reader would never hear that the change was
+ * refused.
+ */
+it("speaks a status refusal even while an install sentence still stands", async () => {
+  const refusal = "Only the author may withdraw this item.";
+  const host = mineHost({
+    entries: [mineEntry("published")],
+    transitions: [
+      new Response(JSON.stringify({ ok: false, message: refusal }), {
+        status: 403,
+      }),
+    ],
+  });
+  const withInstall = (async (input: RequestInfo | URL, init?: RequestInit) =>
+    String(input) === "/api/themes/install"
+      ? new Response(JSON.stringify({ ok: true }), { status: 200 })
+      : host.fetch(input, init)) as typeof fetch;
+  vi.stubGlobal("fetch", withInstall);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  await act(async () =>
+    must(
+      document.body.querySelector<HTMLButtonElement>(
+        '[data-yunari-store-item-install="install"]',
+      ),
+      "Install control",
+    ).click(),
+  );
+  await settle();
+  expect(
+    announcement(),
+    "the install did not speak first, so this case proves nothing",
+  ).toBe(uiCopy.store.install.installed("Withdrawn theme"));
+
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    announcement(),
+    "an older install sentence shadowed the status refusal",
+  ).toBe(refusal);
+});
+
+/**
+ * **A change the store accepted but the client could not read back is still
+ * spoken.** Silence would leave the old state on screen with no word saying the
+ * command landed; the listing is unchanged because there is no answer to draw.
+ */
+it("says a change was saved when the author's rows cannot be re-read", async () => {
+  let mineReads = 0;
+  const host = mineHost({
+    entries: [mineEntry("published")],
+    mineStatus: () => (mineReads++ === 0 ? 200 : 500),
+    transitions: [
+      new Response(JSON.stringify({ ok: true, status: "unpublished" }), {
+        status: 200,
+      }),
+    ],
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  await act(async () =>
+    must(statusAction("unpublish"), "Unpublish control").click(),
+  );
+  await settle();
+
+  expect(
+    announcement(),
+    "a saved change with a failed re-read is not spoken",
+  ).toBe(uiCopy.store.status.unrefreshed);
+  expect(
+    document.body.querySelector("[data-yunari-store-status]"),
+    "a failed re-read invented a state",
+  ).toBeNull();
+  expect(
+    statusAction("unpublish"),
+    "a failed re-read moved the item's state",
+  ).not.toBeNull();
+});
+
+/**
+ * **Republish is the other direction, and it re-reads too.** The path names
+ * `/publish`, the state drawn afterwards is the listing's, and the modal offers
+ * the command that state now allows rather than the one that was pressed.
+ */
+it("republishes an unpublished item and redraws it from the re-read", async () => {
+  let state = "unpublished";
+  const host = mineHost({
+    entries: () => [mineEntry(state)],
+    transitions: [
+      new Response(JSON.stringify({ ok: true, status: "published" }), {
+        status: 200,
+      }),
+    ],
+    onTransition: () => {
+      state = "published";
+    },
+  });
+  vi.stubGlobal("fetch", host.fetch);
+  await mountStore([]);
+  await settle();
+  await act(async () => must(mineToggle(), "Mine toggle").click());
+  await settle();
+  await pressCellSurface(MINE_ID);
+
+  expect(
+    must(
+      document.body.querySelector<HTMLElement>("[data-yunari-store-status]"),
+      "status badge",
+    ).textContent,
+    "an unpublished row does not draw its state",
+  ).toBe(uiCopy.store.status.unpublished);
+
+  await act(async () =>
+    must(statusAction("republish"), "Republish control").click(),
+  );
+  await settle();
+
+  expect(
+    host.calls.filter((path) => path === `/api/store/items/${MINE_ID}/publish`),
+    "the press did not post the publish command",
+  ).toHaveLength(1);
+  expect(
+    host.calls.filter((path) => path === "/api/store/mine"),
+    "the successful republish did not re-read the author's own rows",
+  ).toHaveLength(2);
+  expect(
+    document.body.querySelector("[data-yunari-store-status]"),
+    "the re-read published state still draws a badge",
+  ).toBeNull();
+  expect(
+    statusAction("unpublish"),
+    "the redrawn modal does not offer Unpublish for a published row",
+  ).not.toBeNull();
 });

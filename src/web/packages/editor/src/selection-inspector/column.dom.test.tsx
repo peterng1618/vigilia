@@ -5,6 +5,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
+import { uiCopy } from "../ui-copy.js";
 import { backgroundColumn } from "./background-column.js";
 import { SelectionColumn } from "./column.js";
 import { idleCrop, idleCropEdits } from "./idle-crop.test-stage.js";
@@ -396,16 +397,13 @@ describe("SelectionColumn", () => {
    * applied to the preset the object is set in — a text object has no face of
    * its own, a run names a preset and the preset carries the face. This pins the
    * mount and the write, which is the whole of what the two rows asked for.
+   * The face field is a button now: the catalogue browser it used to mount
+   * lives in the finder's Fonts body (task 12), so the field's whole job is to
+   * ask for that surface. The preset a face applies to is read where the write
+   * happens, because only the session still holds the selected object.
    */
-  it("offers the text object's face field and writes through to its preset", async () => {
-    // The field's own cache fetches the visible rows' specimens. This case is
-    // about the mount rather than the catalogue's bytes, so the network refuses
-    // — which is also the case `ensure` has to survive.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => Promise.reject(new Error("offline"))),
-    );
-    const applyFace = vi.fn(async () => undefined);
+  it("renders a button that asks for the finder instead of the picker", async () => {
+    const openPicker = vi.fn();
     const text = new IText("", { left: 0, top: 0 });
     text.set({
       yunariText: {
@@ -421,20 +419,23 @@ describe("SelectionColumn", () => {
           runs={runs}
           chart={chart}
           crop={crop}
-          font={{ ...font, applyFace }}
+          font={font}
+          onOpenFontPicker={openPicker}
         />,
       );
     });
 
     const field = host.querySelector("[data-yunari-font-face-field]");
     expect(field).not.toBeNull();
-    const row = field?.querySelector<HTMLButtonElement>(
-      "[data-yunari-font-face-row]",
-    );
-    expect(row).toBeTruthy();
-    await act(async () => row?.click());
+    // The picker stayed with the catalogue: nothing of it is mounted here.
+    expect(field?.querySelector("[data-yunari-font-picker]")).toBeNull();
 
-    expect(applyFace).toHaveBeenCalledWith("body", expect.anything());
-    vi.unstubAllGlobals();
+    const button = field?.querySelector<HTMLButtonElement>(
+      "[data-yunari-open-font-picker]",
+    );
+    expect(button?.textContent).toBe(uiCopy.assets.openFontPicker);
+    await act(async () => button?.click());
+
+    expect(openPicker).toHaveBeenCalledTimes(1);
   });
 });

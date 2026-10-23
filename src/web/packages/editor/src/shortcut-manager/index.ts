@@ -5,6 +5,7 @@ export type ProductShortcutId =
   | "file.new"
   | "file.open"
   | "file.save"
+  | "file.findAssets"
   | "edit.undo"
   | "edit.redo"
   | "edit.delete"
@@ -40,6 +41,9 @@ export const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "n", modifier: true, action: "file.new" },
   { key: "o", modifier: true, action: "file.open" },
   { key: "s", modifier: true, action: "file.save" },
+  // Not Ctrl+Shift+A: Chromium keeps that for tab search, so the page never
+  // sees the press. Ctrl+Shift+F is unclaimed by Chromium and Firefox.
+  { key: "f", modifier: true, shift: true, action: "file.findAssets" },
   // Shift-qualified first, or `edit.undo`'s shift-agnostic binding below would
   // take Ctrl+Shift+Z and turn the standard redo chord into an undo. `edit.undo`
   // stays shift-agnostic because Cmd/Ctrl+Z is the only undo there is.
@@ -124,7 +128,13 @@ export function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
  * need no entry here. `canvas.select-all` is in this set because Ctrl+A inside a
  * rename field is the field's own select-all, not the canvas's. */
 const MODIFIED_KEY_DEFERRED_ACTION_IDS: ReadonlySet<ProductShortcutId> =
-  new Set(["file.new", "edit.undo", "edit.redo", "canvas.select-all"]);
+  new Set([
+    "file.new",
+    "file.findAssets",
+    "edit.undo",
+    "edit.redo",
+    "canvas.select-all",
+  ]);
 
 /** Whether an action's bindings already defer to a focused text field: every
  *  unmodified binding does (`bindingFor`'s deferral rule reads `!modifier`), and

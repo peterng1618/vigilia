@@ -24,20 +24,20 @@ import {
 import { CA_CERTIFICATE_PATH, createHostServer } from "./server.js";
 import { createPairingCodeStore } from "./session/pairing-code.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
+import { createCredentialStore } from "./settings/credentials.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
 import { createDisplayStore } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
-import { createGithubTokenStore } from "./settings/github-token.js";
 import { acquireHostLock } from "./settings/host-lock.js";
 import { readOrMintHostRecord } from "./settings/host-record.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
+import { createStoreSessionStore } from "./settings/store-session.js";
 import { createThemeOriginsStore } from "./settings/theme-origins.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { normalizeVideoCommand } from "./themes/normalize-video.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
-import { validateItemCommand } from "./themes/validate-item.js";
 import { createSecureOrigin, type SecureOrigin } from "./tls/authority.js";
 
 /** Launcher: bind, verify reachability, then print/open URLs. */
@@ -88,9 +88,6 @@ function hostCommand(argv: readonly string[]): string {
 }
 
 export async function run(argv: readonly string[]): Promise<number> {
-  const item = await validateItemCommand(argv);
-  if (item !== undefined) return item;
-
   const normalized = await normalizeVideoCommand(argv);
   if (normalized !== undefined) return normalized;
 
@@ -195,9 +192,14 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Which curated font trios this author reaches for. Author preference about
   // this PC, so it sits with the other settings and never in a theme folder.
   const fontFavorites = createFontFavoritesStore(settingsDir);
-  // The GitHub identity the author signed in as, beside the other records this
+  // Provider keys, in the same directory and with the same rules: the browser
+  // may write one and never read it back.
+  const credentials = createCredentialStore(settingsDir);
+  // The store session the author signed in to, beside the other records this
   // machine keeps. The browser never reads it; the host uses it to submit.
-  const githubToken = createGithubTokenStore(settingsDir);
+  // Which store it belongs to is a build-time address, passed at the server
+  // below rather than stored here.
+  const storeSession = createStoreSessionStore(settingsDir);
   // Which host this app folder is, read or minted after the lock so a second
   // host cannot answer with the same identity: `GET /api/host` gives it to
   // anyone who asks, and it is what a display stores to re-find this host after
@@ -284,12 +286,14 @@ export async function run(argv: readonly string[]): Promise<number> {
     // this machine's own record about a theme, like what a consumer answered
     // for it — not part of the author's folder.
     themeOrigins: createThemeOriginsStore(settingsDir),
-    githubToken,
+    storeSession,
     displays,
     pairingCodes,
     devices: deviceSettings,
     display: displaySettings,
     fontFavorites,
+    credentials,
+    assets: { credentials },
     onDisplayChange: (settings) => clockProvider.setTimeZone(settings.timeZone),
     activeTheme,
     // Both providers know the machine's devices; LHM's list is richer, so its

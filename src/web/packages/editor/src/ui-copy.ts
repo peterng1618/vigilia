@@ -10,6 +10,7 @@ import {
   type ChartFamily,
   type ColourMode,
   DASHBOARD_THEME_KIND,
+  type ListingCategory,
   type Orientation,
   type SemanticFamily,
 } from "@yunari/renderer-core";
@@ -137,8 +138,24 @@ export const uiCopy = {
     title: "Settings",
     appearance: "Appearance",
     keyboard: "Keyboard",
+    connections: "Connections",
     about: "About",
     close: "Close",
+    /** The Connections tab: the one place a provider key is entered, because
+     *  every remote source reads from here rather than growing its own field. */
+    connectionsHeading: "Asset sources",
+    connectionsIntro:
+      "Keys stay on this machine. Stored values are never shown again, only the last four characters.",
+    connectionsEmpty: "No source needs a key yet.",
+    connectionsSaved: (hint: string): string => `Saved ····${hint}`,
+    connectionsNotSet: "Not set",
+    connectionsPlaceholder: "Access key",
+    connectionsSave: "Save",
+    connectionsClear: "Clear",
+    connectionsVerify: "Verify",
+    connectionsWhereToGetKey: "Where to get a key",
+    connectionsFooter:
+      "Keys are stored in a local settings file and sent only to the source that owns them.",
     /** §7's About tab: what the editor is, and the facts this build can read.
      *  The provenance is one sentence naming the product; the three fact labels
      *  say which fact each row is, and the release fact's *label* is the
@@ -534,6 +551,9 @@ export const uiCopy = {
   },
   file: {
     newDocument: "New theme",
+    /** The finder's one entry in this menu. It sits above *Import package*
+     *  because both add something and the finder is the one that fetches. */
+    findAssets: "Find assets…",
     /** The reference composition, offered as what it is: a template the
      *  product ships. `New` is the author's own blank document; this is the one
      *  they can open a copy of. */
@@ -579,6 +599,49 @@ export const uiCopy = {
       label: "Theme halves",
       local: "Your themes",
       online: "Store",
+    },
+    /** The author's own listing, behind a toggle in the online half's row. The
+     *  empty sentence is the surface's own: an author with nothing submitted is
+     *  not a store with nothing published. */
+    mine: {
+      label: "Mine",
+      empty: "You have no store submissions yet.",
+    },
+    /** The states a Mine row can carry, as the word beside it. `published` has
+     *  no badge word because the public surface already shows it, and `draft`
+     *  is not a state this surface explains yet: a badge word the surface cannot
+     *  account for is worse than none (§9). `published` is still here because a
+     *  landed submission's footer names the state beside its version.
+     *
+     *  **The two sentences are the modal's, not the cell's**: a badge is a word
+     *  and a reason is a sentence, and the item's own surface is the one that
+     *  says what the state means. `removedPermanent` is stated beside the
+     *  owner's reason because it is the fact a reason alone may not carry. */
+    status: {
+      pending: "Pending",
+      published: "Published",
+      unpublished: "Unpublished",
+      rejected: "Rejected",
+      removed: "Removed",
+      pendingReview: "Waiting for the owner's review.",
+      removedPermanent:
+        "The owner removed this item; it cannot be republished.",
+      /** The fallback for a non-2xx the host answered with no sentence of its
+       *  own. A refusal is the Worker's words where they exist, so this is
+       *  drawn only where they do not (`mine-listing.ts`). */
+      changeRefused: (status: number): string =>
+        `The store refused the change (${status}).`,
+      /** The store accepted the command but the author's rows could not be read
+       *  back: the change landed, so silence would leave a stale word on screen. */
+      unrefreshed:
+        "The change was saved, but your items could not be refreshed.",
+    },
+    /** The author's own two commands, drawn in the item's modal only: they act
+     *  on the author's store row, where the cell's four actions act on the
+     *  library copy, so they are not `cell.actions` entries. */
+    actions: {
+      unpublish: "Unpublish",
+      republish: "Republish",
     },
     /** The search well's name and the word it shows while empty, as one string:
      *  a placeholder that could disagree with the name would be a second copy of
@@ -715,22 +778,24 @@ export const uiCopy = {
       installed: (name: string): string => `${name} was installed.`,
     },
     /** The library half's submission, whose sentence the client composes only
-     *  where the poll answers a state and no host sentence exists: the sign-in's
-     *  code and expiry, and the busy label. **A refusal is never composed here** —
-     *  the host knows which part of the submission failed, so its own words are
-     *  passed through unchanged (`use-submit.ts`). */
+     *  where the host answers a state and no sentence exists: the wait for the
+     *  sign-in, the status a landed submission carries, and the busy label.
+     *  **A refusal is never composed here** — the host knows which part of the
+     *  submission failed, so its own words are passed through unchanged
+     *  (`use-submit.ts`). */
     submit: {
       label: "Submit to the store",
       busy: "Submitting…",
-      /** Names the one-time code and where to type it, so the sentence is a
-       *  function of the code rather than a sentence with a hole a screen reader
-       *  reads in the wrong order. */
-      authorising: (code: string): string =>
-        `Enter ${code} at github.com to approve this submission.`,
-      /** The link's own words: the sentence above says what the code is for, and
-       *  this is the control that takes the author there. */
-      open: "Open github.com to approve",
-      submitted: "Pull request opened.",
+      /** The host holds the sign-in conversation in its own window; this surface
+       *  has no code to name, only the author's part left to do. */
+      authorising: "Waiting for you to sign in…",
+      /** What the store did with the submission: a new author's first items
+       *  wait for the owner, so the sentence names the wait rather than a link
+       *  this surface would have to invent. */
+      submitted: (status: "pending" | "published"): string =>
+        status === "pending"
+          ? "Submitted. The owner reviews new authors' items before they are listed."
+          : "Submitted and listed.",
       /** What the host published, in the caption's own shape: the version it
        *  bumped from, the one it wrote, and the ladder's word for the change.
        *  **A first release names no `from`** because there is none to name;
@@ -748,8 +813,16 @@ export const uiCopy = {
        *  modal, so an answer for one item can arrive while another is open. */
       announcement: (name: string, sentence: string): string =>
         `${name}: ${sentence}`,
-      expired: "The GitHub sign-in expired. Submit again.",
-      denied: "The GitHub sign-in was denied. Submit again.",
+      /** The poll ran out or the retry still had no session: the one sentence
+       *  the client composes because the host answered without one. */
+      noSignIn: "The store did not confirm the sign-in; try submitting again.",
+      /** A browser that blocks the popup left the flow with no window to finish
+       *  it in, so the author is told to act on the blocker. */
+      blocked: "This browser blocked the sign-in window.",
+      /** A landed answer whose state no footer draws: the state is named, so a
+       *  host and client that disagree cannot put JSON on screen. */
+      unexpectedState: (status: string): string =>
+        `The store answered an unexpected state (${status}); try submitting again.`,
     },
     /** The item's own surface (`2026-10-12-theme-store-design.md`, "The item,
      *  and why `kind` is the seam"). */
@@ -913,6 +986,46 @@ export const uiCopy = {
   themeImport: {
     landed: (id: string): string => `Imported ${id} to the library`,
     refused: (reason: string): string => `Could not import: ${reason}`,
+  },
+  /** The asset finder. A tab is a category, never a provider (R9), and the
+   *  footer names the kind's own action rather than a bare "Import" (R5). */
+  assets: {
+    title: "Assets",
+    category: {
+      font: "Fonts",
+      icon: "Icons",
+      image: "Images",
+      video: "Videos",
+      local: "Wallpaper Engine",
+    } satisfies Record<ListingCategory, string>,
+    action: {
+      font: "Apply to preset",
+      icon: "Place on canvas",
+      image: "Set as background",
+      video: "Set as background",
+      local: "Open in Wallpaper Engine",
+    } satisfies Record<ListingCategory, string>,
+    searchPlaceholder: "Search assets…",
+    results: (count: number, sources: number): string =>
+      `${count} ${count === 1 ? "result" : "results"} · ${sources} ${sources === 1 ? "source" : "sources"}`,
+    noResults: "No results. Try another word.",
+    clearQuery: "Clear query",
+    noSource: "No source serves this category.",
+    sourceFailed: (label: string, message: string): string =>
+      `${label} failed: ${message}`,
+    needsCredential: (label: string): string =>
+      `${label} needs a key this host does not have.`,
+    connectionsAction: "Open Connections",
+    openFontPicker: "Browse the font catalogue",
+    remoteHostNotice: (hosts: string): string =>
+      `Search terms go to ${hosts}. Nothing else leaves this computer.`,
+    loadMore: "Load more",
+    unknownAssetFile: "That asset is not a file type the editor can import.",
+    hostUnavailable: "The host is not connected.",
+    bytesUnavailable: (name: string): string =>
+      `The host did not send "${name}", so nothing was imported.`,
+    creditsFull:
+      "This theme already carries the last attribution it can hold, so the import would leave it unsavable.",
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */

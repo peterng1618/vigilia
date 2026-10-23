@@ -1,3 +1,4 @@
+import type { ListingCategory } from "@yunari/renderer-core";
 import { useSyncExternalStore } from "react";
 import type { EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 
@@ -83,6 +84,45 @@ export class SheetStore {
 }
 
 export function useSheet(store: SheetStore): boolean {
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/** Whether the asset finder is open, and the category a caller asked it to
+ * show — the font field opens it on Fonts.
+ *
+ * Same shape and same reason as `SheetStore`: the finder's chord is dispatched
+ * by `EditorSession`, the modal is the shell's, and the two never share a
+ * component tree.
+ */
+export interface FinderState {
+  readonly open: boolean;
+  readonly category: ListingCategory | undefined;
+}
+
+export class FinderStore {
+  #state: FinderState = { open: false, category: undefined };
+  readonly #listeners = new Set<() => void>();
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+  readonly get = (): FinderState => this.#state;
+  /** The category is kept only while open: a later open that names none starts
+   *  from the listing's own order rather than from the last caller's ask. */
+  set(open: boolean, category?: ListingCategory): void {
+    const next: FinderState = { open, category: open ? category : undefined };
+    if (
+      this.#state.open === next.open &&
+      this.#state.category === next.category
+    ) {
+      return;
+    }
+    this.#state = next;
+    for (const listener of this.#listeners) listener();
+  }
+}
+
+export function useFinder(store: FinderStore): FinderState {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
 

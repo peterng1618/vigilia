@@ -57,6 +57,49 @@ export interface CatalogueIndex {
 }
 
 /**
+ * The six states an item can hold. Only `published` is listed publicly; the rest
+ * is the spec's status machine, shown by the Mine surface.
+ */
+export type CatalogueStatus =
+  | "draft"
+  | "pending"
+  | "published"
+  | "unpublished"
+  | "rejected"
+  | "removed";
+
+/** The six, as the one runtime list. `isCatalogueStatus` is the guard every
+ *  reader of the wire uses, so the vocabulary has one owner rather than a copy
+ *  in each consumer. */
+const CATALOGUE_STATUSES: readonly CatalogueStatus[] = [
+  "draft",
+  "pending",
+  "published",
+  "unpublished",
+  "rejected",
+  "removed",
+];
+
+/** Whether a wire value is one of the six states. A Mine row naming anything
+ *  else is not a state this build can show, so its reader refuses the value
+ *  rather than coercing it. */
+export function isCatalogueStatus(value: unknown): value is CatalogueStatus {
+  return (
+    typeof value === "string" &&
+    (CATALOGUE_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * One row of `GET /api/me/items`: the entry a Mine row draws, plus the state the
+ * public wire shape has no room for and the owner's sentence where there is one.
+ */
+export interface MineEntry extends CatalogueEntry {
+  readonly status: CatalogueStatus;
+  readonly statusReason?: string;
+}
+
+/**
  * The authored header of one `catalogue/<id>/item.json`.
  *
  * It has no `author` — that is a facet the producer derives from `theme.json`'s

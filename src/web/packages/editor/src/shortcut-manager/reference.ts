@@ -45,6 +45,7 @@ export const SHORTCUT_LABELS = {
   // and the row it is printed beside is what a person reads.
   "file.open": uiCopy.file.importPackage,
   "file.save": uiCopy.file.savePackage,
+  "file.findAssets": uiCopy.file.findAssets,
   "edit.undo": uiCopy.actions.undo,
   "edit.redo": uiCopy.actions.redo,
   "edit.delete": uiCopy.actions.delete,

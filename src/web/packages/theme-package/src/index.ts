@@ -3,7 +3,14 @@ import {
   validateFabricThemeEnvelope,
 } from "@yunari/renderer-core";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import {
+  CREDITS,
+  MAX_CREDITS_ENTRIES,
+  readThemeCredits,
+  type ThemeCredits,
+} from "./credits";
 
+export * from "./credits";
 export * from "./version-ladder";
 export * from "./video-envelope";
 
@@ -33,6 +40,8 @@ export type ThemePackageResult =
       readonly assets: Readonly<Record<string, Uint8Array>>;
       /** Absent when the package carried no usable picture. */
       readonly thumbnail?: Uint8Array;
+      /** The package's attribution member, when it carried one. */
+      readonly credits?: ThemeCredits;
     }
   | { readonly ok: false; readonly message: string };
 
@@ -48,6 +57,10 @@ export function writeThemePackage(input: {
   /** Optional: a theme saved before the slot existed, or a capture that
    *  failed, exports and imports perfectly well without one. */
   readonly thumbnail?: Uint8Array;
+  /** An imported asset is not imported until it carries its credit, so the
+   *  member travels with the theme it credits. An empty list is `undefined`:
+   *  there is nothing to attribute and no member to write. */
+  readonly credits?: ThemeCredits;
 }):
   | { readonly ok: true; readonly bytes: Uint8Array }
   | { readonly ok: false; readonly message: string } {
@@ -56,6 +69,15 @@ export function writeThemePackage(input: {
     return {
       ok: false,
       message: validation.issues[0]?.message ?? "Invalid theme.",
+    };
+  const credits =
+    input.credits === undefined || input.credits.entries.length === 0
+      ? undefined
+      : input.credits;
+  if (credits !== undefined && credits.entries.length > MAX_CREDITS_ENTRIES)
+    return {
+      ok: false,
+      message: `A theme package carries at most ${MAX_CREDITS_ENTRIES} credits.`,
     };
   const paths = new Set(
     input.envelope.assets?.map((asset) => asset.path) ?? [],
@@ -89,10 +111,14 @@ export function writeThemePackage(input: {
             version: 1,
             theme: THEME,
             ...(thumbnail === undefined ? {} : { thumbnail: THUMBNAIL }),
+            ...(credits === undefined ? {} : { credits: CREDITS }),
           }),
         ),
         [THEME]: strToU8(JSON.stringify(input.envelope)),
         ...(thumbnail === undefined ? {} : { [THUMBNAIL]: thumbnail }),
+        ...(credits === undefined
+          ? {}
+          : { [CREDITS]: strToU8(JSON.stringify(credits)) }),
         ...input.assets,
       },
       { level: 6 },
@@ -116,6 +142,7 @@ export function readThemePackage(bytes: Uint8Array): ThemePackageResult {
           file.name === MANIFEST ||
           file.name === THEME ||
           file.name === THUMBNAIL ||
+          file.name === CREDITS ||
           /^assets\/[A-Za-z0-9._/-]{1,200}$/.test(file.name);
         if (
           entries > MAX_ENTRIES ||
@@ -140,11 +167,13 @@ export function readThemePackage(bytes: Uint8Array): ThemePackageResult {
       unknown
     >;
     const declaredThumbnail = parsedManifest["thumbnail"];
+    const declaredCredits = parsedManifest["credits"];
     if (
       parsedManifest["format"] !== "yunari-theme-package" ||
       parsedManifest["version"] !== 1 ||
       parsedManifest["theme"] !== THEME ||
-      (declaredThumbnail !== undefined && declaredThumbnail !== THUMBNAIL)
+      (declaredThumbnail !== undefined && declaredThumbnail !== THUMBNAIL) ||
+      (declaredCredits !== undefined && declaredCredits !== CREDITS)
     )
       return fail("Unsupported package manifest.");
     const parsedTheme = JSON.parse(strFromU8(theme));
@@ -163,12 +192,19 @@ export function readThemePackage(bytes: Uint8Array): ThemePackageResult {
     if (picture !== undefined && declaredThumbnail !== THUMBNAIL)
       return fail("A package thumbnail must be named in its manifest.");
     const thumbnail = carryable(picture);
+    // The same rule for attribution: credits a manifest does not name are a
+    // file nobody chose to ship. An unreadable member is dropped, not fatal.
+    const creditBytes = files[CREDITS];
+    if (creditBytes !== undefined && declaredCredits !== CREDITS)
+      return fail("A package's credits must be named in its manifest.");
+    const credits = readThemeCredits(creditBytes ?? new Uint8Array());
     if (
       Object.keys(files).some(
         (path) =>
           path !== MANIFEST &&
           path !== THEME &&
           path !== THUMBNAIL &&
+          path !== CREDITS &&
           !paths.has(path),
       ) ||
       Object.keys(assets).length !== paths.size ||
@@ -182,6 +218,7 @@ export function readThemePackage(bytes: Uint8Array): ThemePackageResult {
       // A picture the library would refuse is dropped rather than fatal: the
       // theme is the thing that matters, and absence is ordinary.
       ...(thumbnail === undefined ? {} : { thumbnail }),
+      ...(credits === undefined ? {} : { credits }),
     };
   } catch {
     return fail("That file is not a readable theme package.");
