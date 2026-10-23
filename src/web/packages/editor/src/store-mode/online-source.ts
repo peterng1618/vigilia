@@ -13,7 +13,7 @@ import type { ItemSource, StoreItem } from "./local-source.js";
  *
  * **One read, and the browser's cache is the whole mechanism** (`docs/decisions/0088`):
  * no `cache:` option, no `ETag`, no TTL, no retry and no timeout, because the
- * origin's `max-age=300` is the freshness contract and the platform owns the
+ * origin's `max-age=60` is the freshness contract and the platform owns the
  * rest. A failed read throws rather than answering an empty catalogue; the
  * region's own rule leaves the listing unset instead of drawing that as "none".
  */

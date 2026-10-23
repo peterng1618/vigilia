@@ -18,9 +18,11 @@ Close the **R2 store backend** plan ([`2026-10-23-r2-store-backend.md`](docs/sup
 
 ## Last completed change
 
-- **`scratch-gate` self-test fixed (`vg-700`)**: the `/tmp` case tested no policy, since `C:\tmp` and `os.tmpdir()` are both sanctioned; it now asserts `/var/tmp/full.json`, outside every store on both platforms.
-- **The full gate is green end to end**: `npm run gate` exited 0 when run directly; log `C:\tmp\gate-vg700.log` records each segment through typecheck, the unit suite and `test:worker`.
-- **No product code changed**: `scripts/scratch-gate.mjs` and this status only; the refusal message and policy are untouched.
+- **Worker finalize is crash- and race-safe**: an interrupted retry applies the status its first attempt missed, `markFinalized` refuses a concurrent takedown, and a duplicate version insert converges instead of answering 500.
+- **Host forgets a session the Worker answers 401 to**, so `/api/store/session` says signed out; a successful sign-in deletes the old plaintext `github-token.json`.
+- **The Mine toggle re-probes the session on window focus**, so a sign-in started by the submit flow reveals it without a reload.
+- **Minor**: the `/api/me` spec row now describes its real `{ userId, email }` answer, the index cache comment says `max-age=60`, and the unreachable redirect hop is gone from `downloadPackage`.
+- **Every new regression test was shown red with its fix disabled** and restored `cmp`-clean from copies outside the repo.
 
 ## Next
 

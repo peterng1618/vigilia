@@ -536,7 +536,9 @@ function StoreRegion(props: {
   }, [source]);
 
   // The online half chooses its source: the catalogue, or the author's own rows.
-  const online = useMineListing(items, () => setTab("online"));
+  const online = useMineListing(items, {
+    onEnabled: () => setTab("online"),
+  });
 
   // **Each half reads its own listing**, and neither ever draws the other's:
   // the point of the halves is that the catalogue and this PC's library are two

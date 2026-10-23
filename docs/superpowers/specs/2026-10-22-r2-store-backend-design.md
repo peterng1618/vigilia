@@ -307,7 +307,7 @@ fetches the index and draws thumbnails from the loopback origin.
 
 | Route | Purpose |
 |---|---|
-| `GET /api/me` | account id, display name, `verified` |
+| `GET /api/me` | the session's `{ userId, email }` |
 | `GET /api/me/items` | every own item in every state, newest first, with `status` and `statusReason` |
 | `GET /api/me/items/:id/baseline` | the latest stored version, its envelope and status, for any state |
 | `POST /api/me/items/:id/versions` | validate the envelope, compute the version, return a presigned PUT |

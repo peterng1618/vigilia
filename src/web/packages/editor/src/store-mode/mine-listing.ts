@@ -52,6 +52,14 @@ export interface MineListing extends OnlineListingShape {
   readonly onRepublish: (id: string) => void;
 }
 
+/** Everything the online half's source choice needs from its region. */
+export interface MineListingOptions {
+  /** Called when Mine is turned on, so the region can move to the half. */
+  readonly onEnabled?: () => void;
+  /** Injected so a test drives the session probe without a network. */
+  readonly fetch?: typeof fetch;
+}
+
 /**
  * The online half's source choice, its Mine toggle and the session probe.
  *
@@ -69,9 +77,10 @@ export interface MineListing extends OnlineListingShape {
  */
 export function useMineListing(
   local: readonly StoreItem[] | undefined,
-  onEnabled?: () => void,
+  options: MineListingOptions = {},
 ): MineListing {
   const catalogue = useOnlineListing(local);
+  const { fetch: doFetch, onEnabled } = options;
   const [offered, setOffered] = useState(false);
   const [on, setOn] = useState(false);
   const [listing, setListing] = useState<
@@ -86,22 +95,30 @@ export function useMineListing(
 
   useEffect(() => {
     let live = true;
-    void (async () => {
+    const probe = async (): Promise<void> => {
       try {
-        const response = await fetch(SESSION_PATH);
+        const response = await (doFetch ?? fetch)(SESSION_PATH);
         if (!live || !response.ok) return;
         const body = (await response.json()) as { readonly signedIn?: unknown };
-        if (live && body.signedIn === true) setOffered(true);
+        if (live) setOffered(body.signedIn === true);
       } catch {
-        // A failed probe leaves the toggle absent: no session is a fact this
+        // A failed probe leaves the toggle as it was: no session is a fact this
         // surface can state, and guessing one would draw a control the host
         // would refuse.
       }
-    })();
+    };
+    void probe();
+    // A sign-in happens in another window, so the mount-time answer is stale by
+    // the time this one regains focus. Re-probing there is the smaller change
+    // than threading the submit flow's state in here, and it also notices a
+    // session the host cleared after a 401.
+    const onFocus = (): void => void probe();
+    window.addEventListener("focus", onFocus);
     return () => {
       live = false;
+      window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [doFetch]);
 
   useEffect(() => {
     if (!on) return;
