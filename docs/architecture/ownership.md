@@ -83,7 +83,8 @@ two apart is the judgement the map cannot make for itself.
 | **The stored-document base and the library save protocol** — what a save carries, and the conflict it can be refused on | `editor/src/theme-library-manager/` |
 | Chart selection/settings/bindings — projected by `panel.ts`, rendered by `chart-fields.tsx`, written by `index.ts` | `editor/src/chart-manager/` |
 | **The plan-and-player artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop; the editor's case is a separate rule, above | `renderer-core/src/artboard.ts` |
-| Theme metadata, artboard size and the size note — **the Document pane's authoring controls** | `editor/src/artboard-panel.ts` (`editor/src/panes/document/`) |
+| Theme metadata — **the Document pane's authoring controls** | `editor/src/panes/document/metadata-fields.tsx` |
+| Artboard size, presets and the size note — **the Document pane's authoring controls** | `editor/src/panes/document/artboard-fields.tsx` |
 | **The background layer's authoring** — its colour, media, bounds, fit, scale and offsets, described by its inspector column and written through `EditorDocument.setBackground` | `editor/src/selection-inspector/background-column.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
 | **Which object and arrange actions exist** — their ids, labels and icons | `editor/src/object-actions.ts` |

@@ -18,7 +18,7 @@ The background is a layer: [`spec`](docs/superpowers/specs/2026-10-23-background
 ## Last completed change
 
 - **The background-layer plan is closed**: ownership, architecture and DESIGN now name `selection-inspector/background-column.ts` for authoring and `scene-fabric/src/background-media.ts` for the DOM media; no behaviour changed.
-- **Verification**: the background and player browser suites pass at `--workers=1`; the gate is green except a pre-existing, drive-dependent `scratch-gate` self-test case.
+- **Verification**: `npm run gate` exits 0 (306 files, 4425 tests) after `0d08fd0` fixed the drive-dependent `scratch-gate` self-test that made the earlier run exit 1; the background and player browser suites pass at `--workers=1`.
 
 ## Next
 
@@ -30,4 +30,3 @@ The background is a layer: [`spec`](docs/superpowers/specs/2026-10-23-background
 - **The live catalogue's smoke theme carries the old shape** and must be reseeded after the new format lands; this is an owner action.
 - **Version 2 now identifies two shapes**: a stored or catalogued document with `artboard.background` is refused by the unknown-key check.
 - **Background and artboard edits are not undoable**: Fabric history serialises the scene only. Recorded, not a regression.
-- **`npm run gate` is red on this C:-drive checkout**: `scripts/scratch-gate.mjs` expects `/tmp/...` to be refused, but it resolves to the sanctioned `C:\tmp`; needs an owner ruling.
