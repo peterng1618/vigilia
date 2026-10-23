@@ -1,4 +1,3 @@
-import type { AssetResult } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import {
   LINEICONS_ICONS,
@@ -11,16 +10,6 @@ const context = {
   signal: new AbortController().signal,
   fetch: globalThis.fetch,
 };
-
-const result = (name: string): AssetResult => ({
-  id: name,
-  name,
-  kind: "icon",
-  preview: "",
-  subtitle: undefined,
-  licence: "MIT",
-  sourceUrl: `https://lineicons.com/icons/${name}`,
-});
 
 describe("the Lineicons manifest", () => {
   it("is generated as plain SVG data", () => {
@@ -84,16 +73,5 @@ describe("the Lineicons source", () => {
     expect(
       await lineiconsSource.bytesOf("not-an-icon", context),
     ).toBeUndefined();
-  });
-
-  it("credits the icon set and its licence", () => {
-    expect(lineiconsSource.creditsOf(result("arrow-downward"))).toMatchObject({
-      kind: "icon",
-      title: "arrow-downward",
-      license: "MIT",
-    });
-    expect(
-      lineiconsSource.creditsOf(result("arrow-downward")).source?.url,
-    ).toContain("lineicons.com");
   });
 });

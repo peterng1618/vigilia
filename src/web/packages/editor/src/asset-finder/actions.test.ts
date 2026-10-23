@@ -3,27 +3,10 @@ import type { AssetPage, AssetResult } from "@yunari/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import { AssetManager } from "../asset-manager/index.js";
 import type { EditorDocument } from "../editor-document.js";
+import { installReadableFile } from "../readable-file.fixture.js";
 import { creditOf, importFinderResult } from "./actions.js";
 
-// jsdom's `File` has no `arrayBuffer`, which every browser's does and which
-// the asset manager calls. The shim reads the bytes the file was built from.
-const JsdomFile = globalThis.File;
-class ReadableFile extends JsdomFile {
-  readonly #bytes: Uint8Array;
-
-  constructor(parts: BlobPart[], name: string, options?: FilePropertyBag) {
-    super(parts, name, options);
-    this.#bytes = new Uint8Array(parts[0] as ArrayBuffer);
-  }
-
-  override async arrayBuffer(): Promise<ArrayBuffer> {
-    return this.#bytes.buffer.slice(
-      this.#bytes.byteOffset,
-      this.#bytes.byteOffset + this.#bytes.byteLength,
-    ) as ArrayBuffer;
-  }
-}
-globalThis.File = ReadableFile as unknown as typeof File;
+installReadableFile();
 
 const svg = new TextEncoder().encode(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>',
@@ -135,6 +118,16 @@ describe("importFinderResult", () => {
     expect(declare).not.toHaveBeenCalled();
     expect(addCredit).not.toHaveBeenCalled();
     expect(place).not.toHaveBeenCalled();
+  });
+
+  it("credits an image's photographer, but never an icon's style", () => {
+    expect(
+      creditOf({ ...lucide, kind: "image", subtitle: "Jane Doe" }),
+    ).toMatchObject({ author: { name: "Jane Doe" } });
+    // Font Awesome's subtitle is `solid`, a style, not a person.
+    expect(creditOf({ ...lucide, subtitle: "solid" })).not.toHaveProperty(
+      "author",
+    );
   });
 
   it("composes the credit from the result, never from the filename", () => {

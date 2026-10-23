@@ -964,7 +964,8 @@ export const uiCopy = {
     loadMore: "Load more",
     unknownAssetFile: "That asset is not a file type the editor can import.",
     hostUnavailable: "The host is not connected.",
-    bytesUnavailable: "The host did not send that asset.",
+    bytesUnavailable: (name: string): string =>
+      `The host did not send "${name}", so nothing was imported.`,
     creditsFull:
       "This theme already carries the last attribution it can hold, so the import would leave it unsavable.",
   },

@@ -35,15 +35,16 @@ describe("productShortcutIds", () => {
     expect(productShortcutIds()).not.toContain("view.exit-group");
   });
 
-  it("binds the finder to Ctrl+Shift+A, deferring to a focused field", () => {
+  it("binds the finder to Ctrl+Shift+F, deferring to a focused field", () => {
+    // Not Ctrl+Shift+A: Chromium keeps it for tab search, so a page never sees
+    // the press.
     expect(PRODUCT_SHORTCUTS).toContainEqual({
-      key: "a",
+      key: "f",
       modifier: true,
       shift: true,
       action: "file.findAssets",
     });
-    // Ctrl+A in a rename field is the field's own select-all; its shifted
-    // sibling opens the finder only where the author is not typing.
+    // Ctrl+Shift+F opens the finder only where the author is not typing.
     expect(defersToTextEntry("file.findAssets")).toBe(true);
   });
 });

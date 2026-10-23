@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -29,6 +29,16 @@ describe("credentials", () => {
 
   it("reads an absent file as no credentials", async () => {
     expect(await store.read()).toEqual({});
+  });
+
+  it("writes the file owner-only wherever the platform honours a mode", async () => {
+    // Windows has no POSIX mode; on the platforms that do, a plaintext key
+    // file must not be group- or world-readable.
+    if (process.platform === "win32") return;
+
+    await store.write("fontawesome", "sk-live-9f2c", savedAt);
+
+    expect((await stat(credentialsFile(dir))).mode & 0o077).toBe(0);
   });
 
   it("writes one credential and reads it back with its ISO instant", async () => {

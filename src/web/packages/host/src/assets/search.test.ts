@@ -32,12 +32,6 @@ function fakeSource(
     configurable: true,
     search: async () => ({ results: [result("1")], next: undefined }),
     bytesOf: async () => undefined,
-    creditsOf: () => ({
-      kind: "icon",
-      title: "1",
-      license: "unknown",
-      changes: "",
-    }),
     ...overrides,
   };
 }

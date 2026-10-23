@@ -102,7 +102,7 @@ async function openFinder(page: Page): Promise<Locator> {
   await page.waitForFunction(() => "yunariEditorBridge" in window);
   // The chord is the session's dispatcher reaching the shell's store, which is
   // the route the product offers; the menu row opens the same modal.
-  await page.keyboard.press("Control+Shift+A");
+  await page.keyboard.press("Control+Shift+F");
   const dialog = page.getByRole("dialog", { name: "Assets" });
   await expect(dialog).toBeVisible();
   return dialog;

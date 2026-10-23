@@ -45,22 +45,29 @@ function failed(source: string, message: string): AssetPage {
   };
 }
 
+/** What the listing answered: sources, or the host is absent. A host that
+ *  serves no sources is `ok` with an empty list — the modal says a different
+ *  sentence for each. */
+export type SourceListing =
+  | { readonly ok: true; readonly sources: readonly AssetSourceListing[] }
+  | { readonly ok: false };
+
 export async function listSources(
   options?: ClientOptions,
-): Promise<readonly AssetSourceListing[]> {
+): Promise<SourceListing> {
   const { fetcher, url } = request(options);
 
   try {
     const response = await fetcher(url("/api/assets/sources"));
-    if (!response.ok) return [];
+    if (!response.ok) return { ok: false };
 
     const body = (await response.json()) as unknown;
     const sources = (body as { sources?: unknown }).sources;
     return Array.isArray(sources)
-      ? (sources as readonly AssetSourceListing[])
-      : [];
+      ? { ok: true, sources: sources as readonly AssetSourceListing[] }
+      : { ok: false };
   } catch {
-    return [];
+    return { ok: false };
   }
 }
 

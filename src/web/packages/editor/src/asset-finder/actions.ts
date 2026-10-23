@@ -62,11 +62,15 @@ export async function importFinderResult(input: {
   }
 }
 
-/** The attribution an imported result carries (spec R7). */
+/** The attribution an imported result carries (spec R7). An image's subtitle
+ *  is its photographer; an icon's is a style, which is not an author. */
 export function creditOf(result: AssetResult): ThemeCreditsEntry {
   return {
     kind: result.kind,
     title: result.name,
+    ...(result.kind === "image" && result.subtitle !== undefined
+      ? { author: { name: result.subtitle } }
+      : {}),
     license: result.licence,
     changes: "Imported unchanged",
     ...(result.sourceUrl === "" ? {} : { source: { url: result.sourceUrl } }),

@@ -1,5 +1,4 @@
 import type { AssetResult, ListingCategory } from "@yunari/renderer-core";
-import type { ThemeCreditsEntry } from "@yunari/theme-package";
 
 /**
  * The asset source port.
@@ -45,5 +44,4 @@ export interface AssetSource {
     resultId: string,
     ctx: SourceContext,
   ): Promise<SourceBytes | undefined>;
-  creditsOf(result: AssetResult): ThemeCreditsEntry;
 }

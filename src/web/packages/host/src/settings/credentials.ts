@@ -97,7 +97,12 @@ export function createCredentialStore(directory: string): CredentialStore {
 
   const save = async (all: Record<string, StoredCredential>): Promise<void> => {
     await mkdir(directory, { recursive: true });
-    await writeFile(temporary, `${JSON.stringify(all, null, 2)}\n`, "utf8");
+    // Owner-only on the platforms that honour it: the file holds plaintext
+    // keys, and a shared Unix host would otherwise leave it world-readable.
+    await writeFile(temporary, `${JSON.stringify(all, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+    });
     await rename(temporary, file);
   };
 

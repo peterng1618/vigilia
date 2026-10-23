@@ -175,22 +175,6 @@ export const unsplashSource: AssetSource = {
       filename: `${resultId}.jpg`,
     };
   },
-
-  creditsOf(result) {
-    const author =
-      result.subtitle === undefined
-        ? {}
-        : { author: { name: result.subtitle } };
-
-    return {
-      kind: "image",
-      title: result.name,
-      ...author,
-      license: result.licence,
-      changes: "Imported unchanged",
-      source: { url: result.sourceUrl },
-    };
-  },
 };
 
 /** The Connections tab's check: one real search with `per_page=1`. */
