@@ -21,8 +21,8 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 - **CI's 22 browser failures are repaired at their causes, not their numbers**: the retired device-flow store stubs, the finder's font catalogue moving into the asset-finder body, the drawings' 240 off-scale literals, the role/name rule that overflowed under wider glyphs, and the popup/header overflow at 390px.
 - **Two suites measured a product that changed under them**: glass and host-media assumed a 30 Hz idle repaint, and `38cbfe3e` made the loop render only when a pass painted; the frame-determinism case now waits for the connection strip, not just ink.
 - **The runner gets a display**: `host-pwa` and `host-secure-origin` launch headed browsers on purpose, so CI runs Playwright under `xvfb-run` instead of reading "Missing X server" as a product failure.
-- **Proof**: `npm run gate` exit 0 (4,612 tests), targeted rebuilt-bundle browser runs pass, the glyph-overflow and role-yield fixes A/B red-proven, the 6-run clock stress is 6/6.
-- **A GPU-less host and an off-screen anchor**: the player proofs read the gap when the host reports no GPU reading, and the publish popover shifts into the window (`sticky` drops `limitShift`) instead of parking at the trigger's off-screen edge.
+- **Proof**: `npm run gate` exit 0 (4,612 tests); targeted rebuilt-bundle browser runs pass; glyph-overflow and role-yield A/B red-proven; the clock stress is 6/6; publish-loop 5/5 local runs after the overlay reset.
+- **A GPU-less host and an off-screen anchor**: the player proofs read the gap when the host reports no GPU reading, the publish popover shifts into the window (`sticky` drops `limitShift`), and the publish-loop cases start from a cleared host overlay.
 
 ## Next
 
