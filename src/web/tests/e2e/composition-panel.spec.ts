@@ -261,11 +261,12 @@ test("the state slot does not cover the role, at rest or with the row attended",
 
   // **The attended row, and it is the same predicate.** Hovering is what draws
   // a row's controls, so the slot paints a real surface over the row's right
-  // edge and the row that pays is the one the pointer is on. `vg-447`'s ruling
-  // is what makes this hold: the name's `6ch` floor is the *resting* row's, and
-  // an attended row lowers it to zero so the name ellipsises rather than the
-  // slot painting over the role (DESIGN.md §7.3 — "A row yields its name and its
-  // key before it yields a control, and it yields the role last").
+  // edge and the row that pays is the one the pointer is on. The name has no
+  // width floor at rest or attended — a floor is still a width the row may not
+  // have, and on a font whose glyphs run wider than the one it was measured in
+  // it pushed the role past the row's edge — so the name ellipsises while the
+  // role keeps its glyphs (DESIGN.md §7.3: "A row yields its name and its key
+  // before it yields a control, and it yields the role last").
   //
   // Every row is walked rather than a hand-picked sample, because which row is
   // over budget is the row's own role and key rather than a property of the
