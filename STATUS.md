@@ -21,7 +21,7 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 - **CI's 22 browser failures are repaired at their causes, not their numbers**: the retired device-flow store stubs, the finder's font catalogue moving into the asset-finder body, the drawings' 240 off-scale literals, the role/name rule that overflowed under wider glyphs, and the popup/header overflow at 390px.
 - **Two suites measured a product that changed under them**: glass and host-media assumed a 30 Hz idle repaint, and `38cbfe3e` made the loop render only when a pass painted; the frame-determinism case now waits for the connection strip, not just ink.
 - **The runner gets a display**: `host-pwa` and `host-secure-origin` launch headed browsers on purpose, so CI runs Playwright under `xvfb-run` instead of reading "Missing X server" as a product failure.
-- **Proof**: `npm run gate` exit 0 (4,612 tests); targeted rebuilt-bundle browser runs pass; glyph-overflow and role-yield A/B red-proven; the clock stress is 6/6; publish-loop 5/5 local runs after the overlay reset.
+- **Proof**: `npm run gate` exit 0 (4,612 tests); CI run 39938147320 is green in both jobs; glyph-overflow and role-yield A/B red-proven; publish-loop 5/5 local runs after the overlay reset.
 - **A GPU-less host and an off-screen anchor**: the player proofs read the gap when the host reports no GPU reading, the publish popover shifts into the window (`sticky` drops `limitShift`), and the publish-loop cases start from a cleared host overlay.
 
 ## Next
@@ -37,5 +37,4 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 - **The store Worker is not deployed and no live store path has run**: no D1 database, R2 bucket, secret, real `database_id`, deploy, `/migrate`, health check, OAuth round trip, live CPU measurement or import; `CATALOGUE_ORIGIN` is still the placeholder `https://yunari-store.workers.dev`, and no normalized video has played in a browser.
 - **Version 2 now identifies two shapes**: a stored or catalogued document carrying `artboard.background`/`backgroundMedia`, or `fit`/`scale` on its media, is refused by the unknown-key check; the live catalogue's smoke theme carries the old shape and needs reseeding (owner action).
 - **Background and artboard edits are not undoable**: Fabric history serialises the scene only. Recorded, not a regression.
-- **The CI run for these fixes has not been observed yet**; the browser evidence is local, and `publish-loop`'s clear-on-close remains order-dependent (passes alone, fails after its first test).
 - **The compact editor header is still wider than a phone**: clipping it stops the document widening, but the menubar and publish control stay unreachable below the breakpoint — `vg-707` waits on a ruling.
