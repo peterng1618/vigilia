@@ -249,6 +249,7 @@ export function writeBackgroundField(
       if (
         media === undefined ||
         typeof value !== "number" ||
+        !Number.isFinite(value) ||
         value < MIN_BACKGROUND_SCALE ||
         value > MAX_BACKGROUND_SCALE
       )
@@ -259,6 +260,7 @@ export function writeBackgroundField(
       if (
         media === undefined ||
         typeof value !== "number" ||
+        !Number.isFinite(value) ||
         value < MIN_BACKGROUND_OFFSET ||
         value > MAX_BACKGROUND_OFFSET
       )
@@ -269,6 +271,7 @@ export function writeBackgroundField(
       if (
         media === undefined ||
         typeof value !== "number" ||
+        !Number.isFinite(value) ||
         value < MIN_BACKGROUND_OFFSET ||
         value > MAX_BACKGROUND_OFFSET
       )

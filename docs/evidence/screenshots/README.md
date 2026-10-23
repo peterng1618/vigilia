@@ -159,7 +159,7 @@ result, not merely a mounted editor.
 | Assets | Normalize a declared video and read the host's refusal beside it | `editor-video-normalize` / `normalizes a declared video without replacing its master` |
 | Palette | Edit or reassign a palette token | `editor-palette-solid` or `editor-palette-reassignment` / `edits an artboard palette token|reassigns palette references` |
 | Type presets | Edit, reassign or apply a font trio | `editor-type-preset`, `editor-type-reassignment` or `editor-font-trio` / `edits a global type preset|reassigns text type presets|captures curated font trio` — two files, `-desktop-chromium` (graphite) and `-editorial-desktop-chromium`, because the face and trio choosers are wells whose boundary and popup read against the paper they sit on |
-| Theme settings | Author a background image | `editor-background-media` / `authors a packaged background image` |
+| Background layer | Author a background image in the selection inspector's background column | `editor-background-media` / `authors a packaged background image through the inspector` |
 | Viewport | Resize or change zoom | `editor-zoom-readout` / `tracks the camera's zoom in the stage readout` |
 | Viewport | Read the same composition at a two-device-pixel ratio | `editor-reference-dpr2` / `the fitted, reference-size and DPR views` |
 | Glass authoring | Turn a second panel's treatment on over an already-treated one | `editor-reference-overlap` / `rotated and overlapping panels both keep compositing` |

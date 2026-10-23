@@ -562,14 +562,17 @@ export function createSelectionInspector(
 
   /** Hands a whole background to the document, which owns the envelope. The
    *  field's own rule is `writeBackgroundField`'s, beside the column that
-   *  projects it; `undefined` is the model refusing the value. */
+   *  projects it; `undefined` is the model refusing the value. A build with no
+   *  write port is no more able to write than a refused value is, so it reports
+   *  the same `false` rather than a success that changed nothing. */
   const applyBackground = (
     fieldId: string,
     value: string | number | boolean,
   ): boolean => {
     const next = writeBackgroundField(options.background?.(), fieldId, value);
-    if (next === undefined) return false;
-    options.onBackgroundChange?.(next);
+    if (next === undefined || options.onBackgroundChange === undefined)
+      return false;
+    options.onBackgroundChange(next);
     return true;
   };
 

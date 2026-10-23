@@ -294,6 +294,25 @@ describe("the selection inspector", () => {
       expect(onBackgroundChange).not.toHaveBeenCalled();
       expect(editor.errorManager.warn).toHaveBeenCalled();
     });
+
+    it("commits an offset inside -1..1", async () => {
+      // The refusal above is only half a rule: a switch that refused every
+      // offset would satisfy it, so a valid move is asserted beside it. The
+      // field prints a percentage, so 50 is the 0.5 the document holds.
+      const { host, onBackgroundChange } = backgroundSelected();
+      const offsetX = host.querySelector<HTMLInputElement>(
+        "[data-yunari-background-offset-x]",
+      )!;
+      expect(offsetX.value).toBe("0");
+
+      await edit(offsetX, "50");
+
+      expect(onBackgroundChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          media: expect.objectContaining({ offsetX: 0.5 }),
+        }),
+      );
+    });
   });
 
   it("shows the selected object's geometry in whole units", () => {

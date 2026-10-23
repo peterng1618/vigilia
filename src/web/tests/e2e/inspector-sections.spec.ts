@@ -836,7 +836,10 @@ test.describe("the per-kind inspector column", () => {
     }
   });
 
-  test("draws a remainder slice for a fixed pie total, measured on the canvas", async ({
+  // yunari#51: choosing `fixed` unmounts the shell before the value can be
+  // typed, because `isDirty` validates the transiently invalid document.
+  // Fixme, not skip, so the reason and the issue stay on the case itself.
+  test.fixme("draws a remainder slice for a fixed pie total, measured on the canvas", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");

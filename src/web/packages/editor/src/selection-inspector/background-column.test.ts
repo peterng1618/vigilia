@@ -1,6 +1,6 @@
-import type { FabricGlobals } from "@yunari/renderer-core";
+import type { Background, FabricGlobals } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
-import { backgroundColumn } from "./background-column.js";
+import { backgroundColumn, writeBackgroundField } from "./background-column.js";
 
 /**
  * The background's column, as values. The background is not a Fabric object and
@@ -145,5 +145,40 @@ describe("backgroundColumn", () => {
         { id: "loop", name: "loop" },
       ],
     });
+  });
+});
+
+describe("writeBackgroundField", () => {
+  const background: Background = {
+    media: { assetId: "photo", bounds: "theme" },
+  };
+
+  it("refuses a non-finite scale or offset", () => {
+    // `NaN` fails every `>`/`<` comparison, so a guard written as a range alone
+    // applies no range at all to it.
+    for (const value of [
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+    ]) {
+      expect(
+        writeBackgroundField(background, "background.scale", value),
+      ).toBeUndefined();
+      expect(
+        writeBackgroundField(background, "background.offsetX", value),
+      ).toBeUndefined();
+      expect(
+        writeBackgroundField(background, "background.offsetY", value),
+      ).toBeUndefined();
+    }
+  });
+
+  it("writes an in-range scale and offset", () => {
+    expect(
+      writeBackgroundField(background, "background.scale", 1.4),
+    ).toMatchObject({ media: { scale: 1.4 } });
+    expect(
+      writeBackgroundField(background, "background.offsetX", 0.5),
+    ).toMatchObject({ media: { offsetX: 0.5 } });
   });
 });
