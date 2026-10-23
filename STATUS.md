@@ -9,7 +9,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Active work
 
-- **Subagent-driven execution**: Phases 1–4 and Tasks 5.1–5.2 complete (5.2 is the runbook only); the owner-run deployment is pending. Tasks 5.3–5.4 follow.
+- **Subagent-driven execution**: Phases 1–4, Task 5.1, Task 5.2's preparation and Task 5.3 are complete; the owner-run deployment and Task 5.4's close-out are pending.
 - **Task 5.2 is the owner's**: creating the Cloudflare resources and deploying is prepared by the agent, run by the owner.
 - **Queued, in order:** `2026-10-21-wallpaper-engine-import.md`, then `2026-10-21-asset-finder.md`; neither starts while this plan runs.
 - **The catalogue is live with one real item**: `6041df49-9c61-4d51-a184-716890560bdb` (`Yunari smoke theme`, 1.0.0); Task 5.1 imports it.
@@ -18,8 +18,9 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 ## Last completed change
 
-- **The owner's deployment runbook is written** in `src/web/packages/store-worker/README.md`: bindings reconciled with the code, resource creation, 11 secrets with their source, deploy, migrations, OAuth callbacks, import, CPU and rotation.
-- **`wrangler.toml`'s `database_id` is marked as the owner's paste point**; no id was invented and `CATALOGUE_ORIGIN` is unchanged.
+- **`store-mine.spec.ts` proves Mine, Unpublish and Republish in the built editor bundle**, with the session probe, the author's listing and both command POSTs answered by `page.route`.
+- **Three captures are registered and inspected**: `store-mine-listing`, `store-mine-unpublish` and `store-mine-republish`, all `-desktop-chromium`.
+- **A refused unpublish prints the Worker's own sentence in the store's live region** and leaves the row and its offered command unchanged.
 
 ## Next
 
