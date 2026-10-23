@@ -3,6 +3,9 @@
 import type { FabricThemeEnvelope } from "@yunari/renderer-core";
 import { IText } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { installReadableFile } from "./readable-file.fixture.js";
+
+installReadableFile();
 
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
 const markSavedMock = vi.hoisted(() => vi.fn());
@@ -13,6 +16,13 @@ const registerMock = vi.hoisted(() => vi.fn());
  *  to, which is what every other test in this file is. */
 const dirtyMock = vi.hoisted(() => vi.fn(() => false));
 const replaceMock = vi.hoisted(() => vi.fn(async () => "discard"));
+/** The finder's client, mocked: the session's import path asks the host for
+ *  bytes, and no test here reaches a real host. */
+const assetClientMock = vi.hoisted(() => ({ assetBytes: vi.fn() }));
+vi.mock("./asset-finder/client.js", () => assetClientMock);
+/** The last artboard panel a session built, so a case can read what it was
+ *  told to list. */
+const panels = vi.hoisted(() => ({ last: undefined as unknown }));
 /** The library dialog has no jsdom implementation. Opening a theme by URL
  *  reaches a document through this same call, so what the dialog answered is
  *  the only difference between arriving two ways. */
@@ -30,7 +40,9 @@ vi.mock("./theme-library-dialog.js", () => ({
   promptThemeConflict: () => conflictMock(),
 }));
 
-vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
+vi.mock("./artboard-panel.js", () => ({
+  createArtboardPanel: () => (panels.last = panel()),
+}));
 vi.mock("./palette-manager/index.js", () => ({
   createPalettePanel: () => panel(),
 }));
@@ -1083,11 +1095,44 @@ describe("opening a theme over a document that has unsaved changes", () => {
     });
 
   beforeEach(() => {
+    assetClientMock.assetBytes.mockReset();
     dirtyMock.mockReset();
     dirtyMock.mockReturnValue(false);
     replaceMock.mockReset();
     replaceMock.mockResolvedValue("discard");
     libraryChoiceMock.mockClear();
+  });
+
+  it("lists a finder import in the Document pane, as the Add pane's file does", async () => {
+    assetClientMock.assetBytes.mockResolvedValue({
+      bytes: new TextEncoder().encode(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>',
+      ),
+      filename: "house.svg",
+    });
+    const extensions = sessionWith();
+    const setAssets = (panels.last as ReturnType<typeof panel>).setAssets;
+
+    const outcome = await extensions.actionFacade().importAsset?.(
+      { source: "lucide", results: [], next: undefined, failure: undefined },
+      {
+        id: "lucide:house",
+        name: "house",
+        kind: "icon",
+        preview: "",
+        subtitle: undefined,
+        licence: "ISC",
+        sourceUrl: "https://lucide.dev/icons/house",
+      },
+    );
+
+    expect(outcome?.ok === true ? "imported" : outcome?.message).toBe(
+      "imported",
+    );
+    // The declaration is new, so the pane's list must be told; otherwise it
+    // shows the set from before the import until another asset action.
+    expect(setAssets).toHaveBeenCalled();
+    extensions.destroy();
   });
 
   it("asks before discarding, and opens nothing when the author says no", async () => {

@@ -126,6 +126,9 @@ export function AssetFinder({
   client,
 }: FinderProps): React.JSX.Element {
   const [sources, setSources] = useState<readonly AssetSourceListing[]>([]);
+  const [listing, setListing] = useState<"loading" | "ok" | "failed">(
+    "loading",
+  );
   const [active, setActive] = useState<ListingCategory | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState<AssetSearchAnswer | undefined>(
@@ -137,6 +140,9 @@ export function AssetFinder({
   >(undefined);
   const [shown, setShown] = useState<readonly Row[]>([]);
   const [cursors, setCursors] = useState<Readonly<Record<string, string>>>({});
+  /** The pages that failed, kept across Load more: a paged answer carries only
+   *  the sources it asked, so the latest answer is not the whole state. */
+  const [failures, setFailures] = useState<readonly AssetPage[]>([]);
   /** The hosts the first host-contacting search reached, shown once (spec §5).
    *  A search that reached none is not the disclosure: a person is told before
    *  the term leaves, not after. */
@@ -166,15 +172,27 @@ export function AssetFinder({
     let live = true;
     void listSources(client).then((next) => {
       if (!live) return;
-      setSources(next);
+      // A host that cannot be reached is a sentence, not an empty dialog: a
+      // build without the asset routes and an absent host read the same here,
+      // and both mean the finder cannot work.
+      if (!next.ok) {
+        setListing("failed");
+        setSources([]);
+        return;
+      }
+      setListing("ok");
+      setSources(next.sources);
+      const listed = next.sources;
       setActive((current) => {
         // A caller that names a category wins over the last one: the font
         // field opens Fonts every time, not only the first time.
-        if (initialCategory !== undefined && present(initialCategory, next)) {
+        if (initialCategory !== undefined && present(initialCategory, listed)) {
           return initialCategory;
         }
-        if (current !== undefined && present(current, next)) return current;
-        return next[0]?.category ?? (bodyKinds.font != null ? "font" : "local");
+        if (current !== undefined && present(current, listed)) return current;
+        return (
+          listed[0]?.category ?? (bodyKinds.font != null ? "font" : "local")
+        );
       });
     });
     return () => {
@@ -185,7 +203,14 @@ export function AssetFinder({
   }, [open, client, initialCategory]);
 
   useEffect(() => {
-    localStorage.setItem(DISABLED_KEY, JSON.stringify([...disabled]));
+    // A browser that refuses storage keeps the choice for this session only;
+    // the chip is still the author's press, so throwing here would take the
+    // modal down over a preference.
+    try {
+      localStorage.setItem(DISABLED_KEY, JSON.stringify([...disabled]));
+    } catch {
+      // No store: the disabled set lives in state for as long as the page does.
+    }
   }, [disabled]);
 
   const categories: ListingCategory[] = [];
@@ -215,6 +240,7 @@ export function AssetFinder({
       setAnswer(undefined);
       setShown([]);
       setCursors({});
+      setFailures([]);
       return;
     }
 
@@ -238,6 +264,7 @@ export function AssetFinder({
           setAnswer(next);
           setShown(rowsAfter(next.pages, []));
           setCursors(cursorsAfter({}, next.pages));
+          setFailures(next.pages.filter((page) => page.failure !== undefined));
           const reached = [
             ...new Set(
               enabledSources
@@ -263,10 +290,11 @@ export function AssetFinder({
   }, [open, active, query, enabledKey, sources.length, client]);
 
   const rows = shown;
-  const failures =
-    answer?.pages.filter((page) => page.failure !== undefined) ?? [];
   const empty =
-    answer !== undefined && failures.length === 0 && rows.length === 0;
+    answer !== undefined &&
+    failures.length === 0 &&
+    rows.length === 0 &&
+    !enabledSources.some((source) => cursors[source.id] !== undefined);
 
   const more = enabledSources.some(
     (source) => cursors[source.id] !== undefined,
@@ -289,6 +317,11 @@ export function AssetFinder({
     setAnswer(next);
     setShown((current) => rowsAfter(next.pages, current));
     setCursors((current) => cursorsAfter(current, next.pages));
+    // A source the pager did not ask keeps the sentence it already had.
+    setFailures((current) => [
+      ...current.filter((page) => !enabled.includes(page.source)),
+      ...next.pages.filter((page) => page.failure !== undefined),
+    ]);
   };
 
   const sourceOf = (id: string): AssetSourceListing | undefined =>
@@ -320,6 +353,14 @@ export function AssetFinder({
       label={uiCopy.assets.title}
       className="editor-shell-dialog--finder"
     >
+      {listing === "failed" ? (
+        <p
+          className="p-[var(--space-16)] text-sm text-muted"
+          data-yunari-asset-host-failure=""
+        >
+          {uiCopy.assets.hostUnavailable}
+        </p>
+      ) : null}
       {active === undefined ? null : (
         <Tabs.Root
           value={active}

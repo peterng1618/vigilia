@@ -600,7 +600,7 @@ export class EditorSession {
         if (fetched === undefined)
           return {
             ok: false as const,
-            message: uiCopy.assets.bytesUnavailable,
+            message: uiCopy.assets.bytesUnavailable(result.name),
           };
 
         const file = new File(
@@ -643,6 +643,13 @@ export class EditorSession {
             }
           },
         });
+        if (outcome.ok === true) {
+          // The Document pane lists declarations, and a finder import makes one
+          // just as the Add pane's own file does; without this the list is a
+          // save behind.
+          this.#artboard.setAssets(this.#assets.declarations);
+          this.#document.refreshBackgroundMedia();
+        }
         return outcome.ok
           ? { ok: true as const, imported: outcome.imported }
           : { ok: false as const, message: outcome.message };

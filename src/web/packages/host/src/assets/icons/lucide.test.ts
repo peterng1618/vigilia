@@ -1,4 +1,3 @@
-import type { AssetResult } from "@yunari/renderer-core";
 import { describe, expect, it } from "vitest";
 import { LUCIDE_ICONS, lucideSource, searchLucide } from "./lucide.js";
 
@@ -7,16 +6,6 @@ const context = {
   signal: new AbortController().signal,
   fetch: globalThis.fetch,
 };
-
-const result = (name: string): AssetResult => ({
-  id: name,
-  name,
-  kind: "icon",
-  preview: "",
-  subtitle: undefined,
-  licence: "ISC",
-  sourceUrl: `https://lucide.dev/icons/${name}`,
-});
 
 describe("the Lucide manifest", () => {
   it("is generated as plain SVG data", () => {
@@ -79,16 +68,5 @@ describe("the Lucide source", () => {
 
   it("answers nothing for an icon it does not know", async () => {
     expect(await lucideSource.bytesOf("not-an-icon", context)).toBeUndefined();
-  });
-
-  it("credits the icon set and its licence", () => {
-    expect(lucideSource.creditsOf(result("arrow-down"))).toMatchObject({
-      kind: "icon",
-      title: "arrow-down",
-      license: "ISC",
-    });
-    expect(lucideSource.creditsOf(result("arrow-down")).source?.url).toContain(
-      "lucide.dev",
-    );
   });
 });

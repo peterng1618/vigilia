@@ -18,11 +18,10 @@ Close the **R2 store backend** plan ([`2026-10-23-r2-store-backend.md`](docs/sup
 
 ## Last completed change
 
-- **The R2 store backend merged to `main`**: the Worker with D1 and private R2, host proxy routes, the editor's status and withdraw UI, and the import script; the full gate exits 0.
-- **Finalize replays no longer clobber later transitions**: only an item that has not moved since the version row landed is settled, so `unpublished`, `rejected` and an unverified demotion survive.
-- **The submit route clears the session only on an authenticated call's 401**, so an expired presigned PUT signature no longer signs the author out.
-- **The register's `vg-700` row is archived verified** with an array `artefacts`, and the `vg-698` collision was resolved by renumbering the biome row to `vg-701`.
-- **Merge resolution kept main's credential store, asset routes and finder docs**, and removed the superseded GitHub store code and its `validate-item.test.ts`.
+- **The asset finder review's nine Minor findings, merged over the R2 tip**; **M1–M5**: a surviving failure outlives Load more, a cursor-bearing page is not "no results", an unreachable host says so, the bytes refusal names the item, and the storage write is guarded.
+- **M6–M7**: `credentials.json` is written `0600` (its test skips on win32); a row renders the result's subtitle, only an image is credited an author, and the dead `AssetSource.creditsOf` is removed.
+- **M8**: a finder import refreshes the Document pane's asset list, sharing the Add pane's path.
+- **M9**: the finder opens on `Ctrl+Shift+F`; `Ctrl+Shift+A` is Chromium's tab search and is now refused as reserved in a capture.
 
 ## Next
 

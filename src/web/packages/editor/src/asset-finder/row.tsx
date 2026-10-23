@@ -34,6 +34,10 @@ export function AssetRow({
         )}
       </span>
       <span className="truncate text-sm">{result.name}</span>
+      {/* The source's own second word: an icon style, or a photographer. */}
+      {result.subtitle === undefined ? null : (
+        <span className="truncate text-xs text-faint">{result.subtitle}</span>
+      )}
       <span className="flex items-center justify-between gap-[var(--space-6)] text-xs text-muted">
         <span className="truncate">{sourceLabel}</span>
         <span className="shrink-0">{result.licence}</span>

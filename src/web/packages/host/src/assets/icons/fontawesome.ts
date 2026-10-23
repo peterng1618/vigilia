@@ -143,14 +143,4 @@ export const fontAwesomeSource: AssetSource = {
       filename: `${name}.svg`,
     };
   },
-
-  creditsOf(result) {
-    return {
-      kind: "icon",
-      title: result.name,
-      license: result.licence,
-      changes: "Imported unchanged",
-      source: { url: result.sourceUrl },
-    };
-  },
 };

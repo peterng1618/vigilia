@@ -189,25 +189,4 @@ describe("unsplashSource.bytesOf", () => {
     });
     expect(new TextDecoder().decode(bytes?.bytes)).toBe("<jpeg bytes>");
   });
-
-  it("credits the photographer and the photo page", () => {
-    expect(
-      unsplashSource.creditsOf({
-        id: "p1",
-        name: "a cat on a wall",
-        kind: "image",
-        preview: "",
-        subtitle: "Jane Doe",
-        licence: "Unsplash License",
-        sourceUrl: "https://unsplash.com/photos/p1",
-      }),
-    ).toEqual({
-      kind: "image",
-      title: "a cat on a wall",
-      author: { name: "Jane Doe" },
-      license: "Unsplash License",
-      changes: "Imported unchanged",
-      source: { url: "https://unsplash.com/photos/p1" },
-    });
-  });
 });

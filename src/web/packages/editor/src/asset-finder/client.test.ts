@@ -43,22 +43,27 @@ describe("listSources", () => {
         new Response(JSON.stringify({ sources: [listing] }), { status: 200 }),
     );
 
-    expect(await listSources({ fetch: fetcher })).toEqual([listing]);
+    expect(await listSources({ fetch: fetcher })).toEqual({
+      ok: true,
+      sources: [listing],
+    });
     expect(calls[0]?.url).toBe("/api/assets/sources");
   });
 
-  it("answers no sources for a host that does not serve them", async () => {
+  it("tells a host that does not serve sources apart from one that is absent", async () => {
+    // A 503 disables the finder; an empty listing is a host with no sources,
+    // and the modal says a different sentence for each.
     const { fetcher } = stub(() => new Response("", { status: 503 }));
 
-    expect(await listSources({ fetch: fetcher })).toEqual([]);
+    expect(await listSources({ fetch: fetcher })).toEqual({ ok: false });
   });
 
-  it("answers no sources rather than throwing when the host is unreachable", async () => {
+  it("answers failed rather than throwing when the host is unreachable", async () => {
     const fetcher = (async () => {
       throw new TypeError("fetch failed");
     }) as typeof fetch;
 
-    expect(await listSources({ fetch: fetcher })).toEqual([]);
+    expect(await listSources({ fetch: fetcher })).toEqual({ ok: false });
   });
 });
 

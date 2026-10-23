@@ -122,8 +122,12 @@ async function settle(): Promise<void> {
 async function render(
   sources: readonly AssetSourceListing[],
   props: Partial<Parameters<typeof AssetFinder>[0]> = {},
+  listing: Awaited<ReturnType<typeof client.listSources>> = {
+    ok: true,
+    sources,
+  },
 ): Promise<void> {
-  listSources.mockResolvedValue(sources);
+  listSources.mockResolvedValue(listing);
   root = document.createElement("div");
   document.body.append(root);
   container = createRoot(root);
@@ -282,6 +286,14 @@ describe("AssetFinder tabs", () => {
     expect(tab("font").getAttribute("aria-selected")).toBe("true");
   });
 
+  it("says the host is absent rather than drawing a blank dialog", async () => {
+    await render([], {}, { ok: false });
+
+    expect(
+      document.querySelector("[data-yunari-asset-host-failure]")?.textContent,
+    ).toContain(uiCopy.assets.hostUnavailable);
+  });
+
   it("renders a body-only category's body and no chips", async () => {
     await render([curatedFonts]);
     await settle();
@@ -300,6 +312,30 @@ describe("AssetFinder chips", () => {
     await settle();
 
     expect(document.querySelector("[data-yunari-asset-chip]")).toBeNull();
+  });
+
+  it("still switches a chip where the browser refuses storage", async () => {
+    // A private window's store can throw on write; the chip is the author's
+    // choice for this session either way, and an unhandled throw in an effect
+    // would take the modal with it.
+    const deny = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("storage denied");
+      });
+
+    await render([lucide, fontAwesome]);
+    await settle();
+
+    const chip = document.querySelector<HTMLButtonElement>(
+      '[data-yunari-asset-chip="lucide"]',
+    );
+    if (chip === null) throw new Error("no Lucide chip.");
+    await act(async () => chip.click());
+    await settle();
+
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    deny.mockRestore();
   });
 
   it("searches without a source whose chip is switched off", async () => {
@@ -403,6 +439,72 @@ describe("AssetFinder search", () => {
     expect(
       document.querySelector("[data-yunari-asset-host-notice]")?.textContent,
     ).toContain("api.unsplash.com");
+  });
+
+  it("keeps a failed source's sentence when Load more pages the survivors", async () => {
+    searchAssets.mockImplementation(async (request) =>
+      request.cursors["fontawesome-free"] === undefined
+        ? {
+            pages: [
+              page("lucide", [], {
+                failure: { reason: "failed", message: "Lucide answered 500." },
+              }),
+              page("fontawesome-free", [result("fontawesome-free:house")], {
+                next: "F1",
+              }),
+            ],
+          }
+        : {
+            pages: [
+              page("fontawesome-free", [result("fontawesome-free:star")]),
+            ],
+          },
+    );
+
+    await render([lucide, fontAwesome]);
+    await settle();
+    await act(async () => moreButton().click());
+    await settle();
+
+    // The paged answer carries no Lucide page at all; its failure is still the
+    // state of the grid, not a property of the last answer.
+    expect(
+      document.querySelector('[data-yunari-asset-failure="lucide"]')
+        ?.textContent,
+    ).toContain("Lucide answered 500.");
+    expect(rowIds()).toEqual([
+      "fontawesome-free:house",
+      "fontawesome-free:star",
+    ]);
+  });
+
+  it("does not read an empty page with a cursor as the end", async () => {
+    searchAssets.mockResolvedValue({
+      pages: [page("lucide", [], { next: "C1" })],
+    });
+
+    await render([lucide]);
+    await settle();
+
+    expect(document.querySelector("[data-yunari-asset-empty]")).toBeNull();
+    expect(moreButton()).not.toBeNull();
+  });
+
+  it("prints the result's own second word, which distinguishes a style or an author", async () => {
+    searchAssets.mockResolvedValue({
+      pages: [
+        page("fontawesome-free", [
+          { ...result("fontawesome-free:house"), subtitle: "solid" },
+        ]),
+      ],
+    });
+
+    await render([fontAwesome]);
+    await settle();
+
+    expect(
+      document.querySelector("[data-yunari-asset-row]")?.textContent,
+    ).toContain("solid");
   });
 
   it("draws a failed page's sentence and keeps the other source's rows", async () => {

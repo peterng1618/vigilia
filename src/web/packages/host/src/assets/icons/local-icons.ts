@@ -102,16 +102,6 @@ export function createLocalIconSource(config: {
         filename: `${icon.name}.svg`,
       };
     },
-
-    creditsOf(result) {
-      return {
-        kind: "icon",
-        title: result.name,
-        license: config.licence,
-        changes: "Imported unchanged",
-        source: { url: result.sourceUrl },
-      };
-    },
   };
 
   return { source, search };

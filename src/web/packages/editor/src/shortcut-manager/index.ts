@@ -41,10 +41,9 @@ export const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "n", modifier: true, action: "file.new" },
   { key: "o", modifier: true, action: "file.open" },
   { key: "s", modifier: true, action: "file.save" },
-  // Before `canvas.select-all`: that binding has no `shift` field, so it matches
-  // the shifted chord too, and first match wins. A plain Ctrl+A stays the
-  // canvas's, and Ctrl+Shift+A opens the finder.
-  { key: "a", modifier: true, shift: true, action: "file.findAssets" },
+  // Not Ctrl+Shift+A: Chromium keeps that for tab search, so the page never
+  // sees the press. Ctrl+Shift+F is unclaimed by Chromium and Firefox.
+  { key: "f", modifier: true, shift: true, action: "file.findAssets" },
   // Shift-qualified first, or `edit.undo`'s shift-agnostic binding below would
   // take Ctrl+Shift+Z and turn the standard redo chord into an undo. `edit.undo`
   // stays shift-agnostic because Cmd/Ctrl+Z is the only undo there is.
