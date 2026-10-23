@@ -18,11 +18,9 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 
 ## Last completed change
 
-- **Merges of `origin/main`** (`d269f06`, then this one): the asset finder's review minors, its icon-as-geometry and grid/metadata fixes, and the R2 store backend now sit beside the background layer.
-- **The finder's import writes the layer** (`4e00450`): it wrote the removed `artboard.backgroundMedia`; it writes the background's media through `setBackground`, and a session test pins the import outcome beside main's geometry assertions.
-- **Register**: this branch's four rows are renumbered `vg-702`–`vg-705` (`main` took 698/699/701 and archived 700), and the three-note 0093 collision is filed as `vg-706`.
-- **Background layer**: `background.media` is `{ assetId, bounds, offsetX?, offsetY?, flipX?, flipY? }`, always cover with offsets bounded by the overhang, flips mirror at paint time, stored `fit`/`scale` refused as unknown keys.
-- **Docs**: decision 0094, spec `implemented`, plan archived.
+- **A background video is sized from its metadata**: `intrinsic()` in `scene-fabric/src/background-media.ts` gated a video on a decoded frame, so at `loadedmetadata` it fell back to the bare box — stretched, offsets inert — while the glass sampler, reading later, drew the placed rect (user's report).
+- **Drawing keeps its own gate**: `drawable()` holds `drawImage`'s HAVE_CURRENT_DATA precondition apart from sizing, and the intrinsic listener re-places once in case a cached source completed before it attached.
+- **Proof**: a dom test at HAVE_METADATA fails with the old gate (red-proven) and passes with it; scene-fabric 366 pass, `background-layer.spec.ts` 3/3 on rebuilt bundles.
 
 ## Next
 

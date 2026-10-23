@@ -306,7 +306,9 @@ export function mountBackgroundMedia(
         rect,
         paint(ctx, region, device) {
           const source = intrinsic(mounted);
-          if (source === undefined) return false;
+          // Sizing and drawing have different preconditions: metadata sizes the
+          // rect, a frame is what `drawImage` accepts.
+          if (source === undefined || !drawable(mounted)) return false;
           const media = background?.media;
           // The child is placed inside this rect, the layer's box in artboard
           // units; the glass maps that box onto the device rect it samples, so
@@ -405,7 +407,8 @@ function notifyOnDecode(
 /**
  * The intrinsic size arrives after the first placement — after `load` for an
  * image, after `loadedmetadata` for a video — and there is nothing to cover
- * until it does. Re-place once when it lands.
+ * until it does. Re-place when it lands, and once more in case it landed before
+ * the listener could be attached (a cached source completes in the same task).
  */
 function notifyOnIntrinsic(
   element: HTMLImageElement | HTMLVideoElement,
@@ -413,21 +416,42 @@ function notifyOnIntrinsic(
 ): () => void {
   const event = element instanceof HTMLVideoElement ? "loadedmetadata" : "load";
   element.addEventListener(event, place);
+  if (intrinsic(element) !== undefined) place();
   return () => {
     element.removeEventListener(event, place);
   };
 }
 
-/** The decoded pixels, or undefined while there are none to draw. */
+/** `HTMLMediaElement`'s ready states, as numbers: enough metadata to know the
+ *  video's own size, and a decoded frame to draw. */
+const HAVE_METADATA = 1;
+const HAVE_CURRENT_DATA = 2;
+
+/**
+ * The source's own size, or undefined while it is unknown.
+ *
+ * A video **knows its size from its metadata**, before any frame decodes. Gating
+ * this on a frame left a video placed as the bare box — stretched to the box's
+ * aspect, every offset inert — while the glass sampler, reading later, drew the
+ * placed rect. Only drawing needs a frame; sizing does not.
+ */
 function intrinsic(
   element: HTMLImageElement | HTMLVideoElement,
 ): { readonly width: number; readonly height: number } | undefined {
   if (element instanceof HTMLVideoElement) {
-    if (element.readyState < 2) return undefined;
+    if (element.readyState < HAVE_METADATA) return undefined;
+    if (element.videoWidth === 0 || element.videoHeight === 0) return undefined;
     return { width: element.videoWidth, height: element.videoHeight };
   }
   if (!element.complete || element.naturalWidth === 0) return undefined;
   return { width: element.naturalWidth, height: element.naturalHeight };
+}
+
+/** Whether there is a frame `drawImage` will accept. A video below
+ *  HAVE_CURRENT_DATA — including every loop wrap — has a size but no pixels. */
+function drawable(element: HTMLImageElement | HTMLVideoElement): boolean {
+  if (!(element instanceof HTMLVideoElement)) return true;
+  return element.readyState >= HAVE_CURRENT_DATA;
 }
 
 function isBackgroundAsset(

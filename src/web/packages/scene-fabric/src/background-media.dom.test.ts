@@ -177,6 +177,46 @@ describe("background media", () => {
     handle.destroy();
   });
 
+  it("sizes a video from its metadata, before any frame decodes", () => {
+    // `loadedmetadata` is the only intrinsic-arrived event a video has, and at
+    // that moment `readyState` is HAVE_METADATA: the size is known, the frame is
+    // not. Gating the placement on a frame left the video as the bare box —
+    // stretched, every offset inert — while the glass sampler, reading later,
+    // drew the placed rect.
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: { media: { assetId: "loop", bounds: "theme" } },
+      artboard: { width: 400, height: 200 },
+      assets: [LOOP],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    const child = host.querySelector<HTMLVideoElement>(
+      "[data-yunari-background-media] video",
+    );
+    if (child === null) throw new Error("the layer mounted no video");
+    Object.defineProperty(child, "videoWidth", { value: 100 });
+    Object.defineProperty(child, "videoHeight", { value: 100 });
+    Object.defineProperty(child, "readyState", { value: 1 });
+    child.dispatchEvent(new Event("loadedmetadata"));
+
+    handle.setBackground({
+      media: { assetId: "loop", bounds: "theme", offsetX: 0.25 },
+    });
+    handle.setBounds({
+      artboard: { left: 0, top: 0, width: 400, height: 200 },
+      display: { left: 0, top: 0, width: 400, height: 200 },
+    });
+
+    // 400×200 box, 100×100 source: cover is 4×, and a quarter-box pan on x needs
+    // box*(1 + 0.5)/source = 6×, so the rect is 600×600 and pans 100px.
+    expect(child.style.left).toBe("0px");
+    expect(child.style.top).toBe("-200px");
+    expect(child.style.width).toBe("600px");
+    expect(child.style.height).toBe("600px");
+    handle.destroy();
+  });
+
   it("mirrors the child about the placed rect's centre", () => {
     const host = document.createElement("div");
     const handle = mountBackgroundMedia({
