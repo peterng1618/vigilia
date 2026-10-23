@@ -1,36 +1,31 @@
 # Yunari status
 
 Updated: 2026-10-23
-Branch: `peterng1618/background-media-becomes-a-layer`
+Branch: `peterng1618/Wallpaper-Engine-as-background-media`
 
 ## Current objective
 
-Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-background-layer-design.md), [`archived plan`](docs/superpowers/plans/archive/2026-10-23-background-layer.md)) on `main`, then close the **R2 store backend** plan locally: its Worker, D1 and R2 code is merged and gated, and only the owner's Cloudflare deploy and live proof remain.
+Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21-wallpaper-engine-import-design.md), [`plan`](docs/superpowers/plans/2026-10-21-wallpaper-engine-import.md)): the host reads the local Steam library and serves the item list, and the asset finder imports images and videos and guides a scene's PNG/MP4 export.
 
 ## Active work
 
-- **No plan is in flight**: the background-layer plan is archived, and the next plan is claimed when work starts.
-- **The R2 store backend is merged to `main`**; its plan stays in `docs/superpowers/plans/` pending the owner's acceptance.
-- **Task 5.2 is owner-run and pending**: Cloudflare resources, secrets, deploy, `/migrate`, health check, both OAuth callbacks and CPU measurement.
+- **The Wallpaper Engine import plan is active**; the owner named it, and tasks run one at a time from Task 1.
+- **The R2 store backend stays merged**; its owner-run Task 5.2 deploy and live proof remain pending and are not part of this plan.
 - **Task 5.1's import is unrun**: the smoke item `6041df49-9c61-4d51-a184-716890560bdb` exists only in the old catalogue; the script is ready.
-- **Queued:** `2026-10-21-wallpaper-engine-import.md`; it does not start until the owner accepts the R2 plan and names it active.
 - **Open register findings:** `vg-699` stale `vite preview` reuse on a shared port, `vg-701` biome never reads `.mjs`, `vg-695` a pre-existing `server.test.ts` flake.
 
 ## Last completed change
 
-- **CI's 22 browser failures are repaired at their causes, not their numbers**: the retired device-flow store stubs, the finder's font catalogue moving into the asset-finder body, the drawings' 240 off-scale literals, the role/name rule that overflowed under wider glyphs, and the popup/header overflow at 390px.
-- **Two suites measured a product that changed under them**: glass and host-media assumed a 30 Hz idle repaint, and `38cbfe3e` made the loop render only when a pass painted; the frame-determinism case now waits for the connection strip, not just ink.
-- **The runner gets a display**: `host-pwa` and `host-secure-origin` launch headed browsers on purpose, so CI runs Playwright under `xvfb-run` instead of reading "Missing X server" as a product failure.
-- **Proof**: `npm run gate` exit 0 (4,612 tests); CI run 39938147320 is green in both jobs; glyph-overflow and role-yield A/B red-proven; publish-loop 5/5 local runs after the overlay reset.
-- **A GPU-less host and an off-screen anchor**: the player proofs read the gap when the host reports no GPU reading, the publish popover shifts into the window (`sticky` drops `limitShift`), and the publish-loop cases start from a cleared host overlay.
+- **Decision 0097 claims the watchlisted paths before the code**: the note records the seven reuse rungs with their searches, the container layout, the still test and the measured library, and it claims `host/src/server.ts`, `editor-session.ts` and `shell-layout.tsx` individually because a directory claim licenses nothing.
+- **The Wallpaper Engine plan is named active**, with its nine tasks and the finder surface its own amendment defers to.
 
 ## Next
 
-1. The owner runs Task 5.2: create D1 and R2, set the secrets, deploy, `/migrate`, health check, register both OAuth callbacks.
-2. Replace the placeholder `CATALOGUE_ORIGIN` with the deployed URL, rebuild, and measure CPU for `GET /index.json` and one auth callback.
-3. Run the Task 5.1 import against the deployed origin, then the real OAuth round trip in the built editor.
-4. After the owner accepts, archive the R2 plan and name the Wallpaper Engine plan active.
-5. Drain `vg-699` in the next register pass.
+1. Task 1: the decision note claiming `host/src/server.ts`, `editor-session.ts` and `shell-layout.tsx`.
+2. Tasks 2–5: the container reader, classifier, install locator, library scan, read routes and the unpack/export routes.
+3. Tasks 6–7: register the finder's local source, then the scene's unpack/launch/export sheet.
+4. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
+5. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
 
 ## Blockers / unverified
 
