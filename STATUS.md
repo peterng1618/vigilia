@@ -19,9 +19,9 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 ## Last completed change
 
 - **Tailwind's preflight was capping the media layer**: `img, video { max-width: 100%; height: auto }` pinned the placed rect's width to the layer while the inline height grew, so the picture stretched and an x offset could not widen it (user's report; the player has no preflight, which is why only the editor showed it).
-- **The child now sets `max-width:none;max-height:none` inline** in `mountBackgroundMedia`, which outranks any stylesheet reset on the placed element.
-- **Proof**: a new editor e2e reads the placed rect against the source's aspect and fails on the un-fixed bundle (711.6 × 800.8), passes after it (1423 × 800.8); the editor's three background tests pass, `background-layer.spec.ts` 3/3, 677 unit tests in scene-fabric and the inspector.
-- **A background video is sized from its metadata**: `intrinsic()` gated a video on a decoded frame, so it stayed the bare box while the glass sampled the placed rect; `drawable()` now keeps `drawImage`'s frame precondition apart from sizing.
+- **The child sets `max-width:none;max-height:none` inline** in `mountBackgroundMedia`, outranking any stylesheet reset; an editor e2e reads the placed rect against the source's aspect (red on 711.6 × 800.8, green on 1423 × 800.8).
+- **A background video is sized from its metadata**: `intrinsic()` gated a video on a decoded frame, so it stayed the bare box while the glass sampled the placed rect; `drawable()` keeps `drawImage`'s precondition apart from sizing.
+- **Merged `origin/main`**: 22 browser failures repaired at their causes (retired device-flow stubs, the finder's font catalogue, drawing literals, role/name overflow), CI now runs Playwright under `xvfb-run`, and the publish surface stays inside a narrow window.
 
 ## Next
 
@@ -33,8 +33,7 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 
 ## Blockers / unverified
 
-- **The store Worker is not deployed and no live store path has run**: no D1 database, R2 bucket, secret, real `database_id`, deploy, `/migrate`, health check, OAuth round trip, live CPU measurement or import.
-- **`CATALOGUE_ORIGIN` is still the placeholder** `https://yunari-store.workers.dev`, and no normalized video has been played in a browser.
+- **The store Worker is not deployed and no live store path has run**: no D1 database, R2 bucket, secret, real `database_id`, deploy, `/migrate`, health check, OAuth round trip, live CPU measurement or import; `CATALOGUE_ORIGIN` is still the placeholder `https://yunari-store.workers.dev`, and no normalized video has played in a browser.
 - **Version 2 now identifies two shapes**: a stored or catalogued document carrying `artboard.background`/`backgroundMedia`, or `fit`/`scale` on its media, is refused by the unknown-key check; the live catalogue's smoke theme carries the old shape and needs reseeding (owner action).
 - **Background and artboard edits are not undoable**: Fabric history serialises the scene only. Recorded, not a regression.
-- **Three browser specs are red or order-dependent, and none is this branch's behaviour**: `host-media`'s frame-repaint case (the host's local display answers 1 fps), `publish-header`'s 390 px containment (0.27 px overflow), and `publish-loop`'s clear-on-close (passes alone, fails after its first test).
+- **The compact editor header is still wider than a phone**: clipping it stops the document widening, but the menubar and publish control stay unreachable below the breakpoint — `vg-707` waits on a ruling.

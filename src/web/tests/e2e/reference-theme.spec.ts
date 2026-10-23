@@ -293,10 +293,15 @@ async function savePackage(page: Page): Promise<{
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "Save package" }).click();
+  // **The download is the save's own signal**, so it is what this waits for:
+  // building the package on a loaded CI runner outran the status line's 5 s
+  // default, and the assertion failed while the same save was still landing.
+  const landed = await download;
   await expect(page.locator("#status-message")).toHaveText(
     "Theme package saved",
+    { timeout: 15_000 },
   );
-  const stream = await (await download).createReadStream();
+  const stream = await landed.createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   const parsed = readThemePackage(Buffer.concat(chunks));

@@ -709,14 +709,17 @@ test.describe("the video frame callback on the real player", () => {
       "and the product's chain ended, so nothing was delivered in this window",
     ).toBe(0);
     // **The claim.** The display keeps repainting on its own cadence, so the
-    // render count does not collapse. 0.4 is a floor chosen to hold on both
-    // ends of the machine range rather than a measured ratio: on this host the
-    // two phases are within 30 % of each other, and on a host whose
-    // compositor runs faster than the 30 Hz cap the ratio approaches 0.5.
+    // render count does not collapse to the frames' — it falls back to the
+    // loop's. **The two counts are not the same kind of number**: this page is
+    // served to loopback, which resolves to the machine's own display, whose
+    // rate is 1 fps by default (`chartFpsFor`), while phase A also renders once
+    // per delivered video frame (~30/s). Comparing a ratio would measure the
+    // video's cadence, not the loop's. Three seconds at 1 fps owes about three
+    // renders; `>= 2` is that budget with one window of slack.
     expect(
       idle.renders,
       `the player still repaints with no video frames delivered (${idle.renders} against ${armed.renders} armed)`,
-    ).toBeGreaterThan(armed.renders * 0.4);
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 
