@@ -501,14 +501,28 @@ export function createNewShape(
 export function createNewPaintDefaults(
   globals: FabricGlobals | undefined,
 ): NewPaintDefaults {
+  const ink = newInk(globals);
+  return { fill: ink.color, [YUNARI_PAINT_PROPERTY]: { fill: ink.ref } };
+}
+
+/** The ink a new content object draws with, resolved and referenced together.
+ *
+ * Exported because a construct that draws *lines* rather than fills — the
+ * finder's imported icons — needs the same choice without a fill in it: two
+ * copies of the token preference would paint icons in a colour a new shape
+ * never uses. */
+export function newInk(globals: FabricGlobals | undefined): {
+  readonly color: string | Gradient<"linear">;
+  readonly ref: `palette.${string}`;
+} {
   const [id, entry] = firstPalette(globals);
   const ref = `palette.${id}` as const;
-  const fill = fabricArtboardPaint(entry.value, 1, 1);
+  const color = fabricArtboardPaint(entry.value, 1, 1);
 
-  if (fill === undefined)
+  if (color === undefined)
     throw new Error(`Palette token "${ref}" cannot paint a new object.`);
 
-  return { fill, [YUNARI_PAINT_PROPERTY]: { fill: ref } };
+  return { color, ref };
 }
 
 /** Supplies the paint and per-run typography required by a new text object. */

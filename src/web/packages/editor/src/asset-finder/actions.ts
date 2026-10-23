@@ -1,20 +1,14 @@
 import type { AssetPage, AssetResult } from "@yunari/renderer-core";
 import type { ThemeCreditsEntry } from "@yunari/theme-package";
-import {
-  type AssetManager,
-  type LocalAssetReference,
-  mimeOf,
-} from "../asset-manager/index.js";
+import { type AssetManager, mimeOf } from "../asset-manager/index.js";
 import type { EditorDocument } from "../editor-document.js";
 import { uiCopy } from "../ui-copy.js";
 
-export interface ImportedAsset {
-  readonly reference: LocalAssetReference;
-  readonly opened: boolean;
-}
-
+/** The outcome is yes or a sentence: what was placed differs by kind — an image
+ *  carries an asset reference and an icon carries none — and no caller reads
+ *  the difference. */
 export type ImportOutcome =
-  | { readonly ok: true; readonly imported: ImportedAsset }
+  | { readonly ok: true }
   | { readonly ok: false; readonly message: string };
 
 /** The finder's action for one row: bytes in, declared asset and credit out.
@@ -53,7 +47,7 @@ export async function importFinderResult(input: {
     const reference = await input.manager.import(file);
     input.document.addCredit(credit);
     input.place(reference.id);
-    return { ok: true, imported: { reference, opened: true } };
+    return { ok: true };
   } catch (error) {
     return {
       ok: false,

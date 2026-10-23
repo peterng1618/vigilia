@@ -18,10 +18,11 @@ Close the **R2 store backend** plan ([`2026-10-23-r2-store-backend.md`](docs/sup
 
 ## Last completed change
 
-- **The asset finder review's nine Minor findings, merged over the R2 tip**; **M1–M5**: a surviving failure outlives Load more, a cursor-bearing page is not "no results", an unreachable host says so, the bytes refusal names the item, and the storage write is guarded.
-- **M6–M7**: `credentials.json` is written `0600` (its test skips on win32); a row renders the result's subtitle, only an image is credited an author, and the dead `AssetSource.creditsOf` is removed.
-- **M8**: a finder import refreshes the Document pane's asset list, sharing the Add pane's path.
-- **M9**: the finder opens on `Ctrl+Shift+F`; `Ctrl+Shift+A` is Chromium's tab search and is now refused as reserved in a capture.
+- **The finder's reported defects are fixed**: Font Awesome reads 6.7's `icon-families.json` (the old `icons.json` 404s) and Unsplash is never asked for a blank term.
+- **Icons import as geometry**: the theme's ink, a stroke width, a centred 12%-of-the-shorter-edge box, and a path/group in the composition panel — no longer an image.
+- **The grid** draws monochrome icons as theme-coloured masks in one fixed box, and the selected row carries the accent edge.
+- **The finder is near-full-screen**, inset so the header, rail and status bar stay visible, and it renders the dialog's Close control.
+- Unsplash's own error text now rides beside the status, so a refusal names its cause.
 
 ## Next
 

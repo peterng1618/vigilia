@@ -1706,14 +1706,21 @@ body,
   box-shadow: var(--elev-3);
 }
 
-/* The asset finder's window: as much of a 1180×900 reference as a viewport
-   allows, with 24px of page still visible on every side. The popup owns the
-   size and clips; the grid inside scrolls, so paging never moves the page. */
+/* The asset finder's window: the editor's working area, less the shell's own
+   chrome. Its edges stop short of the 42px header, the 46px rail (§7.2) and
+   the 26px status bar, so the author can still see — and reach — the way back
+   out and where they are. The popup owns the size and clips; the grid inside
+   scrolls, so paging never moves the page. */
 .editor-shell-dialog--finder {
-  width: min(1132px, calc(100vw - 48px));
-  height: min(852px, calc(100vh - 48px));
+  top: calc(var(--header-height) + var(--space-8));
+  right: var(--space-8);
+  bottom: calc(26px + var(--space-8));
+  left: calc(46px + var(--space-8));
+  width: auto;
+  height: auto;
   max-width: none;
   max-height: none;
+  transform: none;
   padding: 0;
   display: flex;
   flex-direction: column;

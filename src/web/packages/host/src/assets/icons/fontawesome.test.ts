@@ -4,10 +4,15 @@ import { FONTAWESOME_VERSION, fontAwesomeSource } from "./fontawesome.js";
 const BASE = `https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@${FONTAWESOME_VERSION}/`;
 const LICENCE = "CC-BY-4.0 AND OFL-1.1 AND MIT";
 
+/** The shape Font Awesome 6.7's `icon-families.json` actually serves: a
+ *  family per style set, never a flat `styles` list. */
 const ICONS = {
-  house: { label: "House", styles: ["solid", "regular"] },
-  "arrow-down": { label: "Arrow Down", styles: ["solid"] },
-  github: { label: "GitHub", styles: ["brands"] },
+  house: {
+    label: "House",
+    svgs: { classic: { solid: {}, regular: {} } },
+  },
+  "arrow-down": { label: "Arrow Down", svgs: { classic: { solid: {} } } },
+  github: { label: "GitHub", svgs: { classic: { brands: {} } } },
 };
 
 function stubFetch(overrides: Record<string, Response> = {}) {
@@ -22,7 +27,7 @@ function stubFetch(overrides: Record<string, Response> = {}) {
     );
     if (override !== undefined) return override[1].clone();
 
-    if (url.endsWith("/metadata/icons.json")) {
+    if (url.endsWith("/metadata/icon-families.json")) {
       return new Response(JSON.stringify(ICONS), { status: 200 });
     }
     if (url.endsWith("/package.json")) {
@@ -115,7 +120,7 @@ describe("fontAwesomeSource", () => {
 
   it("fails with the status when metadata is missing", async () => {
     const { fetcher } = stubFetch({
-      "/metadata/icons.json": new Response("gone", { status: 404 }),
+      "/metadata/icon-families.json": new Response("gone", { status: 404 }),
     });
 
     await expect(
@@ -130,7 +135,7 @@ describe("fontAwesomeSource", () => {
     await fontAwesomeSource.search("github", undefined, context(fetcher));
 
     expect(
-      calls.filter((url) => url.endsWith("/metadata/icons.json")),
+      calls.filter((url) => url.endsWith("/metadata/icon-families.json")),
     ).toHaveLength(1);
   });
 });

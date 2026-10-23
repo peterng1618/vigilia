@@ -8,6 +8,7 @@ import type {
 } from "@yunari/renderer-core";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
+import { readScene } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -427,7 +428,7 @@ test("the footer's action imports the selected row, asking for its namespaced id
     asked.push(route.request().url());
     await route.fulfill({
       status: 200,
-      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10 12 3l9 7"/><path d="M5 9v11h14V9"/></svg>',
       headers: { "content-type": "image/svg+xml" },
     });
   });
@@ -438,7 +439,6 @@ test("the footer's action imports the selected row, asking for its namespaced id
     }),
   });
   const dialog = await openFinder(page);
-
   await page.locator("[data-yunari-asset-row]").first().click();
   await page.locator("[data-yunari-asset-action]").click();
 
@@ -450,6 +450,17 @@ test("the footer's action imports the selected row, asking for its namespaced id
   await expect(dialog.locator("[data-yunari-asset-count]")).not.toContainText(
     "did not send",
   );
+  // An icon is geometry, not a picture: a Fabric image cannot take the theme's
+  // ink or a stroke width, and that is what the author gets to edit.
+  // A glyph's subpaths arrive as one group (or one path, for a single-subpath
+  // set), never as an image: an image cannot take the theme's ink or a stroke.
+  await expect
+    .poll(
+      async () =>
+        (await readScene(page)).find((object) => object.id.startsWith("icon-"))
+          ?.type,
+    )
+    .toMatch(/^(group|path)$/);
 });
 
 test("a source that needs a key opens Settings on Connections", async ({
@@ -517,4 +528,47 @@ test("captures the Connections tab's provider row", async ({
   ).toBeVisible();
 
   await captureVisualReview(page, testInfo, "editor-finder-connections");
+});
+
+test("the finder leaves the header, the rail and the status bar in view", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await stubAssets(page, {
+    sources: [lucide],
+    answer: () => ({ pages: [answered("lucide", [result("lucide:house")])] }),
+  });
+  const dialog = await openFinder(page);
+  const box = await dialog.boundingBox();
+  const viewport = page.viewportSize();
+  if (box === null || viewport === null) throw new Error("no dialog box.");
+
+  // The chrome's own measurements: a 42px header, a 46px rail and a 26px
+  // status bar, with the rest left to the finder.
+  expect(box.y).toBeGreaterThanOrEqual(42);
+  expect(box.x).toBeGreaterThanOrEqual(46);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height - 26);
+  expect(box.width).toBeGreaterThan(viewport.width * 0.9);
+});
+
+test("the chosen row is drawn as chosen", async ({ page }, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await stubAssets(page, {
+    sources: [lucide],
+    answer: () => ({
+      pages: [
+        answered("lucide", [result("lucide:house"), result("lucide:star")]),
+      ],
+    }),
+  });
+  await openFinder(page);
+  const row = page.locator('[data-yunari-asset-row="lucide:house"]');
+  const other = page.locator('[data-yunari-asset-row="lucide:star"]');
+
+  await row.click();
+
+  await expect(row).toHaveClass(/border-accent/);
+  await expect(other).not.toHaveClass(/border-accent/);
 });
