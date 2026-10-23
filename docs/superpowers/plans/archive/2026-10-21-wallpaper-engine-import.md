@@ -373,3 +373,34 @@ export function readThemeCredits(bytes: Uint8Array): ThemeCredits | undefined;
 - Spec §12's open questions are not silently answered: `-project`'s semantics stay a Phase-6 convenience (Task 5 launches with the flag and Task 9 asserts only that the process is spawned), and the export dialog's default location is why Task 5's watcher scope is fixed.
 - The video normalizer (§6) is not built here: Task 6 imports a video item through `manager.import` and Task 7 through the same path; when the store's normalizer lands, both call it. Until then a video over the cap is refused by the asset manager and the refusal is shown.
 - `credits.json` is Task 8 rather than interleaved because no earlier task writes a package.
+
+## Outcome (2026-10-23)
+
+Landed through 14 task commits plus two review-fix commits. The whole-branch
+review returned no Critical issue; its three Important findings (kind filter and
+title search, the baked-in-clock sentence, video through the normalizer) and
+four minors were fixed in `b30c9d53` and `3396b225`. Final gate: 341 test files
+and 4,728 tests, plus the worker's 12 files and 72 tests, exit 0.
+
+Decisions taken during execution that this plan did not spell out:
+
+- **A subscribed scene's payload is `<dir>/scene.pkg`** when it exists, not the
+  `scene.json` its descriptor names; the disk is the truth, and §1.2/§8.1 were
+  corrected to say so.
+- **A `.pkg` member is untrusted third-party input.** A name that is absolute,
+  carries a drive letter or backslash, or holds an empty, `.` or `..` segment
+  refuses the unpack; safe nested paths are written with their parents. A real
+  package has 17 of 18 members under `particles/`, `materials/` and `models/`.
+- **The unpack requires a `scene.json` member**, and the target directory name
+  is always resolved from the scan, never from the request.
+- **`launchEditor` reports a real spawn**, not an accepted call, and never waits
+  for or drives the editor.
+- **Both video entries cross the shared normalizer** — a video item and a
+  scene's exported MP4; a PNG is imported as served. The credit's `changes`
+  follows the normalizer's `reencoded` answer.
+- **The theme-package credits half was already landed** and was verified, not
+  rebuilt. No theme-details surface exists to draw an entry, so the drawing was
+  filed as `vg-708` rather than invented here.
+- **No scene-facts cache.** A listing re-reads and reclassifies each package on
+  each mount; bytes are never retained. Add a `path + mtime` facts cache if
+  listing latency ever matters.
