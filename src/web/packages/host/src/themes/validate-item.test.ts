@@ -236,6 +236,42 @@ describe("validateCatalogueItem", () => {
     });
   });
 
+  it("accepts a package that carries its attribution", async () => {
+    // A theme published with imported icons carries credits.json; the store
+    // validates the package the author wrote, not a rewritten copy.
+    const theme = themeFor(ID);
+    const written = writeThemePackage({
+      envelope: {
+        ...theme,
+        metadata: { ...theme.metadata, version: "1.0.0" },
+      },
+      assets: {},
+      credits: {
+        format: "yunari-theme-credits",
+        version: 1,
+        entries: [
+          {
+            kind: "icon",
+            title: "house",
+            license: "ISC",
+            changes: "Imported unchanged",
+            source: { url: "https://lucide.dev/icons/house" },
+          },
+        ],
+      },
+    });
+    if (!written.ok) throw new Error(written.message);
+    const directory = await itemDirectory({
+      id: ID,
+      packageBytes: written.bytes,
+    });
+
+    expect(await validateCatalogueItem(directory)).toEqual({
+      ok: true,
+      id: ID,
+    });
+  });
+
   it("refuses a directory with no item.json", async () => {
     const directory = await itemDirectory({ id: ID, item: null });
 
