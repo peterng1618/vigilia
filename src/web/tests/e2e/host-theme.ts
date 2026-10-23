@@ -64,19 +64,29 @@ export const HOST_MEDIA_THEME_ID = "e2e-media";
  * A theme-bounded image the player must place by its authored transform and
  * clip to the artboard, with a glass panel over it.
  *
- * **The board is wide and the source narrow on purpose.** `contain` then
- * letterboxes the artboard vertically on any viewport, and the `scale`/`offsetX`
- * push the media out of the board's top, bottom and right edges — so the
- * placed-but-clipped region is on screen and a pixel read there is evidence
- * rather than an off-screen coordinate. A square source in a 16:9 board
- * happened to overflow only where a desktop viewport ends, which no screenshot
- * can read.
+ * **The source is narrow and the board wide on purpose.** The media always
+ * `cover`s its box, so a 12 × 24 source in a 640 × 200 board is 640 × 1280 and
+ * hangs far above and below the board — the placed-but-clipped region is on
+ * screen and a pixel read there is evidence rather than an off-screen
+ * coordinate. The offset pans it within that overhang; it can never uncover the
+ * box, which is why no pixel inside the board reads the colour any more.
  */
 export const HOST_BACKGROUND_LAYER_THEME_ID = "e2e-background-layer";
 /** The ink the background-layer source paints, read back from a screenshot. */
 export const BACKGROUND_LAYER_INK = { r: 232, g: 236, b: 243 } as const;
 /** The theme's background colour, which is also the host's letterbox paint. */
 export const BACKGROUND_LAYER_PAINT = { r: 0x10, g: 0x13, b: 0x18 } as const;
+/**
+ * The same board and source sizes, with the offset at its maximum. The cover
+ * rect overhangs by 10 units a side, so ±100% is clamped there: the media's
+ * edge stops on the board's instead of sliding past it and exposing the paint.
+ */
+export const HOST_BACKGROUND_EDGE_THEME_ID = "e2e-background-edge";
+/**
+ * A two-tone source mirrored with `flipX`, under a glass panel on its left.
+ * With the flip the panel samples the dark half; without it the bright one.
+ */
+export const HOST_BACKGROUND_FLIP_THEME_ID = "e2e-background-flip";
 /**
  * A video background and **no glass** — the one cost whose answer depends on
  * the display the theme is given to, which is what the assignment's warning
@@ -378,6 +388,21 @@ const backdrop = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 24" wi
 </svg>
 `;
 
+/** The edge fixture's source: nearly the board's own ratio, so the cover rect
+ *  overhangs by a little and the pan's clamp is what a pixel read can catch. */
+const edgeSource = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 110" width="320" height="110">
+  <rect width="320" height="110" fill="#e8ecf3" />
+</svg>
+`;
+
+/** The mirror fixture's source: ink on the left half, the bar colour on the
+ *  right, so a horizontal flip is a colour a pixel can tell. */
+const flipward = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 24" width="12" height="24">
+  <rect width="6" height="24" fill="#e8ecf3" />
+  <rect x="6" width="6" height="24" fill="#101318" />
+</svg>
+`;
+
 /** The ink colour the badge paints, kept as a constant so a media test counts
  *  pixels of the served bytes rather than of anything the theme draws. */
 export const BADGE_INK = { r: 232, g: 236, b: 243 } as const;
@@ -421,16 +446,14 @@ const mediaEnvelope = {
 };
 
 /**
- * The transform-and-clip fixture: a narrow source placed with `contain`,
- * `scale: 1.4` and `offsetX: 0.25` inside a 640 × 200 board, under a glass
- * panel that sits wholly inside the media.
+ * The transform-and-clip fixture: a narrow source placed by `cover` and a
+ * quarter-box vertical offset inside a 640 × 200 board, under a glass panel
+ * that sits wholly inside the media.
  *
- * Worked out rather than eyeballed, because a media strip that stayed inside the
- * board would make every clip assertion vacuous: the source is 12 × 24, so
- * `contain` fits it to 100 × 200 with scale 8.33…, `1.4` makes it 140 × 280,
- * the `0.25` offset moves its centre 160 units right, and the result is
- * x 410…550, y −40…240 — over the board's top, bottom and right by 40, 40 and
- * 0 units but for the panel already covering the middle.
+ * Worked out rather than eyeballed: the source is 12 × 24, so `cover` makes it
+ * 640 × 1280, the `0.25` offset pans it 50 units down from centre, and the
+ * result is x 0…640, y −490…790 — over the board's top and bottom, with the
+ * panel inside it.
  */
 const backgroundLayerEnvelope = {
   schemaVersion: 2 as const,
@@ -447,9 +470,7 @@ const backgroundLayerEnvelope = {
     media: {
       assetId: "backdrop",
       bounds: "theme" as const,
-      fit: "contain" as const,
-      scale: 1.4,
-      offsetX: 0.25,
+      offsetY: 0.25,
     },
   },
   globals: {
@@ -482,8 +503,8 @@ const backgroundLayerEnvelope = {
     version: "7.4.0" as const,
     objects: [
       {
-        // Wholly inside the media strip (x 410…550, y −40…240). The glass then
-        // samples the placed bitmap through Task 7's backdrop, and the strip is
+        // Wholly inside the media (x 0…640, y −490…790). The glass then samples
+        // the placed bitmap through the backdrop, and the media's own ink is
         // still visible below the panel where the pixel read looks.
         type: "Rect" as const,
         version: "7.4.0" as const,
@@ -499,6 +520,134 @@ const backgroundLayerEnvelope = {
         stroke: "rgba(255, 255, 255, 0.35)",
         strokeWidth: 2,
         id: "media-panel",
+        selectable: false,
+        evented: false,
+        yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
+        yunariGlass: { blurRadius: 16 },
+      },
+    ],
+  },
+};
+
+/**
+ * The edge fixture: a near-board-ratio source (320 × 110 in a 640 × 200 board)
+ * covers at 640 × 220, so the overhang is 10 units a side — less than the
+ * 200-unit pan a `1` offset asks for. The clamp stops it at the board's edge;
+ * without it the media would sit 190 units low and the board's top strip would
+ * be the paint.
+ */
+const backgroundEdgeEnvelope = {
+  schemaVersion: 2 as const,
+  fabricVersion: "7.4.0",
+  id: HOST_BACKGROUND_EDGE_THEME_ID,
+  metadata: { name: "E2E background edge", themeLanguage: "en" },
+  artboard: {
+    width: 640,
+    height: 200,
+    contentFit: "contain" as const,
+  },
+  background: {
+    color: { ref: "palette.bar" as const },
+    media: {
+      assetId: "edge",
+      bounds: "theme" as const,
+      offsetY: 1,
+    },
+  },
+  globals: {
+    palette: {
+      none: {
+        name: "None",
+        value: { kind: "solid" as const, color: "transparent" },
+      },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+    },
+    typePresets: {},
+  },
+  assets: [
+    {
+      id: "edge",
+      kind: "svg" as const,
+      path: "assets/edge.svg",
+      license: { name: "MIT", attribution: "Yunari test fixture." },
+    },
+  ],
+  scene: { version: "7.4.0" as const, objects: [] },
+};
+
+/**
+ * The mirror fixture: a source whose left half is ink and right half the bar
+ * colour, flipped horizontally, with a glass panel over the board's left.
+ *
+ * Worked out rather than eyeballed: cover makes the 12 × 24 source 640 × 1280,
+ * so the board's left half shows the source's right half (bar) under `flipX`
+ * and its ink half without it. The panel's sample is the same question asked of
+ * the canvas.
+ */
+const backgroundFlipEnvelope = {
+  schemaVersion: 2 as const,
+  fabricVersion: "7.4.0",
+  id: HOST_BACKGROUND_FLIP_THEME_ID,
+  metadata: { name: "E2E background flip", themeLanguage: "en" },
+  artboard: {
+    width: 640,
+    height: 200,
+    contentFit: "contain" as const,
+  },
+  background: {
+    color: { ref: "palette.bar" as const },
+    media: {
+      assetId: "flipward",
+      bounds: "theme" as const,
+      flipX: true,
+    },
+  },
+  globals: {
+    palette: {
+      none: {
+        name: "None",
+        value: { kind: "solid" as const, color: "transparent" },
+      },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+      panel: {
+        name: "Panel",
+        value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.10)" },
+      },
+      edge: {
+        name: "Edge",
+        value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.35)" },
+      },
+    },
+    typePresets: {},
+  },
+  assets: [
+    {
+      id: "flipward",
+      kind: "svg" as const,
+      path: "assets/flipward.svg",
+      license: { name: "MIT", attribution: "Yunari test fixture." },
+    },
+  ],
+  scene: {
+    version: "7.4.0" as const,
+    objects: [
+      {
+        // Over the board's left half, which the flip paints with the source's
+        // right (bar) half: a sampler that ignored the mirror would show ink.
+        type: "Rect" as const,
+        version: "7.4.0" as const,
+        originX: "left" as const,
+        originY: "top" as const,
+        left: 40,
+        top: 40,
+        width: 120,
+        height: 120,
+        rx: 16,
+        ry: 16,
+        fill: "rgba(255, 255, 255, 0.10)",
+        stroke: "rgba(255, 255, 255, 0.35)",
+        strokeWidth: 2,
+        id: "flip-panel",
         selectable: false,
         evented: false,
         yunariPaint: { fill: "palette.panel", stroke: "palette.edge" },
@@ -946,6 +1095,8 @@ export async function seedHostTheme(): Promise<void> {
   const assets = {
     "assets/badge.svg": new TextEncoder().encode(badge),
     "assets/backdrop.svg": new TextEncoder().encode(backdrop),
+    "assets/edge.svg": new TextEncoder().encode(edgeSource),
+    "assets/flipward.svg": new TextEncoder().encode(flipward),
     "assets/inter-400.woff2": await fontBytes(),
     // Declared by the video theme and never decoded by any test: the host's
     // warning table reads the declaration, and the library writer refuses a
@@ -982,6 +1133,8 @@ export async function seedHostTheme(): Promise<void> {
     groupedGlassEnvelope,
     mediaEnvelope,
     backgroundLayerEnvelope,
+    backgroundEdgeEnvelope,
+    backgroundFlipEnvelope,
     videoEnvelope,
     chartEnvelope,
     overhangEnvelope,

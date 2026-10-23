@@ -19,6 +19,10 @@ import {
   type SelectionView,
 } from "./view.js";
 
+// jsdom has never had a `PointerEvent`, and Base UI re-dispatches a click
+// through one to carry modifier state; a toggle click throws without it.
+window.PointerEvent ??= MouseEvent as never;
+
 /**
  * The section chrome the column owns now that it is React: the order the
  * questions are asked in, the header a section with nothing in it does not get,
@@ -350,7 +354,7 @@ describe("SelectionColumn", () => {
       locked: false,
       sections: backgroundColumn({
         background: {
-          media: { assetId: "a", bounds: "theme", scale: 1.4, offsetX: 0 },
+          media: { assetId: "a", bounds: "theme", offsetX: 0.25 },
         },
         assets: [],
         globals: undefined,
@@ -369,21 +373,21 @@ describe("SelectionColumn", () => {
       );
     });
 
-    const scale = host.querySelector<HTMLInputElement>(
-      "[data-yunari-background-scale]",
-    )!;
-    expect(scale.value).toBe("140");
-
-    // The number arm's own divide, not the pair's: a percentage typed here has
-    // to reach the model as the fraction the field stores.
-    await typeInto(scale, "50");
-    expect(commit).toHaveBeenCalledWith(1, "background.scale", 0.5);
-
     const offsetX = host.querySelector<HTMLInputElement>(
       "[data-yunari-background-offset-x]",
     )!;
-    await typeInto(offsetX, "25");
-    expect(commit).toHaveBeenCalledWith(1, "background.offsetX", 0.25);
+    expect(offsetX.value).toBe("25");
+
+    // The pair's own divide: a percentage typed here has to reach the model as
+    // the fraction the field stores.
+    await typeInto(offsetX, "50");
+    expect(commit).toHaveBeenCalledWith(1, "background.offsetX", 0.5);
+
+    const flipX = host.querySelector<HTMLButtonElement>(
+      "[data-yunari-background-flip-x]",
+    )!;
+    flipX.click();
+    expect(commit).toHaveBeenCalledWith(1, "background.flipX", true);
   });
 
   /**

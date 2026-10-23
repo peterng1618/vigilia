@@ -3,7 +3,6 @@ import {
   BACKGROUND_MEDIA_DEFAULTS,
   type Background,
   type BackgroundMedia,
-  type BackgroundMediaFit,
 } from "@yunari/renderer-core";
 import type { BackdropMedia } from "./glass.js";
 
@@ -48,8 +47,6 @@ export interface PlacementInput {
   readonly source:
     | { readonly width: number; readonly height: number }
     | undefined;
-  readonly fit: BackgroundMediaFit;
-  readonly scale: number;
   readonly offsetX: number;
   readonly offsetY: number;
 }
@@ -59,9 +56,15 @@ const size = (value: number): number =>
   Number.isFinite(value) ? Math.max(0, value) : 0;
 
 /**
- * The one media placement: fit the source into the box, scale about the box
- * centre, then shift by a fraction of the box. The result may extend outside
- * the box; the box is the caller's clip.
+ * The one media placement. The source always `cover`s the box — the larger axis
+ * scale, so the rect is never smaller than the box on either axis — and the
+ * offsets pan within the overhang the cover rect leaves. The result may extend
+ * outside the box; the box is the caller's clip.
+ *
+ * The pan is bounded by that overhang, so an offset at ±100% stops when the
+ * rect's edge reaches the box's: a translation of a rect that merely covers
+ * would otherwise uncover colour inside the box. An axis whose cover rect is
+ * exactly the box has no overhang, so its offset does not move anything.
  */
 export function placement(input: PlacementInput): MediaBox {
   const boxWidth = size(input.box.width);
@@ -70,28 +73,40 @@ export function placement(input: PlacementInput): MediaBox {
   const sourceHeight =
     input.source === undefined ? 0 : size(input.source.height);
 
-  // No source size yet, and `fill` either way, mean the box is the base rect.
-  let baseWidth = boxWidth;
-  let baseHeight = boxHeight;
-  if (input.fit !== "fill" && sourceWidth > 0 && sourceHeight > 0) {
-    const x = boxWidth / sourceWidth;
-    const y = boxHeight / sourceHeight;
-    const factor = input.fit === "contain" ? Math.min(x, y) : Math.max(x, y);
-    baseWidth = sourceWidth * factor;
-    baseHeight = sourceHeight * factor;
+  // No intrinsic size yet: there is nothing to cover or translate, so the box
+  // itself is the rect. Offsets are ignored, or the load window shows a strip.
+  if (sourceWidth <= 0 || sourceHeight <= 0) {
+    return { left: 0, top: 0, width: boxWidth, height: boxHeight };
   }
 
-  const scale = Number.isFinite(input.scale) ? input.scale : 1;
+  const factor = Math.max(boxWidth / sourceWidth, boxHeight / sourceHeight);
+  const width = size(sourceWidth * factor);
+  const height = size(sourceHeight * factor);
   const offsetX = Number.isFinite(input.offsetX) ? input.offsetX : 0;
   const offsetY = Number.isFinite(input.offsetY) ? input.offsetY : 0;
-  const width = size(baseWidth * scale);
-  const height = size(baseHeight * scale);
+  const panX = bounded(boxWidth * offsetX, (width - boxWidth) / 2);
+  const panY = bounded(boxHeight * offsetY, (height - boxHeight) / 2);
   return {
-    left: (boxWidth * (1 + 2 * offsetX)) / 2 - width / 2,
-    top: (boxHeight * (1 + 2 * offsetY)) / 2 - height / 2,
+    left: (boxWidth - width) / 2 + panX,
+    top: (boxHeight - height) / 2 + panY,
     width,
     height,
   };
+}
+
+/** A requested pan, stopped where the placed rect's own edge meets the box's. */
+function bounded(pan: number, overhang: number): number {
+  const limit = Math.max(0, overhang);
+  return Math.max(-limit, Math.min(limit, pan));
+}
+
+/** A paint-time mirror about the element's own centre — the placed rect's
+ *  centre — as a CSS transform. Empty when neither flip is set. */
+function flipTransform(media: BackgroundMedia | undefined): string {
+  const scales: string[] = [];
+  if (media?.flipX === true) scales.push("scaleX(-1)");
+  if (media?.flipY === true) scales.push("scaleY(-1)");
+  return scales.join(" ");
 }
 
 export interface BackgroundMediaHandle {
@@ -154,8 +169,6 @@ export function mountBackgroundMedia(
     const rect = placement({
       box: { width: box.width, height: box.height },
       source: intrinsic(child),
-      fit: media.fit ?? BACKGROUND_MEDIA_DEFAULTS.fit,
-      scale: media.scale ?? BACKGROUND_MEDIA_DEFAULTS.scale,
       offsetX: media.offsetX ?? BACKGROUND_MEDIA_DEFAULTS.offsetX,
       offsetY: media.offsetY ?? BACKGROUND_MEDIA_DEFAULTS.offsetY,
     });
@@ -163,6 +176,8 @@ export function mountBackgroundMedia(
     child.style.top = `${rect.top}px`;
     child.style.width = `${rect.width}px`;
     child.style.height = `${rect.height}px`;
+    // Flip never enters `placement`: the rect, and the no-gap proof, stay put.
+    child.style.transform = flipTransform(media);
   };
 
   const stop = (): void => {
@@ -283,22 +298,32 @@ export function mountBackgroundMedia(
           const placed = placement({
             box: { width: rect.width, height: rect.height },
             source,
-            fit: media?.fit ?? BACKGROUND_MEDIA_DEFAULTS.fit,
-            scale: media?.scale ?? BACKGROUND_MEDIA_DEFAULTS.scale,
             offsetX: media?.offsetX ?? BACKGROUND_MEDIA_DEFAULTS.offsetX,
             offsetY: media?.offsetY ?? BACKGROUND_MEDIA_DEFAULTS.offsetY,
           });
           const scaleX = rect.width > 0 ? device.width / rect.width : 0;
           const scaleY = rect.height > 0 ? device.height / rect.height : 0;
+          const left = device.left - region.left + placed.left * scaleX;
+          const top = device.top - region.top + placed.top * scaleY;
+          const width = placed.width * scaleX;
+          const height = placed.height * scaleY;
           // Five arguments: the whole source, placed. A source window is the
           // defect 0012 cropped the file with.
-          ctx.drawImage(
-            mounted,
-            device.left - region.left + placed.left * scaleX,
-            device.top - region.top + placed.top * scaleY,
-            placed.width * scaleX,
-            placed.height * scaleY,
-          );
+          if (media?.flipX === true || media?.flipY === true) {
+            // `drawImage` does not flip a negative destination width, so the
+            // mirror is the same context transform the DOM child carries:
+            // about the placed rect's centre.
+            ctx.save();
+            ctx.translate(left + width / 2, top + height / 2);
+            ctx.scale(
+              media.flipX === true ? -1 : 1,
+              media.flipY === true ? -1 : 1,
+            );
+            ctx.drawImage(mounted, -width / 2, -height / 2, width, height);
+            ctx.restore();
+          } else {
+            ctx.drawImage(mounted, left, top, width, height);
+          }
           return true;
         },
       };
@@ -363,7 +388,7 @@ function notifyOnDecode(
 
 /**
  * The intrinsic size arrives after the first placement — after `load` for an
- * image, after `loadedmetadata` for a video — and the fit has nothing to fit
+ * image, after `loadedmetadata` for a video — and there is nothing to cover
  * until it does. Re-place once when it lands.
  */
 function notifyOnIntrinsic(

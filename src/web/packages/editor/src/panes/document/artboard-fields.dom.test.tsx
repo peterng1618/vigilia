@@ -98,7 +98,8 @@ const enumeratedHooks = [
 const BACKGROUND_HOOKS = [
   "artboard-background",
   "background-asset",
-  "background-media-fit",
+  "background-bounds",
+  "background-flip-x",
 ] as const;
 
 async function mount(

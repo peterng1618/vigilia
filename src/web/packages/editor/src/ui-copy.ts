@@ -1297,7 +1297,6 @@ export const uiCopy = {
      * region in its own right and announces itself when the choice changes. */
     languageSample: "Sample in the chosen language",
     backgroundMedia: "Background media",
-    mediaFit: "Media fit",
     releaseVersion: "Release version",
     notSet: "Not set",
     none: "None",
@@ -1379,13 +1378,13 @@ export const uiCopy = {
     widthMark: "W",
     heightMark: "H",
     background: "Background color",
-    /** The background column's own rows: the box its media fills, the scale it
-        is multiplied by, and the one pair that moves both axes. */
+    /** The background column's own rows: the box its media fills, the one pair
+        that moves both axes, and the two paint-time mirrors. The media always
+        covers, so there is no fit or scale to name. */
     backgroundBounds: "Bounds",
-    backgroundScale: "Scale",
     backgroundOffset: "Offset",
-    /** The three fits, keyed by what the model stores. */
-    backgroundFits: { cover: "Cover", contain: "Contain", fill: "Fill" },
+    backgroundFlipX: "Flip horizontally",
+    backgroundFlipY: "Flip vertically",
     /** A paint's own colour, as against the token it is chosen from. */
     colour: "Colour",
     /** Shown when the browser cannot paint what was typed. Named by the value

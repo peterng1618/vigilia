@@ -67,15 +67,17 @@ const DOCUMENT_CONTROLS = [
 
 /** The selected background layer's controls, in the selection inspector. The
  *  background's paint, picture and geometry left the Document pane when the
- *  background became a layer, so their names are audited where they live. */
+ *  background became a layer, so their names are audited where they live. The
+ *  media is always cover, so the geometry is the bounds, the offset pair and the
+ *  two mirrors. */
 const BACKGROUND_CONTROLS = [
   "[data-yunari-background]",
   "[data-yunari-background-asset]",
   "[data-yunari-background-bounds]",
-  "[data-yunari-background-fit]",
-  "[data-yunari-background-scale]",
   "[data-yunari-background-offset-x]",
   "[data-yunari-background-offset-y]",
+  "[data-yunari-background-flip-x]",
+  "[data-yunari-background-flip-y]",
 ];
 
 /** §7's Appearance tab, which is not one of the three panels either.

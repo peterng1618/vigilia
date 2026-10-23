@@ -2479,6 +2479,7 @@ test.describe("Fabric editor route", () => {
     await selectLayer(page, "Background");
     await chooseIn(page, "[data-yunari-background-bounds]", "display");
     await chooseIn(page, "[data-yunari-background]", "palette.bars");
+    await page.locator("[data-yunari-background-flip-x]").click();
 
     const envelope = (await saveEnvelope(page)) as {
       artboard: {
@@ -2487,14 +2488,15 @@ test.describe("Fabric editor route", () => {
       };
       background?: {
         color?: { ref: string };
-        media?: { bounds: string; fit?: string };
+        media?: { bounds: string; flipX?: boolean };
       };
       scene: { objects: Array<{ id?: string; left?: number }> };
     };
-    // The only fit an author sets is the media's. The artboard's own content
-    // fit is a guarantee of the model, so this asserts the control that does
-    // exist writes what it says and the one that does not is not invented.
+    // The background media has no fit to author — it is always cover — so this
+    // asserts the box and the mirror that do exist write what they say, and the
+    // artboard's own content fit stays a guarantee of the model.
     expect(envelope.background?.media?.bounds).toBe("display");
+    expect(envelope.background?.media?.flipX).toBe(true);
     expect(envelope.artboard.contentFit ?? "contain").toBe("contain");
     expect(envelope.artboard.width).toBe(1000);
     expect(envelope.background?.color).toEqual({ ref: "palette.bars" });
@@ -2507,10 +2509,11 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     // The user read "Preview fit" as how their picture renders in the preview,
-    // because it sat above "Media fit" and chose between the same two words.
-    // It was the artboard content's fit, it is always contain, and no author
-    // sets it — so neither owner must offer it, and the media's fit must still
-    // be offered where the background layer is selected.
+    // because it sat above the background's controls and chose between the same
+    // words. It was the artboard content's fit, it is always contain, and no
+    // author sets it — so neither owner must offer it, and the background's own
+    // position controls (bounds and offsets, now that media is always cover)
+    // must still be offered where the background layer is selected.
     await page.goto(EDITOR);
     // The artboard panel is a document panel, so the Document pane shows it.
     await openPane(page, "Document");
@@ -2519,24 +2522,28 @@ test.describe("Fabric editor route", () => {
     );
 
     await selectLayer(page, "Background");
-    const mediaFit = page.locator("[data-yunari-background-fit]");
-    await expect(mediaFit).toBeVisible();
+    const bounds = page.locator("[data-yunari-background-bounds]");
+    await expect(bounds).toBeVisible();
     await expect(page.locator("[data-yunari-artboard-fit-mode]")).toHaveCount(
       0,
     );
+    await expect(page.locator("[data-yunari-background-fit]")).toHaveCount(0);
+    await expect(page.locator("[data-yunari-background-scale]")).toHaveCount(0);
     const settingsPanel = page.locator("section", {
-      has: mediaFit,
+      has: bounds,
     });
     const labels = await settingsPanel.locator("label").allTextContents();
     expect(labels).not.toContain("Preview fit");
+    expect(labels).not.toContain("Media fit");
+    expect(labels).toContain("Bounds");
+    expect(labels).toContain("Flip horizontally");
     // The control that does exist, still named and still choosing. Its value is
     // read off the hook the control commits through rather than `.value`: it is
     // plan 1's select, and a button's `.value` is always "".
-    expect(labels).toContain("Media fit");
-    const chosen = mediaFit.locator("[data-yunari-value]");
-    await expect(chosen).toHaveAttribute("data-yunari-value", "cover");
-    await chooseIn(page, "[data-yunari-background-fit]", "contain");
-    await expect(chosen).toHaveAttribute("data-yunari-value", "contain");
+    const chosen = bounds.locator("[data-yunari-value]");
+    await expect(chosen).toHaveAttribute("data-yunari-value", "theme");
+    await chooseIn(page, "[data-yunari-background-bounds]", "display");
+    await expect(chosen).toHaveAttribute("data-yunari-value", "display");
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {

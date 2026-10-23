@@ -4,12 +4,9 @@ import { describe, expect, it } from "vitest";
 import { CATALOGUE_ID_PATTERN } from "./catalogue-index.js";
 import {
   BACKGROUND_MEDIA_BOUNDS,
-  BACKGROUND_MEDIA_FITS,
   MAX_BACKGROUND_OFFSET,
-  MAX_BACKGROUND_SCALE,
   MAX_TAGS,
   MIN_BACKGROUND_OFFSET,
-  MIN_BACKGROUND_SCALE,
   TAG_PATTERN,
 } from "./document.js";
 import { SUPPORTED_SCHEMA_VERSION } from "./fabric-envelope.js";
@@ -133,13 +130,10 @@ describe("published Fabric theme schema", () => {
     expect(artboard["fitMode"]).toBeUndefined();
   });
 
-  it("publishes the background media's bounds, fit and ranges the validator accepts", () => {
-    // The media's sets and ranges were separated into `bounds` and `fit`, and
-    // this is the half a tool outside this repo reads. Compared against the
-    // exported constants rather than copied literals, for the reason the glass
-    // bound below gives: the disagreement test compares key *sets* and would
-    // not notice a set moving on one side, so a theme a tool authors would be
-    // refused by the editor with nothing red.
+  it("publishes the background media's bounds, flips and ranges the validator accepts", () => {
+    // The media is always `cover`, so `fit` and `scale` are not published at
+    // all: a stored document carrying either is refused by the unknown-key
+    // check. Bounds, flips and the offset ranges are the whole authored bag.
     const media = schema().$defs["backgroundMedia"]!["properties"] as Record<
       string,
       Record<string, unknown>
@@ -147,12 +141,10 @@ describe("published Fabric theme schema", () => {
 
     expect(media["assetId"]).toEqual({ $ref: "#/$defs/stableId" });
     expect(media["bounds"]).toEqual({ enum: [...BACKGROUND_MEDIA_BOUNDS] });
-    expect(media["fit"]).toEqual({ enum: [...BACKGROUND_MEDIA_FITS] });
-    expect(media["scale"]).toEqual({
-      type: "number",
-      minimum: MIN_BACKGROUND_SCALE,
-      maximum: MAX_BACKGROUND_SCALE,
-    });
+    expect(media["fit"]).toBeUndefined();
+    expect(media["scale"]).toBeUndefined();
+    expect(media["flipX"]).toEqual({ type: "boolean" });
+    expect(media["flipY"]).toEqual({ type: "boolean" });
     expect(media["offsetX"]).toEqual({
       type: "number",
       minimum: MIN_BACKGROUND_OFFSET,

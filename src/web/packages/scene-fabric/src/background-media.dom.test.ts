@@ -90,9 +90,7 @@ describe("background media", () => {
       resolveAsset,
     });
 
-    handle.setBackground({
-      media: { assetId: "two", bounds: "theme", fit: "contain" },
-    });
+    handle.setBackground({ media: { assetId: "two", bounds: "theme" } });
 
     expect(disposed).toEqual(["one"]);
     expect(host.querySelector("img")?.src).toBe("blob:two");
@@ -111,7 +109,7 @@ describe("background media", () => {
     expect(before).not.toBeNull();
 
     handle.setBackground({
-      media: { assetId: "loop", bounds: "theme", scale: 1.5 },
+      media: { assetId: "loop", bounds: "theme", offsetX: 0.25 },
     });
 
     expect(host.querySelector("video")).toBe(before);
@@ -162,9 +160,7 @@ describe("background media", () => {
       media: {
         assetId: "loop",
         bounds: "theme",
-        fit: "cover",
-        scale: 1.5,
-        offsetX: 0.25,
+        offsetY: 0.25,
       },
     });
     handle.setBounds({
@@ -172,10 +168,55 @@ describe("background media", () => {
       display: { left: 0, top: 0, width: 200, height: 100 },
     });
 
+    // 200×100 box, 100×100 source: cover makes it 200×200, and a quarter-box
+    // offset pans it 25px within the half-box overhang.
     expect(child.style.left).toBe("0px");
-    expect(child.style.top).toBe("-100px");
-    expect(child.style.width).toBe("300px");
-    expect(child.style.height).toBe("300px");
+    expect(child.style.top).toBe("-25px");
+    expect(child.style.width).toBe("200px");
+    expect(child.style.height).toBe("200px");
+    handle.destroy();
+  });
+
+  it("mirrors the child about the placed rect's centre", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: { media: { assetId: "loop", bounds: "theme" } },
+      artboard: { width: 200, height: 100 },
+      assets: [LOOP],
+      resolveAsset: () => ({ url: "blob:loop" }),
+    });
+    const child = host.querySelector<HTMLVideoElement>(
+      "[data-yunari-background-media] video",
+    );
+    if (child === null) throw new Error("the layer mounted no video");
+    Object.defineProperty(child, "videoWidth", { value: 100 });
+    Object.defineProperty(child, "videoHeight", { value: 100 });
+    Object.defineProperty(child, "readyState", { value: 2 });
+    handle.setBounds({
+      artboard: { left: 0, top: 0, width: 200, height: 100 },
+      display: { left: 0, top: 0, width: 200, height: 100 },
+    });
+
+    const media = { assetId: "loop", bounds: "theme" } as const;
+    handle.setBackground({ media: { ...media, flipX: true } });
+    expect(child.style.transform).toBe("scaleX(-1)");
+    // Flip is paint-time: the rect the no-gap proof reads does not move.
+    expect([
+      child.style.left,
+      child.style.top,
+      child.style.width,
+      child.style.height,
+    ]).toEqual(["0px", "-50px", "200px", "200px"]);
+
+    handle.setBackground({ media: { ...media, flipY: true } });
+    expect(child.style.transform).toBe("scaleY(-1)");
+
+    handle.setBackground({ media: { ...media, flipX: true, flipY: true } });
+    expect(child.style.transform).toBe("scaleX(-1) scaleY(-1)");
+
+    handle.setBackground({ media });
+    expect(child.style.transform).toBe("");
     handle.destroy();
   });
 
@@ -318,13 +359,22 @@ describe("background media as a glass backdrop", () => {
     handle.destroy();
   });
 
-  /** A fake 2D context that records the media's `drawImage` calls. */
+  /** A fake 2D context that records the media's own operations. */
   const recordingContext = () => {
     const calls: unknown[][] = [];
+    const ops: string[] = [];
     return {
       calls,
+      ops,
       ctx: {
-        drawImage: (...args: unknown[]) => calls.push(args),
+        save: () => ops.push("save"),
+        restore: () => ops.push("restore"),
+        translate: (x: number, y: number) => ops.push(`translate:${x},${y}`),
+        scale: (x: number, y: number) => ops.push(`scale:${x},${y}`),
+        drawImage: (...args: unknown[]) => {
+          ops.push("drawImage");
+          calls.push(args);
+        },
       } as unknown as CanvasRenderingContext2D,
     };
   };
@@ -345,7 +395,7 @@ describe("background media as a glass backdrop", () => {
     return image;
   };
 
-  it("draws the placed rect, not a cover crop, when the media is contained", () => {
+  it("draws the placed rect, not a cover crop, when the media is offset", () => {
     const host = document.createElement("div");
     const handle = mountBackgroundMedia({
       host,
@@ -353,7 +403,6 @@ describe("background media as a glass backdrop", () => {
         media: {
           assetId: "hero",
           bounds: "theme",
-          fit: "contain",
           offsetX: 0.25,
           offsetY: 0.25,
         },
@@ -365,7 +414,8 @@ describe("background media as a glass backdrop", () => {
     withIntrinsic(host, 100, 100);
 
     const { calls, ctx } = recordingContext();
-    // 200×100 box, 100×100 source, contain, scale 1, both offsets a quarter box.
+    // 200×100 box, 100×100 source: cover is 200×200, and the quarter-box
+    // vertical offset pans it 25px within the half-box overhang.
     const painted = handle
       .backdrop()
       ?.paint(
@@ -374,8 +424,41 @@ describe("background media as a glass backdrop", () => {
         { left: 0, top: 0, width: 200, height: 100 },
       );
     expect(painted).toBe(true);
-    // The whole source into the placed 100×100 rect: centred, then shifted.
-    expect(calls[0]?.slice(-4)).toEqual([100, 25, 100, 100]);
+    expect(calls[0]?.slice(-4)).toEqual([0, -25, 200, 200]);
+    handle.destroy();
+  });
+
+  it("mirrors what the DOM layer mirrors, about the placed rect's centre", () => {
+    const host = document.createElement("div");
+    const handle = mountBackgroundMedia({
+      host,
+      background: {
+        media: { assetId: "hero", bounds: "theme", flipX: true },
+      },
+      artboard: { width: 200, height: 100 },
+      assets: [HERO],
+      resolveAsset: () => ({ url: "blob:hero" }),
+    });
+    withIntrinsic(host, 100, 100);
+
+    const { calls, ops, ctx } = recordingContext();
+    handle
+      .backdrop()
+      ?.paint(
+        ctx,
+        { left: 0, top: 0, width: 200, height: 100 },
+        { left: 0, top: 0, width: 200, height: 100 },
+      );
+    // The placed rect is 0,-50,200,200, so its centre is (100, 50); drawing at
+    // the half-size about that centre is the same mirror `scaleX(-1)` paints.
+    expect(ops).toEqual([
+      "save",
+      "translate:100,50",
+      "scale:-1,1",
+      "drawImage",
+      "restore",
+    ]);
+    expect(calls[0]?.slice(-4)).toEqual([-100, -100, 200, 200]);
     handle.destroy();
   });
 
@@ -633,7 +716,7 @@ describe("background media as a glass backdrop", () => {
 
       // A same-asset transform change: the same element, the same loop.
       handle.setBackground({
-        media: { assetId: "loop", bounds: "theme", fit: "contain", scale: 1.4 },
+        media: { assetId: "loop", bounds: "theme", offsetX: 0.25, flipY: true },
       });
       expect(host.querySelector("video")).toBe(video);
       expect(scheduled, "no new subscription for a re-placement").toHaveLength(

@@ -290,7 +290,7 @@ describe("the background layer", () => {
     background,
   });
 
-  it("accepts bounds, fit, scale and offsets", () => {
+  it("accepts bounds, flips and offsets", () => {
     expect(
       codes(
         withBackground({
@@ -298,8 +298,8 @@ describe("the background layer", () => {
           media: {
             assetId: "clip",
             bounds: "display",
-            fit: "contain",
-            scale: 1.4,
+            flipX: true,
+            flipY: false,
             offsetX: 0.25,
             offsetY: -0.1,
           },
@@ -308,13 +308,30 @@ describe("the background layer", () => {
     ).toEqual([]);
   });
 
-  it("refuses an out-of-range scale and offsets", () => {
+  it("refuses the removed fit and scale, and an out-of-range offset", () => {
+    // `cover` is not a field any more but the whole model, and a scale is the
+    // control that could shrink the media below its box. Both are refused by
+    // the key bag (`unknown-field`), not read and ignored.
     for (const background of [
-      { media: { assetId: "clip", bounds: "theme", scale: 0 } },
-      { media: { assetId: "clip", bounds: "theme", scale: 11 } },
+      { media: { assetId: "clip", bounds: "theme", fit: "contain" } },
+      { media: { assetId: "clip", bounds: "theme", scale: 1.4 } },
+    ])
+      expect(codes(withBackground(background))).toContain("unknown-field");
+    for (const background of [
       { media: { assetId: "clip", bounds: "theme", offsetX: 2 } },
+      { media: { assetId: "clip", bounds: "theme", offsetY: -2 } },
     ])
       expect(codes(withBackground(background))).toContain("out-of-range");
+  });
+
+  it("refuses a flip that is not a boolean", () => {
+    expect(
+      codes(
+        withBackground({
+          media: { assetId: "clip", bounds: "theme", flipX: "yes" },
+        }),
+      ),
+    ).toContain("wrong-type");
   });
 
   it("refuses an unknown key on the background and on its media", () => {

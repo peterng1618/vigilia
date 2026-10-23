@@ -1,13 +1,10 @@
 import {
   ASSET_PATH_PATTERN,
   BACKGROUND_MEDIA_BOUNDS,
-  BACKGROUND_MEDIA_FITS,
   GLOBAL_GROUPS,
   MAX_ARTBOARD_DIMENSION,
   MAX_BACKGROUND_OFFSET,
-  MAX_BACKGROUND_SCALE,
   MIN_BACKGROUND_OFFSET,
-  MIN_BACKGROUND_SCALE,
   STABLE_ID_PATTERN,
 } from "./document.js";
 import { envelopeKeysFor, knownKeysFor, nearestKey } from "./envelope-keys.js";
@@ -354,17 +351,21 @@ function validateBackground(
     "/background/media/bounds",
     "bounds",
   );
-  if (media["fit"] !== undefined) {
-    issues.enumValue(
-      media["fit"],
-      BACKGROUND_MEDIA_FITS,
-      "/background/media/fit",
-      "fit",
-    );
+
+  // A flip is a switch, not a reading: anything but a boolean is refused rather
+  // than coerced, so `"false"` cannot paint a mirror.
+  for (const key of ["flipX", "flipY"] as const) {
+    const raw = media[key];
+    if (raw !== undefined && typeof raw !== "boolean") {
+      issues.add(
+        "wrong-type",
+        `/background/media/${key}`,
+        `${key} must be a boolean.`,
+      );
+    }
   }
 
   for (const [key, minimum, maximum] of [
-    ["scale", MIN_BACKGROUND_SCALE, MAX_BACKGROUND_SCALE],
     ["offsetX", MIN_BACKGROUND_OFFSET, MAX_BACKGROUND_OFFSET],
     ["offsetY", MIN_BACKGROUND_OFFSET, MAX_BACKGROUND_OFFSET],
   ] as const) {

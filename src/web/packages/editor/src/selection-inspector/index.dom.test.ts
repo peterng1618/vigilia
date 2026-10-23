@@ -50,6 +50,10 @@ import {
 } from "./per-kind-column.js";
 import { click, slide } from "./runs.test-stage.js";
 
+// jsdom has never had a `PointerEvent`, and Base UI re-dispatches a click
+// through one to carry modifier state; a toggle click throws without it.
+window.PointerEvent ??= MouseEvent as never;
+
 // The column's sections keep their open state in React now, and React only
 // flushes a click's update inside `act` — so the one test that clicks a header
 // needs an act environment. Nothing else here drives React directly.
@@ -261,18 +265,15 @@ describe("the selection inspector", () => {
 
     it("writes a background edit through the document setter and no Fabric field", async () => {
       const { host, history, onBackgroundChange } = backgroundSelected();
-      // The scale is stored as a fraction and shown as a percentage, so 140 is
-      // the 1.4 the document holds.
-      const scale = host.querySelector<HTMLInputElement>(
-        "[data-yunari-background-scale]",
+      const flipX = host.querySelector<HTMLButtonElement>(
+        "[data-yunari-background-flip-x]",
       )!;
-      expect(scale.value).toBe("100");
 
-      await edit(scale, "140");
+      await click(flipX);
 
       expect(onBackgroundChange).toHaveBeenCalledWith(
         expect.objectContaining({
-          media: expect.objectContaining({ scale: 1.4 }),
+          media: expect.objectContaining({ flipX: true }),
         }),
       );
       // A background write is envelope state, not a Fabric edit: no scene

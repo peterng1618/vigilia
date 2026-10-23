@@ -154,9 +154,9 @@ export interface Artboard {
   readonly width: number;
   readonly height: number;
   /**
-   * How the artboard's *content* fills the viewport. Not the background media's
-   * own `fit`, which is the only fit an author sets; this is a guarantee of the
-   * model rather than a choice, and absent means contain.
+   * How the artboard's *content* fills the viewport. Not the background media,
+   * which is always `cover` and has no fit of its own; this is a guarantee of
+   * the model rather than a choice, and absent means contain.
    */
   readonly contentFit?: "contain" | "cover";
 }
@@ -167,23 +167,14 @@ export interface Artboard {
 export const BACKGROUND_MEDIA_BOUNDS = ["theme", "display"] as const;
 export type BackgroundMediaBounds = (typeof BACKGROUND_MEDIA_BOUNDS)[number];
 
-/** How the media fills its box. `fill` stretches; the other two keep the
- *  source's own ratio. */
-export const BACKGROUND_MEDIA_FITS = ["cover", "contain", "fill"] as const;
-export type BackgroundMediaFit = (typeof BACKGROUND_MEDIA_FITS)[number];
-
-/** Refused, never clamped: a scale or offset outside these is an authoring bug,
- *  not a reading to round into range. */
-export const MIN_BACKGROUND_SCALE = 0.1;
-export const MAX_BACKGROUND_SCALE = 10;
+/** Refused, never clamped: an offset outside these is an authoring bug, not a
+ *  reading to round into range. */
 export const MIN_BACKGROUND_OFFSET = -1;
 export const MAX_BACKGROUND_OFFSET = 1;
 
 /** The values that reproduce the centred cover the renderer painted before the
- *  media had geometry of its own. */
+ *  media had geometry of its own. Flips default to false, i.e. omitted. */
 export const BACKGROUND_MEDIA_DEFAULTS = {
-  fit: "cover",
-  scale: 1,
   offsetX: 0,
   offsetY: 0,
 } as const;
@@ -192,21 +183,22 @@ export interface BackgroundMedia {
   readonly assetId: string;
   /** The box the layer is clipped to: the artboard rect or the display rect. */
   readonly bounds: BackgroundMediaBounds;
-  /** Absent means `BACKGROUND_MEDIA_DEFAULTS.fit`. */
-  readonly fit?: BackgroundMediaFit;
-  /** Multiplies the fitted rect about its centre; absent means 1. */
-  readonly scale?: number;
-  /** Moves the centre by a fraction of the box's own dimensions; absent means 0. */
+  /** Moves the centre by a fraction of the box's own dimensions; absent means 0.
+   *  The media is always `cover`, so translation can never expose the box. */
   readonly offsetX?: number;
   readonly offsetY?: number;
+  /** A paint-time mirror about the placed rect's centre; absent means false. */
+  readonly flipX?: boolean;
+  readonly flipY?: boolean;
 }
 
 /**
  * The bottom-most layer of the composition.
  *
- * `color` fills the board and the letterbox bars around it — one paint, so the
- * two cannot disagree. It sits behind the media, so it shows wherever the media
- * does not cover.
+ * `color` fills the board and the letterbox bars around it under
+ * `bounds: "theme"` — one paint, so the two cannot disagree. It sits behind the
+ * media, so it shows wherever the media does not cover; with `cover` that is
+ * never inside the media's box.
  */
 export interface Background {
   readonly color?: StyleValue;

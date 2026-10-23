@@ -9,7 +9,7 @@ import { backgroundColumn, writeBackgroundField } from "./background-column.js";
  */
 
 describe("backgroundColumn", () => {
-  it("asks Content for colour and media, and Position for bounds, fit, scale and offsets", () => {
+  it("asks Content for colour and media, and Position for bounds, offsets and flips", () => {
     const sections = backgroundColumn({
       background: undefined,
       assets: [],
@@ -26,9 +26,9 @@ describe("backgroundColumn", () => {
     ]);
     expect(sections[1]?.fields.map((field) => field.id)).toEqual([
       "background.bounds",
-      "background.fit",
-      "background.scale",
       "background.offsetX-offsetY",
+      "background.flipX",
+      "background.flipY",
     ]);
     expect(
       sections[1]?.fields.find(
@@ -40,22 +40,29 @@ describe("backgroundColumn", () => {
     });
   });
 
-  it("shows scale and offsets as percentages", () => {
+  it("shows offsets as percentages and the flips as switches", () => {
     const sections = backgroundColumn({
       background: {
-        media: { assetId: "a", bounds: "theme", scale: 1.4, offsetX: 0.25 },
+        media: {
+          assetId: "a",
+          bounds: "theme",
+          offsetX: 0.25,
+          flipX: true,
+        },
       },
       assets: [],
       globals: undefined,
     });
 
-    const scale = sections[1]?.fields.find(
-      (field) => field.id === "background.scale",
-    );
-    expect(scale).toMatchObject({
-      control: "number",
-      value: 1.4,
-      percent: true,
+    const flips = (id: string) =>
+      sections[1]?.fields.find((field) => field.id === id);
+    expect(flips("background.flipX")).toMatchObject({
+      control: "toggle",
+      checked: true,
+    });
+    expect(flips("background.flipY")).toMatchObject({
+      control: "toggle",
+      checked: false,
     });
 
     const offsets = sections[1]?.fields.find(
@@ -90,12 +97,11 @@ describe("backgroundColumn", () => {
       value: "",
     });
     expect(field("background.bounds")).toMatchObject({ value: "theme" });
-    expect(field("background.fit")).toMatchObject({ value: "cover" });
-    expect(field("background.scale")).toMatchObject({
-      value: 1,
-      min: 10,
-      max: 1000,
+    expect(field("background.offsetX-offsetY")).toMatchObject({
+      halves: [{ value: 0 }, { value: 0 }],
     });
+    expect(field("background.flipX")).toMatchObject({ checked: false });
+    expect(field("background.flipY")).toMatchObject({ checked: false });
   });
 
   it("paints the stored palette reference and offers the document's tokens", () => {
@@ -153,7 +159,7 @@ describe("writeBackgroundField", () => {
     media: { assetId: "photo", bounds: "theme" },
   };
 
-  it("refuses a non-finite scale or offset", () => {
+  it("refuses a non-finite offset", () => {
     // `NaN` fails every `>`/`<` comparison, so a guard written as a range alone
     // applies no range at all to it.
     for (const value of [
@@ -161,9 +167,6 @@ describe("writeBackgroundField", () => {
       Number.POSITIVE_INFINITY,
       Number.NEGATIVE_INFINITY,
     ]) {
-      expect(
-        writeBackgroundField(background, "background.scale", value),
-      ).toBeUndefined();
       expect(
         writeBackgroundField(background, "background.offsetX", value),
       ).toBeUndefined();
@@ -173,12 +176,29 @@ describe("writeBackgroundField", () => {
     }
   });
 
-  it("writes an in-range scale and offset", () => {
-    expect(
-      writeBackgroundField(background, "background.scale", 1.4),
-    ).toMatchObject({ media: { scale: 1.4 } });
+  it("writes an in-range offset", () => {
     expect(
       writeBackgroundField(background, "background.offsetX", 0.5),
     ).toMatchObject({ media: { offsetX: 0.5 } });
+  });
+
+  it("writes a flip as a boolean and removes it when switched off", () => {
+    // `false` is the default reading, so it is stored by omission: the key's
+    // presence is the flip.
+    const flipped = writeBackgroundField(background, "background.flipX", true);
+    expect(flipped).toMatchObject({ media: { flipX: true } });
+    expect(
+      writeBackgroundField(flipped, "background.flipY", true),
+    ).toMatchObject({ media: { flipX: true, flipY: true } });
+    const cleared = writeBackgroundField(
+      flipped,
+      "background.flipX",
+      false,
+    )?.media;
+    expect(cleared, "the switched-off key is gone").not.toHaveProperty("flipX");
+    expect(cleared).toMatchObject({ assetId: "photo", bounds: "theme" });
+    expect(
+      writeBackgroundField(background, "background.flipX", "yes"),
+    ).toBeUndefined();
   });
 });

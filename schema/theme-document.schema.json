@@ -73,10 +73,10 @@
       "properties": {
         "assetId": { "$ref": "#/$defs/stableId" },
         "bounds": { "enum": ["theme", "display"] },
-        "fit": { "enum": ["cover", "contain", "fill"] },
-        "scale": { "type": "number", "minimum": 0.1, "maximum": 10 },
         "offsetX": { "type": "number", "minimum": -1, "maximum": 1 },
-        "offsetY": { "type": "number", "minimum": -1, "maximum": 1 }
+        "offsetY": { "type": "number", "minimum": -1, "maximum": 1 },
+        "flipX": { "type": "boolean" },
+        "flipY": { "type": "boolean" }
       }
     },
     "globals": {

@@ -102,7 +102,14 @@ const ENVELOPE_KEYS = {
   ],
   globals: ["palette", "typePresets"],
   background: ["color", "media"],
-  backgroundMedia: ["assetId", "bounds", "fit", "scale", "offsetX", "offsetY"],
+  backgroundMedia: [
+    "assetId",
+    "bounds",
+    "offsetX",
+    "offsetY",
+    "flipX",
+    "flipY",
+  ],
 } as const;
 
 export type EnvelopeKeyBag = keyof typeof ENVELOPE_KEYS;

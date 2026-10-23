@@ -2,15 +2,12 @@ import {
   type AssetReference,
   BACKGROUND_MEDIA_BOUNDS,
   BACKGROUND_MEDIA_DEFAULTS,
-  BACKGROUND_MEDIA_FITS,
   type Background,
   type BackgroundMedia,
   type FabricGlobals,
   type GlobalRef,
   MAX_BACKGROUND_OFFSET,
-  MAX_BACKGROUND_SCALE,
   MIN_BACKGROUND_OFFSET,
-  MIN_BACKGROUND_SCALE,
   paletteTokenOptions,
 } from "@yunari/renderer-core";
 import { uiCopy } from "../ui-copy.js";
@@ -113,33 +110,27 @@ function boundsField(media: BackgroundMedia | undefined): FieldView {
   };
 }
 
-function fitField(media: BackgroundMedia | undefined): FieldView {
-  return {
-    id: "background.fit",
-    control: "select",
-    label: uiCopy.panels.mediaFit,
-    value: media?.fit ?? BACKGROUND_MEDIA_DEFAULTS.fit,
-    options: BACKGROUND_MEDIA_FITS.map((fit) => ({
-      id: fit,
-      name: uiCopy.panels.backgroundFits[fit],
-    })),
-    data: { "data-yunari-background-fit": "" },
-  };
-}
-
-/** The scale is stored as a fraction and shown as a percentage, so its bounds
-    are the model's own, multiplied to the numbers the field prints. */
-function scaleField(media: BackgroundMedia | undefined): FieldView {
-  return {
-    id: "background.scale",
-    control: "number",
-    label: uiCopy.panels.backgroundScale,
-    value: media?.scale ?? BACKGROUND_MEDIA_DEFAULTS.scale,
-    min: MIN_BACKGROUND_SCALE * 100,
-    max: MAX_BACKGROUND_SCALE * 100,
-    percent: true,
-    data: { "data-yunari-background-scale": "" },
-  };
+/** The scale and fit are gone: the media always covers, and the only geometry
+    an author sets is a translation plus the two paint-time mirrors. */
+function flipField(
+  media: BackgroundMedia | undefined,
+  axis: "flipX" | "flipY",
+): FieldView {
+  return axis === "flipX"
+    ? {
+        id: "background.flipX",
+        control: "toggle",
+        label: uiCopy.panels.backgroundFlipX,
+        checked: media?.flipX === true,
+        data: { "data-yunari-background-flip-x": "" },
+      }
+    : {
+        id: "background.flipY",
+        control: "toggle",
+        label: uiCopy.panels.backgroundFlipY,
+        checked: media?.flipY === true,
+        data: { "data-yunari-background-flip-y": "" },
+      };
 }
 
 /** Both offsets on one line. The halves carry no bounds — a half has none — so
@@ -183,9 +174,9 @@ export function backgroundColumn(input: {
     ]),
     sectionView("position", [
       boundsField(media),
-      fitField(media),
-      scaleField(media),
       offsetField(media),
+      flipField(media, "flipX"),
+      flipField(media, "flipY"),
     ]),
   ];
 }
@@ -239,22 +230,15 @@ export function writeBackgroundField(
       if (bounds === undefined) return undefined;
       return { ...current, media: { ...media, bounds } };
     }
-    case "background.fit": {
-      if (media === undefined || typeof value !== "string") return undefined;
-      const fit = BACKGROUND_MEDIA_FITS.find((mode) => mode === value);
-      if (fit === undefined) return undefined;
-      return { ...current, media: { ...media, fit } };
-    }
-    case "background.scale": {
-      if (
-        media === undefined ||
-        typeof value !== "number" ||
-        !Number.isFinite(value) ||
-        value < MIN_BACKGROUND_SCALE ||
-        value > MAX_BACKGROUND_SCALE
-      )
-        return undefined;
-      return { ...current, media: { ...media, scale: value } };
+    case "background.flipX":
+    case "background.flipY": {
+      if (media === undefined || typeof value !== "boolean") return undefined;
+      const axis = fieldId === "background.flipX" ? "flipX" : "flipY";
+      if (value) return { ...current, media: { ...media, [axis]: true } };
+      // `false` is the default, so it is stored by omission rather than as a
+      // key a later read would have to interpret.
+      const { [axis]: _off, ...without } = media;
+      return { ...current, media: without };
     }
     case "background.offsetX": {
       if (

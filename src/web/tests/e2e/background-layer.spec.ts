@@ -2,6 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   BACKGROUND_LAYER_INK,
   BACKGROUND_LAYER_PAINT,
+  HOST_BACKGROUND_EDGE_THEME_ID,
+  HOST_BACKGROUND_FLIP_THEME_ID,
   HOST_BACKGROUND_LAYER_THEME_ID,
   HOST_PORT,
 } from "./host-theme.js";
@@ -10,22 +12,22 @@ import {
  * The background media layer on the real player: the authored transform is
  * visible, and the layer clips it.
  *
- * The theme (`host-theme.ts`) is a narrow source placed with `contain`,
- * `scale: 1.4` and `offsetX: 0.25` in a wide board, so the placed rect leaves
- * the board's top and bottom edges on every viewport — the clip is a place on
- * screen, not an off-screen coordinate. Every expected rect is derived here
- * from the measured layer rect and the image's natural size, so no assertion
- * carries a viewport-sized pixel number.
+ * The media always `cover`s its box, so a narrow source in a wide board is much
+ * taller than the board and hangs above and below it — the clip is a place on
+ * screen, not an off-screen coordinate. Every expected rect is derived here from
+ * the measured layer rect and the image's natural size, so no assertion carries
+ * a viewport-sized pixel number.
  */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
 
 /** The fixture's artboard, also the layer's own box (`bounds: "theme"`). */
 const ARTBOARD = { width: 640, height: 200 } as const;
-/** The authored media transform, verbatim from the fixture. */
-const MEDIA = { scale: 1.4, offsetX: 0.25, offsetY: 0 } as const;
+/** The authored media offset, verbatim from the fixture. The horizontal offset
+ *  is inert because the cover rect has no horizontal overhang to pan within. */
+const MEDIA = { offsetX: 0, offsetY: 0.25 } as const;
 /** The glass panel's authored box, so the pixel reads can aim inside it. */
-const PANEL = { left: 420, top: 20, width: 120, height: 120 } as const;
+const PANEL = { left: 40, top: 40, width: 120, height: 120 } as const;
 /** The panel's authored fill, `rgba(255, 255, 255, 0.10)`: the glass is
  *  translucent, so what a panel pixel shows is the blur of what is behind it
  *  with this much white over it. */
@@ -104,19 +106,27 @@ function readGeometry(page: Page): Promise<Geometry> {
   });
 }
 
-/** The placement oracle, written from the contract rather than imported: a test
- *  that called the renderer's own `placement()` could agree with it while both
- *  were wrong. `contain` only — the fixture's fit. */
-function containedPlacement(
+/** The cover placement oracle, written from the contract rather than imported: a
+ *  test that called the renderer's own `placement()` could agree with it while
+ *  both were wrong. The pan is bounded by the rect's own overhang, which is what
+ *  stops an offset from uncovering the box. */
+function coveredPlacement(
   box: { readonly width: number; readonly height: number },
   source: { readonly width: number; readonly height: number },
+  media: { readonly offsetX: number; readonly offsetY: number },
 ): Rect {
-  const factor = Math.min(box.width / source.width, box.height / source.height);
-  const width = source.width * factor * MEDIA.scale;
-  const height = source.height * factor * MEDIA.scale;
+  const factor = Math.max(box.width / source.width, box.height / source.height);
+  const width = source.width * factor;
+  const height = source.height * factor;
+  const bounded = (pan: number, overhang: number): number =>
+    Math.max(-overhang, Math.min(overhang, pan));
   return {
-    left: (box.width * (1 + 2 * MEDIA.offsetX)) / 2 - width / 2,
-    top: (box.height * (1 + 2 * MEDIA.offsetY)) / 2 - height / 2,
+    left:
+      (box.width - width) / 2 +
+      bounded(box.width * media.offsetX, (width - box.width) / 2),
+    top:
+      (box.height - height) / 2 +
+      bounded(box.height * media.offsetY, (height - box.height) / 2),
     width,
     height,
   };
@@ -209,6 +219,35 @@ function panelOver(base: Pixel): Pixel {
   return { r: mix(base.r), g: mix(base.g), b: mix(base.b) };
 }
 
+/** Waits for the layer's bytes and the placement that needs them. The layer
+ *  mounts before its source decodes, and a read before `load` is a read of the
+ *  load-window rect. */
+async function settle(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const image = document.querySelector<HTMLImageElement>(
+            "[data-yunari-background-media] img",
+          );
+          return image !== null && image.complete && image.naturalWidth > 0;
+        }),
+      { timeout: 20_000 },
+    )
+    .toBe(true);
+  await page.waitForTimeout(400);
+}
+
+/** Maps artboard units onto viewport points for one measured geometry. */
+function artboardMap(geometry: Geometry) {
+  const scaleX = geometry.layer.width / ARTBOARD.width;
+  const scaleY = geometry.layer.height / ARTBOARD.height;
+  return (x: number, y: number) => ({
+    x: geometry.layer.left + x * scaleX,
+    y: geometry.layer.top + y * scaleY,
+  });
+}
+
 test.describe("the background media layer on the player", () => {
   test("places the media by its authored transform and clips it to the board", async ({
     page,
@@ -221,22 +260,7 @@ test.describe("the background media layer on the player", () => {
       page.locator("[data-yunari-background-media]"),
       "the player mounted a background media layer",
     ).toHaveCount(1);
-    // The layer mounts before its bytes decode, and the placement that needs
-    // the natural size lands on `load`; a read before that is a read of the
-    // fallback rect.
-    await expect
-      .poll(
-        () =>
-          page.evaluate(() => {
-            const image = document.querySelector<HTMLImageElement>(
-              "[data-yunari-background-media] img",
-            );
-            return image !== null && image.complete && image.naturalWidth > 0;
-          }),
-        { timeout: 20_000 },
-      )
-      .toBe(true);
-    await page.waitForTimeout(400);
+    await settle(page);
 
     const geometry = await readGeometry(page);
     expect(geometry.natural.width, "the source decoded").toBeGreaterThan(0);
@@ -256,11 +280,12 @@ test.describe("the background media layer on the player", () => {
     within(geometry.layer.width, board.width, "layer width");
     within(geometry.layer.height, board.height, "layer height");
 
-    // 2. The child is the placement rect, computed from the measured layer and
-    //    the source's own size rather than from a pixel number in this file.
-    const placed = containedPlacement(
+    // 2. The child is the cover placement rect, computed from the measured
+    //    layer and the source's own size rather than from a pixel number here.
+    const placed = coveredPlacement(
       { width: geometry.layer.width, height: geometry.layer.height },
       geometry.natural,
+      MEDIA,
     );
     within(
       geometry.media.left,
@@ -284,37 +309,25 @@ test.describe("the background media layer on the player", () => {
 
     // 4. The pixels. Points are viewport coordinates derived from the measured
     //    rects; the expected colours are the fixture's own paint and ink.
-    const scaleX = geometry.layer.width / ARTBOARD.width;
-    const scaleY = geometry.layer.height / ARTBOARD.height;
-    const artboardPoint = (x: number, y: number) => ({
-      x: geometry.layer.left + x * scaleX,
-      y: geometry.layer.top + y * scaleY,
-    });
-    const panelBottom = PANEL.top + PANEL.height;
+    const point = artboardMap(geometry);
+    const panelCentre = point(
+      PANEL.left + PANEL.width / 2,
+      PANEL.top + PANEL.height / 2,
+    );
     const points = [
-      // Inside the board, left of the media (which starts at x 410 units).
-      artboardPoint(100, 100),
-      // Inside the media and below the glass panel, which ends at y 140.
-      artboardPoint(480, panelBottom + 50),
-      // Above the layer, inside the overhanging child: the clip's own claim.
-      {
-        x: geometry.layer.left + 480 * scaleX,
-        y: (geometry.media.top + geometry.layer.top) / 2,
-      },
-      // Below the layer, likewise inside the child.
-      {
-        x: geometry.layer.left + 480 * scaleX,
-        y:
-          (geometry.layer.top +
-            geometry.layer.height +
-            geometry.media.top +
-            geometry.media.height) /
-          2,
-      },
-      // Inside the glass panel's own rect, which sits wholly inside the media
-      // strip: the panel is what Task 7's backdrop sampler reads, so this probes
-      // the sampler's answer rather than the DOM layer's.
-      artboardPoint(500, 80),
+      // Inside the board, below the panel: the media covers the whole box, so
+      // this is its ink and never the paint.
+      point(100, PANEL.top + PANEL.height + 30),
+      // Inside the media and below the glass panel.
+      point(480, PANEL.top + PANEL.height + 30),
+      // Just above the layer, inside the overhanging child: the clip's own
+      // claim. Ten board units out keeps the read inside the host's own paint.
+      point(480, -10),
+      // Just below the layer, likewise inside the child.
+      point(480, ARTBOARD.height + 10),
+      // Inside the glass panel's own rect: the panel is what the backdrop
+      // sampler reads, so this probes the sampler's answer, not the DOM layer's.
+      panelCentre,
     ];
 
     const screenshot = await page.locator("#artboard").screenshot();
@@ -330,8 +343,8 @@ test.describe("the background media layer on the player", () => {
 
     expectPixel(
       pixels[0],
-      BACKGROUND_LAYER_PAINT,
-      "where the media does not cover, the background colour shows",
+      BACKGROUND_LAYER_INK,
+      "the media covers the board: no colour shows inside the box",
     );
     expectPixel(
       pixels[1],
@@ -349,10 +362,10 @@ test.describe("the background media layer on the player", () => {
       "below the layer, the clipped child paints nothing",
     );
 
-    // 5. Inside the glass panel, which the fixture places wholly inside the
-    //    media. A panel pixel is the backdrop the glass sampler read, blurred
-    //    and tinted; the same pixel over the bare paint is what the sampler
-    //    would produce if the layer and the sampler had drifted apart.
+    // 5. Inside the glass panel. A panel pixel is the backdrop the glass
+    //    sampler read, blurred and tinted; the same pixel over the bare paint is
+    //    what the sampler would produce if the layer and the sampler had drifted
+    //    apart.
     const panelMedia = panelOver(BACKGROUND_LAYER_INK);
     const panelPaint = panelOver(BACKGROUND_LAYER_PAINT);
     expect(
@@ -368,6 +381,100 @@ test.describe("the background media layer on the player", () => {
     expect(
       channelDistance(panel!, panelPaint),
       "inside the glass, the panel does not sample the bare paint",
+    ).toBeGreaterThan(60);
+  });
+
+  test("an offset at its maximum stops at the box edge", async ({ page }) => {
+    // The fixture's offset is `1` against an overhang smaller than the pan it
+    // asks for. Without the clamp the media would sit 190 units low and the
+    // board's top strip would be the paint; with it, both edges are ink.
+    await page.goto(`${HOST}/?theme=${HOST_BACKGROUND_EDGE_THEME_ID}`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await settle(page);
+
+    const geometry = await readGeometry(page);
+    const placed = coveredPlacement(
+      { width: geometry.layer.width, height: geometry.layer.height },
+      geometry.natural,
+      { offsetX: 0, offsetY: 1 },
+    );
+    within(geometry.media.top, geometry.layer.top + placed.top, "media top");
+    within(
+      geometry.media.top + geometry.media.height,
+      geometry.layer.top + placed.top + placed.height,
+      "media bottom",
+    );
+
+    const point = artboardMap(geometry);
+    const screenshot = await page.locator("#artboard").screenshot();
+    const pixels = await samplePixels(page, screenshot.toString("base64"), [
+      point(320, 1),
+      point(320, ARTBOARD.height - 1),
+    ]);
+    expectPixel(
+      pixels[0],
+      BACKGROUND_LAYER_INK,
+      "the board's top edge is the media, not the colour",
+    );
+    expectPixel(
+      pixels[1],
+      BACKGROUND_LAYER_INK,
+      "the board's bottom edge is the media, not the colour",
+    );
+  });
+
+  test("flip survives the stored document and reaches the glass sample", async ({
+    page,
+  }, testInfo) => {
+    // The theme is a stored document (`theme.json` on the host) carrying
+    // `flipX`, so this reads the same question twice: the DOM layer mirrors the
+    // two-tone source, and the canvas sampler mirrors what it draws.
+    await page.goto(`${HOST}/?theme=${HOST_BACKGROUND_FLIP_THEME_ID}`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await settle(page);
+
+    const geometry = await readGeometry(page);
+    const point = artboardMap(geometry);
+    const screenshot = await page.locator("#artboard").screenshot();
+    await testInfo.attach("background-flip.png", {
+      body: screenshot,
+      contentType: "image/png",
+    });
+    const pixels = await samplePixels(page, screenshot.toString("base64"), [
+      // Below the panel, in the board's left half: the source's right half.
+      point(80, 185),
+      // The board's right half: the source's left half.
+      point(560, 185),
+      // The panel over the left half, drawn by the canvas sampler.
+      point(PANEL.left + PANEL.width / 2, PANEL.top + PANEL.height / 2),
+    ]);
+
+    expectPixel(
+      pixels[0],
+      BACKGROUND_LAYER_PAINT,
+      "the flipped source's dark half is on the left",
+    );
+    expectPixel(
+      pixels[1],
+      BACKGROUND_LAYER_INK,
+      "the flipped source's ink half is on the right",
+    );
+
+    const panelFlipped = panelOver(BACKGROUND_LAYER_PAINT);
+    const panelUnflipped = panelOver(BACKGROUND_LAYER_INK);
+    expect(
+      channelDistance(panelFlipped, panelUnflipped),
+      "the two possible panel readings are far enough apart to tell apart",
+    ).toBeGreaterThan(120);
+    const panel = pixels[2];
+    expect(panel, "the panel's pixel was read").toBeDefined();
+    expect(
+      channelDistance(panel!, panelFlipped),
+      `the sampler mirrors what the DOM shows: read ${JSON.stringify(panel)}, expected about ${JSON.stringify(panelFlipped)}`,
+    ).toBeLessThanOrEqual(30);
+    expect(
+      channelDistance(panel!, panelUnflipped),
+      "the sampler did not draw the unmirrored source",
     ).toBeGreaterThan(60);
   });
 });

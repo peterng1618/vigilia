@@ -24,7 +24,7 @@ import { uiCopy } from "../../ui-copy.js";
  * every edit leaves as a whole new artboard, so a control cannot hold a reading
  * the document does not.
  *
- * **The board's colour, media and fit are not here.** They are the background
+ * **The board's colour and media are not here.** They are the background
  * layer's, and the selection inspector's `backgroundColumn` renders them — one
  * surface per value, reachable by selecting the layer rather than by opening a
  * pane.
