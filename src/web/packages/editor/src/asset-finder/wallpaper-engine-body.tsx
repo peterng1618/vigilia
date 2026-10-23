@@ -7,25 +7,34 @@ import {
   type WallpaperEngineClientOptions,
   type WallpaperEngineItem,
 } from "../wallpaper-engine/client.js";
+import {
+  ExportSheet,
+  type WallpaperExportOutcome,
+} from "../wallpaper-engine/export-sheet.js";
 import type { ImportOutcome } from "./actions.js";
 
 /** The finder's Wallpaper Engine body: this PC's library, not a search.
  *
  * The import itself is the session's — this body only says which item, because
- * the asset manager's caps and the credit are not something a row can own. */
+ * the asset manager's caps and the credit are not something a row can own. A
+ * scene row opens the export sheet in place of the list; the sheet's own import
+ * goes through the same session transaction an image row's does. */
 export function WallpaperEngineBody(props: {
   readonly onImport: (item: WallpaperEngineItem) => Promise<ImportOutcome>;
-  /** Task 7 supplies this; without it a scene row's action is not drawn. */
-  readonly onOpenScene?: (item: WallpaperEngineItem) => void;
+  readonly onImportExport: (
+    item: WallpaperEngineItem,
+    file: File,
+  ) => Promise<WallpaperExportOutcome>;
   readonly client?: WallpaperEngineClientOptions;
 }): React.JSX.Element {
   const client = props.client;
   const onImport = props.onImport;
-  const onOpenScene = props.onOpenScene;
+  const onImportExport = props.onImportExport;
   const [answer, setAnswer] = useState<WallpaperEngineAnswer | undefined>();
   const [refusals, setRefusals] = useState<Readonly<Record<string, string>>>(
     {},
   );
+  const [selected, setSelected] = useState<WallpaperEngineItem | undefined>();
 
   useEffect(() => {
     let live = true;
@@ -55,6 +64,24 @@ export function WallpaperEngineBody(props: {
       <p className="text-sm text-muted">
         {uiCopy.assets.wallpaperEngine.empty}
       </p>
+    );
+  }
+
+  // The sheet replaces the list while a scene is chosen: the export is the
+  // whole of that choice, and `onDone` is the way back to the library.
+  if (selected !== undefined) {
+    return (
+      <ExportSheet
+        item={selected}
+        onImportFile={(file) => onImportExport(selected, file)}
+        onImported={() => {
+          setSelected(undefined);
+        }}
+        onDone={() => {
+          setSelected(undefined);
+        }}
+        {...(client === undefined ? {} : { client })}
+      />
     );
   }
 
@@ -112,12 +139,12 @@ export function WallpaperEngineBody(props: {
               >
                 {uiCopy.assets.wallpaperEngine.import}
               </button>
-            ) : item.kind === "scene" && onOpenScene !== undefined ? (
+            ) : item.kind === "scene" ? (
               <button
                 type="button"
                 data-yunari-wallpaper-engine-open=""
                 onClick={() => {
-                  onOpenScene(item);
+                  setSelected(item);
                 }}
                 className="shrink-0 rounded-[var(--radius-sm)] border border-edge px-[var(--space-10)] py-[var(--space-6)] text-sm"
               >

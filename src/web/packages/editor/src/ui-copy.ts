@@ -1070,6 +1070,42 @@ export const uiCopy = {
       webUnsupported:
         "A web wallpaper is a page, not a file Yunari can put in a theme.",
       empty: "This library holds no wallpapers Yunari can read.",
+      /** A scene's export sheet. The text step is an instruction, not a tip,
+       *  and the project notice is said once because it is a consequence of
+       *  the unpack the author only needs to hear before choosing to unpack. */
+      scene: {
+        title: (title: string): string => `Export “${title}”`,
+        back: "Back to the library",
+        deleteText:
+          "Delete the clock and any other dynamic text in Wallpaper Engine's editor before exporting.",
+        exportStep: "Export from Wallpaper Engine with these settings:",
+        projectNotice:
+          "The unpack leaves a project in Wallpaper Engine's own project list.",
+        formatField: "Format",
+        resolutionField: "Resolution",
+        frameRateField: "Frame rate",
+        clipField: "Clip length",
+        blendField: "Blend",
+        formatName: {
+          png: "PNG",
+          mp4: "MP4",
+        } satisfies Record<"png" | "mp4", string>,
+        resolution: (width: number, height: number): string =>
+          `${width} × ${height}`,
+        perSecond: (fps: number): string => `${fps} fps`,
+        seconds: (seconds: number): string => `${seconds} s`,
+        opening: "Opening…",
+        launched: (name: string): string =>
+          `Wallpaper Engine's editor is open on the project “${name}”.`,
+        ready: (name: string): string =>
+          `The project “${name}” is ready, but Wallpaper Engine's editor did not start. Open it from Wallpaper Engine's own project list.`,
+        refused: (reason: string): string =>
+          `Wallpaper Engine could not unpack this scene: ${reason}`,
+        offer: (name: string): string =>
+          `Wallpaper Engine wrote ${name}. Import it as the background?`,
+        /** The credits entry's `changes` for a file this sheet imported. */
+        changes: "Exported from Wallpaper Engine's scene editor",
+      },
     },
   },
   /** The prompt before a document is replaced, which the author reads on the

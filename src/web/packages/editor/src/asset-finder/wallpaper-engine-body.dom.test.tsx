@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
 import type { WallpaperEngineItem } from "../wallpaper-engine/client.js";
@@ -70,20 +70,30 @@ const available = {
 };
 
 let host: HTMLDivElement | undefined;
+let root: Root | undefined;
 
-afterEach(() => {
+afterEach(async () => {
+  const mounted = root;
+  root = undefined;
+  await act(async () => {
+    mounted?.unmount();
+  });
   host?.remove();
   host = undefined;
 });
+
+function importExport() {
+  return vi.fn(async () => ({ ok: true as const, assetId: "a1" }));
+}
 
 async function render(
   props: Parameters<typeof WallpaperEngineBody>[0],
 ): Promise<HTMLDivElement> {
   host = document.createElement("div");
   document.body.append(host);
-  const root = createRoot(host);
+  root = createRoot(host);
   await act(async () => {
-    root.render(<WallpaperEngineBody {...props} />);
+    root?.render(<WallpaperEngineBody {...props} />);
   });
   // One microtask below the fetch's own settle, so the listing is rendered.
   await act(async () => {
@@ -95,6 +105,7 @@ async function render(
 it("renders the host's absence reason, not an empty grid", async () => {
   const rendered = await render({
     onImport: vi.fn(async () => ({ ok: true as const })),
+    onImportExport: importExport(),
     client: {
       fetch: listingFetcher({ available: false, reason: "no-library" }),
     },
@@ -111,6 +122,7 @@ it("renders the host's absence reason, not an empty grid", async () => {
 it("draws one row per item with its kind and size", async () => {
   const rendered = await render({
     onImport: vi.fn(async () => ({ ok: true as const })),
+    onImportExport: importExport(),
     client: { fetch: listingFetcher(available) },
   });
 
@@ -137,6 +149,7 @@ it("imports an image item through the injected action", async () => {
   const onImport = vi.fn(async () => ({ ok: true as const }));
   const rendered = await render({
     onImport,
+    onImportExport: importExport(),
     client: { fetch: listingFetcher(available) },
   });
 
@@ -159,6 +172,7 @@ it("renders a refusal beside the row it refused", async () => {
       ok: false as const,
       message: "That video is over the cap.",
     })),
+    onImportExport: importExport(),
     client: { fetch: listingFetcher(available) },
   });
 
@@ -178,6 +192,7 @@ it("renders a refusal beside the row it refused", async () => {
 it("offers no import for a web item, only its reason", async () => {
   const rendered = await render({
     onImport: vi.fn(async () => ({ ok: true as const })),
+    onImportExport: importExport(),
     client: { fetch: listingFetcher(available) },
   });
 
@@ -192,11 +207,10 @@ it("offers no import for a web item, only its reason", async () => {
   ).toBeNull();
 });
 
-it("offers a scene the open action and no import", async () => {
-  const onOpenScene = vi.fn();
+it("opens a scene's export sheet in place of the list, and closes it back", async () => {
   const rendered = await render({
     onImport: vi.fn(async () => ({ ok: true as const })),
-    onOpenScene,
+    onImportExport: importExport(),
     client: { fetch: listingFetcher(available) },
   });
 
@@ -213,17 +227,23 @@ it("offers a scene the open action and no import", async () => {
 
   await act(async () => {
     open?.click();
-  });
-  expect(onOpenScene).toHaveBeenCalledWith(items[3]);
-});
-
-it("draws no scene action when the caller wires none", async () => {
-  const rendered = await render({
-    onImport: vi.fn(async () => ({ ok: true as const })),
-    client: { fetch: listingFetcher(available) },
+    await Promise.resolve();
   });
 
+  expect(rendered.querySelector("[data-yunari-export-sheet]")).not.toBeNull();
   expect(
-    rendered.querySelector("[data-yunari-wallpaper-engine-open]"),
-  ).toBeNull();
+    rendered.querySelectorAll("[data-yunari-wallpaper-engine-item]"),
+  ).toHaveLength(0);
+
+  await act(async () => {
+    rendered
+      .querySelector<HTMLButtonElement>("[data-yunari-export-done]")
+      ?.click();
+    await Promise.resolve();
+  });
+
+  expect(rendered.querySelector("[data-yunari-export-sheet]")).toBeNull();
+  expect(
+    rendered.querySelectorAll("[data-yunari-wallpaper-engine-item]"),
+  ).toHaveLength(4);
 });

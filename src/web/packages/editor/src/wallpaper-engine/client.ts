@@ -272,3 +272,149 @@ export function creditsEntryOf(item: WallpaperEngineItem): ThemeCreditsEntry {
     changes: "Copied unchanged",
   };
 }
+
+/** A scene's unpack answer. `launched` false means the project exists but no
+ *  editor process started; the caller names the project rather than retrying. */
+export type StartProjectAnswer =
+  | {
+      readonly ok: true;
+      readonly name: string;
+      readonly reused: boolean;
+      readonly launched: boolean;
+    }
+  | { readonly ok: false; readonly reason: string };
+
+/** One file Wallpaper Engine wrote into a watched export directory. */
+export interface ExportFile {
+  readonly name: string;
+  readonly format: "png" | "mp4";
+  readonly modified: number;
+  readonly size: number;
+}
+
+/** How often the sheet asks the host for a newer export. */
+export const EXPORT_POLL_MS = 2000;
+
+const EXPORT_FORMATS = ["png", "mp4"] as const;
+
+function exportFileOf(value: unknown): ExportFile | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const record = value as Record<string, unknown>;
+  const name = stringAt(record, "name");
+  const format = Object.hasOwn(record, "format") ? record.format : undefined;
+  const modified = Object.hasOwn(record, "modified")
+    ? record.modified
+    : undefined;
+  const size = Object.hasOwn(record, "size") ? record.size : undefined;
+
+  if (
+    name === undefined ||
+    !EXPORT_FORMATS.includes(format as (typeof EXPORT_FORMATS)[number]) ||
+    typeof modified !== "number" ||
+    !Number.isFinite(modified) ||
+    typeof size !== "number" ||
+    !Number.isFinite(size) ||
+    size < 0
+  ) {
+    return undefined;
+  }
+
+  return { name, format: format as ExportFile["format"], modified, size };
+}
+
+/** Unpack the item and launch Wallpaper Engine's editor on it. The write is the
+ *  host's; a refusal is an answer, never a throw. */
+export async function startProject(
+  workshopId: string,
+  options?: WallpaperEngineClientOptions,
+): Promise<StartProjectAnswer> {
+  const { fetcher, url } = request(options);
+  const refused: StartProjectAnswer = { ok: false, reason: "refused" };
+
+  try {
+    const response = await fetcher(
+      url(
+        `/api/wallpaper-engine/item/${encodeURIComponent(workshopId)}/project`,
+      ),
+      { method: "POST" },
+    );
+    if (!response.ok) return refused;
+
+    const body = (await response.json()) as unknown;
+    if (typeof body !== "object" || body === null) return refused;
+    const answer = body as Record<string, unknown>;
+
+    if (answer.ok === true) {
+      const name = stringAt(answer, "name");
+      return name === undefined
+        ? refused
+        : {
+            ok: true,
+            name,
+            reused: answer.reused === true,
+            launched: answer.launched === true,
+          };
+    }
+
+    const reason = stringAt(answer, "reason");
+    return { ok: false, reason: reason ?? "refused" };
+  } catch {
+    return refused;
+  }
+}
+
+/** The exports written since the sheet opened, newest first. A host that
+ *  refuses answers nothing rather than inventing a file. */
+export async function findExports(
+  since: number,
+  options?: WallpaperEngineClientOptions,
+): Promise<readonly ExportFile[]> {
+  if (!Number.isSafeInteger(since) || since < 0) return [];
+  const { fetcher, url } = request(options);
+
+  try {
+    const response = await fetcher(
+      url(`/api/wallpaper-engine/exports?since=${since}`),
+    );
+    if (!response.ok) return [];
+
+    const body = (await response.json()) as unknown;
+    if (typeof body !== "object" || body === null) return [];
+    const files = Object.hasOwn(body, "files")
+      ? (body as Record<string, unknown>).files
+      : undefined;
+    if (!Array.isArray(files)) return [];
+
+    return files
+      .map(exportFileOf)
+      .filter((file): file is ExportFile => file !== undefined);
+  } catch {
+    return [];
+  }
+}
+
+/** One export's bytes, named by the host's header and otherwise by the name the
+ *  listing gave — which already carries the format's extension. */
+export async function fetchExport(
+  name: string,
+  options?: WallpaperEngineClientOptions,
+): Promise<File | undefined> {
+  const { fetcher, url } = request(options);
+
+  try {
+    const response = await fetcher(
+      url(`/api/wallpaper-engine/export?name=${encodeURIComponent(name)}`),
+    );
+    if (!response.ok) return undefined;
+
+    const contentType = response.headers.get("content-type");
+    const served = response.headers.get("x-yunari-filename");
+    return new File(
+      [new Uint8Array(await response.arrayBuffer()) as unknown as BlobPart],
+      served === null || served === "" ? name : served,
+      { type: contentType?.split(";")[0]?.trim().toLowerCase() ?? "" },
+    );
+  } catch {
+    return undefined;
+  }
+}

@@ -16,16 +16,15 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 
 ## Last completed change
 
-- **The finder lists this PC's Wallpaper Engine library** (`host/src/assets/wallpaper-engine.ts`): the registry carries a `local` source with a `wallpaper-engine` body, an empty search, and no bytes through the generic port.
-- **The body draws the host's own absence reason** (`asset-finder/wallpaper-engine-body.tsx`): one row per item with preview, kind and `Intl` size; `web` rows carry the unsupported sentence and no import; a scene offers the open action only when Task 7 passes it.
-- **An image or video imports through the ordinary path** (`editor-session.ts`): bytes from `/api/wallpaper-engine/item/<id>/asset`, the credit before the consequence, then the background media and `refreshBackgroundMedia()`; the asset manager's refusals are shown.
-- **Every new sentence lives in `uiCopy.assets.wallpaperEngine`**, including the three absence reasons.
+- **A scene row opens its export sheet** (`wallpaper-engine/export-sheet.tsx`): `exportSettingsOf` offers PNG only for a scene the listing classed still and MP4 30 fps/5 s/1 s otherwise; the text step appears only at `hasText === true`.
+- **The sheet unpacks once per press** (`client.ts` `startProject`): the project name is printed on success, a refusal shows its reason without retrying, and `launched: false` says the project is ready instead of launching again.
+- **The watcher offers the newest matching export** (`findExports`, `fetchExport`): it polls from the sheet's `Date.now()`, nothing imports itself, and polling stops on unmount or a successful import.
+- **Both Wallpaper Engine imports share one transaction** (`editor-session.ts` `importWallpaperFile`): credit check, `manager.import`, `addCredit`, background media keeping `bounds`, then refresh; an exported file's credit names Wallpaper Engine's export.
 
 ## Next
 
-1. Tasks 6–7: register the finder's local source, then the scene's unpack/launch/export sheet.
-2. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
-3. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
+1. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
+2. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
 
 ## Blockers / unverified
 

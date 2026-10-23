@@ -4,6 +4,7 @@ import {
   type SampleSource,
 } from "@yunari/renderer-core";
 import { sceneBoxesOf } from "@yunari/scene-fabric";
+import type { ThemeCreditsEntry } from "@yunari/theme-package";
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { createElement } from "react";
 import { applyArrange, canArrange } from "./arrange.js";
@@ -76,6 +77,7 @@ import {
   fetchItemAsset,
   type WallpaperEngineItem,
 } from "./wallpaper-engine/client.js";
+import type { WallpaperExportOutcome } from "./wallpaper-engine/export-sheet.js";
 
 /** How much of the artboard's shorter edge an imported icon takes. An SVG's
  *  viewBox is its own unit (24 for Lucide, 512 for Font Awesome), so its size
@@ -598,10 +600,8 @@ export class EditorSession {
   }
 
   /**
-   * One Wallpaper Engine item's import: the host's payload bytes, the manager's
-   * caps and reference model, and the background consequence an image import
-   * has. The credit is written first, the same order `importAsset` uses — an
-   * import that places nothing still carries its attribution.
+   * One Wallpaper Engine item's import: the host's payload bytes, then the
+   * shared transaction below.
    */
   async importWallpaperItem(item: WallpaperEngineItem): Promise<ImportOutcome> {
     const file = await fetchItemAsset(item);
@@ -612,7 +612,21 @@ export class EditorSession {
       };
     }
 
-    const credit = creditsEntryOf(item);
+    return this.importWallpaperFile(item, file, "Copied unchanged");
+  }
+
+  /**
+   * The one transaction both Wallpaper Engine imports run: the manager's caps
+   * and reference model, the credit, and the background consequence an image
+   * import has. The credit is written first, the same order `importAsset` uses
+   * — an import that places nothing still carries its attribution.
+   */
+  async importWallpaperFile(
+    item: WallpaperEngineItem,
+    file: File,
+    changes: string,
+  ): Promise<WallpaperExportOutcome> {
+    const credit: ThemeCreditsEntry = { ...creditsEntryOf(item), changes };
     if (!this.#document.canAddCredit(credit)) {
       return { ok: false, message: uiCopy.assets.creditsFull };
     }
@@ -631,7 +645,7 @@ export class EditorSession {
         },
       });
       this.#document.refreshBackgroundMedia();
-      return { ok: true };
+      return { ok: true, assetId: reference.id };
     } catch (error) {
       return {
         ok: false,
@@ -683,6 +697,12 @@ export class EditorSession {
       wallpaperEngineBody: () =>
         createElement(WallpaperEngineBody, {
           onImport: (item) => this.importWallpaperItem(item),
+          onImportExport: (item, file) =>
+            this.importWallpaperFile(
+              item,
+              file,
+              uiCopy.assets.wallpaperEngine.scene.changes,
+            ),
         }),
       // One finder row's action. The bytes come from the host, the manager
       // keeps its caps and sanitising, and the credit is written before the
