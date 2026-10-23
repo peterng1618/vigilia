@@ -247,3 +247,134 @@ it("opens a scene's export sheet in place of the list, and closes it back", asyn
     rendered.querySelectorAll("[data-yunari-wallpaper-engine-item]"),
   ).toHaveLength(4);
 });
+
+function rowIds(rendered: HTMLElement): readonly (string | undefined)[] {
+  return [
+    ...rendered.querySelectorAll<HTMLElement>(
+      "[data-yunari-wallpaper-engine-item]",
+    ),
+  ].map((row) => row.dataset.yunariWallpaperEngineItem);
+}
+
+async function typeSearch(rendered: HTMLElement, text: string): Promise<void> {
+  const search = rendered.querySelector<HTMLInputElement>(
+    "[data-yunari-wallpaper-engine-search]",
+  );
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set?.call(search, text);
+    search?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+it("narrows the rows to the titles the search term reaches, and back", async () => {
+  const rendered = await render({
+    onImport: vi.fn(async () => ({ ok: true as const })),
+    onImportExport: importExport(),
+    client: { fetch: listingFetcher(available) },
+  });
+
+  await typeSearch(rendered, "NEON");
+  expect(rowIds(rendered)).toEqual(["202"]);
+
+  await typeSearch(rendered, "");
+  expect(rowIds(rendered)).toEqual(["201", "202", "203", "204"]);
+});
+
+it("narrows the rows to the chosen kind, and back to All", async () => {
+  const rendered = await render({
+    onImport: vi.fn(async () => ({ ok: true as const })),
+    onImportExport: importExport(),
+    client: { fetch: listingFetcher(available) },
+  });
+
+  await act(async () => {
+    rendered
+      .querySelector<HTMLButtonElement>(
+        "[data-yunari-wallpaper-engine-kind-filter='scene']",
+      )
+      ?.click();
+    await Promise.resolve();
+  });
+  expect(rowIds(rendered)).toEqual(["204"]);
+
+  await act(async () => {
+    rendered
+      .querySelector<HTMLButtonElement>(
+        "[data-yunari-wallpaper-engine-kind-filter='all']",
+      )
+      ?.click();
+    await Promise.resolve();
+  });
+  expect(rowIds(rendered)).toEqual(["201", "202", "203", "204"]);
+});
+
+it("says so when the filters hide every row", async () => {
+  const rendered = await render({
+    onImport: vi.fn(async () => ({ ok: true as const })),
+    onImportExport: importExport(),
+    client: { fetch: listingFetcher(available) },
+  });
+
+  await typeSearch(rendered, "no such wallpaper");
+
+  expect(rowIds(rendered)).toEqual([]);
+  expect(rendered.textContent).toContain(
+    uiCopy.assets.wallpaperEngine.noMatches,
+  );
+});
+
+it("says the clock warning once after a successful image import", async () => {
+  const rendered = await render({
+    onImport: vi.fn(async () => ({ ok: true as const })),
+    onImportExport: importExport(),
+    client: { fetch: listingFetcher(available) },
+  });
+
+  expect(
+    rendered.querySelector("[data-yunari-wallpaper-engine-image-notice]"),
+  ).toBeNull();
+
+  await act(async () => {
+    rendered
+      .querySelector<HTMLButtonElement>(
+        "[data-yunari-wallpaper-engine-item='201'] [data-yunari-wallpaper-engine-import]",
+      )
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  const notices = rendered.querySelectorAll(
+    "[data-yunari-wallpaper-engine-image-notice]",
+  );
+  expect(notices).toHaveLength(1);
+  expect(notices[0]?.textContent).toBe(
+    uiCopy.assets.wallpaperEngine.imageNotice,
+  );
+});
+
+it("does not say the clock warning after a refused import", async () => {
+  const rendered = await render({
+    onImport: vi.fn(async () => ({
+      ok: false as const,
+      message: "That video is over the cap.",
+    })),
+    onImportExport: importExport(),
+    client: { fetch: listingFetcher(available) },
+  });
+
+  await act(async () => {
+    rendered
+      .querySelector<HTMLButtonElement>(
+        "[data-yunari-wallpaper-engine-item='202'] [data-yunari-wallpaper-engine-import]",
+      )
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  expect(
+    rendered.querySelector("[data-yunari-wallpaper-engine-image-notice]"),
+  ).toBeNull();
+});

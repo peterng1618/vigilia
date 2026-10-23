@@ -265,9 +265,12 @@ export function creditsEntryOf(item: WallpaperEngineItem): ThemeCreditsEntry {
     kind: "wallpaper",
     title: item.title,
     ...(steamId === undefined ? {} : { author: { steamId } }),
-    ...(workshopUrl === undefined
-      ? {}
-      : { source: { workshopId: item.workshopId, url: workshopUrl } }),
+    // The id is known whenever the item is, so it is recorded even when no
+    // workshop URL was cached; only the link itself is allowed to go missing.
+    source: {
+      workshopId: item.workshopId,
+      ...(workshopUrl === undefined ? {} : { url: workshopUrl }),
+    },
     license: "unknown",
     changes: "Copied unchanged",
   };

@@ -1067,6 +1067,14 @@ export const uiCopy = {
           : MEGABYTE.format(bytes / (1024 * 1024)),
       import: "Set as background",
       openScene: "Open in Wallpaper Engine",
+      search: "Search titles",
+      filterKind: "Kind",
+      filterAll: "All",
+      noMatches: "No wallpaper matches that search.",
+      /** §4.1: an imported image or video carries whatever its author baked in,
+       *  so the one sentence an image import needs is that it cannot be undone. */
+      imageNotice:
+        "A clock or weather label already in this picture cannot be removed, so it should not be there.",
       webUnsupported:
         "A web wallpaper is a page, not a file Yunari can put in a theme.",
       empty: "This library holds no wallpapers Yunari can read.",
@@ -1081,6 +1089,10 @@ export const uiCopy = {
         exportStep: "Export from Wallpaper Engine with these settings:",
         projectNotice:
           "The unpack leaves a project in Wallpaper Engine's own project list.",
+        /** §8 step 7: the dialog's default location is not something Yunari
+         *  controls, so the sheet names the route back when it misses. */
+        elsewhere:
+          "If the export saved somewhere else, use Add → File to bring it in.",
         formatField: "Format",
         resolutionField: "Resolution",
         frameRateField: "Frame rate",
@@ -1096,7 +1108,7 @@ export const uiCopy = {
         seconds: (seconds: number): string => `${seconds} s`,
         opening: "Opening…",
         launched: (name: string): string =>
-          `Wallpaper Engine's editor is open on the project “${name}”.`,
+          `Wallpaper Engine was started. Open the project “${name}” from its own project list if it is not already selected.`,
         ready: (name: string): string =>
           `The project “${name}” is ready, but Wallpaper Engine's editor did not start. Open it from Wallpaper Engine's own project list.`,
         refused: (reason: string): string =>

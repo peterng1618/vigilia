@@ -151,6 +151,9 @@ describe("ExportSheet", () => {
     expect(rendered.textContent).toContain(
       uiCopy.assets.wallpaperEngine.scene.projectNotice,
     );
+    expect(
+      rendered.querySelector("[data-yunari-export-elsewhere]")?.textContent,
+    ).toBe(uiCopy.assets.wallpaperEngine.scene.elsewhere);
   });
 
   it("guides an animated scene with text as a five-second MP4 at 30 fps", async () => {

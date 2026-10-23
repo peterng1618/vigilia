@@ -72,6 +72,7 @@ import {
   type TypePresets,
 } from "./type-preset-manager/index.js";
 import { uiCopy } from "./ui-copy.js";
+import { requestNormalizedVideo } from "./video-normalizer.js";
 import {
   creditsEntryOf,
   fetchItemAsset,
@@ -612,7 +613,27 @@ export class EditorSession {
       };
     }
 
-    return this.importWallpaperFile(item, file, "Copied unchanged");
+    // §15: a video crosses the host's envelope before the manager sees it, and
+    // the normalizer's refusal — never a sentence composed here — is the
+    // authority. An image is imported as served.
+    if (item.kind !== "video")
+      return this.importWallpaperFile(item, file, "Copied unchanged");
+
+    const normalized = await requestNormalizedVideo(
+      new Uint8Array(await file.arrayBuffer()),
+    );
+    if (!normalized.ok) return { ok: false, message: normalized.message };
+    return this.importWallpaperFile(
+      item,
+      new File(
+        [normalized.bytes as unknown as BlobPart],
+        mp4NameOf(file.name),
+        { type: "video/mp4" },
+      ),
+      normalized.reencoded
+        ? "Re-encoded to the publish envelope"
+        : "Copied unchanged",
+    );
   }
 
   /**
@@ -632,8 +653,6 @@ export class EditorSession {
     }
 
     try {
-      // Video is imported as-is: the manager's own caps and refusal messages
-      // are the authority until the store's normalizer is wired in.
       const reference = await this.#assets.import(file);
       this.#document.addCredit(credit);
       const background = this.#document.envelope.background;
@@ -936,4 +955,11 @@ export class EditorSession {
   subscribeDocumentChange(listener: () => void): () => void {
     return this.#document.subscribeDocumentChange(listener);
   }
+}
+
+/** The normalizer answers MP4, so the manager's extension check sees what the
+ *  bytes are even when the wallpaper's own file was another container. */
+function mp4NameOf(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return `${dot <= 0 ? name : name.slice(0, dot)}.mp4`;
 }

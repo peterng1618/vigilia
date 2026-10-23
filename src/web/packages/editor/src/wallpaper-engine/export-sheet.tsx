@@ -186,6 +186,10 @@ export function ExportSheet(props: {
         <li data-yunari-export-project-notice="">{copy.projectNotice}</li>
       </ol>
 
+      <p data-yunari-export-elsewhere="" className="text-xs text-muted">
+        {copy.elsewhere}
+      </p>
+
       <div className="flex flex-col gap-[var(--space-6)]">
         <button
           type="button"

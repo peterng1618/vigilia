@@ -52,7 +52,7 @@ export function toStoredItem(
     ...(item.preview === undefined
       ? {}
       : {
-          previewUrl: `/api/wallpaper-engine/item/${item.workshopId}/preview`,
+          previewUrl: `/api/wallpaper-engine/item/${encodeURIComponent(item.workshopId)}/preview`,
         }),
     filesize: item.filesize,
     tags: item.tags,

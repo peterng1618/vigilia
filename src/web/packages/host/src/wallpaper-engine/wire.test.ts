@@ -68,4 +68,10 @@ describe("the JSON the browser receives (§5.2)", () => {
       "previewUrl" in toStoredItem({ ...ITEM, preview: undefined }, SCENE),
     ).toBe(false);
   });
+
+  it("encodes an id that came from a third-party descriptor", () => {
+    expect(
+      toStoredItem({ ...ITEM, workshopId: "we ird/id" }, SCENE).previewUrl,
+    ).toBe("/api/wallpaper-engine/item/we%20ird%2Fid/preview");
+  });
 });

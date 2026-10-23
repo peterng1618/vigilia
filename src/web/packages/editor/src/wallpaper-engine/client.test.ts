@@ -301,10 +301,27 @@ describe("creditsEntryOf", () => {
     });
   });
 
-  it("omits attribution the listing did not carry", () => {
+  it("omits attribution the listing did not carry, keeping only the id", () => {
     expect(creditsEntryOf({ ...item, attribution: undefined })).toEqual({
       kind: "wallpaper",
       title: "Rain on glass",
+      source: { workshopId: "201" },
+      license: "unknown",
+      changes: "Copied unchanged",
+    });
+  });
+
+  it("keeps the workshop id when the cache row has no link", () => {
+    expect(
+      creditsEntryOf({
+        ...item,
+        attribution: { steamId: "76561198000000000" },
+      }),
+    ).toEqual({
+      kind: "wallpaper",
+      title: "Rain on glass",
+      author: { steamId: "76561198000000000" },
+      source: { workshopId: "201" },
       license: "unknown",
       changes: "Copied unchanged",
     });

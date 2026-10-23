@@ -35,6 +35,13 @@ export function WallpaperEngineBody(props: {
     {},
   );
   const [selected, setSelected] = useState<WallpaperEngineItem | undefined>();
+  /** §5.3's title search and kind filter. The listing is already in memory, so
+   *  narrowing it is this body's own decision and no new route. */
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<WallpaperEngineItem["kind"] | "all">("all");
+  /** §4.1: said once, after a successful image or video import; a refusal and a
+   *  scene export never raise it. */
+  const [noticed, setNoticed] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -93,11 +100,67 @@ export function WallpaperEngineBody(props: {
       else next[item.workshopId] = outcome.message;
       return next;
     });
+    if (outcome.ok) setNoticed(true);
   };
+
+  const copy = uiCopy.assets.wallpaperEngine;
+  const needle = query.trim().toLowerCase();
+  const shown = answer.items.filter(
+    (item) =>
+      (kind === "all" || item.kind === kind) &&
+      (needle === "" || item.title.toLowerCase().includes(needle)),
+  );
 
   return (
     <div className="flex flex-col gap-[var(--space-8)]">
-      {answer.items.map((item) => {
+      <input
+        type="text"
+        data-yunari-wallpaper-engine-search=""
+        aria-label={copy.search}
+        placeholder={copy.search}
+        value={query}
+        onChange={(event) => {
+          setQuery(event.target.value);
+        }}
+        className="rounded-[var(--radius-sm)] border border-edge bg-[var(--panel-2)] px-[var(--space-8)] py-[var(--space-6)] text-sm"
+      />
+      <div
+        role="group"
+        aria-label={copy.filterKind}
+        className="flex flex-wrap gap-[var(--space-6)]"
+      >
+        {(["all", "image", "video", "web", "scene"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            data-yunari-wallpaper-engine-kind-filter={option}
+            aria-pressed={kind === option}
+            onClick={() => {
+              setKind(option);
+            }}
+            className="rounded-[var(--radius-sm)] border border-edge px-[var(--space-10)] py-[var(--space-6)] text-xs"
+          >
+            {option === "all" ? copy.filterAll : copy.kind[option]}
+          </button>
+        ))}
+      </div>
+      {noticed ? (
+        <p
+          data-yunari-wallpaper-engine-image-notice=""
+          className="text-xs text-muted"
+        >
+          {copy.imageNotice}
+        </p>
+      ) : null}
+      {shown.length === 0 ? (
+        <p
+          data-yunari-wallpaper-engine-no-matches=""
+          className="text-sm text-muted"
+        >
+          {copy.noMatches}
+        </p>
+      ) : null}
+      {shown.map((item) => {
         const refusal = refusals[item.workshopId];
         return (
           <div
