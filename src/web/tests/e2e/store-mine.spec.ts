@@ -151,10 +151,15 @@ async function openMine(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   // The region reads the public catalogue when it mounts, Local half included,
-  // and this spec claims nothing about it: a 404 keeps the read answered and
-  // the network out of the case.
+  // and this spec claims nothing about it: a 404 with the origin's own CORS
+  // header keeps the read answered rather than rejected and the network out of
+  // the case.
   await page.route("**/index.json", (route) =>
-    route.fulfill({ status: 404, body: "" }),
+    route.fulfill({
+      status: 404,
+      headers: { "access-control-allow-origin": "*" },
+      body: "",
+    }),
   );
   await page.route(
     (url) => url.pathname.startsWith("/api/themes"),
@@ -297,7 +302,10 @@ test("a refused unpublish states the store's sentence and leaves the row as it w
   page,
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
-  await routeStoreHost(page, { status: "published", refusal: REFUSAL });
+  const host = await routeStoreHost(page, {
+    status: "published",
+    refusal: REFUSAL,
+  });
 
   const region = await openMine(page);
   await region
@@ -325,4 +333,17 @@ test("a refused unpublish states the store's sentence and leaves the row as it w
     modal.locator("[data-yunari-store-status]"),
     "a refused change invented a state word",
   ).toHaveCount(0);
+  // **The row behind the modal is the listing's too.** A refusal changes
+  // nothing, so the cell still carries no state word and the listing was never
+  // re-read: a re-read here would be drawing an answer the refusal did not make.
+  await expect(
+    region.locator(
+      `[data-yunari-store-cell="${ITEM_ID}"] [data-yunari-store-status]`,
+    ),
+    "a refused change moved the cell behind the modal",
+  ).toHaveCount(0);
+  expect(
+    host.reads(),
+    "a refused change re-read the listing it did not alter",
+  ).toBe(1);
 });

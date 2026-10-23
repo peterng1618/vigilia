@@ -20,7 +20,7 @@ Execute the **R2 store backend plan** ([`2026-10-23-r2-store-backend.md`](docs/s
 
 - **`store-mine.spec.ts` proves Mine, Unpublish and Republish in the built editor bundle**, with the session probe, the author's listing and both command POSTs answered by `page.route`.
 - **Three captures are registered and inspected**: `store-mine-listing`, `store-mine-unpublish` and `store-mine-republish`, all `-desktop-chromium`.
-- **A refused unpublish prints the Worker's own sentence in the store's live region** and leaves the row and its offered command unchanged.
+- **A refused unpublish prints the Worker's own sentence in the store's live region** and leaves the row, the cell behind the modal and the listing read count unchanged.
 
 ## Next
 
