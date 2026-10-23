@@ -1070,7 +1070,7 @@ export const uiCopy = {
       search: "Search titles",
       filterKind: "Kind",
       filterAll: "All",
-      noMatches: "No wallpaper matches that search.",
+      noMatches: "No wallpaper matches these filters.",
       /** §4.1: an imported image or video carries whatever its author baked in,
        *  so the one sentence an image import needs is that it cannot be undone. */
       imageNotice:
@@ -1092,7 +1092,7 @@ export const uiCopy = {
         /** §8 step 7: the dialog's default location is not something Yunari
          *  controls, so the sheet names the route back when it misses. */
         elsewhere:
-          "If the export saved somewhere else, use Add → File to bring it in.",
+          "If the export saved somewhere else, use Add, then File, to bring it in.",
         formatField: "Format",
         resolutionField: "Resolution",
         frameRateField: "Frame rate",

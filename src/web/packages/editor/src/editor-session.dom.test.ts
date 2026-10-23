@@ -2084,6 +2084,91 @@ describe("the Wallpaper Engine import transaction", () => {
     expect(requests.some((url) => url.includes("normalize-video"))).toBe(false);
     extensions.destroy();
   });
+
+  const sceneItem = {
+    ...videoItem,
+    workshopId: "303",
+    title: "Still lake",
+    kind: "scene" as const,
+  };
+
+  it("sends a scene's exported MP4 through the normalizer", async () => {
+    const normalizedBytes = new Uint8Array([7, 8, 9]);
+    const requests: string[] = [];
+    const manager = new AssetManager();
+    const importSpy = vi.spyOn(manager, "import");
+    const extensions = wallpaperSession(manager, vi.fn());
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        requests.push(String(input));
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            bytesBase64: base64Of(normalizedBytes),
+            reencoded: true,
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const exported = new File([new Uint8Array([1, 2, 3])], "Still lake.mp4", {
+      type: "video/mp4",
+    });
+    expect(
+      await extensions.importWallpaperExport(sceneItem, exported),
+    ).toMatchObject({
+      ok: true,
+    });
+    expect(requests).toContain("/api/themes/normalize-video");
+
+    const imported = importSpy.mock.calls[0]?.[0];
+    if (imported === undefined) throw new Error("the manager imported nothing");
+    expect(new Uint8Array(await imported.arrayBuffer())).toEqual(
+      normalizedBytes,
+    );
+
+    await extensions.actionFacade().savePackage();
+    expect(saveMock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      undefined,
+      expect.objectContaining({
+        entries: [
+          expect.objectContaining({
+            changes: "Re-encoded to the publish envelope",
+          }),
+        ],
+      }),
+    );
+    extensions.destroy();
+  });
+
+  it("imports a scene's exported PNG without asking the normalizer", async () => {
+    const requests: string[] = [];
+    const manager = new AssetManager();
+    const extensions = wallpaperSession(manager, vi.fn());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        requests.push(String(input));
+        return new Response("", { status: 500 });
+      }),
+    );
+
+    const exported = new File([new Uint8Array([1, 2, 3])], "Still lake.png", {
+      type: "image/png",
+    });
+    expect(
+      await extensions.importWallpaperExport(sceneItem, exported),
+    ).toMatchObject({
+      ok: true,
+    });
+    expect(requests.some((url) => url.includes("normalize-video"))).toBe(false);
+    extensions.destroy();
+  });
 });
 
 function panel() {

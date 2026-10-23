@@ -619,20 +619,33 @@ export class EditorSession {
     if (item.kind !== "video")
       return this.importWallpaperFile(item, file, "Copied unchanged");
 
-    const normalized = await requestNormalizedVideo(
-      new Uint8Array(await file.arrayBuffer()),
-    );
+    const normalized = await normalizeWallpaperVideo(file);
     if (!normalized.ok) return { ok: false, message: normalized.message };
     return this.importWallpaperFile(
       item,
-      new File(
-        [normalized.bytes as unknown as BlobPart],
-        mp4NameOf(file.name),
-        { type: "video/mp4" },
-      ),
+      normalized.file,
       normalized.reencoded
         ? "Re-encoded to the publish envelope"
         : "Copied unchanged",
+    );
+  }
+
+  /** A scene's exported file: a PNG is an image asset, and an MP4 crosses the
+   *  same normalizer a video item does (§8 step 6). */
+  async importWallpaperExport(
+    item: WallpaperEngineItem,
+    file: File,
+  ): Promise<WallpaperExportOutcome> {
+    const changes = uiCopy.assets.wallpaperEngine.scene.changes;
+    if (!isVideoFile(file))
+      return this.importWallpaperFile(item, file, changes);
+
+    const normalized = await normalizeWallpaperVideo(file);
+    if (!normalized.ok) return { ok: false, message: normalized.message };
+    return this.importWallpaperFile(
+      item,
+      normalized.file,
+      normalized.reencoded ? "Re-encoded to the publish envelope" : changes,
     );
   }
 
@@ -717,11 +730,7 @@ export class EditorSession {
         createElement(WallpaperEngineBody, {
           onImport: (item) => this.importWallpaperItem(item),
           onImportExport: (item, file) =>
-            this.importWallpaperFile(
-              item,
-              file,
-              uiCopy.assets.wallpaperEngine.scene.changes,
-            ),
+            this.importWallpaperExport(item, file),
         }),
       // One finder row's action. The bytes come from the host, the manager
       // keeps its caps and sanitising, and the credit is written before the
@@ -955,6 +964,35 @@ export class EditorSession {
   subscribeDocumentChange(listener: () => void): () => void {
     return this.#document.subscribeDocumentChange(listener);
   }
+}
+
+/** One video, through the host's envelope. Used by both entries that take one:
+ *  an item's payload and a scene's export. */
+async function normalizeWallpaperVideo(
+  file: File,
+): Promise<
+  | { readonly ok: true; readonly file: File; readonly reencoded: boolean }
+  | { readonly ok: false; readonly message: string }
+> {
+  const normalized = await requestNormalizedVideo(
+    new Uint8Array(await file.arrayBuffer()),
+  );
+  if (!normalized.ok) return normalized;
+  return {
+    ok: true,
+    file: new File(
+      [normalized.bytes as unknown as BlobPart],
+      mp4NameOf(file.name),
+      { type: "video/mp4" },
+    ),
+    reencoded: normalized.reencoded,
+  };
+}
+
+/** The host's content type is the first answer; the name covers a host that
+ *  served the export as octet-stream. */
+function isVideoFile(file: File): boolean {
+  return file.type.startsWith("video/") || /\.mp4$/i.test(file.name);
 }
 
 /** The normalizer answers MP4, so the manager's extension check sees what the
