@@ -1,5 +1,11 @@
 # The asset finder — Implementation Plan
 
+> **Landed 2026-10-23** (Tasks 1–15, 17–19; Task 16 moved to
+> [`2026-10-21-wallpaper-engine-import.md`](../2026-10-21-wallpaper-engine-import.md),
+> whose amended Tasks 4, 6 and 7 build the Wallpaper Engine host module and the
+> finder's local tab). The rulings live in `.superpowers/sdd/2026-10-21-asset-finder/progress.md`.
+> Unchecked steps below are not a status: many were ticked in the work, not in the list.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** One modal where an author finds and imports outside material — fonts, icons, and a Wallpaper Engine theme already on disk — over an expandable source registry and a host-side credential store the host's future data providers share.
