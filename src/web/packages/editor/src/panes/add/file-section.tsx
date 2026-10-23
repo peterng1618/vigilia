@@ -191,7 +191,7 @@ export function FileSection({
    * `useNormalized` is the press that writes it. The host's own sentence is the
    * refusal, because it names which envelope rule the video broke.
    */
-  const normalizeVideo = async (fit: "contain" | "cover"): Promise<void> => {
+  const normalizeVideo = async (): Promise<void> => {
     const asset = chosen;
     if (asset === undefined || asset.kind !== "video") return;
     // A held copy belongs to the press that produced it: a second press, even
@@ -206,11 +206,9 @@ export function FileSection({
     }
     setNormalizing(true);
     try {
-      const outcome = await requestNormalizedVideo(
-        bytes,
-        fit,
-        fit === "cover" ? editor.artboard() : undefined,
-      );
+      // No crop is asked for: the host keeps the whole frame, and the
+      // background layer crops at render time (0095).
+      const outcome = await requestNormalizedVideo(bytes);
       if (!outcome.ok) {
         setMessage(outcome.message);
         return;
@@ -321,29 +319,21 @@ export function FileSection({
         >
           {uiCopy.panels.removeAsset}
         </button>
-        {/* A video is the one kind with an envelope to fit. Both modes are the
-            author's to choose — one control standing for the other would hide
-            half the capability — and neither exists for a file that is not a
-            video. */}
+        {/* A video is the one kind with an envelope to fit, and the envelope
+            keeps its whole frame: cropping belongs to the background layer,
+            where the author can pan it back. Neither control exists for a file
+            that is not a video. */}
         {video !== undefined && (
           <>
             <button
               type="button"
               data-yunari-asset-normalize=""
               disabled={normalizing}
-              onClick={() => void submit(() => normalizeVideo("contain"))}
+              onClick={() => void submit(() => normalizeVideo())}
             >
               {normalizing
                 ? uiCopy.panels.normalizingVideo
                 : uiCopy.panels.normalizeVideo}
-            </button>
-            <button
-              type="button"
-              data-yunari-asset-fill=""
-              disabled={normalizing}
-              onClick={() => void submit(() => normalizeVideo("cover"))}
-            >
-              {uiCopy.panels.fillArtboard}
             </button>
             {pending !== undefined && pendingPreviewUrl !== undefined && (
               // Spec rule 4: the author previews the normalized asset, not the
@@ -439,19 +429,14 @@ type NormalizeOutcome =
  */
 async function requestNormalizedVideo(
   bytes: Uint8Array,
-  fit: "contain" | "cover",
-  aspect: { readonly width: number; readonly height: number } | undefined,
 ): Promise<NormalizeOutcome> {
   let response: Response;
   try {
     response = await fetch(VIDEO_NORMALIZE_PATH, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        bytesBase64: base64Of(bytes),
-        fit,
-        ...(aspect === undefined ? {} : { aspect }),
-      }),
+      // No `fit`: the host's `contain` path keeps the source's own shape.
+      body: JSON.stringify({ bytesBase64: base64Of(bytes) }),
     });
   } catch {
     return { ok: false, message: uiCopy.panels.videoNormalizeFailed };

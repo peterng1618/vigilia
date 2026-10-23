@@ -1388,14 +1388,13 @@ export const uiCopy = {
     /** Shown when a removal is refused because something still points at it. */
     assetReferenced: "That asset is in use and cannot be removed.",
     removeAsset: "Remove asset",
-    /** The two ways to bring a declared video into the publish envelope, named
-        for what each does to the picture: `normalizeVideo` keeps its own shape,
-        `fillArtboard` crops it to the theme's frame. Both produce a held copy;
-        `useNormalizedVideo` is the second press that writes it over the master,
-        so the author is never moved off the file they imported unasked. */
+    /** Bringing a declared video into the publish envelope keeps the whole
+        frame: cropping is the background layer's job at render time, where it is
+        reversible and has the pixels to pan with. The host answers with a held
+        copy; `useNormalizedVideo` is the second press that writes it over the
+        master, so the author is never moved off the file they imported unasked. */
     normalizeVideo: "Normalize video",
     normalizingVideo: "Normalizing…",
-    fillArtboard: "Fill the artboard",
     useNormalizedVideo: "Use the normalized copy",
     /** Shown when writing the held normalized copy over the master failed. A
         byte swap is not an import, so it names its own failure (N6). */

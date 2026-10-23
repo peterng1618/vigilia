@@ -3637,12 +3637,10 @@ test("normalizes a declared video without replacing its master", async ({
   await chooseIn(page, "[data-yunari-asset-select]", "clip");
 
   const normalize = page.locator("[data-yunari-asset-normalize]");
-  const fill = page.locator("[data-yunari-asset-fill]");
   const useCopy = page.locator("[data-yunari-asset-use-normalized]");
   const alert = page.locator('[data-yunari-panel="add"] [role="alert"]');
-  // Both modes are offered; one standing for the other would hide a capability.
+  // One action, keeping the whole frame: the layer crops at render time (0095).
   await expect(normalize).toBeVisible();
-  await expect(fill).toBeVisible();
 
   const posted: unknown[] = [];
   let answer: Record<string, unknown> = {
@@ -3662,9 +3660,8 @@ test("normalizes a declared video without replacing its master", async ({
   // The host's sentence, not one composed by the pane.
   await expect(alert).toHaveText("That video is not an H.264 MP4.");
   await expect(useCopy).toHaveCount(0);
-  // A refusal is an answer, not a broken run: both modes stay pressable.
+  // A refusal is an answer, not a broken run: the control stays pressable.
   await expect(normalize).toBeEnabled();
-  await expect(fill).toBeEnabled();
   // The section is the pane's foot, so a capture of the pane has to be told to
   // bring the refusal into frame rather than cropping it below the fold.
   await alert.scrollIntoViewIfNeeded();
@@ -3710,8 +3707,8 @@ test("normalizes a declared video without replacing its master", async ({
     saved.parsed.envelope.assets?.filter((asset) => asset.id === "clip"),
   ).toMatchObject([{ id: "clip", kind: "video", path: "assets/clip.mp4" }]);
   expect(saved.parsed.assets["assets/clip.mp4"]).toEqual(normalized);
-  // The plain press asked for the shape-preserving mode.
-  expect(posted[0]).toMatchObject({ fit: "contain" });
+  // The press asked for no crop, so the host keeps the source's own shape.
+  expect(posted[0]).not.toHaveProperty("fit");
 });
 
 /** Saves the open document through the File menu, as the author does. */
