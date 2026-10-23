@@ -83,7 +83,8 @@ two apart is the judgement the map cannot make for itself.
 | **The stored-document base and the library save protocol** — what a save carries, and the conflict it can be refused on | `editor/src/theme-library-manager/` |
 | Chart selection/settings/bindings — projected by `panel.ts`, rendered by `chart-fields.tsx`, written by `index.ts` | `editor/src/chart-manager/` |
 | **The plan-and-player artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop; the editor's case is a separate rule, above | `renderer-core/src/artboard.ts` |
-| Theme metadata, artboard size/preview fit/paint/media — **the authoring controls** | `editor/src/artboard-panel.ts` |
+| Theme metadata, artboard size and the size note — **the Document pane's authoring controls** | `editor/src/artboard-panel.ts` (`editor/src/panes/document/`) |
+| **The background layer's authoring** — its colour, media, bounds, fit, scale and offsets, described by its inspector column and written through `EditorDocument.setBackground` | `editor/src/selection-inspector/background-column.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
 | **Which object and arrange actions exist** — their ids, labels and icons | `editor/src/object-actions.ts` |
 | **Which of a manager's refusals a menu advertises** — eligibility as the hand-kept agreement with each manager's own refusal, now checked by a witness that drives both | `editor/src/object-actions.ts` |
@@ -189,6 +190,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Pure frame planning | `renderer-core/src/scene/plan.ts` |
 | ScenePlan reconciliation | `scene-fabric/src/adapter.ts` |
 | Canvas/artboard mount | `scene-fabric/src/scene.ts` |
+| **The background layer's DOM media** — the `<video>`/`<img>` beneath the canvas, its theme/display bounds, fit, scale and offsets, and the re-placement that does not restart playback | `scene-fabric/src/background-media.ts` |
 | Backdrop-glass composition, and its attach/dispose lifecycle | `scene-fabric/src/glass.ts` (editor Canvas and player StaticCanvas share it) |
 | **What a panel samples** — the artboard's paint composed *under* its media, and the board rect a gradient is mapped to (0080) | `scene-fabric/src/artboard-backdrop.ts`, with the paint's third output form in `scene-fabric/src/artboard-paint.ts` |
 | Scene serialization/revival | `scene-fabric/src/persist.ts` |
