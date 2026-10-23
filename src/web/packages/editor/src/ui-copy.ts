@@ -110,6 +110,19 @@ const glassRefusals: Readonly<Record<string, string>> = {
  */
 export const glassRefusalKinds: readonly string[] = Object.keys(glassRefusals);
 
+/** A row's file size. `Intl` owns the unit word, the separator and the
+ *  rounding; the only choice here is which unit the number is in. */
+const KILOBYTE = new Intl.NumberFormat(undefined, {
+  style: "unit",
+  unit: "kilobyte",
+  maximumFractionDigits: 1,
+});
+const MEGABYTE = new Intl.NumberFormat(undefined, {
+  style: "unit",
+  unit: "megabyte",
+  maximumFractionDigits: 1,
+});
+
 export const uiCopy = {
   brand: "Yunari",
   /** The rail's four slots. A slot's word is both its tooltip and its
@@ -1030,6 +1043,34 @@ export const uiCopy = {
       `The host did not send "${name}", so nothing was imported.`,
     creditsFull:
       "This theme already carries the last attribution it can hold, so the import would leave it unsavable.",
+    /** The Wallpaper Engine body. A local library is not a grid, so the host's
+     *  own absence reason is the sentence the tab draws — "not installed" and
+     *  "no library" are different problems for the person reading it. */
+    wallpaperEngine: {
+      reason: {
+        "not-installed": "Wallpaper Engine is not installed on this PC.",
+        "unsupported-platform": "Wallpaper Engine is read only on Windows.",
+        "no-library": "Wallpaper Engine holds no wallpaper library yet.",
+      } satisfies Record<
+        "not-installed" | "unsupported-platform" | "no-library",
+        string
+      >,
+      kind: {
+        image: "Image",
+        video: "Video",
+        web: "Web",
+        scene: "Scene",
+      } satisfies Record<"image" | "video" | "web" | "scene", string>,
+      size: (bytes: number): string =>
+        bytes < 1024 * 1024
+          ? KILOBYTE.format(bytes / 1024)
+          : MEGABYTE.format(bytes / (1024 * 1024)),
+      import: "Set as background",
+      openScene: "Open in Wallpaper Engine",
+      webUnsupported:
+        "A web wallpaper is a page, not a file Yunari can put in a theme.",
+      empty: "This library holds no wallpapers Yunari can read.",
+    },
   },
   /** The prompt before a document is replaced, which the author reads on the
    *  way to losing their work. */

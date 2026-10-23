@@ -8,7 +8,11 @@ import { ActiveSelection, type FabricObject } from "fabric/es";
 import { createElement } from "react";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
-import { creditOf, importFinderResult } from "./asset-finder/actions.js";
+import {
+  creditOf,
+  type ImportOutcome,
+  importFinderResult,
+} from "./asset-finder/actions.js";
 import { assetBytes } from "./asset-finder/client.js";
 import { FontsBodyHost } from "./asset-finder/fonts-body.js";
 import {
@@ -16,6 +20,7 @@ import {
   iconShapes,
   placeIcon,
 } from "./asset-finder/icon-shape.js";
+import { WallpaperEngineBody } from "./asset-finder/wallpaper-engine-body.js";
 import { type AssetManager, mimeOf } from "./asset-manager/index.js";
 import {
   type CanvasNudge,
@@ -66,6 +71,11 @@ import {
   type TypePresets,
 } from "./type-preset-manager/index.js";
 import { uiCopy } from "./ui-copy.js";
+import {
+  creditsEntryOf,
+  fetchItemAsset,
+  type WallpaperEngineItem,
+} from "./wallpaper-engine/client.js";
 
 /** How much of the artboard's shorter edge an imported icon takes. An SVG's
  *  viewBox is its own unit (24 for Lucide, 512 for Font Awesome), so its size
@@ -587,6 +597,49 @@ export class EditorSession {
     return this.#document.snapshot();
   }
 
+  /**
+   * One Wallpaper Engine item's import: the host's payload bytes, the manager's
+   * caps and reference model, and the background consequence an image import
+   * has. The credit is written first, the same order `importAsset` uses — an
+   * import that places nothing still carries its attribution.
+   */
+  async importWallpaperItem(item: WallpaperEngineItem): Promise<ImportOutcome> {
+    const file = await fetchItemAsset(item);
+    if (file === undefined) {
+      return {
+        ok: false,
+        message: uiCopy.assets.bytesUnavailable(item.title),
+      };
+    }
+
+    const credit = creditsEntryOf(item);
+    if (!this.#document.canAddCredit(credit)) {
+      return { ok: false, message: uiCopy.assets.creditsFull };
+    }
+
+    try {
+      // Video is imported as-is: the manager's own caps and refusal messages
+      // are the authority until the store's normalizer is wired in.
+      const reference = await this.#assets.import(file);
+      this.#document.addCredit(credit);
+      const background = this.#document.envelope.background;
+      this.#document.setBackground({
+        ...background,
+        media: {
+          assetId: reference.id,
+          bounds: background?.media?.bounds ?? "theme",
+        },
+      });
+      this.#document.refreshBackgroundMedia();
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
   /** Reachability only: the shell menus dispatch through the existing owners,
    * including the private document actions the panel section used to call. */
   actionFacade(): EditorActionFacade {
@@ -623,6 +676,13 @@ export class EditorSession {
           onApplyTrio: (trioId) => {
             void this.applyFontTrio(trioId);
           },
+        }),
+      // The finder's Wallpaper Engine body. The listing is the body's own fetch
+      // — it is a library, not a search — so the session owns only the import a
+      // row triggers.
+      wallpaperEngineBody: () =>
+        createElement(WallpaperEngineBody, {
+          onImport: (item) => this.importWallpaperItem(item),
         }),
       // One finder row's action. The bytes come from the host, the manager
       // keeps its caps and sanitising, and the credit is written before the
