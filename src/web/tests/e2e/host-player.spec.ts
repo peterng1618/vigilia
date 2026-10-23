@@ -1048,6 +1048,18 @@ test.describe("a paused clock on one chart", () => {
           { timeout: 30_000 },
         )
         .toBeGreaterThan(0);
+      // **The connection strip is the readiness the ink check misses.** The
+      // player re-resolves its theme with a navigation, and the new document
+      // boots to "Connecting to the host" — a frame with ink already on its
+      // chart canvas but nothing of the theme drawn, which is what made one
+      // capture in six a blank frame under load. The strip is removed when the
+      // source is live, so its absence, held past the window in which a
+      // re-resolve remounts the page, is the settled document.
+      await expect(page.locator("#yunari-connection")).toHaveCount(0, {
+        timeout: 20_000,
+      });
+      await page.waitForTimeout(1_000);
+      await expect(page.locator("#yunari-connection")).toHaveCount(0);
       await page.evaluate(() => document.fonts.ready);
       const shot = await page
         .locator("#artboard canvas.lower-canvas")

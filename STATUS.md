@@ -18,9 +18,10 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 
 ## Last completed change
 
-- **A background video is sized from its metadata**: `intrinsic()` in `scene-fabric/src/background-media.ts` gated a video on a decoded frame, so at `loadedmetadata` it fell back to the bare box — stretched, offsets inert — while the glass sampler, reading later, drew the placed rect (user's report).
-- **Drawing keeps its own gate**: `drawable()` holds `drawImage`'s HAVE_CURRENT_DATA precondition apart from sizing, and the intrinsic listener re-places once in case a cached source completed before it attached.
-- **Proof**: a dom test at HAVE_METADATA fails with the old gate (red-proven) and passes with it; scene-fabric 366 pass, `background-layer.spec.ts` 3/3 on rebuilt bundles.
+- **CI's 22 browser failures are repaired at their causes, not their numbers**: the retired device-flow store stubs, the finder's font catalogue moving into the asset-finder body, the drawings' 240 off-scale literals, the role/name rule that overflowed under wider glyphs, and the popup/header overflow at 390px.
+- **Two suites measured a product that changed under them**: glass and host-media assumed a 30 Hz idle repaint, and `38cbfe3e` made the loop render only when a pass painted; the frame-determinism case now waits for the connection strip, not just ink.
+- **The runner gets a display**: `host-pwa` and `host-secure-origin` launch headed browsers on purpose, so CI runs Playwright under `xvfb-run` instead of reading "Missing X server" as a product failure.
+- **Proof**: `npm run gate` exit 0 (4,612 tests), targeted rebuilt-bundle browser runs pass, the glyph-overflow and role-yield fixes A/B red-proven, the 6-run clock stress is 6/6.
 
 ## Next
 
@@ -32,8 +33,8 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 
 ## Blockers / unverified
 
-- **The store Worker is not deployed and no live store path has run**: no D1 database, R2 bucket, secret, real `database_id`, deploy, `/migrate`, health check, OAuth round trip, live CPU measurement or import.
-- **`CATALOGUE_ORIGIN` is still the placeholder** `https://yunari-store.workers.dev`, and no normalized video has been played in a browser.
+- **The store Worker is not deployed and no live store path has run**: no D1 database, R2 bucket, secret, real `database_id`, deploy, `/migrate`, health check, OAuth round trip, live CPU measurement or import; `CATALOGUE_ORIGIN` is still the placeholder `https://yunari-store.workers.dev`, and no normalized video has played in a browser.
 - **Version 2 now identifies two shapes**: a stored or catalogued document carrying `artboard.background`/`backgroundMedia`, or `fit`/`scale` on its media, is refused by the unknown-key check; the live catalogue's smoke theme carries the old shape and needs reseeding (owner action).
 - **Background and artboard edits are not undoable**: Fabric history serialises the scene only. Recorded, not a regression.
-- **Three browser specs are red or order-dependent, and none is this branch's behaviour**: `host-media`'s frame-repaint case (the host's local display answers 1 fps), `publish-header`'s 390 px containment (0.27 px overflow), and `publish-loop`'s clear-on-close (passes alone, fails after its first test).
+- **The CI run for these fixes has not been observed yet**; the browser evidence is local, and `publish-loop`'s clear-on-close remains order-dependent (passes alone, fails after its first test).
+- **The compact editor header is still wider than a phone**: clipping it stops the document widening, but the menubar and publish control stay unreachable below the breakpoint — `vg-707` waits on a ruling.

@@ -168,6 +168,24 @@ export function PublishControl({
         <Popover.Positioner
           sideOffset={6}
           align="end"
+          // **Eight pixels of the window are never the popup's.** Base UI's
+          // default avoids collisions against the nearest scroll container, and
+          // the header's own content overflows a 390px window — so the surface
+          // was clamped to the overrun rather than to the window and ended a
+          // few pixels past it. Asking for the inset states the fact this
+          // surface owes: it is reachable inside the window it was opened in.
+          collisionPadding={8}
+          // `end` alignment alone does not correct an alignment-axis overflow
+          // (its default is to flip to the other side), and the trigger can sit
+          // past the window's right edge — so the popup is shifted, never
+          // flipped, along the axis it overflows.
+          collisionAvoidance={{ align: "shift" }}
+          // **The viewport is the boundary, not the nearest clipping ancestor.**
+          // An empty boundary list is floating-ui's own spelling for the
+          // viewport; the ancestor it would otherwise pick is the document,
+          // whose box a header that overflows the window widens — which is how
+          // a popup "inside the boundary" still ends past the glass.
+          collisionBoundary={[]}
           className="editor-shell-positioner"
         >
           <Popover.Popup
