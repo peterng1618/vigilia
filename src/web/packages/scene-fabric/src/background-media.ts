@@ -235,7 +235,16 @@ export function mountBackgroundMedia(
         ? document.createElement("video")
         : document.createElement("img");
     child.src = source.url;
-    child.style.cssText = "display:block;position:absolute;";
+    // `max-width:none` is load-bearing: Tailwind's preflight (the editor's
+    // stylesheet) applies `img, video { max-width: 100%; height: auto }`, which
+    // capped the placed rect's width at the layer's while the inline height
+    // stayed — the picture stretched, and an x offset could not widen it.
+    // `max-width:none` is load-bearing: Tailwind's preflight (the editor's
+    // stylesheet) applies `img, video { max-width: 100%; height: auto }`, which
+    // capped the placed rect's width at the layer's while the inline height
+    // stayed — the picture stretched, and an x offset could not widen it.
+    child.style.cssText =
+      "display:block;position:absolute;max-width:none;max-height:none;";
     if (child instanceof HTMLVideoElement) {
       child.autoplay = true;
       child.muted = true;

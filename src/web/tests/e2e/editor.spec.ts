@@ -2503,6 +2503,64 @@ test.describe("Fabric editor route", () => {
     expect(leftFor(envelope, "wordmark")).toBe(118);
   });
 
+  /**
+   * The media layer's own size, read where a stylesheet can reach it. Tailwind's
+   * preflight — which the editor loads and the player does not — sets
+   * `img, video { max-width: 100%; height: auto }`, so the placed rect's width
+   * was capped at the layer's while its inline height still grew: the picture
+   * stretched to the layer, and an x offset could never widen it. A jsdom test
+   * cannot see a cascade, and the player has no preflight, so this can only be
+   * caught on the editor's built bundle.
+   */
+  test("an offset zooms the background picture without distorting it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await openPane(page, "Document");
+    await selectLayer(page, "Background");
+
+    const media = page.locator("[data-yunari-background-media] img");
+    await expect(media).toHaveCount(1);
+    await expect
+      .poll(() =>
+        media.evaluate((element) => {
+          const image = element as HTMLImageElement;
+          return image.complete && image.naturalWidth > 0;
+        }),
+      )
+      .toBe(true);
+
+    const read = () =>
+      media.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const image = element as HTMLImageElement;
+        return {
+          width: box.width,
+          height: box.height,
+          aspect: box.width / box.height,
+          naturalAspect: image.naturalWidth / image.naturalHeight,
+          maxWidth: getComputedStyle(element).maxWidth,
+        };
+      });
+
+    const before = await read();
+    const x = page.locator("[data-yunari-background-offset-x]");
+    await x.fill("50");
+    await x.press("Tab");
+    // The re-placement is a style write, and the rect is read after layout.
+    await expect
+      .poll(async () => (await read()).width)
+      .toBeGreaterThan(before.width * 1.5);
+
+    const after = await read();
+    expect(after.maxWidth, "no preflight cap on the placed rect").toBe("none");
+    expect(
+      after.aspect,
+      "the placed rect carries the source's aspect, not the layer's",
+    ).toBeCloseTo(after.naturalAspect, 2);
+  });
+
   test("offers no control for the artboard's own content fit", async ({
     page,
   }, testInfo) => {

@@ -18,9 +18,10 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 
 ## Last completed change
 
-- **A background video is sized from its metadata**: `intrinsic()` in `scene-fabric/src/background-media.ts` gated a video on a decoded frame, so at `loadedmetadata` it fell back to the bare box — stretched, offsets inert — while the glass sampler, reading later, drew the placed rect (user's report).
-- **Drawing keeps its own gate**: `drawable()` holds `drawImage`'s HAVE_CURRENT_DATA precondition apart from sizing, and the intrinsic listener re-places once in case a cached source completed before it attached.
-- **Proof**: a dom test at HAVE_METADATA fails with the old gate (red-proven) and passes with it; scene-fabric 366 pass, `background-layer.spec.ts` 3/3 on rebuilt bundles.
+- **Tailwind's preflight was capping the media layer**: `img, video { max-width: 100%; height: auto }` pinned the placed rect's width to the layer while the inline height grew, so the picture stretched and an x offset could not widen it (user's report; the player has no preflight, which is why only the editor showed it).
+- **The child now sets `max-width:none;max-height:none` inline** in `mountBackgroundMedia`, which outranks any stylesheet reset on the placed element.
+- **Proof**: a new editor e2e reads the placed rect against the source's aspect and fails on the un-fixed bundle (711.6 × 800.8), passes after it (1423 × 800.8); the editor's three background tests pass, `background-layer.spec.ts` 3/3, 677 unit tests in scene-fabric and the inspector.
+- **A background video is sized from its metadata**: `intrinsic()` gated a video on a decoded frame, so it stayed the bare box while the glass sampled the placed rect; `drawable()` now keeps `drawImage`'s frame precondition apart from sizing.
 
 ## Next
 
