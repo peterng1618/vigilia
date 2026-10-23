@@ -22,6 +22,7 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 - **Two suites measured a product that changed under them**: glass and host-media assumed a 30 Hz idle repaint, and `38cbfe3e` made the loop render only when a pass painted; the frame-determinism case now waits for the connection strip, not just ink.
 - **The runner gets a display**: `host-pwa` and `host-secure-origin` launch headed browsers on purpose, so CI runs Playwright under `xvfb-run` instead of reading "Missing X server" as a product failure.
 - **Proof**: `npm run gate` exit 0 (4,612 tests), targeted rebuilt-bundle browser runs pass, the glyph-overflow and role-yield fixes A/B red-proven, the 6-run clock stress is 6/6.
+- **A GPU-less host and an off-screen anchor**: the player proofs read the gap when the host reports no GPU reading, and the publish popover shifts into the window (`sticky` drops `limitShift`) instead of parking at the trigger's off-screen edge.
 
 ## Next
 
