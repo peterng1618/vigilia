@@ -13,7 +13,7 @@
  * `input[type=range]` is the slider primitive's hidden thumb rather than a
  * control this pane may hold.
  *
- * The board's colour, media and fit are not this pane's any more: they are the
+ * The board's colour, media and position are not this pane's any more: they are the
  * background layer's, and the selection inspector's `backgroundColumn` renders
  * them. This file asserts both halves — the size controls remain, and none of
  * the background hooks is here.
@@ -173,7 +173,7 @@ it("renders the board's size controls, and none of the background's", async () =
     expect(host.querySelector(`[data-yunari-${hook}]`), hook).not.toBeNull();
   }
 
-  // The background layer's colour, media and fit are the selection inspector's
+  // The background layer's colour, media and position are the selection inspector's
   // rows now (`backgroundColumn`), so the Document pane holds no control for
   // them — a second surface for one value is a second owner of it.
   for (const hook of BACKGROUND_HOOKS) {

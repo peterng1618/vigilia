@@ -140,7 +140,7 @@ export type FieldView =
       readonly integer?: boolean;
       /**
        * The stored value is a fraction the field shows as a percentage — the
-       * background's scale and offsets. The control multiplies on the way in and
+       * background's offsets. The control multiplies on the way in and
        * divides on the way out, so the write boundary still receives a fraction.
        */
       readonly percent?: boolean;

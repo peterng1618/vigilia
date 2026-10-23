@@ -1103,7 +1103,7 @@ describe("opening a theme over a document that has unsaved changes", () => {
     libraryChoiceMock.mockClear();
   });
 
-  it("lists a finder import in the Document pane, as the Add pane's file does", async () => {
+  it("imports a finder result through the session's own asset path", async () => {
     assetClientMock.assetBytes.mockResolvedValue({
       bytes: new TextEncoder().encode(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>',
@@ -1111,7 +1111,6 @@ describe("opening a theme over a document that has unsaved changes", () => {
       filename: "house.svg",
     });
     const extensions = sessionWith();
-    const setAssets = (panels.last as ReturnType<typeof panel>).setAssets;
 
     const outcome = await extensions.actionFacade().importAsset?.(
       { source: "lucide", results: [], next: undefined, failure: undefined },
@@ -1126,12 +1125,12 @@ describe("opening a theme over a document that has unsaved changes", () => {
       },
     );
 
+    // The Document pane listed declarations when main wrote this case; the pane
+    // no longer holds a copy of them (the Add pane's list does), so the import's
+    // own outcome is the whole contract here.
     expect(outcome?.ok === true ? "imported" : outcome?.message).toBe(
       "imported",
     );
-    // The declaration is new, so the pane's list must be told; otherwise it
-    // shows the set from before the import until another asset action.
-    expect(setAssets).toHaveBeenCalled();
     extensions.destroy();
   });
 

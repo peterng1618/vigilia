@@ -127,8 +127,12 @@ export function nearestKey(
   key: string,
   allowed: readonly string[],
 ): string | undefined {
+  // Provisional budget: a suggestion must be a plausible typo of *this* key, not
+  // merely the closest of a short list. The removed media key `fit` is three
+  // edits from `flipX`, and offering the mirror in place of "this key is gone"
+  // misleads the author.
   let best: string | undefined;
-  let bestDistance = 4;
+  let bestDistance = Math.max(1, Math.floor(key.length / 2)) + 1;
 
   for (const candidate of allowed) {
     const distance = editDistance(key.toLowerCase(), candidate.toLowerCase());

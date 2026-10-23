@@ -345,6 +345,17 @@ describe("the background layer", () => {
     ).toContain("unknown-field");
   });
 
+  it("does not offer a removed media key as a misspelling of a live one", () => {
+    // `fit` is three edits from `flipX`: close enough for a distance-only
+    // suggestion to name a mirror instead of saying the key is gone.
+    const issue = issuesFor(
+      withBackground({
+        media: { assetId: "clip", bounds: "theme", fit: "contain" },
+      }),
+    ).find((candidate) => candidate.code === "unknown-field");
+    expect(issue?.message).not.toContain("Did you mean");
+  });
+
   it("refuses media with no bounds", () => {
     // `bounds` decides which box the layer is placed in, so a media with no
     // bounds has no placement; the enum check is what refuses it.

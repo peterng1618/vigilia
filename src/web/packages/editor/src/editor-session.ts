@@ -638,12 +638,15 @@ export class EditorSession {
           document: this.#document,
           place: (assetId) => {
             if (result.kind === "image") {
-              const artboard = this.#document.envelope.artboard;
-              this.#document.setArtboard({
-                ...artboard,
-                backgroundMedia: {
+              // The background is a layer now, and its media carries the box it
+              // fills. A newly placed picture keeps the box it was fitted to and
+              // starts unmirrored and centred.
+              const background = this.#document.envelope.background;
+              this.#document.setBackground({
+                ...background,
+                media: {
                   assetId,
-                  fit: artboard.backgroundMedia?.fit ?? "theme",
+                  bounds: background?.media?.bounds ?? "theme",
                 },
               });
               return;
@@ -665,10 +668,9 @@ export class EditorSession {
           },
         });
         if (outcome.ok === true) {
-          // The Document pane lists declarations, and a finder import makes one
-          // just as the Add pane's own file does; without this the list is a
-          // save behind.
-          this.#artboard.setAssets(this.#assets.declarations);
+          // A finder import makes a declaration just as the Add pane's own file
+          // does, and a declared asset is what the background layer resolves its
+          // bytes through.
           this.#document.refreshBackgroundMedia();
         }
         return outcome.ok
