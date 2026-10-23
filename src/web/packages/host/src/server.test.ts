@@ -7693,6 +7693,16 @@ describe("Host Wallpaper Engine routes", () => {
           )
         ).status,
       ).toBe(404);
+      // Malformed percent-encoding names no item either, and is not a fault.
+      expect(
+        (
+          await request(
+            hosted.server,
+            "GET",
+            "/api/wallpaper-engine/item/%ZZ/asset",
+          )
+        ).status,
+      ).toBe(404);
     } finally {
       await hosted.close();
     }

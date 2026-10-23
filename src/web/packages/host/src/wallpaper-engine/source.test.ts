@@ -173,6 +173,25 @@ describe("the Wallpaper Engine source", () => {
     });
   });
 
+  it("forgets the last scan once the install is gone", async () => {
+    await fixture();
+    let current: WallpaperEngineInstall | undefined = install;
+    const source = createWallpaperEngineSource({
+      locate: async () => current,
+    });
+
+    expect((await source.listing()).available).toBe(true);
+
+    current = undefined;
+
+    expect(await source.listing()).toEqual({
+      available: false,
+      reason: "not-installed",
+    });
+    // The item's path belonged to a library that is no longer there.
+    expect(await source.bytesOf("201", "asset")).toBeUndefined();
+  });
+
   it("serves preview and payload bytes by id, and nothing else", async () => {
     await fixture();
     const source = createWallpaperEngineSource({ locate });

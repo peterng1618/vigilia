@@ -2189,7 +2189,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      const workshopId = decodeURIComponent(wallpaperEngineMatch[1] ?? "");
+      let workshopId: string;
+      try {
+        workshopId = decodeURIComponent(wallpaperEngineMatch[1] ?? "");
+      } catch {
+        // Malformed percent-encoding names no item, so it is the same answer
+        // as any other id the library does not hold.
+        sendText(response, 404, "No such wallpaper.");
+        return;
+      }
       const part = wallpaperEngineMatch[2] === "preview" ? "preview" : "asset";
       const bytes =
         wallpaperEngine === undefined

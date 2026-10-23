@@ -57,7 +57,7 @@ async function exists(target: string): Promise<boolean> {
 }
 
 /** True when `target` is `directory` or below it, on the same drive. */
-function insideOf(directory: string, target: string): boolean {
+export function insideOf(directory: string, target: string): boolean {
   const relative = path.relative(directory, target);
   return (
     relative !== ".." &&

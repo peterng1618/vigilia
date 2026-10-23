@@ -1,10 +1,9 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import { contentTypeFor } from "../serve/static-path.js";
 import { readSceneFacts, type SceneFacts } from "./classify.js";
 import { type LibraryItem, scanLibrary } from "./library.js";
 import { locateInstall } from "./locate.js";
-import { resolvePayload } from "./resolve.js";
+import { insideOf, resolvePayload } from "./resolve.js";
 import { type StoredItem, toStoredItem } from "./wire.js";
 
 /**
@@ -54,16 +53,6 @@ async function isFile(file: string): Promise<boolean> {
   }
 }
 
-/** True when `target` is `directory` or below it, on the same drive. */
-function insideOf(directory: string, target: string): boolean {
-  const relative = path.relative(directory, target);
-  return (
-    relative !== ".." &&
-    !relative.startsWith(`..${path.sep}`) &&
-    !path.isAbsolute(relative)
-  );
-}
-
 export function createWallpaperEngineSource(
   options: {
     readonly locate?: typeof locateInstall;
@@ -80,10 +69,12 @@ export function createWallpaperEngineSource(
 
   /** The most recent scan, so a byte request is answered by id, never a path. */
   let scanned: ReadonlyMap<string, LibraryItem> | undefined;
-  /** Scene packages read while classifying, so the asset route reads each once. */
-  let sceneBytes = new Map<string, Uint8Array>();
 
   async function listing(): Promise<WallpaperEngineAnswer> {
+    // An unavailable answer also forgets the last scan: an item served from a
+    // library that has since gone is a path the host no longer has.
+    scanned = undefined;
+
     if (!supported) {
       return { available: false, reason: "unsupported-platform" };
     }
@@ -101,7 +92,6 @@ export function createWallpaperEngineSource(
     const scan = await scanLibrary(install);
     const items: StoredItem[] = [];
     const byId = new Map<string, LibraryItem>();
-    const packages = new Map<string, Uint8Array>();
     let skipped = scan.skipped;
 
     for (const item of scan.items) {
@@ -113,11 +103,12 @@ export function createWallpaperEngineSource(
         continue;
       }
 
+      // The package is read once here; only its facts are kept. The bytes are
+      // read again on demand, so a large library costs the scan, not the RSS.
       let facts: SceneFacts | undefined;
       if (payload.kind === "scene") {
         const bytes = await readOrUndefined(payload.path);
         if (bytes !== undefined) {
-          packages.set(item.workshopId, bytes);
           facts = classify(bytes);
         }
       }
@@ -126,7 +117,6 @@ export function createWallpaperEngineSource(
       byId.set(item.workshopId, item);
     }
 
-    sceneBytes = packages;
     scanned = byId;
 
     return { available: true, install: install.root, items, skipped };
@@ -177,8 +167,7 @@ export function createWallpaperEngineSource(
       return undefined;
     }
 
-    const cached = sceneBytes.get(item.workshopId);
-    const bytes = cached ?? (await readOrUndefined(payload.path));
+    const bytes = await readOrUndefined(payload.path);
     const contentType =
       payload.kind === "scene"
         ? contentTypeFor(payload.path)
