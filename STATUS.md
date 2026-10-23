@@ -16,16 +16,16 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 
 ## Last completed change
 
-- **Decision 0097 claims the watchlisted paths before the code**: the note records the seven reuse rungs with their searches, the container layout, the still test and the measured library, and it claims `host/src/server.ts`, `editor-session.ts` and `shell-layout.tsx` individually because a directory claim licenses nothing.
-- **The Wallpaper Engine plan is named active**, with its nine tasks and the finder surface its own amendment defers to.
+- **The scene container is read by a bounds-checked table walk** (`host/src/wallpaper-engine/pkg.ts`): `PKGV0001`/`0020`/`0024`/`0025`, member offsets relative to the table's end, and `undefined` rather than a partial table.
+- **The still test walks the parsed scene for motion** (`classify.ts`): particle, animation layers or an `animation` key anywhere — including inside a referenced model member — is animation; text is reported as its own fact.
+- **Fifteen unit cases pin the reader to hand-built buffers**: header, table, member bytes, truncated header, table overrun, empty and duplicate names, five scene shapes and the model cases.
 
 ## Next
 
-1. Task 1: the decision note claiming `host/src/server.ts`, `editor-session.ts` and `shell-layout.tsx`.
-2. Tasks 2–5: the container reader, classifier, install locator, library scan, read routes and the unpack/export routes.
-3. Tasks 6–7: register the finder's local source, then the scene's unpack/launch/export sheet.
-4. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
-5. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
+1. Tasks 3–5: the install locator, the library scan, the read routes and the unpack/export routes.
+2. Tasks 6–7: register the finder's local source, then the scene's unpack/launch/export sheet.
+3. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
+4. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
 
 ## Blockers / unverified
 
