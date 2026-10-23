@@ -16,16 +16,16 @@ Land the **Wallpaper Engine import** ([`spec`](docs/superpowers/specs/2026-10-21
 
 ## Last completed change
 
-- **The host answers its Wallpaper Engine library** (`wallpaper-engine/source.ts`): `listing()` locates per call, scans, resolves each item and classifies only scene packages — a truncated `scene.pkg` is listed unclassified, never guessed still.
-- **`bytesOf` serves preview and payload by id** (`source.ts`): asset through `resolvePayload`, preview only as a regular file inside the item's own directory, both answering `undefined` rather than throwing.
-- **Three routes and one option** (`server.ts`, `main.ts`): `GET /api/wallpaper-engine`, `/item/<id>/preview` and `/item/<id>/asset`; a host with no source answers `{ available: false, reason: "not-installed" }`.
+- **A scene unpacks into the editor's own project** (`wallpaper-engine/unpack.ts`): `mkdir` without `recursive` is the existence test, every member is written byte-identically, and the item's descriptor is rewritten to `file: "scene.json"`.
+- **Refusals leave nothing behind** (`unpack.ts`): a truncated package, a missing `scene.json` member or an absolute/separator/escaping member name answers `unreadable` and removes only the directory this run made; a non-alphanumeric target is `refused` before anything exists.
+- **The launch is detached and non-blocking** (`unpack.ts`, `source.ts`): `project()` unpacks, then `launchEditor` spawns `-project <dir>`, reports `launched`, and never waits, writes or polls.
+- **The export scope and its routes** (`source.ts`, `server.ts`): `exportsSince` lists recent `.png`/`.mp4` files from `projects/temp`, `myprojects` and the Videos folder, newest first; `exportBytes` refuses any name that is not a bare `.png`/`.mp4`; `GET /exports` requires an integer `since` and `POST …/project` answers 405 to a GET.
 
 ## Next
 
-1. Task 5: the unpack/export routes (`POST …/project`, `GET …/exports`).
-2. Tasks 6–7: register the finder's local source, then the scene's unpack/launch/export sheet.
-3. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
-4. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
+1. Tasks 6–7: register the finder's local source, then the scene's unpack/launch/export sheet.
+2. Task 8: the Wallpaper Engine credits entry and its display; Task 9: the boundary run and red proofs.
+3. The owner's R2 Task 5.2 deploy, live proof and import still wait; so does `vg-699`.
 
 ## Blockers / unverified
 

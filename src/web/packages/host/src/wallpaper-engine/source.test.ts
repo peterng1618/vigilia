@@ -247,3 +247,147 @@ describe("the Wallpaper Engine source", () => {
     expect(await source.bytesOf("302", "preview")).toBeUndefined();
   });
 });
+
+describe("the Wallpaper Engine export scope", () => {
+  let tmp: string;
+  let install: WallpaperEngineInstall;
+  let videos: string;
+
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), "yunari-we-exports-"));
+    const root = path.join(tmp, "wallpaper_engine");
+    install = {
+      root,
+      libraries: [path.join(tmp, "library")],
+      myProjects: path.join(root, "projects", "myprojects"),
+      editor: path.join(root, "bin", "wallpaperui.exe"),
+    };
+    videos = path.join(tmp, "Videos");
+    await fs.mkdir(path.join(root, "projects", "temp"), { recursive: true });
+    await fs.mkdir(install.myProjects, { recursive: true });
+    await fs.mkdir(videos, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  async function writeExport(
+    directory: string,
+    name: string,
+    when: Date,
+    body = name,
+  ): Promise<string> {
+    const file = path.join(directory, name);
+    await fs.writeFile(file, body);
+    await fs.utimes(file, when, when);
+    return file;
+  }
+
+  function source(): ReturnType<typeof createWallpaperEngineSource> {
+    return createWallpaperEngineSource({
+      locate: async () => install,
+      videosDirectory: videos,
+    });
+  }
+
+  it("lists only recent png and mp4 files, newest first, across the three directories", async () => {
+    const old = new Date("2020-01-01T00:00:00Z");
+    const middle = new Date("2021-01-01T00:00:00Z");
+    const recent = new Date("2022-01-01T00:00:00Z");
+
+    await writeExport(
+      path.join(install.root, "projects", "temp"),
+      "middle.png",
+      middle,
+    );
+    await writeExport(install.myProjects, "recent.mp4", recent);
+    await writeExport(videos, "old.png", old);
+    await writeExport(videos, "notes.txt", recent);
+    await writeExport(videos, "clip.mkv", recent);
+
+    const files = await source().exportsSince(
+      new Date("2020-06-01T00:00:00Z").getTime(),
+    );
+
+    expect(files.map((file) => file.name)).toEqual([
+      "recent.mp4",
+      "middle.png",
+    ]);
+    expect(files[0]?.format).toBe("mp4");
+    expect(files[0]?.size).toBe(Buffer.byteLength("recent.mp4"));
+    expect(files[0]?.modified).toBeGreaterThan(middle.getTime());
+    expect(files[1]?.format).toBe("png");
+  });
+
+  it("reads no Videos folder that does not exist", async () => {
+    const answer = await createWallpaperEngineSource({
+      locate: async () => install,
+      videosDirectory: path.join(tmp, "no-videos"),
+    }).exportsSince(0);
+
+    expect(answer).toEqual([]);
+  });
+
+  it("serves the bytes of a real export in scope", async () => {
+    await writeExport(
+      path.join(install.root, "projects", "temp"),
+      "shot.png",
+      new Date(),
+    );
+
+    const answer = await source().exportBytes("shot.png");
+
+    expect(answer?.contentType).toBe("image/png");
+    expect(Buffer.from(answer?.bytes ?? []).toString()).toBe("shot.png");
+  });
+
+  it("answers one name once, by its newest copy", async () => {
+    await writeExport(
+      path.join(install.root, "projects", "temp"),
+      "same.png",
+      new Date("2021-01-01T00:00:00Z"),
+      "older",
+    );
+    await writeExport(
+      videos,
+      "same.png",
+      new Date("2022-01-01T00:00:00Z"),
+      "newer",
+    );
+
+    const files = await source().exportsSince(0);
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.modified).toBeGreaterThan(
+      new Date("2021-06-01T00:00:00Z").getTime(),
+    );
+
+    // The listing offered one row, so the bytes have to be that row's file —
+    // not whichever scoped directory happened to be read first.
+    const answer = await source().exportBytes("same.png");
+    expect(Buffer.from(answer?.bytes ?? []).toString()).toBe("newer");
+  });
+
+  it("refuses every name that is not a bare png or mp4", async () => {
+    await writeExport(videos, "shot.png", new Date());
+    const from = source();
+
+    // The last traversal case is the decoded form of `x%2e%2e/y.png`, which is
+    // what the route asks with after `URLSearchParams` has decoded it.
+    const decoded = new URLSearchParams("name=x%2e%2e/y.png").get("name");
+
+    for (const name of [
+      "../project.json",
+      "a/b.png",
+      decoded ?? "",
+      "x.png.exe",
+      "x.jpg",
+      "",
+    ]) {
+      expect(await from.exportBytes(name)).toBeUndefined();
+    }
+
+    expect(await from.exportBytes("shot.png")).toBeDefined();
+  });
+});
