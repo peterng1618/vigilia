@@ -60,10 +60,10 @@ describe("importFinderResult", () => {
     });
 
     if (!outcome.ok) throw new Error(outcome.message);
-    expect(outcome).toMatchObject({ ok: true });
-    expect(outcome.ok && outcome.imported.reference.path).toBe(
+    expect(outcome).toEqual({ ok: true });
+    expect(manager.declarations.map((entry) => entry.path)).toEqual([
       "assets/house.svg",
-    );
+    ]);
     expect(addCredit).toHaveBeenCalledWith({
       kind: "icon",
       title: "house",
@@ -71,9 +71,7 @@ describe("importFinderResult", () => {
       changes: "Imported unchanged",
       source: { url: "https://lucide.dev/icons/house" },
     });
-    expect(place).toHaveBeenCalledWith(
-      outcome.ok ? outcome.imported.reference.id : "",
-    );
+    expect(place).toHaveBeenCalledWith(manager.declarations[0]?.id ?? "");
   });
 
   it("refuses a file the manager cannot read and adds no entry", async () => {

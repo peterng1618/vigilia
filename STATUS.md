@@ -18,8 +18,8 @@ Land the **background layer** ([`spec`](docs/superpowers/specs/2026-10-23-backgr
 
 ## Last completed change
 
-- **Merge of `origin/main`** (`d269f06`): the asset finder's review minors and the R2 store backend now sit beside the background layer; conflicts kept both `onOpenFontPicker` and the background column's ports.
-- **The finder's import writes the layer** (`4e00450`): it wrote the removed `artboard.backgroundMedia`; it now writes the background's media through `setBackground`, and a session test pins the import outcome.
+- **Merges of `origin/main`** (`d269f06`, then this one): the asset finder's review minors, its icon-as-geometry and grid/metadata fixes, and the R2 store backend now sit beside the background layer.
+- **The finder's import writes the layer** (`4e00450`): it wrote the removed `artboard.backgroundMedia`; it writes the background's media through `setBackground`, and a session test pins the import outcome beside main's geometry assertions.
 - **Register**: this branch's four rows are renumbered `vg-702`–`vg-705` (`main` took 698/699/701 and archived 700), and the three-note 0093 collision is filed as `vg-706`.
 - **Background layer**: `background.media` is `{ assetId, bounds, offsetX?, offsetY?, flipX?, flipY? }`, always cover with offsets bounded by the overhang, flips mirror at paint time, stored `fit`/`scale` refused as unknown keys.
 - **Docs**: decision 0094, spec `implemented`, plan archived.

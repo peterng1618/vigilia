@@ -8,9 +8,14 @@ import { ActiveSelection, type FabricObject } from "fabric/es";
 import { createElement } from "react";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
-import { importFinderResult } from "./asset-finder/actions.js";
+import { creditOf, importFinderResult } from "./asset-finder/actions.js";
 import { assetBytes } from "./asset-finder/client.js";
 import { FontsBodyHost } from "./asset-finder/fonts-body.js";
+import {
+  iconObject,
+  iconShapes,
+  placeIcon,
+} from "./asset-finder/icon-shape.js";
 import { type AssetManager, mimeOf } from "./asset-manager/index.js";
 import {
   type CanvasNudge,
@@ -30,6 +35,7 @@ import {
 } from "./indicator-manager/index.js";
 import { LiveRuntime } from "./live-runtime.js";
 import type { NewDocumentAnswer } from "./new-document-chooser.js";
+import { newInk } from "./new-object-defaults.js";
 import {
   constructing,
   createNewObjectPanel,
@@ -60,6 +66,12 @@ import {
   type TypePresets,
 } from "./type-preset-manager/index.js";
 import { uiCopy } from "./ui-copy.js";
+
+/** How much of the artboard's shorter edge an imported icon takes. An SVG's
+ *  viewBox is its own unit (24 for Lucide, 512 for Font Awesome), so its size
+ *  says nothing about the frame it lands on; this is the one share every
+ *  imported icon gets, which also makes two sources' glyphs comparable. */
+const IMPORTED_ICON_SHARE = 0.12;
 
 interface EditorPanelHosts {
   /** Text and chart creation, and the declared-asset library at its foot. */
@@ -624,6 +636,46 @@ export class EditorSession {
             message: uiCopy.assets.bytesUnavailable(result.name),
           };
 
+        // An icon is authored as geometry, not as a picture: the starter theme's
+        // icons are paths for the same reason — a path takes the theme's ink, a
+        // stroke width and a shadow, and an SVG image takes none of them.
+        if (result.kind === "icon") {
+          const credit = creditOf(result);
+          if (!this.#document.canAddCredit(credit))
+            return { ok: false as const, message: uiCopy.assets.creditsFull };
+
+          try {
+            const artboard = this.#document.envelope.artboard;
+            const ink = newInk(this.#document.envelope.globals);
+            const shapes = await iconShapes(
+              new TextDecoder().decode(fetched.bytes),
+              ink,
+            );
+            if (shapes.length === 0)
+              return { ok: false as const, message: uiCopy.assets.emptyIcon };
+
+            const placed = iconObject(
+              shapes,
+              result.name,
+              `icon-${crypto.randomUUID()}`,
+            );
+            placeIcon(placed, artboard, IMPORTED_ICON_SHARE);
+            this.#document.addCredit(credit);
+            editor.canvas.add(placed);
+            editor.canvas.setActiveObject(placed);
+            editor.historyManager.saveState();
+            editor.canvas.requestRenderAll();
+            return { ok: true as const };
+          } catch (error) {
+            // A glyph the parser refuses, or a theme with no palette to paint
+            // it: the author gets the reason in the dialog, not a dead button.
+            return {
+              ok: false as const,
+              message: error instanceof Error ? error.message : String(error),
+            };
+          }
+        }
+
         const file = new File(
           [fetched.bytes as unknown as BlobPart],
           fetched.filename,
@@ -651,8 +703,10 @@ export class EditorSession {
               });
               return;
             }
-            // The icon's own row places it: `placeImage` takes the declaration
-            // this import just made, so the file is not imported twice.
+            // Every other declared picture is placed through the Add pane's own
+            // path: `placeImage` takes the declaration this import just made, so
+            // the file is not imported twice. (An icon never reaches here — it
+            // is authored as geometry above.)
             const declared = this.#assets.declarations.find(
               (entry) => entry.id === assetId,
             );
@@ -674,7 +728,7 @@ export class EditorSession {
           this.#document.refreshBackgroundMedia();
         }
         return outcome.ok
-          ? { ok: true as const, imported: outcome.imported }
+          ? { ok: true as const }
           : { ok: false as const, message: outcome.message };
       },
       openLibraryTheme: (id, onAccepted) =>

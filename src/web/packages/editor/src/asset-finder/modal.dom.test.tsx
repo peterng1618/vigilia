@@ -727,3 +727,74 @@ describe("AssetFinder footer", () => {
     expect(footerAction().textContent).toBe(uiCopy.assets.action.image);
   });
 });
+
+describe("AssetFinder's own controls", () => {
+  it("offers a way out for a screen with no Escape key", async () => {
+    const onOpenChange = vi.fn();
+    await render([lucide], { onOpenChange });
+    await settle();
+
+    const close = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === uiCopy.assets.close,
+    );
+    expect(close).toBeDefined();
+    await act(async () => close?.click());
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("marks the chosen row, not only the press that chose it", async () => {
+    await render([lucide]);
+    searchAssets.mockResolvedValue({
+      pages: [page("lucide", [result("lucide:house"), result("lucide:cat")])],
+    });
+    await settle();
+
+    const house = document.querySelector<HTMLElement>(
+      '[data-yunari-asset-row="lucide:house"]',
+    );
+    const cat = document.querySelector<HTMLElement>(
+      '[data-yunari-asset-row="lucide:cat"]',
+    );
+    expect(house?.className).not.toContain("border-accent");
+
+    await act(async () => house?.click());
+
+    expect(house?.getAttribute("aria-pressed")).toBe("true");
+    expect(house?.className).toContain("border-accent");
+    expect(cat?.className).not.toContain("border-accent");
+  });
+
+  it("draws an icon as the theme's own ink and a photo as a picture", async () => {
+    await render([lucide, unsplash]);
+    searchAssets.mockResolvedValue({
+      pages: [
+        page("lucide", [
+          {
+            ...result("lucide:house"),
+            preview: "data:image/svg+xml;base64,PHN2Zy8+",
+          },
+        ]),
+        page("unsplash", [
+          {
+            ...result("unsplash:photo"),
+            kind: "image",
+            preview: "https://images.unsplash.com/photo-small",
+          },
+        ]),
+      ],
+    });
+    await settle();
+
+    expect(
+      document.querySelector(
+        '[data-yunari-asset-row="lucide:house"] [data-yunari-asset-preview="icon"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      document.querySelector('[data-yunari-asset-row="lucide:house"] img'),
+    ).toBeNull();
+    expect(
+      document.querySelector('[data-yunari-asset-row="unsplash:photo"] img'),
+    ).not.toBeNull();
+  });
+});

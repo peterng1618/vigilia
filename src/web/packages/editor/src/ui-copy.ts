@@ -991,6 +991,9 @@ export const uiCopy = {
    *  footer names the kind's own action rather than a bare "Import" (R5). */
   assets: {
     title: "Assets",
+    /** The `Dialog.Close` the finder renders, as Settings and the sheet do: a
+     *  touch screen reader has no Escape key. */
+    close: "Close",
     category: {
       font: "Fonts",
       icon: "Icons",
@@ -1022,6 +1025,7 @@ export const uiCopy = {
     loadMore: "Load more",
     unknownAssetFile: "That asset is not a file type the editor can import.",
     hostUnavailable: "The host is not connected.",
+    emptyIcon: "That icon had no shape to place.",
     bytesUnavailable: (name: string): string =>
       `The host did not send "${name}", so nothing was imported.`,
     creditsFull:

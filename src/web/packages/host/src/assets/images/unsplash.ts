@@ -72,9 +72,27 @@ function pageOf(cursor: string | undefined): number {
   return cursor !== undefined && /^\d+$/.test(cursor) ? Number(cursor) : 1;
 }
 
+/** The API's own words for a refusal, which name the fault a status cannot:
+ *  a bad key, a missing parameter, a rate limit. Never the request's key. */
+async function detailOf(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { errors?: unknown };
+    const errors = Array.isArray(body.errors)
+      ? body.errors.filter(
+          (entry): entry is string => typeof entry === "string",
+        )
+      : [];
+    return errors.length === 0 ? "" : `: ${errors.join("; ")}`;
+  } catch {
+    return "";
+  }
+}
+
 async function jsonOf(response: Response, what: string): Promise<unknown> {
-  if (!response.ok)
-    throw new Error(`Unsplash ${what} answered ${response.status}`);
+  if (!response.ok) {
+    const detail = await detailOf(response);
+    throw new Error(`Unsplash ${what} answered ${response.status}${detail}`);
+  }
   return (await response.json()) as unknown;
 }
 
@@ -116,6 +134,10 @@ export const unsplashSource: AssetSource = {
   host: "api.unsplash.com",
 
   async search(query, cursor, ctx): Promise<SearchPage> {
+    // The finder opens with an empty term, and `query` is the endpoint's one
+    // required parameter: Unsplash answers its absence with 400.
+    if (query.trim() === "") return { results: [], next: undefined };
+
     const key = keyOf(ctx);
     const page = pageOf(cursor);
     const url = new URL("search/photos", API);

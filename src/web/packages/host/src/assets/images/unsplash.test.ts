@@ -149,6 +149,43 @@ describe("unsplashSource", () => {
     ).toMatchObject({ next: undefined });
   });
 
+  it("asks the API nothing when the term is blank", async () => {
+    const { fetcher, calls } = stubFetch({
+      results: [photo()],
+      total_pages: 1,
+    });
+
+    // The finder opens with an empty query, and Unsplash answers a missing
+    // `query` with 400: a search the API cannot serve is not a failure.
+    expect(
+      await unsplashSource.search("   ", undefined, context(fetcher)),
+    ).toEqual({ results: [], next: undefined });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("carries the API's own words beside the status", async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            errors: ["OAuth error: The access token is invalid"],
+          }),
+          { status: 401 },
+        ),
+    ) as unknown as typeof fetch;
+
+    const outcome = await searchSources(
+      { query: "cat", enabled: ["unsplash"], cursors: {} },
+      context(fetcher),
+      [unsplashSource],
+    );
+
+    const failure = outcome.pages[0]?.failure;
+    expect(failure?.reason === "failed" ? failure.message : "").toBe(
+      "Unsplash search answered 401: OAuth error: The access token is invalid",
+    );
+  });
+
   it("answers a failed page naming the status without the key", async () => {
     const fetcher = vi.fn(
       async () => new Response("unauthorized", { status: 401 }),

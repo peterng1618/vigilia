@@ -1054,27 +1054,37 @@ describe("EditorSession", () => {
  *  second guard beside this one would be a question asked twice about the same
  *  work — and a URL route that skipped this one would drop it silently. */
 describe("opening a theme over a document that has unsaved changes", () => {
-  const shell = () => ({
-    editor: {
-      canvas: {
-        on: vi.fn(),
-        off: vi.fn(),
-        getActiveObject: () => undefined,
-        getObjects: () => [],
-        requestRenderAll: vi.fn(),
+  /** The shell the last session was built with, so a case can read what the
+   *  session did to the canvas. */
+  const shells = { last: undefined as unknown };
+
+  const shell = () =>
+    (shells.last = {
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          add: vi.fn(),
+          setActiveObject: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+        textManager: {
+          addText: vi.fn(),
+          setAuthoringView: vi.fn(),
+          setRepaint: vi.fn(),
+        },
+        cropManager: idleCrop(),
+        historyManager: { saveState: vi.fn() },
       },
-      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
-      textManager: {
-        addText: vi.fn(),
-        setAuthoringView: vi.fn(),
-        setRepaint: vi.fn(),
-      },
-      cropManager: idleCrop(),
-    },
-    scene: {},
-    snapshot: vi.fn(() => envelope),
-    setBackgroundMedia: vi.fn(),
-  });
+      scene: {},
+      snapshot: vi.fn(() => envelope),
+      setArtboard: vi.fn(),
+      refreshBackgroundMedia: vi.fn(),
+      setBackgroundMedia: vi.fn(),
+    });
 
   const sessionWith = (overrides?: Record<string, unknown>): EditorSession =>
     new EditorSession({
@@ -1115,6 +1125,52 @@ describe("opening a theme over a document that has unsaved changes", () => {
     const outcome = await extensions.actionFacade().importAsset?.(
       { source: "lucide", results: [], next: undefined, failure: undefined },
       {
+        id: "unsplash:photo",
+        name: "photo",
+        kind: "image",
+        preview: "",
+        subtitle: undefined,
+        licence: "Unsplash License",
+        sourceUrl: "https://unsplash.com/photos/photo",
+      },
+    );
+
+    expect(outcome?.ok === true ? "imported" : outcome?.message).toBe(
+      "imported",
+    );
+    // The declaration is new, so the pane's list must be told; otherwise it
+    // shows the set from before the import until another asset action.
+    expect(setAssets).toHaveBeenCalled();
+    extensions.destroy();
+  });
+
+  it("places an imported icon as geometry the theme can paint", async () => {
+    assetClientMock.assetBytes.mockResolvedValue({
+      bytes: new TextEncoder().encode(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10 12 3l9 7"/><path d="M5 9v11h14V9"/></svg>',
+      ),
+      filename: "house.svg",
+    });
+    const extensions = sessionWith({
+      envelope: {
+        ...envelope,
+        artboard: { width: 1920, height: 1080 },
+        globals: {
+          palette: {
+            text: { name: "Text", value: { kind: "solid", color: "#ecf5ff" } },
+          },
+        },
+      },
+    });
+    const canvas = (
+      shells.last as {
+        editor: { canvas: { add: ReturnType<typeof vi.fn> } };
+      }
+    ).editor.canvas;
+
+    const outcome = await extensions.actionFacade().importAsset?.(
+      { source: "lucide", results: [], next: undefined, failure: undefined },
+      {
         id: "lucide:house",
         name: "house",
         kind: "icon",
@@ -1131,6 +1187,23 @@ describe("opening a theme over a document that has unsaved changes", () => {
     expect(outcome?.ok === true ? "imported" : outcome?.message).toBe(
       "imported",
     );
+    // A picture would bake `currentColor` to black; a path carries the theme's
+    // token, its stroke width and the frame-relative size the author gets.
+    const placed = canvas.add.mock.calls[0]?.[0] as {
+      type: string;
+      get(name: string): unknown;
+      getObjects(): { get(name: string): unknown }[];
+      width: number;
+      scaleX: number;
+    };
+    expect(placed.type).toBe("group");
+    expect(placed.get("name")).toBe("house");
+    expect(Math.round(placed.width * placed.scaleX)).toBe(
+      Math.round(1080 * 0.12),
+    );
+    const shapes = placed.getObjects();
+    expect(shapes).toHaveLength(2);
+    for (const shape of shapes) expect(shape.get("stroke")).toBe("#ecf5ff");
     extensions.destroy();
   });
 

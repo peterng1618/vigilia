@@ -60,7 +60,7 @@ describe("Dialog", () => {
     root.remove();
   });
 
-  it("lets a caller add a size class, and the finder's class fills the window", async () => {
+  it("lets a caller add a size class, and the finder's class insets to the chrome", async () => {
     const root = document.createElement("div");
     document.body.append(root);
     const container = createRoot(root);
@@ -86,8 +86,13 @@ describe("Dialog", () => {
     const block = /\.editor-shell-dialog--finder\s*\{([^}]*)\}/.exec(
       shellCss,
     )?.[1];
-    expect(block).toContain("width: min(1132px, calc(100vw - 48px))");
-    expect(block).toContain("height: min(852px, calc(100vh - 48px))");
+    // The finder takes the editor's working area, stopping short of the header,
+    // the rail and the status bar so the shell's own chrome stays in view.
+    expect(block).toContain("top: calc(var(--header-height) + var(--space-8))");
+    expect(block).toContain("left: calc(46px + var(--space-8))");
+    expect(block).toContain("bottom: calc(26px + var(--space-8))");
+    expect(block).toContain("width: auto");
+    expect(block).toContain("transform: none");
     // The popup itself does not scroll: its bounded body does, so the page
     // behind never moves while the grid pages.
     expect(block).toContain("overflow: hidden");

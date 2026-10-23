@@ -21,15 +21,39 @@ export function AssetRow({
       aria-pressed={selected}
       data-yunari-asset-row={result.id}
       data-selected={selected ? "" : undefined}
-      className="flex min-w-0 flex-col gap-[var(--space-4)] rounded-[var(--radius-md)] border border-edge bg-[var(--panel-2)] p-[var(--space-8)] text-left"
+      // The selected row is the author's answer to "which one am I importing":
+      // an accent edge and a tint, not only the pressed state a pointer cannot
+      // see. Written as a branch rather than an `aria-pressed:` variant so the
+      // test can read the choice off the element.
+      className={`flex min-w-0 flex-col gap-[var(--space-4)] rounded-[var(--radius-md)] border bg-[var(--panel-2)] p-[var(--space-8)] text-left ${
+        selected
+          ? "border-accent bg-accent/10 ring-1 ring-accent"
+          : "border-edge"
+      }`}
     >
       <span className="flex h-24 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] bg-[var(--bg)]">
-        {result.preview === "" ? null : (
+        {result.preview === "" ? null : result.kind === "image" ? (
           <img
             src={result.preview}
             alt=""
             loading="lazy"
-            className="max-h-full max-w-full object-contain"
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          // A monochrome icon is drawn as a mask, never as an `<img>`: the
+          // picture is the shape's alpha and the colour is the row's own text
+          // colour, so a black-on-black set reads on a dark theme and a fixed
+          // box gives every source the same apparent size.
+          <span
+            aria-hidden="true"
+            data-yunari-asset-preview={result.kind}
+            className="h-14 w-14 bg-current text-text"
+            style={{
+              maskImage: `url("${result.preview}")`,
+              maskSize: "contain",
+              maskRepeat: "no-repeat",
+              maskPosition: "center",
+            }}
           />
         )}
       </span>

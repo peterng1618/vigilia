@@ -351,6 +351,7 @@ export function AssetFinder({
       open={open}
       onOpenChange={onOpenChange}
       label={uiCopy.assets.title}
+      closeLabel={uiCopy.assets.close}
       className="editor-shell-dialog--finder"
     >
       {listing === "failed" ? (

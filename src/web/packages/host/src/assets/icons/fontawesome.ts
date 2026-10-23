@@ -14,9 +14,13 @@ const HOME = "https://fontawesome.com/icons/";
 const STYLE = /^[a-z]+$/;
 const NAME = /^[a-z0-9-]+$/;
 
+/** One entry of `metadata/icon-families.json`: the styles are the keys of the
+ *  classic family, which is the one the free package ships. */
 interface IconEntry {
   readonly label?: string;
-  readonly styles?: readonly string[];
+  readonly svgs?: {
+    readonly classic?: Readonly<Record<string, unknown>>;
+  };
 }
 
 interface Metadata {
@@ -50,7 +54,13 @@ async function fetched<T>(
 
 async function load(ctx: SourceContext): Promise<Metadata> {
   const [icons, pkg] = await Promise.all([
-    fetched<Record<string, IconEntry>>(ctx, "metadata/icons.json", "metadata"),
+    // `icons.json` was removed from the package after 6.6; `icon-families.json`
+    // is what 6.7.2 serves, and its `svgs.classic` keys are the styles.
+    fetched<Record<string, IconEntry>>(
+      ctx,
+      "metadata/icon-families.json",
+      "metadata",
+    ),
     fetched<{ license?: unknown }>(ctx, "package.json", "package"),
   ]);
 
@@ -114,7 +124,7 @@ export const fontAwesomeSource: AssetSource = {
         continue;
       }
 
-      for (const style of entry.styles ?? []) {
+      for (const style of Object.keys(entry.svgs?.classic ?? {})) {
         if (STYLE.test(style)) results.push(resultOf(name, style, licence));
       }
     }
